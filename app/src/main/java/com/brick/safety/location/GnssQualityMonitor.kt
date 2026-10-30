@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.GnssStatus
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 import java.util.concurrent.Executor
 
 class GnssQualityMonitor(private val context: Context) {
@@ -41,17 +42,17 @@ class GnssQualityMonitor(private val context: Context) {
         }
     }
 
-    fun start(executor: Executor = context.mainExecutor) {
+    fun start(executor: Executor = ContextCompat.getMainExecutor(context)) {
         if (registered) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
         registered = runCatching {
-            locationManager.registerGnssStatusCallback(executor, callback)
+            LocationManagerCompat.registerGnssStatusCallback(locationManager, executor, callback)
         }.getOrDefault(false)
     }
 
     fun stop() {
         if (!registered) return
-        runCatching { locationManager.unregisterGnssStatusCallback(callback) }
+        runCatching { LocationManagerCompat.unregisterGnssStatusCallback(locationManager, callback) }
         registered = false
     }
 
