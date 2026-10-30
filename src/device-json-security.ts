@@ -43,8 +43,10 @@ export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityE
   if (sentAt < now - 10 * 60_000) return jsonError("stale health heartbeat", 409);
 
   const result = await env.DB.prepare(
-    "UPDATE devices SET last_health_sequence=?1 WHERE id=?2 AND revoked_at IS NULL AND last_health_sequence<?1"
-  ).bind(sequence, deviceId).run();
+    "INSERT INTO device_replay_state(device_id,last_health_sequence,updated_at) VALUES(?1,?2,?3) " +
+    "ON CONFLICT(device_id) DO UPDATE SET last_health_sequence=excluded.last_health_sequence,updated_at=excluded.updated_at " +
+    "WHERE device_replay_state.last_health_sequence<excluded.last_health_sequence"
+  ).bind(deviceId, sequence, now).run();
   if ((result.meta.changes ?? 0) !== 1) return jsonError("replayed or out-of-order health heartbeat", 409);
   return null;
 }
