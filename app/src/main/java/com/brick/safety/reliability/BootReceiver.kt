@@ -6,11 +6,11 @@ import android.content.Intent
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
-            intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
-            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            runCatching { ServiceControl.ensureTracking(context.applicationContext) }
-            RecoveryScheduler.ensureScheduled(context.applicationContext)
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            val app = context.applicationContext
+            RecoveryScheduler.ensureScheduled(app)
+            val started = runCatching { ServiceControl.ensureTracking(app) }.isSuccess
+            if (!started) RecoveryScheduler.scheduleSoon(app, 20)
         }
     }
 }
