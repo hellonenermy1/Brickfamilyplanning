@@ -23,6 +23,7 @@ export type DeviceHealth = {
   gnssTotal?: number;
   batteryPct?: number;
   charging?: boolean;
+  sosActive?: boolean;
 };
 
 export type NetworkEvidence = {
