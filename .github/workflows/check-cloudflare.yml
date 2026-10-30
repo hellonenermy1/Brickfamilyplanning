@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 5B No-R2
+name: Check Brick Cloudflare Phase 5C Hardening
 
 on:
   push:
-    branches: [phase5b-no-r2]
+    branches: [phase5c-hardening-audit]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -25,16 +25,38 @@ jobs:
         run: |
           node -e "JSON.parse(require('fs').readFileSync('.devcontainer/devcontainer.json','utf8')); console.log('devcontainer JSON OK')"
           node --check scripts/codespaces-check.mjs
-      - name: Syntax-check setup and private map installer
+      - name: Syntax-check setup, map installer, and audits
         run: |
           node --check scripts/setup.mjs
           node --check scripts/install-private-map.mjs
-      - name: Validate free-account static asset configuration
+          node --check scripts/audit-privacy.mjs
+          node --check scripts/test-phase5c.mjs
+      - name: Guard cardless Cloudflare configuration
         run: |
           if grep -F '"base_path"' wrangler.template.jsonc; then
             echo 'Non-root assets.base_path is not allowed in the no-card deployment.' >&2
             exit 1
           fi
+          if grep -F '/access/' scripts/setup.mjs; then
+            echo 'Cloudflare Access dependency reintroduced into cardless setup.' >&2
+            exit 1
+          fi
+          if grep -E 'R2_BUCKET|r2_buckets|queues|dead_letter|brick-family-v1-history' wrangler.template.jsonc scripts/setup.mjs; then
+            echo 'Billing-gated R2/Queue dependency reintroduced into cardless runtime.' >&2
+            exit 1
+          fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const text=fs.readFileSync('wrangler.template.jsonc','utf8');
+          const m=text.match(/"crons"\s*:\s*\[([^\]]+)\]/s);
+          if(!m) throw new Error('cron configuration missing');
+          const crons=[...m[1].matchAll(/"([^"]+)"/g)].map(x=>x[1]);
+          for(const cron of crons){
+            const fields=cron.trim().split(/\s+/);
+            if(fields.length!==5) throw new Error(`Cloudflare cron must have 5 fields: ${cron}`);
+          }
+          console.log('Cron syntax shape OK:', crons.join(', '));
+          NODE
       - name: Type-check private map browser module
         run: npx tsc -p tsconfig.web.json --noEmit
       - name: Build self-hosted parent assets
@@ -51,16 +73,22 @@ jobs:
             exit 1
           fi
           if grep -E 'unpkg\.com/maplibre-gl|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com' public/brick-map.mjs; then
-            echo 'External live map endpoint found in self-hosted bundle' >&2
+            echo 'External live map endpoint found in self-hosted bundle.' >&2
             exit 1
           fi
+      - name: Audit privacy and external trackers
+        run: node scripts/audit-privacy.mjs
       - name: Type-check Worker
         run: npm run typecheck
       - name: Validate cardless parent authentication
         run: |
           npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
           node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
-      - name: Render and parse Phase 5B parent dashboard
+      - name: Validate Phase 5C crash privacy contract
+        run: |
+          npx esbuild src/phase5c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5c.mjs
+          node scripts/test-phase5c.mjs file:///tmp/brick-phase5c.mjs
+      - name: Render and parse Phase 5C parent dashboard
         run: node scripts/check-parent-module.mjs
       - name: Validate Phase 5 health classification
         run: |
@@ -75,14 +103,16 @@ jobs:
           python - <<'PY'
           import sqlite3, pathlib
           db = sqlite3.connect(':memory:')
-          for name in ['001_init.sql','002_phase2_health.sql','003_phase4_safety.sql','004_phase5_operations.sql','005_d1_blob_storage.sql']:
+          for name in ['001_init.sql','002_phase2_health.sql','003_phase4_safety.sql','004_phase5_operations.sql','005_d1_blob_storage.sql','007_phase5c_hardening.sql']:
               db.executescript(pathlib.Path('schema', name).read_text())
               print('OK', name)
           db.execute("INSERT INTO history_hours(device_id,hour_start,raw_blob,trusted_blob,point_count,raw_expires_at,trusted_expires_at,updated_at) VALUES('d',1,?, ?,1,9,9,1)",(b'abc',b'123'))
           db.execute("UPDATE history_hours SET raw_blob=CAST(COALESCE(raw_blob,X'') || ? AS BLOB), trusted_blob=CAST(trusted_blob || ? AS BLOB), point_count=point_count+1 WHERE device_id='d' AND hour_start=1",(b'def',b'456'))
           row=db.execute("SELECT raw_blob,trusted_blob,point_count FROM history_hours").fetchone()
           assert row==(b'abcdef',b'123456',2), row
-          print('OK D1 BLOB append semantics')
+          crash_cols=[r[1] for r in db.execute('PRAGMA table_info(crash_reports)').fetchall()]
+          assert 'latitude' not in crash_cols and 'longitude' not in crash_cols and 'stack_trace' not in crash_cols
+          print('OK D1 BLOB append + privacy-safe crash schema')
           db.close()
           PY
       - name: Validate separate map D1 schema
@@ -97,3 +127,9 @@ jobs:
           print('OK 006_d1_map_storage.sql')
           db.close()
           PY
+      - name: Validate truthful map deployment state update
+        run: |
+          grep -F 'installed:true' scripts/install-private-map.mjs >/dev/null
+          grep -F 'sha256:mapHash' scripts/install-private-map.mjs >/dev/null
+          grep -F "CURRENT_APP_VERSION='0.5.1-phase5c'" scripts/setup.mjs >/dev/null
+          grep -F '"CURRENT_APP_VERSION": "0.5.1-phase5c"' wrangler.template.jsonc >/dev/null
