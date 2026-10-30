@@ -8,6 +8,7 @@ export type DeviceHealth = {
   locationAgeMs: number | null;
   ackAgeMs: number | null;
   pendingRecords: number;
+  pendingSafetyEvents?: number;
   oldestPendingAgeMs: number | null;
   network: "wifi" | "mobile" | "other" | "offline";
   locationEnabled: boolean;
@@ -20,6 +21,8 @@ export type DeviceHealth = {
   trackingIntervalMs?: number;
   gnssUsedInFix?: number;
   gnssTotal?: number;
+  batteryPct?: number;
+  charging?: boolean;
 };
 
 export type NetworkEvidence = {
@@ -28,6 +31,17 @@ export type NetworkEvidence = {
   city: string | null;
   colo: string | null;
   receivedAt: number;
+};
+
+export type RealtimeSafetyEvent = {
+  id: string;
+  kind: string;
+  deviceCreatedAt: number;
+  serverCreatedAt: number;
+  latitude: number | null;
+  longitude: number | null;
+  accuracyM: number | null;
+  detail: Record<string, unknown>;
 };
 
 type StoredHealth = DeviceHealth & { receivedAt: number };
@@ -77,8 +91,6 @@ export class BrickDevice extends DurableObject {
       ? "unknown"
       : heartbeatAge <= 45_000 ? "healthy" : heartbeatAge <= 75_000 ? "degraded" : "offline";
 
-    // Phase 3 intentionally slows a stationary tracker. Freshness must follow the requested
-    // interval or a healthy stationary device would be falsely marked unavailable.
     const interval = Math.min(Math.max(health?.trackingIntervalMs ?? 5_000, 3_000), 120_000);
     const freshLimit = Math.max(15_000, interval * 2.5);
     const staleLimit = Math.max(60_000, interval * 3 + 30_000);
@@ -93,13 +105,20 @@ export class BrickDevice extends DurableObject {
   }
 
   private async snapshot() {
-    const [latest, health, networkEvidence, derived] = await Promise.all([
+    const [latest, health, networkEvidence, derived, latestSafetyEvent] = await Promise.all([
       this.ctx.storage.get<LatestState>("latest"),
       this.ctx.storage.get<StoredHealth>("health"),
       this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
-      this.derive()
+      this.derive(),
+      this.ctx.storage.get<RealtimeSafetyEvent>("latestSafetyEvent")
     ]);
-    return { latest: latest ?? null, health: health ?? null, networkEvidence: networkEvidence ?? null, derived };
+    return {
+      latest: latest ?? null,
+      health: health ?? null,
+      networkEvidence: networkEvidence ?? null,
+      latestSafetyEvent: latestSafetyEvent ?? null,
+      derived
+    };
   }
 
   private broadcast(type: string, payload: unknown) {
@@ -161,6 +180,11 @@ export class BrickDevice extends DurableObject {
   async setNetworkEvidence(evidence: NetworkEvidence) {
     await this.ctx.storage.put("networkEvidence", evidence);
     this.broadcast("networkEvidence", { networkEvidence: evidence, derived: await this.derive() });
+  }
+
+  async pushSafetyEvent(event: RealtimeSafetyEvent) {
+    await this.ctx.storage.put("latestSafetyEvent", event);
+    this.broadcast("safety_event", { event, derived: await this.derive() });
   }
 
   async alarm() {
