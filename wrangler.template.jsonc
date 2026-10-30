@@ -1,11 +1,15 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "brick-family-v1",
-  "main": "src/index.ts",
+  "main": "src/worker-v5b.ts",
   "compatibility_date": "2026-10-29",
   "workers_dev": true,
   "observability": { "enabled": true },
   "triggers": { "crons": ["*/1 * * * *", "17 3 * * *"] },
+  "assets": {
+    "directory": "./public",
+    "base_path": "/parent-assets"
+  },
   "durable_objects": {
     "bindings": [
       { "name": "BRICK_DEVICE", "class_name": "BrickDevice" }
@@ -18,7 +22,8 @@
     { "binding": "DB", "database_name": "brick-family-v1", "database_id": "__D1_DATABASE_ID__" }
   ],
   "r2_buckets": [
-    { "binding": "HISTORY", "bucket_name": "brick-family-v1-history" }
+    { "binding": "HISTORY", "bucket_name": "brick-family-v1-history" },
+    { "binding": "MAPS", "bucket_name": "brick-family-v1-maps" }
   ],
   "queues": {
     "producers": [
