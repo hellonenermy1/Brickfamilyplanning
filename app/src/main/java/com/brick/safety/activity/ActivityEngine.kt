@@ -17,8 +17,7 @@ class ActivityEngine(private val context: Context) {
 
     private val sampleIntent: PendingIntent by lazy {
         PendingIntent.getBroadcast(
-            context,
-            4101,
+            context, 4101,
             Intent(context, ActivityReceiver::class.java).setAction("com.brick.safety.ACTIVITY_SAMPLE"),
             pendingFlags()
         )
@@ -26,8 +25,7 @@ class ActivityEngine(private val context: Context) {
 
     private val transitionIntent: PendingIntent by lazy {
         PendingIntent.getBroadcast(
-            context,
-            4102,
+            context, 4102,
             Intent(context, ActivityReceiver::class.java).setAction("com.brick.safety.ACTIVITY_TRANSITION"),
             pendingFlags()
         )
@@ -35,15 +33,13 @@ class ActivityEngine(private val context: Context) {
 
     fun start() {
         if (!hasPermission()) return
-
-        // Transition API provides the stable boundaries and is Google's recommended low-power path.
+        // ON_FOOT deliberately excluded: it overlaps WALKING/RUNNING and can make transitions flap.
         val types = intArrayOf(
             DetectedActivity.STILL,
             DetectedActivity.WALKING,
             DetectedActivity.RUNNING,
             DetectedActivity.ON_BICYCLE,
-            DetectedActivity.IN_VEHICLE,
-            DetectedActivity.ON_FOOT
+            DetectedActivity.IN_VEHICLE
         )
         val transitions = buildList {
             for (type in types) {
@@ -54,8 +50,7 @@ class ActivityEngine(private val context: Context) {
             }
         }
         client.requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), transitionIntent)
-
-        // A slow sample provides confidence without using raw sensors continuously.
+        // Sampling still accepts generic ON_FOOT as a fallback classification/confidence signal.
         client.requestActivityUpdates(10_000L, sampleIntent)
     }
 
@@ -66,11 +61,9 @@ class ActivityEngine(private val context: Context) {
 
     fun snapshot(): ActivitySnapshot = ActivityState.read(context)
 
-    private fun hasPermission(): Boolean =
-        Build.VERSION.SDK_INT < 29 || ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACTIVITY_RECOGNITION
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun hasPermission(): Boolean = Build.VERSION.SDK_INT < 29 || ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACTIVITY_RECOGNITION
+    ) == PackageManager.PERMISSION_GRANTED
 
     private fun pendingFlags(): Int = PendingIntent.FLAG_UPDATE_CURRENT or
         if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
