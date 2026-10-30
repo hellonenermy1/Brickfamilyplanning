@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-const { createParentSession, parentSessionValid, handleParentLogin, PARENT_COOKIE } = await import(process.argv[2]);
+const { createParentSession, parentSessionValid, parentAuthorized, handleParentLogin, PARENT_COOKIE } = await import(process.argv[2]);
 
 const secret='correct horse battery staple 2026';
 const now=1_800_000_000_000;
@@ -10,7 +10,14 @@ assert.equal(await parentSessionValid(req,secret,now+60_000),true,'fresh session
 assert.equal(await parentSessionValid(req,'wrong secret for testing',now+60_000),false,'wrong secret must fail');
 assert.equal(await parentSessionValid(req,secret,now+24*60*60*1000+1),false,'expired session must fail');
 
+const parts=token.split('.');parts[3]=parts[3].slice(0,-1)+(parts[3].endsWith('A')?'B':'A');
+const tampered=new Request('https://brick.example/parent',{headers:{Cookie:`${PARENT_COOKIE}=${parts.join('.')}`}});
+assert.equal(await parentSessionValid(tampered,secret,now+60_000),false,'tampered session must fail');
+
 const env={BRICK_PARENT_PASSWORD:secret,PAIR_RATE:{limit:async()=>({success:true})}};
+const forgedAccessHeader=new Request('https://brick.example/parent',{headers:{'Cf-Access-Jwt-Assertion':'attacker-controlled'}});
+assert.equal(await parentAuthorized(forgedAccessHeader,env),false,'legacy Cloudflare Access header alone must never authorize the Phase 5C wrapper');
+
 const goodBody=new URLSearchParams({password:secret});
 const good=await handleParentLogin(new Request('https://brick.example/parent/login',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:goodBody}),env);
 assert.equal(good.status,303,'correct password should redirect');
