@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-29",
   "workers_dev": true,
   "observability": { "enabled": true },
+  "triggers": { "crons": ["17 3 * * *"] },
   "durable_objects": {
     "bindings": [
       { "name": "BRICK_DEVICE", "class_name": "BrickDevice" }
