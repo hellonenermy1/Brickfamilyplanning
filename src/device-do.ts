@@ -40,6 +40,8 @@ export type DeviceHealth = {
   stepCounterAvailable?: boolean;
   stepDetectorAvailable?: boolean;
   lastSelfRecoveryAgeMs?: number | null;
+  journalWriteHealthy?: boolean;
+  lastJournalWriteFailureAgeMs?: number | null;
   operationalStatus?: "healthy" | "degraded";
   operationalReason?: string;
 };
