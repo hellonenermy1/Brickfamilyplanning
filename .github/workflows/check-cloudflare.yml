@@ -56,6 +56,10 @@ jobs:
           fi
       - name: Type-check Worker
         run: npm run typecheck
+      - name: Validate cardless parent authentication
+        run: |
+          npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
+          node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
       - name: Render and parse Phase 5B parent dashboard
         run: node scripts/check-parent-module.mjs
       - name: Validate Phase 5 health classification
