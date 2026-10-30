@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS devices (
   last_seen_at INTEGER,
   revoked_at INTEGER,
   last_epoch INTEGER NOT NULL DEFAULT 0,
-  last_sequence INTEGER NOT NULL DEFAULT 0,
-  last_health_sequence INTEGER NOT NULL DEFAULT 0
+  last_sequence INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS pairing_tokens (
@@ -31,4 +30,3 @@ CREATE TABLE IF NOT EXISTS device_events (
 
 CREATE INDEX IF NOT EXISTS idx_device_events_device_time ON device_events(device_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pairing_expiry ON pairing_tokens(expires_at);
-CREATE INDEX IF NOT EXISTS idx_devices_health_sequence ON devices(id, last_health_sequence);
