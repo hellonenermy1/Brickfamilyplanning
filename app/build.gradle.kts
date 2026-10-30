@@ -11,8 +11,8 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0-phase3"
+        versionCode = 4
+        versionName = "0.5.0-phase5"
     }
 
     buildFeatures { viewBinding = true }
