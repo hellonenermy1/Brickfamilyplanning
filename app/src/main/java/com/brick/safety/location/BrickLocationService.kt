@@ -23,6 +23,7 @@ import com.brick.safety.data.Protocol
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
+import com.brick.safety.reliability.SafetyDispatcher
 import com.google.android.gms.location.*
 import org.json.JSONObject
 import java.util.concurrent.Executors
@@ -192,6 +193,10 @@ class BrickLocationService : Service() {
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
                 if (!networkAvailable()) return@execute
 
+                // P0/P1 safety events always drain before routine position backlog.
+                SafetyDispatcher.drain(this, 100)
+                if (SafetyDispatcher.pendingCount(this) > 0) return@execute
+
                 // Restore the parent's "now" first, then fill historical gaps.
                 val newest = journal.latestPending()
                 if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
@@ -203,7 +208,8 @@ class BrickLocationService : Service() {
                 }
             } finally {
                 uploadPumpRunning.set(false)
-                if (journal.stats().pendingCount > 0 && networkAvailable() && !supervisor.isShutdown) {
+                val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
+                if ((pendingSafety || journal.stats().pendingCount > 0) && networkAvailable() && !supervisor.isShutdown) {
                     supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)
                 }
             }
@@ -240,7 +246,7 @@ class BrickLocationService : Service() {
                 startTracking(desired)
             }
 
-            if (networkAvailable() && journal.stats().pendingCount > 0) kickUploadPump()
+            if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0)) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
     }
@@ -269,13 +275,14 @@ class BrickLocationService : Service() {
             .put("locationAgeMs", if (lastLocationElapsed == 0L) JSONObject.NULL else now - lastLocationElapsed)
             .put("ackAgeMs", if (lastAckElapsed == 0L) JSONObject.NULL else now - lastAckElapsed)
             .put("pendingRecords", stats.pendingCount)
+            .put("pendingSafetyEvents", SafetyDispatcher.pendingCount(this))
             .put("oldestPendingAgeMs", stats.oldestPendingMs?.let { System.currentTimeMillis() - it } ?: JSONObject.NULL)
             .put("network", networkKind())
             .put("locationEnabled", locationEnabled)
             .put("locationSubscribed", locationSubscribed)
             .put("managed", ManagedPolicy.isDeviceOwner(this))
             .put("recoveryCount", recoveryCount)
-            .put("appVersion", "0.3.0-phase3")
+            .put("appVersion", "0.4.0-phase4")
             .put("activityMode", activity.mode.name.lowercase())
             .put("activityConfidence", activity.confidence)
             .put("trackingIntervalMs", trackingIntervalMs)
