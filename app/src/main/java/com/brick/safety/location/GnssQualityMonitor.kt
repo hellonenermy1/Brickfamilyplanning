@@ -3,9 +3,9 @@ package com.brick.safety.location
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.GnssStatus
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.core.location.GnssStatusCompat
 import androidx.core.location.LocationManagerCompat
 import java.util.concurrent.Executor
 
@@ -20,8 +20,8 @@ class GnssQualityMonitor(private val context: Context) {
     @Volatile private var latest = Snapshot()
     private var registered = false
 
-    private val callback = object : GnssStatus.Callback() {
-        override fun onSatelliteStatusChanged(status: GnssStatus) {
+    private val callback = object : GnssStatusCompat.Callback() {
+        override fun onSatelliteStatusChanged(status: GnssStatusCompat) {
             var used = 0
             var sum = 0f
             for (i in 0 until status.satelliteCount) {
