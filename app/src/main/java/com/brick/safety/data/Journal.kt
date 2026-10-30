@@ -15,7 +15,10 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
 
     fun append(epoch: Int, seq: Long, payload: ByteArray) {
         writableDatabase.insertWithOnConflict("packets", null, ContentValues().apply {
-            put("epoch", epoch); put("seq", seq); put("payload", JournalCipher.encrypt(payload)); put("created_ms", System.currentTimeMillis())
+            put("epoch", epoch)
+            put("seq", seq)
+            put("payload", JournalCipher.encrypt(payload))
+            put("created_ms", System.currentTimeMillis())
         }, SQLiteDatabase.CONFLICT_IGNORE)
     }
 
@@ -29,8 +32,9 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
         return out
     }
 
-    fun ack(epoch: Int, seq: Long) {
-        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq<=?", arrayOf(epoch, seq))
+    fun ackExact(epoch: Int, seq: Long) {
+        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf(epoch, seq))
+        // Keep a small delivered tail for diagnostics while preventing unbounded growth.
         writableDatabase.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
     }
 }
