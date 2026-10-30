@@ -34,7 +34,12 @@ async function ensureColumns(d1Id,table,columns){const result=await d1Query(d1Id
 async function ensurePhase2Columns(d1Id){await ensureColumns(d1Id,'devices',[["last_health_at","INTEGER"],["health_status","TEXT NOT NULL DEFAULT 'unknown'"],["recovery_count","INTEGER NOT NULL DEFAULT 0"],["pending_records","INTEGER NOT NULL DEFAULT 0"],["app_version","TEXT"]])}
 async function ensurePhase4Columns(d1Id){
   const tables=await d1Query(d1Id,"SELECT name FROM sqlite_master WHERE type='table'"); const names=new Set((tables?.[0]?.results||[]).map(r=>r.name));
-  if(names.has('trips')) await ensureColumns(d1Id,'trips',[["destination_radius_m","REAL NOT NULL DEFAULT 120"],["arrival_candidate_since","INTEGER"],["arrival_candidate_count","INTEGER NOT NULL DEFAULT 0"],["last_alert_at","INTEGER"],["stationary_since","INTEGER"],["last_stop_alert_at","INTEGER"]]);
+  if(names.has('geofence_state')) await ensureColumns(d1Id,'geofence_state',[["last_epoch","INTEGER NOT NULL DEFAULT 0"],["last_sequence","INTEGER NOT NULL DEFAULT 0"]]);
+  if(names.has('trips')) await ensureColumns(d1Id,'trips',[
+    ["destination_radius_m","REAL NOT NULL DEFAULT 120"],["arrival_candidate_since","INTEGER"],["arrival_candidate_count","INTEGER NOT NULL DEFAULT 0"],["last_alert_at","INTEGER"],
+    ["stationary_since","INTEGER"],["last_stop_alert_at","INTEGER"],["last_eval_epoch","INTEGER NOT NULL DEFAULT 0"],["last_eval_sequence","INTEGER NOT NULL DEFAULT 0"],
+    ["last_distance_to_destination_m","REAL"],["last_location_at","INTEGER"]
+  ]);
 }
 
 console.log('\n[1/10] Creating/reusing Cloudflare resources…'); const d1Id=await ensureD1(); await ensureR2(); await ensureQueue(QUEUE); await ensureQueue(DLQ);
