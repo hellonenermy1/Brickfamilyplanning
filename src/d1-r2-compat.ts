@@ -6,6 +6,7 @@ import type { LivePacket } from "./protocol";
 const DAY_MS=86_400_000;
 const RAW_DAYS=30;
 const TRUSTED_DAYS=90;
+const SEEN_BLOCK_SIZE=20;
 const MAP_KEY="basemap/singapore.pmtiles";
 const META_KEY="basemap/singapore.meta.json";
 const MISSING=-2147483648;
@@ -23,6 +24,63 @@ function nullable(v:number){return v===MISSING?null:v}
 function decodeTrustedBlob(value:unknown):HistoryPoint[]{const bytes=bytesFromD1(value);if(bytes.byteLength%TRUSTED_RECORD_BYTES!==0)throw new Error("corrupt trusted history blob");const out:HistoryPoint[]=[];for(let o=0;o<bytes.byteLength;o+=TRUSTED_RECORD_BYTES){const v=new DataView(bytes.buffer,bytes.byteOffset+o,TRUSTED_RECORD_BYTES),flags=v.getUint8(45);out.push({epoch:v.getUint32(0,false),sequence:Number(v.getBigUint64(4,false)),wallTimeMs:v.getFloat64(12,false),trustedLatE7:nullable(v.getInt32(20,false)),trustedLonE7:nullable(v.getInt32(24,false)),uncertaintyCm:v.getUint32(28,false),speedCms:nullable(v.getInt32(32,false)),speedAccuracyCms:nullable(v.getInt32(36,false)),bearingCdeg:nullable(v.getInt32(40,false)),batteryPct:v.getUint8(44),charging:(flags&1)!==0,fallback:(flags&2)!==0,rawAccepted:(flags&4)!==0,activity:v.getUint8(46),activityConfidence:v.getUint8(47),quality:v.getUint8(48),source:v.getUint8(49)})}return out}
 
 async function archiveHour(db:D1Database,deviceId:string,p:LivePacket){const now=Date.now();if(p.wallTimeMs<now-TRUSTED_DAYS*DAY_MS)return;const hour=Math.floor(p.wallTimeMs/3_600_000)*3_600_000,rawExpires=hour+RAW_DAYS*DAY_MS,trustedExpires=hour+TRUSTED_DAYS*DAY_MS,raw=p.wallTimeMs<now-RAW_DAYS*DAY_MS?null:encodeRawPacket(p),trusted=encodeTrustedRecord(p);await db.prepare("INSERT INTO history_hours(device_id,hour_start,raw_blob,trusted_blob,point_count,raw_expires_at,trusted_expires_at,updated_at) VALUES(?1,?2,?3,?4,1,?5,?6,?7) ON CONFLICT(device_id,hour_start) DO UPDATE SET raw_blob=CASE WHEN excluded.raw_blob IS NULL THEN history_hours.raw_blob ELSE CAST(COALESCE(history_hours.raw_blob,X'') || excluded.raw_blob AS BLOB) END,trusted_blob=CAST(history_hours.trusted_blob || excluded.trusted_blob AS BLOB),point_count=history_hours.point_count+1,updated_at=excluded.updated_at").bind(deviceId,hour,raw===null?null:arrayBufferOf(raw),arrayBufferOf(trusted),rawExpires,trustedExpires,now).run()}
+
+type VirtualKind="seen"|"advance"|"reliability"|"retention";
+class VirtualStatement{
+  constructor(readonly owner:D1FreeDatabase,readonly kind:VirtualKind,readonly args:unknown[]=[]){ }
+  bind(...values:unknown[]){return new VirtualStatement(this.owner,this.kind,values) as unknown as D1PreparedStatement}
+  run(){return this.owner.runVirtual(this)}
+  all<T=Record<string,unknown>>(){return this.owner.allVirtual<T>(this)}
+  async first<T=Record<string,unknown>>(column?:string){const r=await this.owner.allVirtual<T>(this);const row=r.results[0]??null;if(row===null||!column)return row as T|null;return (row as Record<string,unknown>)[column] as T|null}
+  async raw<T=unknown[]>(){const r=await this.owner.allVirtual<Record<string,unknown>>(this);return r.results.map(row=>Object.values(row)) as T[]}
+}
+
+function normalizeSql(sql:string){return sql.replace(/\s+/g," ").trim().toLowerCase()}
+function numberArg(value:unknown,name:string){const n=Number(value);if(!Number.isSafeInteger(n)||n<0)throw new Error(`invalid ${name}`);return n}
+function stringArg(value:unknown,name:string){if(typeof value!=="string"||!value)throw new Error(`invalid ${name}`);return value}
+function compactLocationStatement(db:D1Database,id:string,epoch:number,sequence:number,now:number){const block=Math.floor(sequence/SEEN_BLOCK_SIZE),offset=sequence%SEEN_BLOCK_SIZE,bit=2**offset;return db.prepare("INSERT INTO location_seen_blocks(device_id,epoch,block_index,mask,received_count,min_offset,max_offset,first_seen_at,last_seen_at) VALUES(?1,?2,?3,?4,1,?5,?5,?6,?6) ON CONFLICT(device_id,epoch,block_index) DO UPDATE SET mask=(location_seen_blocks.mask | excluded.mask),received_count=location_seen_blocks.received_count+1,min_offset=MIN(location_seen_blocks.min_offset,excluded.min_offset),max_offset=MAX(location_seen_blocks.max_offset,excluded.max_offset),last_seen_at=excluded.last_seen_at WHERE (location_seen_blocks.mask & excluded.mask)=0").bind(id,epoch,block,bit,offset,now)}
+
+class D1FreeDatabase{
+  constructor(private readonly db:D1Database){}
+  prepare(query:string):D1PreparedStatement{
+    const n=normalizeSql(query);
+    if(n.startsWith("insert or ignore into device_events(device_id,epoch,sequence,kind,created_at) values"))return new VirtualStatement(this,"seen") as unknown as D1PreparedStatement;
+    if(n.startsWith("update devices set last_epoch="))return new VirtualStatement(this,"advance") as unknown as D1PreparedStatement;
+    if(n.startsWith("select epoch,min(sequence) as min_seq,max(sequence) as max_seq,count(*) as received from device_events"))return new VirtualStatement(this,"reliability") as unknown as D1PreparedStatement;
+    if(n.startsWith("delete from device_events where created_at <"))return new VirtualStatement(this,"retention") as unknown as D1PreparedStatement;
+    if(n.startsWith("update devices set last_health_at=?1,"))return this.db.prepare(query.replace("UPDATE devices SET last_health_at=?1,","UPDATE devices SET last_seen_at=?1,last_health_at=?1,"));
+    return this.db.prepare(query);
+  }
+  async batch<T=unknown>(statements:D1PreparedStatement[]):Promise<D1Result<T>[]>{
+    if(statements.length===2&&statements[0] instanceof VirtualStatement&&statements[1] instanceof VirtualStatement&&statements[0].kind==="seen"&&statements[1].kind==="advance"){
+      const seen=statements[0],advance=statements[1];
+      const id=stringArg(seen.args[0],"device id"),epoch=numberArg(seen.args[1],"epoch"),sequence=numberArg(seen.args[2],"sequence"),now=numberArg(seen.args[3],"received time");
+      if(stringArg(advance.args[3],"advance device id")!==id||numberArg(advance.args[0],"advance epoch")!==epoch||numberArg(advance.args[1],"advance sequence")!==sequence)throw new Error("location batch mismatch");
+      const [seenResult,maxResult]=await this.db.batch([
+        compactLocationStatement(this.db,id,epoch,sequence,now),
+        this.db.prepare("SELECT epoch,block_index,max_offset FROM location_seen_blocks WHERE device_id=?1 ORDER BY epoch DESC,block_index DESC LIMIT 1").bind(id)
+      ]);
+      const isNew=(seenResult.meta.changes??0)>0,row=(maxResult.results?.[0]??null) as {epoch?:number;block_index?:number;max_offset?:number}|null;
+      const maxSequence=row&&typeof row.block_index==="number"&&typeof row.max_offset==="number"?row.block_index*SEEN_BLOCK_SIZE+row.max_offset:-1;
+      const isNewest=isNew&&row?.epoch===epoch&&maxSequence===sequence;
+      const advanceResult={...maxResult,meta:{...maxResult.meta,changes:isNewest?1:0}} as D1Result<T>;
+      return [seenResult as D1Result<T>,advanceResult];
+    }
+    if(statements.some(s=>s instanceof VirtualStatement)){const out:D1Result<T>[]=[];for(const statement of statements){if(statement instanceof VirtualStatement)out.push(await this.runVirtual(statement) as D1Result<T>);else out.push(await statement.run<T>())}return out}
+    return this.db.batch<T>(statements);
+  }
+  async runVirtual(statement:VirtualStatement):Promise<D1Result<unknown>>{
+    if(statement.kind==="seen"){const id=stringArg(statement.args[0],"device id"),epoch=numberArg(statement.args[1],"epoch"),sequence=numberArg(statement.args[2],"sequence"),now=numberArg(statement.args[3],"received time");return compactLocationStatement(this.db,id,epoch,sequence,now).run()}
+    if(statement.kind==="advance"){const epoch=numberArg(statement.args[0],"epoch"),sequence=numberArg(statement.args[1],"sequence"),id=stringArg(statement.args[3],"device id"),r=await this.db.prepare("SELECT epoch,block_index,max_offset FROM location_seen_blocks WHERE device_id=?1 ORDER BY epoch DESC,block_index DESC LIMIT 1").bind(id).all<{epoch:number;block_index:number;max_offset:number}>(),row=r.results[0],isNewest=!!row&&row.epoch===epoch&&row.block_index*SEEN_BLOCK_SIZE+row.max_offset===sequence;return{...r,meta:{...r.meta,changes:isNewest?1:0}}}
+    if(statement.kind==="retention"){const cutoff=numberArg(statement.args[0],"retention cutoff");return this.db.prepare("DELETE FROM location_seen_blocks WHERE last_seen_at<?1").bind(cutoff).run()}
+    throw new Error(`virtual ${statement.kind} does not support run()`);
+  }
+  async allVirtual<T>(statement:VirtualStatement):Promise<D1Result<T>>{
+    if(statement.kind!=="reliability")throw new Error(`virtual ${statement.kind} does not support all()`);
+    const id=stringArg(statement.args[0],"device id"),start=numberArg(statement.args[1],"reliability start"),end=numberArg(statement.args[2],"reliability end");
+    return this.db.prepare("SELECT epoch,MIN(block_index*?4+min_offset) AS min_seq,MAX(block_index*?4+max_offset) AS max_seq,SUM(received_count) AS received FROM location_seen_blocks WHERE device_id=?1 AND first_seen_at>=?2 AND last_seen_at<=?3 GROUP BY epoch").bind(id,start,end,SEEN_BLOCK_SIZE).all<T>();
+  }
+}
 
 export class D1InlineEventQueue{
   constructor(private readonly env:{DB:D1Database;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>}){}
@@ -46,5 +104,5 @@ export class D1MapBucket{
   async get(key:string,options?:{range?:Headers;onlyIf?:Headers}){const m=await this.manifest();if(!m)return null;if(key===META_KEY)return fakeObject(key,new TextEncoder().encode(m.metadata_json??"{}"),"application/json");if(key!==MAP_KEY)return null;const etag=`\"${m.sha256_hex}\"`,ifNone=options?.onlyIf?.get?.("If-None-Match");if(ifNone===etag)return{key,size:m.total_bytes,etag:m.sha256_hex,httpEtag:etag,uploaded:new Date(m.installed_at)};let range=parseByteRange(options?.range?.get?.("Range")??null,m.total_bytes);if(!range){if(m.total_bytes>8_000_000)throw new Error("full PMTiles download disabled; use Range");range={start:0,end:m.total_bytes-1}}const first=Math.floor(range.start/m.chunk_bytes),last=Math.floor(range.end/m.chunk_bytes),rows=await this.db.prepare("SELECT chunk_index,body FROM map_chunks WHERE chunk_index BETWEEN ?1 AND ?2 ORDER BY chunk_index").bind(first,last).all<{chunk_index:number;body:unknown}>();if(rows.results.length!==last-first+1)throw new Error("private map chunk missing");const length=range.end-range.start+1,out=new Uint8Array(length);let written=0;for(const row of rows.results){const chunk=bytesFromD1(row.body),abs=row.chunk_index*m.chunk_bytes,from=Math.max(range.start,abs)-abs,to=Math.min(range.end+1,abs+chunk.byteLength)-abs;if(to>from){out.set(chunk.subarray(from,to),written);written+=to-from}}const obj=fakeObject(key,out,"application/vnd.pmtiles",undefined,m.total_bytes,{offset:range.start,length});obj.etag=m.sha256_hex;obj.httpEtag=etag;obj.uploaded=new Date(m.installed_at);return obj}
 }
 
-export function withD1ObjectStores<T extends{DB:D1Database;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>}>(env:T){return{...env,HISTORY:new D1HistoryBucket(env.DB) as unknown as R2Bucket,EVENTS:new D1InlineEventQueue(env) as unknown as Queue}}
+export function withD1ObjectStores<T extends{DB:D1Database;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>}>(env:T){const db=new D1FreeDatabase(env.DB) as unknown as D1Database;const adapted={...env,DB:db};return{...adapted,HISTORY:new D1HistoryBucket(db) as unknown as R2Bucket,EVENTS:new D1InlineEventQueue(adapted) as unknown as Queue}}
 export async function cleanupExpiredD1Objects(db:D1Database){const now=Date.now();await db.batch([db.prepare("UPDATE history_hours SET raw_blob=NULL WHERE raw_blob IS NOT NULL AND raw_expires_at<=?1").bind(now),db.prepare("DELETE FROM history_hours WHERE trusted_expires_at<=?1").bind(now)])}
