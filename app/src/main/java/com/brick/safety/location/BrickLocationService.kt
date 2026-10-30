@@ -69,7 +69,7 @@ class BrickLocationService : Service() {
         io.execute {
             try {
                 val ack = BrickApi.sendLocation(baseUrl, deviceId, packet)
-                journal.ack(epoch, ack)
+                journal.ackExact(epoch, ack)
             } catch (_: Exception) {
                 // Keep encrypted journal entry. Phase 2 adds the long-running self-healing supervisor.
             }
@@ -82,8 +82,12 @@ class BrickLocationService : Service() {
         val baseUrl = prefs.getString("apiBase", null) ?: return
         io.execute {
             journal.nextPending(100).forEach { p ->
-                try { journal.ack(p.epoch, BrickApi.sendLocation(baseUrl, deviceId, p.payload)) }
-                catch (_: Exception) { return@execute }
+                try {
+                    val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
+                    journal.ackExact(p.epoch, ack)
+                } catch (_: Exception) {
+                    return@execute
+                }
             }
         }
     }
