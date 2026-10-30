@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS geofence_state (
   FOREIGN KEY(geofence_id) REFERENCES geofences(id),
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
+CREATE INDEX IF NOT EXISTS idx_geofence_state_device ON geofence_state(device_id, updated_at);
 
 CREATE TABLE IF NOT EXISTS trips (
   id TEXT PRIMARY KEY,
@@ -56,3 +57,10 @@ CREATE TABLE IF NOT EXISTS trips (
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
 CREATE INDEX IF NOT EXISTS idx_trips_device_state ON trips(device_id, state, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS retention_settings (
+  device_id TEXT PRIMARY KEY,
+  safety_event_days INTEGER NOT NULL DEFAULT 180 CHECK(safety_event_days BETWEEN 30 AND 3650),
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(device_id) REFERENCES devices(id)
+);
