@@ -40,8 +40,14 @@ class MainActivity : AppCompatActivity() {
         runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
-        b.safeButton.setOnClickListener { queueSafetyEvent("safe_checkin", false) }
-        b.sosButton.setOnClickListener { if (sosPending) cancelSos() else beginSosCountdown() }
+        b.safeButton.setOnClickListener { queueCheckIn() }
+        b.sosButton.setOnClickListener {
+            when {
+                sosPending -> cancelSosCountdown()
+                isSosActive() -> endSos()
+                else -> beginSosCountdown()
+            }
+        }
         refresh()
     }
 
@@ -64,28 +70,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun queueSafetyEvent(kind: String, critical: Boolean) {
+    private fun queueCheckIn() {
         if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
         b.safeButton.isEnabled = false
-        if (critical) b.sosButton.isEnabled = false
-        val priority = if (critical) SafetyDispatcher.PRIORITY_CRITICAL else SafetyDispatcher.PRIORITY_NORMAL
-        val eventId = SafetyDispatcher.enqueue(this, kind, priority = priority)
-        b.status.text = if (critical) "● SOS queued — sending…" else "● I’m Safe queued — sending…"
+        SafetyDispatcher.enqueue(this, "safe_checkin", priority = SafetyDispatcher.PRIORITY_NORMAL)
+        b.status.text = "● I’m Safe queued — sending…"
         io.execute {
             SafetyDispatcher.drain(this, 20)
-            val stillPending = SafetyDispatcher.pendingCount(this) > 0
+            val pending = SafetyDispatcher.pendingCount(this) > 0
             runOnUiThread {
-                b.status.text = when {
-                    critical && stillPending -> "● SOS saved — will retry automatically"
-                    critical -> "● SOS sent"
-                    stillPending -> "● I’m Safe saved — will retry automatically"
-                    else -> "● I’m Safe sent"
-                }
+                b.status.text = if (pending) "● I’m Safe saved — will retry automatically" else "● I’m Safe sent"
                 b.safeButton.isEnabled = true
-                b.sosButton.isEnabled = true
+                renderSosState()
             }
         }
-        @Suppress("UNUSED_VARIABLE") val stableEventId = eventId
     }
 
     private fun beginSosCountdown() {
@@ -100,22 +98,62 @@ class MainActivity : AppCompatActivity() {
         if (!sosPending) return
         if (sosSecondsLeft <= 0) {
             sosPending = false
-            b.sosButton.text = "SOS"
-            queueSafetyEvent("sos_started", true)
+            activateSos()
             return
         }
-        b.status.text = "● SOS in $sosSecondsLeft — tap SOS to cancel"
+        b.status.text = "● SOS in $sosSecondsLeft — tap to cancel"
         b.sosButton.text = "CANCEL SOS"
         sosSecondsLeft--
         mainHandler.postDelayed({ tickSos() }, 1_000L)
     }
 
-    private fun cancelSos() {
+    private fun cancelSosCountdown() {
         sosPending = false
         mainHandler.removeCallbacksAndMessages(null)
-        b.sosButton.text = "SOS"
         b.safeButton.isEnabled = true
         b.status.text = "● SOS cancelled"
+        renderSosState()
+    }
+
+    private fun activateSos() {
+        getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", true).apply()
+        SafetyDispatcher.enqueue(this, "sos_started", priority = SafetyDispatcher.PRIORITY_CRITICAL)
+        runCatching { ServiceControl.ensureTracking(this) }
+        b.status.text = "● SOS ACTIVE — sending…"
+        b.safeButton.isEnabled = true
+        renderSosState()
+        io.execute {
+            SafetyDispatcher.drain(this, 50)
+            val pending = SafetyDispatcher.pendingCount(this) > 0
+            runOnUiThread {
+                b.status.text = if (pending) "● SOS ACTIVE — alert saved, retrying" else "● SOS ACTIVE — parent alerted"
+                renderSosState()
+            }
+        }
+    }
+
+    private fun endSos() {
+        getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", false).apply()
+        SafetyDispatcher.enqueue(this, "sos_cancelled", priority = SafetyDispatcher.PRIORITY_CRITICAL)
+        runCatching { ServiceControl.ensureTracking(this) }
+        b.status.text = "● Ending SOS…"
+        renderSosState()
+        io.execute {
+            SafetyDispatcher.drain(this, 50)
+            val pending = SafetyDispatcher.pendingCount(this) > 0
+            runOnUiThread {
+                b.status.text = if (pending) "● SOS ended — update saved for retry" else "● SOS ended"
+                renderSosState()
+            }
+        }
+    }
+
+    private fun isSosActive(): Boolean = getSharedPreferences("brick", MODE_PRIVATE).getBoolean("sosActive", false)
+
+    private fun renderSosState() {
+        if (sosPending) return
+        b.sosButton.text = if (isSosActive()) "END SOS" else "SOS"
+        b.sosButton.isEnabled = true
     }
 
     private fun requestPermissionsAndStart() {
@@ -151,16 +189,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun startServiceNow() {
         runCatching { ServiceControl.ensureTracking(this) }
-        b.status.text = "● Safety active"
+        b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
+        renderSosState()
     }
 
     private fun refresh() {
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
         val location = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (paired && location) {
-            b.status.text = "● Safety active"
+            b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
             b.serverUrl.visibility = View.GONE; b.pairingToken.visibility = View.GONE; b.pairButton.visibility = View.GONE
             b.safeButton.isEnabled = true; b.sosButton.isEnabled = true
+            renderSosState()
             startServiceNow()
         } else {
             b.status.text = if (paired) "● Location needs attention" else "● Setup required"
