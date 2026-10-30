@@ -7,14 +7,13 @@ export { BrickDevice };
 type RuntimeEnv = {
   DB: D1Database;
   MAP_DB: D1Database;
-  EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
   DEVICE_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   PAIR_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   APP_ENV: string;
 };
 
-type CoreEnv = RuntimeEnv & { HISTORY: R2Bucket };
+type CoreEnv = RuntimeEnv & { HISTORY: R2Bucket; EVENTS: Queue };
 
 const parentHeaders = {
   "content-type": "text/html; charset=utf-8",
