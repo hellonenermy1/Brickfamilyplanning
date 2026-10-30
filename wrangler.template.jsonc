@@ -25,5 +25,9 @@
     { "name": "DEVICE_RATE", "namespace_id": "41001", "simple": { "limit": 120, "period": 60 } },
     { "name": "PAIR_RATE", "namespace_id": "41002", "simple": { "limit": 20, "period": 60 } }
   ],
-  "vars": { "APP_ENV": "production", "STORAGE_BACKEND": "d1" }
+  "vars": {
+    "APP_ENV": "production",
+    "STORAGE_BACKEND": "d1",
+    "CURRENT_APP_VERSION": "0.5.1-phase5c"
+  }
 }
