@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS geofence_state (
   candidate_count INTEGER NOT NULL DEFAULT 0,
   last_distance_m REAL,
   updated_at INTEGER NOT NULL,
+  last_epoch INTEGER NOT NULL DEFAULT 0,
+  last_sequence INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY(geofence_id) REFERENCES geofences(id),
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
@@ -56,6 +58,10 @@ CREATE TABLE IF NOT EXISTS trips (
   last_alert_at INTEGER,
   stationary_since INTEGER,
   last_stop_alert_at INTEGER,
+  last_eval_epoch INTEGER NOT NULL DEFAULT 0,
+  last_eval_sequence INTEGER NOT NULL DEFAULT 0,
+  last_distance_to_destination_m REAL,
+  last_location_at INTEGER,
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
 CREATE INDEX IF NOT EXISTS idx_trips_device_state ON trips(device_id, state, started_at DESC);
