@@ -39,21 +39,25 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val nowElapsed = SystemClock.elapsedRealtime()
         val activity = freshActivity(activityInput, nowElapsed)
         val rawElapsed = raw.elapsedRealtimeNanos / 1_000_000L
-        val rawAgeMs = (nowElapsed - rawElapsed).coerceAtLeast(0L)
+        val rawAgeMs = nowElapsed - rawElapsed
         val mock = LocationCompat.isMock(raw)
         val finite = raw.latitude.isFinite() && raw.longitude.isFinite() && raw.latitude in -90.0..90.0 &&
             raw.longitude in -180.0..180.0 && raw.accuracy.isFinite() && raw.accuracy >= 0f
-        var accepted = finite && !mock && rawAgeMs <= 60_000L && raw.accuracy <= 5_000f
+        var accepted = finite && !mock && rawElapsed > 0L && rawAgeMs in 0L..60_000L && raw.accuracy <= 5_000f
         val previous = lastTrusted
 
         if (accepted && previous != null) {
-            val dt = (rawElapsed - previous.elapsedMs) / 1000.0
-            if (dt > 0.5) {
+            // Never let an out-of-order fused callback move the authoritative trusted anchor backwards.
+            // The raw fix is still preserved in the packet for diagnostics.
+            if (rawElapsed <= previous.elapsedMs) {
+                accepted = false
+            } else {
+                val dt = (rawElapsed - previous.elapsedMs) / 1000.0
                 val distance = distanceMeters(previous.lat, previous.lon, raw.latitude, raw.longitude)
-                val allowance = maxPlausibleSpeed(activity.mode) * dt + previous.accuracyM + raw.accuracy + 50.0
+                val allowance = maxPlausibleSpeed(activity.mode) * dt + previous.accuracyM + raw.accuracy + 35.0
                 if (distance > allowance) accepted = false
-            } else if (dt < -2.0) accepted = false
-            if (raw.accuracy > 500f && nowElapsed - previous.elapsedMs < 5 * 60_000L) accepted = false
+                if (raw.accuracy > 500f && nowElapsed - previous.elapsedMs < 5 * 60_000L) accepted = false
+            }
         }
         if (!accepted) return rejectedSample(raw, activity, mock, nowElapsed)
 
@@ -67,22 +71,30 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
             }
             else -> null
         }
-        var speedAcc = if (raw.hasSpeedAccuracy()) raw.speedAccuracyMetersPerSecond else null
+        var speedAcc = if (raw.hasSpeedAccuracy() && raw.speedAccuracyMetersPerSecond.isFinite() && raw.speedAccuracyMetersPerSecond >= 0f) raw.speedAccuracyMetersPerSecond else null
         if (speed != null && speed > maxPlausibleSpeed(activity.mode).toFloat()) { speed = null; speedAcc = null }
         if (activity.mode == ActivityMode.STATIONARY && speed != null && speed <= 1.2f && (speedAcc == null || speedAcc >= 0.6f)) {
             speed = 0f; speedAcc = speedAcc ?: 1f
         }
-        val bearing = if (raw.hasBearing()) normalizeDegrees(raw.bearing) else previous?.bearingDeg
-        val bearingAcc = if (raw.hasBearingAccuracy()) raw.bearingAccuracyDegrees else null
-        val quality = when { raw.accuracy <= 20f -> PositionQuality.PRECISE; raw.accuracy <= 100f -> PositionQuality.ASSISTED; else -> PositionQuality.COARSE }
-        val anchor = Anchor(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, raw.time, speed, bearing, stepTotal, activity.mode)
-        lastTrusted = anchor; persistAnchor(anchor)
+        val bearing = if (raw.hasBearing() && raw.bearing.isFinite()) normalizeDegrees(raw.bearing) else previous?.bearingDeg
+        val bearingAcc = if (raw.hasBearingAccuracy() && raw.bearingAccuracyDegrees.isFinite() && raw.bearingAccuracyDegrees >= 0f) raw.bearingAccuracyDegrees else null
+        val gnssNow = gnss.snapshot()
+        val strongGnss = gnssNow.usedInFix >= 4 && (gnssNow.averageCn0DbHz ?: 0f) >= 18f
+        val quality = when {
+            raw.accuracy <= 20f && strongGnss -> PositionQuality.PRECISE
+            raw.accuracy <= 100f -> PositionQuality.ASSISTED
+            else -> PositionQuality.COARSE
+        }
+        val wall = stableWallTime(raw.time, rawElapsed, previous)
+        val anchor = Anchor(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, wall, speed, bearing, stepTotal, activity.mode)
+        lastTrusted = anchor
+        persistAnchor(anchor)
         return PositionSample(
             raw.latitude, raw.longitude, raw.accuracy, raw.latitude, raw.longitude, raw.accuracy,
             speed, speedAcc, bearing, bearingAcc,
-            if (raw.hasAltitude()) raw.altitude else null,
-            if (raw.hasVerticalAccuracy()) raw.verticalAccuracyMeters else null,
-            true, false, activity, quality, PositionSource.FUSED, gnss.snapshot(), 0, rawElapsed, raw.time
+            if (raw.hasAltitude() && raw.altitude.isFinite()) raw.altitude else null,
+            if (raw.hasVerticalAccuracy() && raw.verticalAccuracyMeters.isFinite() && raw.verticalAccuracyMeters >= 0f) raw.verticalAccuracyMeters else null,
+            true, false, activity, quality, PositionSource.FUSED, gnssNow, 0, rawElapsed, wall
         )
     }
 
@@ -94,7 +106,7 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
 
     private fun rejectedSample(raw: Location, activity: ActivitySnapshot, mock: Boolean, now: Long): PositionSample {
         return buildFromAnchor(raw, activity, mock, now) ?: PositionSample(
-            raw.latitude.takeIf { it.isFinite() }, raw.longitude.takeIf { it.isFinite() }, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
+            raw.latitude.takeIf { it.isFinite() && it in -90.0..90.0 }, raw.longitude.takeIf { it.isFinite() && it in -180.0..180.0 }, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
             null, null, 5_000f, null, null, null, null, null, null,
             false, mock, activity, PositionQuality.UNKNOWN, PositionSource.UNKNOWN, gnss.snapshot(), 0, now, System.currentTimeMillis()
         )
@@ -102,7 +114,8 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
 
     private fun buildFromAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
         val a = lastTrusted ?: return null
-        val ageSec = ((now - a.elapsedMs).coerceAtLeast(0L) / 1000.0)
+        if (now < a.elapsedMs) return null
+        val ageSec = (now - a.elapsedMs) / 1000.0
         val m = motion.snapshot()
         val steps = (m.totalSteps - a.stepTotal).coerceAtLeast(0L).coerceAtMost(65_535L).toInt()
         val heading = m.headingDeg ?: a.bearingDeg
@@ -126,10 +139,11 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
             }
             else -> Unit
         }
+        val stableWall = a.wallMs + (now - a.elapsedMs)
         return PositionSample(
-            raw?.latitude?.takeIf { it.isFinite() }, raw?.longitude?.takeIf { it.isFinite() }, raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
+            raw?.latitude?.takeIf { it.isFinite() && it in -90.0..90.0 }, raw?.longitude?.takeIf { it.isFinite() && it in -180.0..180.0 }, raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
             lat, lon, uncertainty.coerceAtMost(5_000f), null, null, heading, null, null, null,
-            false, rawMock, activity, quality, source, gnss.snapshot(), steps, now, System.currentTimeMillis()
+            false, rawMock, activity, quality, source, gnss.snapshot(), steps, now, stableWall
         )
     }
 
@@ -142,10 +156,19 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         if (distance !in 3.0..250.0) return
         val observed = (distance / steps).toFloat()
         if (activity.mode == ActivityMode.WALKING && observed in 0.45f..1.10f) {
-            walkingStrideM = walkingStrideM * 0.9f + observed * 0.1f; prefs.edit().putFloat("walkingStrideM", walkingStrideM).apply()
+            walkingStrideM = walkingStrideM * 0.9f + observed * 0.1f
+            prefs.edit().putFloat("walkingStrideM", walkingStrideM).apply()
         } else if (activity.mode == ActivityMode.RUNNING && observed in 0.70f..1.80f) {
-            runningStrideM = runningStrideM * 0.9f + observed * 0.1f; prefs.edit().putFloat("runningStrideM", runningStrideM).apply()
+            runningStrideM = runningStrideM * 0.9f + observed * 0.1f
+            prefs.edit().putFloat("runningStrideM", runningStrideM).apply()
         }
+    }
+
+    private fun stableWallTime(rawWall: Long, rawElapsed: Long, previous: Anchor?): Long {
+        if (previous == null) return rawWall.takeIf { it > 0L } ?: System.currentTimeMillis()
+        val expected = previous.wallMs + (rawElapsed - previous.elapsedMs)
+        if (rawWall <= 0L) return expected
+        return if (abs(rawWall - expected) <= 5 * 60_000L) rawWall else expected
     }
 
     private fun persistAnchor(a: Anchor) {
@@ -160,14 +183,27 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val age = System.currentTimeMillis() - wall; if (age !in 0..10 * 60_000L) return null
         val savedElapsed = prefs.getLong("anchorElapsedMs", 0L); val currentElapsed = SystemClock.elapsedRealtime()
         val elapsed = if (savedElapsed in 1..currentElapsed) savedElapsed else (currentElapsed - age).coerceAtLeast(0L)
-        return Anchor(Double.fromBits(prefs.getLong("anchorLatBits", 0L)), Double.fromBits(prefs.getLong("anchorLonBits", 0L)),
-            prefs.getFloat("anchorAccuracyM", 100f), elapsed, wall,
-            prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
+        val lat = Double.fromBits(prefs.getLong("anchorLatBits", 0L))
+        val lon = Double.fromBits(prefs.getLong("anchorLonBits", 0L))
+        val accuracy = prefs.getFloat("anchorAccuracyM", 100f)
+        if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || !accuracy.isFinite() || accuracy < 0f) return null
+        return Anchor(lat, lon, accuracy, elapsed, wall,
+            prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
             prefs.getLong("anchorStepTotal", 0L), ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
     }
 
-    private fun freshActivity(a: ActivitySnapshot, now: Long) = if (a.updatedElapsedMs > 0 && now - a.updatedElapsedMs <= 120_000L) a else ActivitySnapshot(ActivityMode.UNKNOWN, 0, a.updatedElapsedMs)
-    private fun maxPlausibleSpeed(mode: ActivityMode) = when (mode) { ActivityMode.STATIONARY -> 15.0; ActivityMode.WALKING -> 12.0; ActivityMode.RUNNING -> 18.0; ActivityMode.BICYCLE -> 35.0; else -> 90.0 }
+    private fun freshActivity(a: ActivitySnapshot, now: Long) =
+        if (a.updatedElapsedMs > 0L && a.updatedElapsedMs <= now && now - a.updatedElapsedMs <= 120_000L) a
+        else ActivitySnapshot(ActivityMode.UNKNOWN, 0, a.updatedElapsedMs)
+
+    private fun maxPlausibleSpeed(mode: ActivityMode) = when (mode) {
+        ActivityMode.STATIONARY -> 5.0
+        ActivityMode.WALKING -> 4.5
+        ActivityMode.RUNNING -> 10.0
+        ActivityMode.BICYCLE -> 25.0
+        ActivityMode.VEHICLE, ActivityMode.UNKNOWN -> 90.0
+    }
+
     private fun normalizeDegrees(v: Float) = ((v % 360f) + 360f) % 360f
     private fun distanceMeters(a: Double, b: Double, c: Double, d: Double): Double { val out = FloatArray(1); Location.distanceBetween(a,b,c,d,out); return out[0].toDouble() }
     private fun project(lat: Double, lon: Double, distance: Double, bearing: Double): Pair<Double, Double> {
