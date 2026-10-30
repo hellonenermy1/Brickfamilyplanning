@@ -59,8 +59,8 @@ jobs:
           fi
           echo 'Cloudflare token, parent password, and Account ID are present (secret values not printed).'
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Validate deployment source
         shell: bash
