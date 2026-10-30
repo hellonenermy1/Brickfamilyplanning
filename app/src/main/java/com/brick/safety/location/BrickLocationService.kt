@@ -295,26 +295,33 @@ class BrickLocationService : Service() {
         var criticalLatched = prefs.getBoolean("batteryCriticalLatched", false)
 
         if (pct <= 5 && !criticalLatched) {
-            SafetyDispatcher.enqueue(this, "battery_critical", priority = SafetyDispatcher.PRIORITY_CRITICAL)
-            criticalLatched = true
-            lowLatched = true
+            if (SafetyDispatcher.enqueue(this, "battery_critical", priority = SafetyDispatcher.PRIORITY_CRITICAL) != null) {
+                criticalLatched = true
+                lowLatched = true
+            }
         } else if (pct <= 15 && !lowLatched) {
-            SafetyDispatcher.enqueue(this, "battery_low", priority = SafetyDispatcher.PRIORITY_IMPORTANT)
-            lowLatched = true
+            if (SafetyDispatcher.enqueue(this, "battery_low", priority = SafetyDispatcher.PRIORITY_IMPORTANT) != null) {
+                lowLatched = true
+            }
         }
         if (pct >= 20) lowLatched = false
         if (pct >= 10) criticalLatched = false
 
-        val initialized = prefs.getBoolean("chargingStateInitialized", false)
-        val previousCharging = prefs.getBoolean("lastChargingState", charging)
-        if (initialized && charging != previousCharging) {
-            SafetyDispatcher.enqueue(this, if (charging) "charging_started" else "charging_stopped", priority = SafetyDispatcher.PRIORITY_NORMAL)
+        var initialized = prefs.getBoolean("chargingStateInitialized", false)
+        var savedChargingState = prefs.getBoolean("lastChargingState", charging)
+        if (!initialized) {
+            initialized = true
+            savedChargingState = charging
+        } else if (charging != savedChargingState) {
+            if (SafetyDispatcher.enqueue(this, if (charging) "charging_started" else "charging_stopped", priority = SafetyDispatcher.PRIORITY_NORMAL) != null) {
+                savedChargingState = charging
+            }
         }
         prefs.edit()
             .putBoolean("batteryLowLatched", lowLatched)
             .putBoolean("batteryCriticalLatched", criticalLatched)
-            .putBoolean("chargingStateInitialized", true)
-            .putBoolean("lastChargingState", charging)
+            .putBoolean("chargingStateInitialized", initialized)
+            .putBoolean("lastChargingState", savedChargingState)
             .apply()
     }
 
