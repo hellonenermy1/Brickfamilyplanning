@@ -67,8 +67,6 @@ async function completePairing(req: Request, env: Env) {
 
   const hash = await sha256Hex(body.token);
   const now = Date.now();
-
-  // Atomically consume the token so two simultaneous pairing requests cannot both win.
   const consumed = await env.DB.prepare(
     "UPDATE pairing_tokens SET consumed_at=?1 WHERE token_hash=?2 AND consumed_at IS NULL AND expires_at>=?1 RETURNING device_name"
   ).bind(now, hash).first<{ device_name: string }>();
@@ -79,7 +77,6 @@ async function completePairing(req: Request, env: Env) {
     await env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)")
       .bind(deviceId, consumed.device_name, body.publicKeySpkiB64, now).run();
   } catch {
-    // Pairing token remains consumed by design; a failed registration must use a fresh token.
     return json({ error: "device registration failed; create a new pairing code" }, 500);
   }
   return json({ deviceId, apiBase: new URL(req.url).origin });
@@ -103,23 +100,29 @@ async function ingest(req: Request, env: Env, deviceId: string) {
   try { packet = decodeLivePacket(payload); } catch (e) { return json({ error: String(e) }, 400); }
   const now = Date.now();
 
-  // The conditional update makes sequence advancement monotonic even if requests arrive concurrently.
-  // D1 batch executes transactionally: either the device cursor and matching event commit together, or neither does.
-  const [advance] = await env.DB.batch([
+  // Queue first: a verified first attempt is durably handed off before we ACK it.
+  // Queue delivery is intentionally idempotent downstream, so an HTTP retry may enqueue a duplicate safely.
+  await env.EVENTS.send({ deviceId, packet });
+
+  // Store every first-seen signed sequence, including late packets, but advance the live cursor only monotonically.
+  const [firstSeen, advance] = await env.DB.batch([
+    env.DB.prepare(
+      "INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES(?1,?2,?3,'location',?4)"
+    ).bind(deviceId, packet.epoch, packet.sequence, now),
     env.DB.prepare(
       "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
-    ).bind(packet.epoch, packet.sequence, now, deviceId),
-    env.DB.prepare(
-      "INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) SELECT ?1,?2,?3,'location',?4 FROM devices WHERE id=?1 AND last_epoch=?2 AND last_sequence=?3"
-    ).bind(deviceId, packet.epoch, packet.sequence, now)
+    ).bind(packet.epoch, packet.sequence, now, deviceId)
   ]);
 
-  if ((advance.meta.changes ?? 0) === 0) return json({ ack: packet.sequence, duplicate: true });
+  const isNew = (firstSeen.meta.changes ?? 0) > 0;
+  const isNewest = (advance.meta.changes ?? 0) > 0;
 
-  const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
-  await stub.setLatest(packet);
-  await env.EVENTS.send({ deviceId, packet });
-  return json({ ack: packet.sequence });
+  if (isNewest) {
+    const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
+    await stub.setLatest(packet);
+  }
+
+  return json({ ack: packet.sequence, duplicate: !isNew, liveAdvanced: isNewest });
 }
 
 async function listDevices(req: Request, env: Env) {
