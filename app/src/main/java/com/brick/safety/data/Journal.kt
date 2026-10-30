@@ -25,6 +25,16 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     data class Pending(val id: Long, val epoch: Int, val seq: Long, val payload: ByteArray)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
 
+    fun latestPending(): Pending? {
+        readableDatabase.rawQuery(
+            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id DESC LIMIT 1",
+            emptyArray()
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            return Pending(c.getLong(0), c.getInt(1), c.getLong(2), JournalCipher.decrypt(c.getBlob(3)))
+        }
+    }
+
     fun nextPending(limit: Int = 100): List<Pending> {
         val out = mutableListOf<Pending>()
         readableDatabase.rawQuery("SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?", arrayOf(limit.toString())).use { c ->
@@ -45,7 +55,6 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
 
     fun ackExact(epoch: Int, seq: Long) {
         writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf(epoch, seq))
-        // Keep a small delivered tail for diagnostics while preventing unbounded growth.
         writableDatabase.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
     }
 }
