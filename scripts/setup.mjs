@@ -36,13 +36,14 @@ async function ensurePhase2Columns(d1Id){
   for(const [name,type] of columns){if(!existing.has(name))await d1Query(d1Id,`ALTER TABLE devices ADD COLUMN ${name} ${type}`)}
 }
 
-console.log('\n[1/8] Creating/reusing Cloudflare resources…'); const d1Id=await ensureD1(); await ensureR2(); await ensureQueue(QUEUE); await ensureQueue(DLQ);
-console.log('[2/8] Generating Wrangler configuration…'); const template=await fs.readFile('wrangler.template.jsonc','utf8'); await fs.writeFile('wrangler.jsonc',template.replace('__D1_DATABASE_ID__',d1Id));
-console.log('[3/8] Installing Node dependencies…'); await run(process.platform==='win32'?'npm.cmd':'npm',['install']);
-console.log('[4/8] Type-checking Worker…'); await run(process.platform==='win32'?'npm.cmd':'npm',['run','typecheck']);
-console.log('[5/8] Applying base D1 schema…'); await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','d1','execute',D1_NAME,'--remote','--file','schema/001_init.sql','--yes','--config','wrangler.jsonc']);
-console.log('[6/8] Applying Phase 2 health migration…'); await ensurePhase2Columns(d1Id); await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','d1','execute',D1_NAME,'--remote','--file','schema/002_phase2_health.sql','--yes','--config','wrangler.jsonc']);
-console.log('[7/8] Deploying Worker…'); const output=await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','deploy','--config','wrangler.jsonc'],{capture:true}); const match=output.match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/); if(!match)throw new Error('Worker deployed, but its workers.dev hostname could not be detected from Wrangler output. Open Workers & Pages and note the production URL.'); const workerHost=match[1];
-console.log('[8/8] Protecting /parent with Cloudflare Access…'); await ensureAccess(workerHost);
-await fs.writeFile('setup-state.json',JSON.stringify({phase:2,accountId,workerHost,d1Id,resources:{D1_NAME,R2_NAME,QUEUE,DLQ},configuredAt:new Date().toISOString()},null,2));
-console.log(`\nBrick Phase 2 Cloudflare setup complete.\nParent dashboard: https://${workerHost}/parent\nChild API base:     https://${workerHost}\n\nThe API token was not written to disk by this installer.`);
+console.log('\n[1/9] Creating/reusing Cloudflare resources…'); const d1Id=await ensureD1(); await ensureR2(); await ensureQueue(QUEUE); await ensureQueue(DLQ);
+console.log('[2/9] Generating Wrangler configuration…'); const template=await fs.readFile('wrangler.template.jsonc','utf8'); await fs.writeFile('wrangler.jsonc',template.replace('__D1_DATABASE_ID__',d1Id));
+console.log('[3/9] Installing Node dependencies…'); await run(process.platform==='win32'?'npm.cmd':'npm',['install']);
+console.log('[4/9] Type-checking Worker…'); await run(process.platform==='win32'?'npm.cmd':'npm',['run','typecheck']);
+console.log('[5/9] Applying base D1 schema…'); await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','d1','execute',D1_NAME,'--remote','--file','schema/001_init.sql','--yes','--config','wrangler.jsonc']);
+console.log('[6/9] Applying Phase 2 health migration…'); await ensurePhase2Columns(d1Id); await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','d1','execute',D1_NAME,'--remote','--file','schema/002_phase2_health.sql','--yes','--config','wrangler.jsonc']);
+console.log('[7/9] Applying Phase 4 safety/history schema…'); await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','d1','execute',D1_NAME,'--remote','--file','schema/003_phase4_safety.sql','--yes','--config','wrangler.jsonc']);
+console.log('[8/9] Deploying Worker…'); const output=await run(process.platform==='win32'?'npx.cmd':'npx',['wrangler','deploy','--config','wrangler.jsonc'],{capture:true}); const match=output.match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/); if(!match)throw new Error('Worker deployed, but its workers.dev hostname could not be detected from Wrangler output. Open Workers & Pages and note the production URL.'); const workerHost=match[1];
+console.log('[9/9] Protecting /parent with Cloudflare Access…'); await ensureAccess(workerHost);
+await fs.writeFile('setup-state.json',JSON.stringify({phase:4,accountId,workerHost,d1Id,resources:{D1_NAME,R2_NAME,QUEUE,DLQ},configuredAt:new Date().toISOString()},null,2));
+console.log(`\nBrick Phase 4 Cloudflare setup complete.\nParent dashboard: https://${workerHost}/parent\nChild API base:     https://${workerHost}\n\nThe API token was not written to disk by this installer.`);
