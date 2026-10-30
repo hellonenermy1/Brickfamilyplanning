@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
+    private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE safety_events(id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, payload BLOB NOT NULL, created_ms INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 1, acked INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE INDEX idx_safety_pending ON safety_events(acked,priority,id)")
@@ -17,14 +19,37 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     data class Pending(val rowId: Long, val eventId: String, val kind: String, val payload: ByteArray, val priority: Int)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
 
-    fun append(eventId: String, kind: String, payload: ByteArray, priority: Int) {
-        writableDatabase.insertWithOnConflict("safety_events", null, ContentValues().apply {
-            put("event_id", eventId)
-            put("kind", kind)
-            put("payload", JournalCipher.encrypt(payload))
-            put("created_ms", System.currentTimeMillis())
-            put("priority", priority)
-        }, SQLiteDatabase.CONFLICT_IGNORE)
+    fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean {
+        return try {
+            val rowId = writableDatabase.insertWithOnConflict("safety_events", null, ContentValues().apply {
+                put("event_id", eventId)
+                put("kind", kind)
+                put("payload", JournalCipher.encrypt(payload))
+                put("created_ms", System.currentTimeMillis())
+                put("priority", priority)
+            }, SQLiteDatabase.CONFLICT_IGNORE)
+            val durable = rowId != -1L || containsEvent(eventId)
+            healthPrefs.edit()
+                .putBoolean("safetyOutboxWriteHealthy", durable)
+                .apply {
+                    if (!durable) putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
+                }
+                .apply()
+            durable
+        } catch (_: Throwable) {
+            healthPrefs.edit()
+                .putBoolean("safetyOutboxWriteHealthy", false)
+                .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
+                .apply()
+            false
+        }
+    }
+
+    private fun containsEvent(eventId: String): Boolean {
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM safety_events WHERE event_id=? LIMIT 1",
+            arrayOf(eventId)
+        ).use { return it.moveToFirst() }
     }
 
     fun pending(limit: Int = 50): List<Pending> {
