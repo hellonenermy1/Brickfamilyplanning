@@ -21,6 +21,16 @@ object SafetyDispatcher {
     )
 
     fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
+        val brickPrefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val eventSequence = brickPrefs.getLong("safetySequence", 0L) + 1L
+        if (!brickPrefs.edit().putLong("safetySequence", eventSequence).commit()) {
+            brickPrefs.edit()
+                .putBoolean("safetyOutboxWriteHealthy", false)
+                .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
+                .apply()
+            return null
+        }
+
         val snapshot = snapshot(context)
         val enriched = JSONObject(detail.toString())
             .put("batteryPct", snapshot.batteryPct)
@@ -30,6 +40,7 @@ object SafetyDispatcher {
 
         val envelope = BrickApi.createSafetyEnvelope(
             kind = kind,
+            eventSequence = eventSequence,
             detail = enriched,
             latitude = snapshot.latitude,
             longitude = snapshot.longitude,
