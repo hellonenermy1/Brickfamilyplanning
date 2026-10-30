@@ -23,6 +23,7 @@ object HealthEvidence {
         val now = System.currentTimeMillis()
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
+        val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
 
         val activeNetwork = connectivity.activeNetwork
         val caps = activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
@@ -49,5 +50,7 @@ object HealthEvidence {
             .put("lastSelfRecoveryAgeMs", if (lastRecovery > 0L) now - lastRecovery else JSONObject.NULL)
             .put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))
             .put("lastJournalWriteFailureAgeMs", if (lastJournalFailure > 0L) now - lastJournalFailure else JSONObject.NULL)
+            .put("safetyOutboxWriteHealthy", prefs.getBoolean("safetyOutboxWriteHealthy", true))
+            .put("lastSafetyOutboxWriteFailureAgeMs", if (lastSafetyOutboxFailure > 0L) now - lastSafetyOutboxFailure else JSONObject.NULL)
     }
 }
