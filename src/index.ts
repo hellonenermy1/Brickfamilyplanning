@@ -17,6 +17,21 @@ type Env = {
 type PairStartBody = { name?: string };
 type PairCompleteBody = { token?: string; publicKeySpkiB64?: string };
 type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
+type SafetyEvent = {
+  protocol: 1;
+  eventId: string;
+  kind: "safe_checkin" | "sos_started" | "sos_cancelled" | "geofence_enter" | "geofence_exit" | "trip_started" | "trip_ended" | "trip_alert";
+  createdAtMs: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyM?: number | null;
+  detail?: Record<string, unknown>;
+};
+type QueueLocation = { type: "location"; deviceId: string; packet: Record<string, unknown> };
+
+const EVENT_KINDS = new Set<SafetyEvent["kind"]>([
+  "safe_checkin", "sos_started", "sos_cancelled", "geofence_enter", "geofence_exit", "trip_started", "trip_ended", "trip_alert"
+]);
 
 const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
@@ -180,12 +195,67 @@ async function ingestHealth(req: Request, env: Env, deviceId: string) {
   return json({ ok: true, receivedAt: now });
 }
 
+function validSafetyEvent(x: unknown): x is SafetyEvent {
+  if (!x || typeof x !== "object") return false;
+  const e = x as Record<string, unknown>;
+  if (e.protocol !== 1 || typeof e.eventId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(e.eventId)) return false;
+  if (typeof e.kind !== "string" || !EVENT_KINDS.has(e.kind as SafetyEvent["kind"])) return false;
+  if (typeof e.createdAtMs !== "number" || !Number.isFinite(e.createdAtMs)) return false;
+  if (e.latitude !== undefined && e.latitude !== null && (typeof e.latitude !== "number" || e.latitude < -90 || e.latitude > 90)) return false;
+  if (e.longitude !== undefined && e.longitude !== null && (typeof e.longitude !== "number" || e.longitude < -180 || e.longitude > 180)) return false;
+  if (e.accuracyM !== undefined && e.accuracyM !== null && (typeof e.accuracyM !== "number" || e.accuracyM < 0 || e.accuracyM > 100000)) return false;
+  if (e.detail !== undefined && (!e.detail || typeof e.detail !== "object" || Array.isArray(e.detail))) return false;
+  return true;
+}
+
+async function ingestSafetyEvent(req: Request, env: Env, deviceId: string) {
+  const rl = await env.DEVICE_RATE.limit({ key: `${deviceId}:event` });
+  if (!rl.success) return json({ error: "rate limited" }, 429);
+  const device = await getAuthorizedDevice(env, deviceId);
+  if (!device) return json({ error: "device unauthorized" }, 401);
+  const verified = await verifySignedPayload(req, device, 8192);
+  if (verified instanceof Response) return verified;
+
+  let event: unknown;
+  try { event = JSON.parse(new TextDecoder().decode(verified)); } catch { return json({ error: "invalid event JSON" }, 400); }
+  if (!validSafetyEvent(event)) return json({ error: "invalid event schema" }, 400);
+  const now = Date.now();
+  if (event.createdAtMs > now + 10 * 60_000 || event.createdAtMs < now - 30 * 24 * 60 * 60_000) {
+    return json({ error: "event timestamp outside allowed window" }, 400);
+  }
+  const detailJson = JSON.stringify(event.detail ?? {});
+  if (detailJson.length > 4096) return json({ error: "event detail too large" }, 400);
+
+  const inserted = await env.DB.prepare(
+    "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)"
+  ).bind(
+    event.eventId, deviceId, event.kind, event.createdAtMs, now,
+    event.latitude ?? null, event.longitude ?? null, event.accuracyM ?? null, detailJson
+  ).run();
+  const duplicate = (inserted.meta.changes ?? 0) === 0;
+  if (!duplicate) await env.EVENTS.send({ type: "safety_event", deviceId, event });
+  return json({ ok: true, eventId: event.eventId, duplicate, receivedAt: now });
+}
+
 async function listDevices(req: Request, env: Env) {
   const denied = await parentOnly(req); if (denied) return denied;
   const result = await env.DB.prepare(
     "SELECT id,name,created_at,last_seen_at,last_health_at,health_status,recovery_count,pending_records,app_version,revoked_at FROM devices ORDER BY created_at DESC"
   ).all();
   return json({ devices: result.results });
+}
+
+async function listSafetyEvents(req: Request, env: Env, deviceId: string) {
+  const denied = await parentOnly(req); if (denied) return denied;
+  const exists = await env.DB.prepare("SELECT id FROM devices WHERE id=?1 AND revoked_at IS NULL").bind(deviceId).first();
+  if (!exists) return json({ error: "device not found" }, 404);
+  const url = new URL(req.url);
+  const requested = Number(url.searchParams.get("limit") ?? "100");
+  const limit = Number.isFinite(requested) ? Math.max(1, Math.min(500, Math.trunc(requested))) : 100;
+  const result = await env.DB.prepare(
+    "SELECT id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json FROM safety_events WHERE device_id=?1 ORDER BY server_created_at DESC LIMIT ?2"
+  ).bind(deviceId, limit).all();
+  return json({ events: result.results });
 }
 
 async function parentDeviceProxy(req: Request, env: Env, deviceId: string, kind: "state" | "ws") {
@@ -212,6 +282,8 @@ export default {
     if (req.method === "POST" && locationMatch) return ingest(req, env, decodeURIComponent(locationMatch[1]));
     const healthMatch = url.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
     if (req.method === "POST" && healthMatch) return ingestHealth(req, env, decodeURIComponent(healthMatch[1]));
+    const eventMatch = url.pathname.match(/^\/api\/device\/([^/]+)\/event$/);
+    if (req.method === "POST" && eventMatch) return ingestSafetyEvent(req, env, decodeURIComponent(eventMatch[1]));
 
     if (url.pathname === "/parent" || url.pathname === "/parent/") {
       const denied = await parentOnly(req); if (denied) return denied;
@@ -221,11 +293,33 @@ export default {
     if (req.method === "GET" && url.pathname === "/parent/api/devices") return listDevices(req, env);
     const stateMatch = url.pathname.match(/^\/parent\/api\/device\/([^/]+)\/state$/);
     if (req.method === "GET" && stateMatch) return parentDeviceProxy(req, env, decodeURIComponent(stateMatch[1]), "state");
+    const eventsMatch = url.pathname.match(/^\/parent\/api\/device\/([^/]+)\/events$/);
+    if (req.method === "GET" && eventsMatch) return listSafetyEvents(req, env, decodeURIComponent(eventsMatch[1]));
     const wsMatch = url.pathname.match(/^\/parent\/api\/device\/([^/]+)\/ws$/);
     if (wsMatch) return parentDeviceProxy(req, env, decodeURIComponent(wsMatch[1]), "ws");
     return new Response("Not found", { status: 404, headers: securityHeaders });
   },
-  async queue(batch: MessageBatch<unknown>) {
-    for (const message of batch.messages) message.ack();
+  async queue(batch: MessageBatch<unknown>, env: Env) {
+    for (const message of batch.messages) {
+      try {
+        const body = message.body as Partial<QueueLocation> & { type?: string };
+        if (body.type === "location" && typeof body.deviceId === "string" && body.packet && typeof body.packet === "object") {
+          const packet = body.packet as Record<string, unknown>;
+          const epoch = typeof packet.epoch === "number" ? packet.epoch : 0;
+          const sequence = typeof packet.sequence === "number" ? packet.sequence : 0;
+          const wall = typeof packet.wallTimeMs === "number" && Number.isFinite(packet.wallTimeMs) ? packet.wallTimeMs : Date.now();
+          const day = new Date(wall).toISOString().slice(0, 10);
+          const safeDevice = body.deviceId.replace(/[^a-zA-Z0-9_-]/g, "_");
+          const key = `history/${safeDevice}/${day}/${epoch}-${sequence}.json`;
+          await env.HISTORY.put(key, JSON.stringify({ deviceId: body.deviceId, storedAt: Date.now(), packet }), {
+            httpMetadata: { contentType: "application/json" },
+            customMetadata: { deviceId: body.deviceId, day }
+          });
+        }
+        message.ack();
+      } catch {
+        message.retry();
+      }
+    }
   }
 } satisfies ExportedHandler<Env>;
