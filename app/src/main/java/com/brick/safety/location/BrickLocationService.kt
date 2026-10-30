@@ -36,6 +36,7 @@ class BrickLocationService : Service() {
     }
 
     private val networkIo = Executors.newSingleThreadExecutor()
+    private val healthIo = Executors.newSingleThreadExecutor()
     private val supervisor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val uploadPumpRunning = AtomicBoolean(false)
     private lateinit var fused: FusedLocationProviderClient
@@ -62,7 +63,7 @@ class BrickLocationService : Service() {
         seq.set(prefs.getLong("sequence", 0L))
         recoveryCount = prefs.getInt("recoveryCount", 0)
 
-        ManagedPolicy.apply(this)
+        runCatching { ManagedPolicy.apply(this) }
         RecoveryScheduler.ensureScheduled(this)
         startTracking()
         kickUploadPump()
@@ -105,10 +106,20 @@ class BrickLocationService : Service() {
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val packet = Protocol.encodeLive(epoch, sequence, location, pct, bm.isCharging)
-
-        // Durability invariant: local encrypted journal is committed before networking begins.
         journal.append(epoch, sequence, packet)
         kickUploadPump()
+    }
+
+    private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
+        return try {
+            val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
+            if (ack != p.seq) throw IllegalStateException("ACK mismatch: expected ${p.seq}, got $ack")
+            journal.ackExact(p.epoch, p.seq)
+            lastAckElapsed = SystemClock.elapsedRealtime()
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun kickUploadPump() {
@@ -119,23 +130,17 @@ class BrickLocationService : Service() {
                 val deviceId = prefs.getString("deviceId", null) ?: return@execute
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
 
+                // Reconnect behavior: restore "now" first, then fill historical gaps.
+                val newest = journal.latestPending()
+                if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
+
                 while (true) {
                     val pending = journal.nextPending(100)
                     if (pending.isEmpty()) break
-                    for (p in pending) {
-                        try {
-                            val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
-                            if (ack != p.seq) throw IllegalStateException("ACK mismatch: expected ${p.seq}, got $ack")
-                            journal.ackExact(p.epoch, p.seq)
-                            lastAckElapsed = SystemClock.elapsedRealtime()
-                        } catch (_: Exception) {
-                            return@execute
-                        }
-                    }
+                    for (p in pending) if (!sendOne(baseUrl, deviceId, p)) return@execute
                 }
             } finally {
                 uploadPumpRunning.set(false)
-                // Close the race where a packet was appended as the pump was exiting.
                 if (journal.stats().pendingCount > 0 && networkAvailable()) {
                     supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)
                 }
@@ -189,7 +194,7 @@ class BrickLocationService : Service() {
             .put("recoveryCount", recoveryCount)
             .put("appVersion", "0.2.0-phase2")
 
-        networkIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
+        healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
 
     private fun networkAvailable(): Boolean = networkKind() != "offline"
@@ -232,6 +237,7 @@ class BrickLocationService : Service() {
         RecoveryScheduler.ensureScheduled(this)
         supervisor.shutdownNow()
         networkIo.shutdownNow()
+        healthIo.shutdownNow()
         journal.close()
         super.onDestroy()
     }
