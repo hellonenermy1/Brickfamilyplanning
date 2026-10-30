@@ -47,16 +47,26 @@ object BrickApi {
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
     }
 
-    fun createSafetyEnvelope(kind: String, detail: JSONObject = JSONObject()): SafetyEnvelope {
+    fun createSafetyEnvelope(
+        kind: String,
+        detail: JSONObject = JSONObject(),
+        latitude: Double? = null,
+        longitude: Double? = null,
+        accuracyM: Double? = null
+    ): SafetyEnvelope {
         val eventId = UUID.randomUUID().toString()
-        val payload = JSONObject()
+        val event = JSONObject()
             .put("protocol", 1)
             .put("eventId", eventId)
             .put("kind", kind)
             .put("createdAtMs", System.currentTimeMillis())
             .put("detail", detail)
-            .toString().toByteArray(Charsets.UTF_8)
-        return SafetyEnvelope(eventId, kind, payload)
+        if (latitude != null && longitude != null) {
+            event.put("latitude", latitude)
+            event.put("longitude", longitude)
+            if (accuracyM != null) event.put("accuracyM", accuracyM)
+        }
+        return SafetyEnvelope(eventId, kind, event.toString().toByteArray(Charsets.UTF_8))
     }
 
     fun sendSafetyPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedEventId: String): String {
