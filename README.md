@@ -1,51 +1,106 @@
-# Brick V1 — Phase 3 Cloudflare Position Intelligence
+# Brick V1 — Phase 5B Private Map + Local Place Context
 
-This branch builds on Phase 2's reliable signed ingest and cloud watchdog. It adds the server-side representation and parent live view for Phase 3 positioning data while keeping the Phase 1/2 packet format backward-compatible.
+Phase 5B builds on the frozen Phase 5A parent/operations layer. It removes the parent map's live third-party map dependency and gives Brick a Singapore-focused, OSM-derived place/street lookup path that stays inside the Brick deployment.
 
-## Phase 3 additions
+## What Phase 5B adds
 
-- accepts legacy 43-byte V1 location packets and new 90-byte V2 Phase 3 packets;
-- V2 keeps the phone's raw location separate from Brick's trusted/estimated location;
-- stores measurable uncertainty instead of invented confidence percentages;
-- exposes measured speed in km/h plus speed accuracy when Android supplies it;
-- exposes bearing/bearing accuracy and altitude/vertical accuracy where available;
-- exposes broad activity mode only: stationary, walking, running, bicycle, vehicle, unknown;
-- exposes Activity Recognition confidence without pretending it distinguishes car/bus/train;
-- exposes position quality/source: measured fused vs inertial/last-known fallback;
-- exposes GNSS satellite quality telemetry without solving raw GNSS server-side;
-- parent live panel now shows quality, uncertainty, speed, movement, source and GNSS evidence;
-- old clients remain able to upload V1 packets during staged upgrades;
-- current state remains in the per-device Durable Object; detailed route history still belongs to Phase 4;
-- a coarse network-evidence slot exists in the Durable Object for Cloudflare country/region evidence, but it is not treated as a coordinate or precise fallback.
+- MapLibre GL JS is bundled and served from Brick's own `/parent-assets` path.
+- The MapLibre worker and CSS are served same-origin; the parent dashboard no longer loads MapLibre from UNPKG.
+- A private R2 bucket, `brick-family-v1-maps`, stores the Singapore PMTiles archive.
+- The browser reads map ranges only through the authenticated Brick Worker route `/parent/map/basemap.pmtiles`.
+- The map fails closed if the private archive is missing. There is no silent Google, demo-tile, Nominatim, or other live map fallback.
+- Saved Brick places/geofences remain the highest-priority human-readable place labels.
+- Outside saved places, Brick directly reads nearby vector tiles from its own PMTiles archive and derives local POI/building/road/locality context without sending the child's coordinate to a geocoding provider.
+- Decoded local tiles are cached in the parent browser to avoid repeatedly downloading the same PMTiles ranges as the child moves.
+- Phase 5A Health, History, Trips, SOS, I'm Safe, places/geofences, retention, reliability, and realtime APIs remain underneath the thin Phase 5B wrapper unchanged.
 
-## Accuracy rules
+## Privacy boundary
 
-The parent map uses the trusted/estimated position for display but keeps the raw reading separately in state. A raw fix marked rejected or mock cannot silently overwrite the trusted position.
+Normal parent viewing uses same-origin Brick resources only:
 
-`PRECISE`, `ASSISTED`, `ANCHORED`, `ESTIMATED`, `COARSE`, `LAST_KNOWN`, and `UNKNOWN` are semantic states. The UI does not show made-up probability percentages.
+```text
+Parent browser
+  ├─ /parent-assets/brick-map.mjs
+  ├─ /parent-assets/maplibre-gl.css
+  ├─ /parent-assets/maplibre-gl-worker.mjs
+  └─ /parent/map/basemap.pmtiles
+          ↓
+      authenticated Brick Worker
+          ↓
+      private Cloudflare R2 bucket
+```
 
-## Route constraints
+The one-time map installer downloads OSM-derived Protomaps map data to build the private Singapore archive. That download is provisioning, not live child-location lookup. Once installed, viewing a child's location does not send the viewed coordinate to Protomaps, Google Maps, Nominatim, or another map/geocoding service.
 
-Phase 3 does not snap estimates to arbitrary roads just because a map is visible. Proper route-constrained fallback requires a real road/path graph. That graph is not yet part of the Cloudflare deployment, so the current Phase 3 fallback remains explicitly inertial/last-known with growing uncertainty rather than generating a false street-level answer.
+The current basemap intentionally omits MapLibre symbol layers until Brick also self-hosts the required font glyph and sprite assets. Roads, buildings, landuse and other geometry still render; human-readable current-place context comes from the local PMTiles resolver. This is preferable to quietly fetching label assets from a third party.
 
-## One-command deployment
+## Deploy Phase 5B
 
-The existing Phase 2 installer remains valid because Phase 3 does not require a new D1 schema migration for current live state. Run:
+Run:
 
 ```bash
 npm run setup
 ```
 
-It creates/reuses the same D1/R2/Queues/Durable Object/Access resources and deploys the Phase 3 Worker code.
+The setup script creates/reuses Brick's existing D1, history R2 bucket, queues, Durable Object and Access configuration, creates the private map R2 bucket, builds the same-origin browser assets, applies existing schemas, and deploys the Worker.
 
-## Security and privacy
+`setup` does **not** automatically download a regional map archive. Install the Singapore map once after setup:
 
-The existing signed device endpoints, replay/idempotency protection, Cloudflare Access parent boundary, WAF/rate-limit layout, and no-coordinate operational logging rules remain unchanged. Network evidence, when enabled, is always coarse context and never converted into a fake exact map pin.
+```bash
+npm run map:install
+```
 
-## Validation boundary
+The installer:
 
-Strict TypeScript CI validates the Worker. Actual positioning accuracy and fallback quality can only be evaluated with the real OPPO field test. Compile/typecheck success is not a claim of metre-level accuracy.
+1. finds a recent Protomaps OSM-derived daily PMTiles build unless `BRICK_MAP_SOURCE` is supplied;
+2. extracts the Singapore bounding box (`103.55,1.12,104.12,1.50`) through zoom 15;
+3. runs `pmtiles verify` on the extracted archive;
+4. uploads it to `brick-family-v1-maps/basemap/singapore.pmtiles`;
+5. writes installation metadata alongside the map archive.
 
-## Later phases
+You need either the `pmtiles` CLI or Docker for the extraction step. The native `pmtiles` CLI is preferred.
 
-Phase 4 adds durable location history, route playback, trips, places/geofences, SOS and I'm Safe. Phase 5 completes parent dashboard polish, private map/geocoder infrastructure and operational Device Health. Phase 6 is the final reliability/security/privacy qualification.
+### Large archive handling
+
+Brick uses Wrangler for normal map uploads. If the extracted archive exceeds the safe Wrangler threshold, the installer stops before a doomed upload. Configure `rclone` for the R2 bucket and set, for example:
+
+```bash
+export BRICK_R2_RCLONE_REMOTE='r2:brick-family-v1-maps'
+npm run map:install
+```
+
+The installer will then use multipart-capable rclone for the PMTiles archive while retaining Wrangler for the small metadata object.
+
+## Optional map overrides
+
+```bash
+BRICK_MAP_SOURCE='https://example.com/custom.pmtiles' npm run map:install
+BRICK_MAP_BBOX='103.55,1.12,104.12,1.50' npm run map:install
+BRICK_MAP_MAXZOOM='15' npm run map:install
+```
+
+Do not lower map detail just to make an upload succeed unless that tradeoff is intentional; use the multipart path for a genuinely large archive.
+
+## CI / regression gates
+
+Phase 5B CI verifies:
+
+- setup and map-installer syntax;
+- strict TypeScript for the browser map module;
+- self-hosted MapLibre/PMTiles asset build;
+- the private PMTiles route is present in the bundled browser code;
+- no UNPKG MapLibre, MapLibre demo tiles, Nominatim, or Google Maps endpoint appears in the live parent map bundle/HTML;
+- Worker TypeScript;
+- rendered parent dashboard JavaScript syntax;
+- Phase 5 health classification regressions;
+- Phase 4 history codec round trips;
+- all current D1 schemas on a fresh SQLite database.
+
+## What Phase 5B does not claim
+
+- The private map archive is not automatically refreshed yet.
+- The current map does not yet self-host full font glyph/sprite assets for rich road/POI labels.
+- Local PMTiles place context is useful context, not a guaranteed postal-address oracle; OSM data completeness varies.
+- Phase 6 OPPO endurance, battery and real-world reliability acceptance is still required before Brick is called production-reliable.
+
+The core rule remains: prevent failures where Android legitimately allows it, detect failures immediately, extract the most useful evidence available, and never present an estimate as a measurement.
