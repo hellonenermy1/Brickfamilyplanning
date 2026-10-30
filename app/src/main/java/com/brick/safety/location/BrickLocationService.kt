@@ -15,7 +15,6 @@ import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import com.brick.safety.BuildConfig
 import com.brick.safety.R
 import com.brick.safety.activity.ActivityEngine
 import com.brick.safety.activity.ActivityMode
@@ -315,6 +314,10 @@ class BrickLocationService : Service() {
         }
     }
 
+    private fun appVersionName(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull() ?: "unknown"
+
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
         lastHealthElapsed = now
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
@@ -339,7 +342,7 @@ class BrickLocationService : Service() {
             .put("locationSubscribed", locationSubscribed)
             .put("managed", ManagedPolicy.isDeviceOwner(this))
             .put("recoveryCount", recoveryCount)
-            .put("appVersion", BuildConfig.VERSION_NAME)
+            .put("appVersion", appVersionName())
             .put("activityMode", activity.mode.name.lowercase())
             .put("activityConfidence", activity.confidence)
             .put("trackingIntervalMs", trackingIntervalMs)
