@@ -1,0 +1,40 @@
+{
+  "name": "Brick Phase 5B",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "none"
+    }
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb",
+    "storage": "32gb"
+  },
+  "secrets": {
+    "CLOUDFLARE_API_TOKEN": {
+      "description": "Cloudflare API token used only by Brick's setup/deploy commands. Do not commit this token to the repository."
+    }
+  },
+  "postCreateCommand": "npm install --no-audit --no-fund && npm run build:parent-assets",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "Brick Worker dev",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
