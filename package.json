@@ -1,0 +1,16 @@
+{
+  "name": "brick-v1-phase1-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20261020.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.45.0"
+  }
+}

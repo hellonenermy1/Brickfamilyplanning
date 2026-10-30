@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "brick-family-v1",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [
+      { "name": "BRICK_DEVICE", "class_name": "BrickDevice" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["BrickDevice"] }
+  ],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "brick-family-v1", "database_id": "__D1_DATABASE_ID__" }
+  ],
+  "r2_buckets": [
+    { "binding": "HISTORY", "bucket_name": "brick-family-v1-history" }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "EVENTS", "queue": "brick-family-v1-events" }
+    ],
+    "consumers": [
+      { "queue": "brick-family-v1-events", "max_batch_size": 50, "max_batch_timeout": 5, "max_retries": 5, "dead_letter_queue": "brick-family-v1-dlq" }
+    ]
+  },
+  "ratelimits": [
+    { "name": "DEVICE_RATE", "namespace_id": "41001", "simple": { "limit": 120, "period": 60 } },
+    { "name": "PAIR_RATE", "namespace_id": "41002", "simple": { "limit": 20, "period": 60 } }
+  ],
+  "vars": { "APP_ENV": "production" }
+}
