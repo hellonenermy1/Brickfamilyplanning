@@ -4,6 +4,7 @@ import com.brick.safety.crypto.DeviceKeys
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 
 object BrickApi {
     data class PairResult(val deviceId: String, val apiBase: String)
@@ -43,5 +44,27 @@ object BrickApi {
         c.outputStream.use { it.write(payload) }
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
+    }
+
+    fun sendSafetyEvent(baseUrl: String, deviceId: String, kind: String, detail: JSONObject = JSONObject()): String {
+        val eventId = UUID.randomUUID().toString()
+        val event = JSONObject()
+            .put("protocol", 1)
+            .put("eventId", eventId)
+            .put("kind", kind)
+            .put("createdAtMs", System.currentTimeMillis())
+            .put("detail", detail)
+        val payload = event.toString().toByteArray(Charsets.UTF_8)
+        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/event")
+        val c = url.openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/json")
+        c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
+        c.outputStream.use { it.write(payload) }
+        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        if (c.responseCode !in 200..299) error("Safety event upload failed ${c.responseCode}: $text")
+        val response = JSONObject(text)
+        if (response.optString("eventId") != eventId) error("Safety event ACK mismatch")
+        return eventId
     }
 }
