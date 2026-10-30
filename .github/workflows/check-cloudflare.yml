@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 4
+name: Check Brick Cloudflare Phase 5
 
 on:
   push:
-    branches: [phase4-cloudflare-safety-history]
+    branches: [phase5-cloudflare-parent-ops]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -36,7 +36,7 @@ jobs:
           python - <<'PY'
           import sqlite3, pathlib
           db = sqlite3.connect(':memory:')
-          for name in ['001_init.sql', '002_phase2_health.sql', '003_phase4_safety.sql']:
+          for name in ['001_init.sql', '002_phase2_health.sql', '003_phase4_safety.sql', '004_phase5_operations.sql']:
               sql = pathlib.Path('schema', name).read_text()
               db.executescript(sql)
               print('OK', name)
