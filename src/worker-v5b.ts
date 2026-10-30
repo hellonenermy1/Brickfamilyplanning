@@ -49,6 +49,24 @@ function sameOriginMutation(req: Request) {
 function csrfDenied() {
   return Response.json({ error: "same-origin request required" }, { status: 403, headers: { "Cache-Control": "no-store" } });
 }
+async function journalEvidenceDenied(req: Request): Promise<Response | null> {
+  let value: unknown;
+  try {
+    const body = await req.clone().arrayBuffer();
+    if (!body.byteLength || body.byteLength > 8192) return null;
+    value = JSON.parse(new TextDecoder().decode(body));
+  } catch { return null; }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const h = value as Record<string, unknown>;
+  if (h.journalWriteHealthy !== undefined && typeof h.journalWriteHealthy !== "boolean") {
+    return Response.json({ error: "invalid journal health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  if (h.lastJournalWriteFailureAgeMs !== undefined && h.lastJournalWriteFailureAgeMs !== null &&
+      (typeof h.lastJournalWriteFailureAgeMs !== "number" || !Number.isFinite(h.lastJournalWriteFailureAgeMs) || h.lastJournalWriteFailureAgeMs < 0)) {
+    return Response.json({ error: "invalid journal health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  return null;
+}
 async function forwardParentMutation(req: Request<unknown, IncomingRequestCfProperties>, env: RuntimeEnv, ctx: ExecutionContext) {
   if (!(await parentAuthorized(req, env))) return unauthorizedParent(req);
   if (!sameOriginMutation(req)) return csrfDenied();
@@ -107,6 +125,12 @@ export default {
 
     m = u.pathname.match(/^\/api\/device\/([^/]+)\/crash$/);
     if (req.method === "POST" && m) return ingestCrashReport(req, env, decodeURIComponent(m[1]));
+
+    m = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
+    if (req.method === "POST" && m) {
+      const denied = await journalEvidenceDenied(req);
+      if (denied) return denied;
+    }
 
     if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
 
