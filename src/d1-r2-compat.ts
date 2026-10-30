@@ -143,7 +143,7 @@ class D1FreeDatabase {
     if (n.startsWith("update trips set state=?1,ended_at=coalesce(?2,ended_at),arrival_candidate_since=")) {
       return this.db.prepare(
         "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 " +
-        "WHERE id=?12 AND state='active' AND (state<>?1 OR COALESCE(ended_at,-1)<>COALESCE(?2,-1) OR COALESCE(arrival_candidate_since,-1)<>COALESCE(?3,-1) OR arrival_candidate_count<>?4 OR COALESCE(last_alert_at,-1)<>COALESCE(?5,-1) OR COALESCE(stationary_since,-1)<>COALESCE(?6,-1) OR COALESCE(last_stop_alert_at,-1)<>COALESCE(?7,-1) OR last_location_at IS NULL OR ?11-last_location_at>=?13)"
+        "WHERE id=?12 AND state='active' AND (state<>?1 OR COALESCE(ended_at,-1)<>COALESCE(?2,-1) OR COALESCE(arrival_candidate_since,-1)<>COALESCE(?3,-1) OR arrival_candidate_count<>?4 OR COALESCE(last_alert_at,-1)<>COALESCE(?5,-1) OR COALESCE(stationary_since,-1)<>COALESCE(?6,-1) OR COALESCE(last_stop_alert_at,-1)<>COALESCE(?7,-1) OR last_location_at IS NULL OR ?11-last_location_at>=60000)"
       ) as D1PreparedStatement;
     }
     return this.db.prepare(query);
