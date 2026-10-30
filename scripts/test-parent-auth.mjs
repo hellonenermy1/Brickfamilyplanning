@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createParentSession, parentSessionValid, handleParentLogin, PARENT_COOKIE } from process.argv[2];
+
+const { createParentSession, parentSessionValid, handleParentLogin, PARENT_COOKIE } = await import(process.argv[2]);
 
 const secret='correct horse battery staple 2026';
 const now=1_800_000_000_000;
