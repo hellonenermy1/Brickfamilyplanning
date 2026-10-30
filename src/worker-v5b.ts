@@ -29,10 +29,10 @@ const parentHeaders = {
 
 function coreEnv(env: RuntimeEnv): CoreEnv { return withD1ObjectStores(env) as CoreEnv; }
 function mapEnv(env: RuntimeEnv) { return { MAPS: new D1MapBucket(env.MAP_DB) as unknown as R2Bucket }; }
-function authorizeForCore(req: Request): Request {
+function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>): Request<unknown, IncomingRequestCfProperties> {
   const headers = new Headers(req.headers);
   headers.set("Cf-Access-Jwt-Assertion", "brick-parent-session");
-  return new Request(req, { headers });
+  return new Request(req, { headers }) as Request<unknown, IncomingRequestCfProperties>;
 }
 
 const coreHandler = core as ExportedHandler<CoreEnv>;
