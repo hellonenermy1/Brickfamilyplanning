@@ -11,7 +11,7 @@ export function parentV5BHtml() {
   html = replaceOnce(
     html,
     '<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">',
-    '<link rel="stylesheet" href="/parent-assets/maplibre-gl.css">'
+    '<link rel="stylesheet" href="/maplibre-gl.css">'
   );
 
   html = replaceOnce(
@@ -23,7 +23,7 @@ export function parentV5BHtml() {
   html = replaceOnce(
     html,
     "import maplibregl from 'https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs';",
-    "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/parent-assets/brick-map.mjs';"
+    "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';"
   );
 
   html = replaceOnce(
