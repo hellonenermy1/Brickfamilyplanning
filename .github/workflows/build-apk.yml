@@ -1,0 +1,68 @@
+name: Build Brick Child Phase 5C
+
+on:
+  push:
+    branches: [phase5c-child-hardening]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Audit privacy crash local-journal and sequence contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'firebase[-_ ]?analytics|google[-_ ]?analytics|googletagmanager|facebook.*pixel|meta.*pixel|mixpanel|amplitude|appsflyer|adjust\.com|doubleclick' app; then
+            echo 'Analytics/ad tracker reference found in child app.' >&2
+            exit 1
+          fi
+          if grep -RniE 'Log\.(v|d|i|w|e)\([^\n]*(latitude|longitude|coordinate|rawLat|rawLon|accuracyM)' app/src/main/java; then
+            echo 'Coordinate-bearing Android log statement found.' >&2
+            exit 1
+          fi
+          if grep -nE 'throwable\.(message|localizedMessage)|stackTraceToString|printStackTrace' app/src/main/java/com/brick/safety/reliability/CrashReporter.kt; then
+            echo 'Crash reporter must not persist raw messages or stack traces.' >&2
+            exit 1
+          fi
+          grep -F '.put("exceptionSignature", signature)' app/src/main/java/com/brick/safety/reliability/CrashReporter.kt >/dev/null
+          grep -F 'MAX_PENDING_DIAGNOSTICS = 500' app/src/main/java/com/brick/safety/data/CrashOutbox.kt >/dev/null
+          grep -F 'putBoolean("journalWriteHealthy", false)' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'fun maxSequence(epoch: Int): Long' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'journal.maxSequence(epoch)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
+          grep -F '.put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'android:name=".BrickApplication"' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'versionName = "0.5.1-phase5c"' app/build.gradle.kts >/dev/null
+          grep -F 'jvmTarget.set(JvmTarget.JVM_17)' app/build.gradle.kts >/dev/null
+          grep -F 'android:id="@+id/fixButton"' app/src/main/res/layout/activity_main.xml >/dev/null
+      - name: Compile, lint, and build debug APK
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug --stacktrace
+      - name: Upload installable Phase 5C debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: brick-child-phase5c-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: brick-child-phase5c-lint
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+          retention-days: 14
