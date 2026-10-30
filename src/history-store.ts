@@ -1,6 +1,7 @@
 import type { BrickDevice } from "./device-do";
 import { evaluateSafety } from "./phase4";
 import type { LivePacket } from "./protocol";
+import { encodeTrustedDelta, gzipJson, sequenceFingerprint, trustedPoint } from "./history-codec";
 
 type QueueLocation = { type: "location"; deviceId: string; packet: LivePacket };
 type Env = {
@@ -17,28 +18,6 @@ type Group = {
 };
 
 function safeDeviceId(id: string) { return id.replace(/[^a-zA-Z0-9_-]/g, "_"); }
-
-function trustedPoint(p: LivePacket) {
-  return {
-    epoch: p.epoch,
-    sequence: p.sequence,
-    wallTimeMs: p.wallTimeMs,
-    trustedLatE7: p.trustedLatE7,
-    trustedLonE7: p.trustedLonE7,
-    uncertaintyCm: p.uncertaintyCm,
-    speedCms: p.speedCms,
-    speedAccuracyCms: p.speedAccuracyCms,
-    bearingCdeg: p.bearingCdeg,
-    batteryPct: p.batteryPct,
-    charging: p.charging,
-    activity: p.activity,
-    activityConfidence: p.activityConfidence,
-    quality: p.quality,
-    source: p.source,
-    fallback: p.fallback,
-    rawAccepted: p.rawAccepted
-  };
-}
 
 export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env) {
   const groups = new Map<string, Group>();
@@ -67,22 +46,27 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
       const packets = group.entries.map(x => x.packet);
-      const trusted = packets.map(trustedPoint);
+      const points = packets.map(trustedPoint);
       const minSeq = packets[0].sequence, maxSeq = packets[packets.length - 1].sequence;
+      const fingerprint = await sequenceFingerprint(packets.map(p => p.sequence));
       const safe = safeDeviceId(group.deviceId);
-      const suffix = `${group.epoch}-${minSeq}-${maxSeq}.json`;
+      const suffix = `${group.epoch}-${minSeq}-${maxSeq}-${packets.length}-${fingerprint}.json.gz`;
       const storedAt = Date.now();
+      const [rawBody, trustedBody] = await Promise.all([
+        gzipJson({ v: 2, deviceId: group.deviceId, storedAt, packets }),
+        gzipJson({ deviceId: group.deviceId, storedAt, delta: encodeTrustedDelta(points) })
+      ]);
 
       await Promise.all([
         env.HISTORY.put(
           `history/raw/${safe}/${group.day}/${suffix}`,
-          JSON.stringify({ deviceId: group.deviceId, storedAt, packets }),
-          { httpMetadata: { contentType: "application/json" }, customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw" } }
+          rawBody,
+          { httpMetadata: { contentType: "application/json", contentEncoding: "gzip" }, customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v2" } }
         ),
         env.HISTORY.put(
           `history/trusted/${safe}/${group.day}/${suffix}`,
-          JSON.stringify({ deviceId: group.deviceId, storedAt, points: trusted }),
-          { httpMetadata: { contentType: "application/json" }, customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted" } }
+          trustedBody,
+          { httpMetadata: { contentType: "application/json", contentEncoding: "gzip" }, customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v2" } }
         )
       ]);
 
