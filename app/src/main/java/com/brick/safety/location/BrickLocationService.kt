@@ -25,6 +25,7 @@ import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.google.android.gms.location.*
+import com.google.android.gms.tasks.CancellationTokenSource
 import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -104,6 +105,7 @@ class BrickLocationService : Service() {
         runCatching { gnssMonitor.start() }
 
         startTracking(desiredIntervalMs())
+        if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
         kickUploadPump()
         startSupervisor()
@@ -114,7 +116,9 @@ class BrickLocationService : Service() {
         runCatching { activityEngine.start() }
         runCatching { motionEngine.start() }
         runCatching { gnssMonitor.start() }
-        if (!locationSubscribed) startTracking(desiredIntervalMs())
+        val desired = desiredIntervalMs()
+        if (!locationSubscribed || desired != trackingIntervalMs) startTracking(desired)
+        if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
         kickUploadPump()
         return START_STICKY
@@ -128,14 +132,23 @@ class BrickLocationService : Service() {
         runCatching { fused.removeLocationUpdates(callback) }
         trackingIntervalMs = intervalMs
         val activity = activityEngine.snapshot().mode
-        val priority = if (activity == ActivityMode.STATIONARY) Priority.PRIORITY_BALANCED_POWER_ACCURACY else Priority.PRIORITY_HIGH_ACCURACY
+        val priority = if (!isSosActive() && activity == ActivityMode.STATIONARY) Priority.PRIORITY_BALANCED_POWER_ACCURACY else Priority.PRIORITY_HIGH_ACCURACY
+        val minInterval = if (intervalMs <= 1_000L) 1_000L else max(2_000L, intervalMs / 2)
+        val maxDelay = if (intervalMs <= 1_000L) 1_000L else max(intervalMs * 2, 6_000L)
         val req = LocationRequest.Builder(priority, intervalMs)
-            .setMinUpdateIntervalMillis(max(2_000L, intervalMs / 2))
-            .setMaxUpdateDelayMillis(max(intervalMs * 2, 6_000L))
+            .setMinUpdateIntervalMillis(minInterval)
+            .setMaxUpdateDelayMillis(maxDelay)
             .build()
         locationSubscribed = true
         fused.requestLocationUpdates(req, callback, mainLooper)
             .addOnFailureListener { locationSubscribed = false }
+    }
+
+    private fun requestFreshSosFix() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        val token = CancellationTokenSource()
+        fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token)
+            .addOnSuccessListener { location -> if (location != null && isSosActive()) record(location) }
     }
 
     private val callback = object : LocationCallback() {
@@ -165,13 +178,14 @@ class BrickLocationService : Service() {
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
             val now = SystemClock.elapsedRealtime()
-            val threshold = max(8_000L, trackingIntervalMs * 2 + 2_000L)
+            val threshold = if (isSosActive()) 2_000L else max(8_000L, trackingIntervalMs * 2 + 2_000L)
             if (lastLocationElapsed == 0L || now - lastLocationElapsed < threshold) return@scheduleWithFixedDelay
-            if (now - lastFallbackElapsed < 5_000L) return@scheduleWithFixedDelay
+            val minFallbackGap = if (isSosActive()) 1_000L else 5_000L
+            if (now - lastFallbackElapsed < minFallbackGap) return@scheduleWithFixedDelay
             val sample = positionEngine.fallback(activityEngine.snapshot()) ?: return@scheduleWithFixedDelay
             lastFallbackElapsed = now
             recordSample(sample)
-        }, 5, 3, TimeUnit.SECONDS)
+        }, 2, 1, TimeUnit.SECONDS)
     }
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
@@ -235,15 +249,15 @@ class BrickLocationService : Service() {
             }
 
             val desired = desiredIntervalMs()
-            if (locationSubscribed && desired != trackingIntervalMs && locationEnabled) {
-                startTracking(desired)
-            }
+            if (locationSubscribed && desired != trackingIntervalMs && locationEnabled) startTracking(desired)
 
-            val stale = lastLocationElapsed > 0L && now - lastLocationElapsed > max(LOCATION_STALE_MS, trackingIntervalMs * 3)
+            val staleLimit = if (isSosActive()) 8_000L else max(LOCATION_STALE_MS, trackingIntervalMs * 3)
+            val stale = lastLocationElapsed > 0L && now - lastLocationElapsed > staleLimit
             val neverProducedFix = lastLocationElapsed == 0L && now - serviceStartedElapsed > FIRST_FIX_TIMEOUT_MS
             if ((!locationSubscribed || stale || neverProducedFix) && locationEnabled) {
                 noteRecovery()
                 startTracking(desired)
+                if (isSosActive()) requestFreshSosFix()
             }
 
             checkBatterySafety()
@@ -275,13 +289,8 @@ class BrickLocationService : Service() {
         val initialized = prefs.getBoolean("chargingStateInitialized", false)
         val previousCharging = prefs.getBoolean("lastChargingState", charging)
         if (initialized && charging != previousCharging) {
-            SafetyDispatcher.enqueue(
-                this,
-                if (charging) "charging_started" else "charging_stopped",
-                priority = SafetyDispatcher.PRIORITY_NORMAL
-            )
+            SafetyDispatcher.enqueue(this, if (charging) "charging_started" else "charging_stopped", priority = SafetyDispatcher.PRIORITY_NORMAL)
         }
-
         prefs.edit()
             .putBoolean("batteryLowLatched", lowLatched)
             .putBoolean("batteryCriticalLatched", criticalLatched)
@@ -290,13 +299,18 @@ class BrickLocationService : Service() {
             .apply()
     }
 
-    private fun desiredIntervalMs(): Long = when (activityEngine.snapshot().mode) {
-        ActivityMode.VEHICLE -> 3_000L
-        ActivityMode.RUNNING -> 3_000L
-        ActivityMode.BICYCLE -> 4_000L
-        ActivityMode.WALKING -> 5_000L
-        ActivityMode.STATIONARY -> 60_000L
-        ActivityMode.UNKNOWN -> 8_000L
+    private fun isSosActive(): Boolean = getSharedPreferences("brick", MODE_PRIVATE).getBoolean("sosActive", false)
+
+    private fun desiredIntervalMs(): Long {
+        if (isSosActive()) return 1_000L
+        return when (activityEngine.snapshot().mode) {
+            ActivityMode.VEHICLE -> 3_000L
+            ActivityMode.RUNNING -> 3_000L
+            ActivityMode.BICYCLE -> 4_000L
+            ActivityMode.WALKING -> 5_000L
+            ActivityMode.STATIONARY -> 60_000L
+            ActivityMode.UNKNOWN -> 8_000L
+        }
     }
 
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
@@ -331,6 +345,7 @@ class BrickLocationService : Service() {
             .put("gnssTotal", gnss.totalSatellites)
             .put("batteryPct", batteryPct)
             .put("charging", bm.isCharging)
+            .put("sosActive", isSosActive())
 
         healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
