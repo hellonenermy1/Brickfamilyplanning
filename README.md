@@ -1,68 +1,51 @@
-# Brick V1 — Phase 2 Cloudflare Reliability
+# Brick V1 — Phase 3 Cloudflare Position Intelligence
 
-This branch upgrades the Phase 1 Cloudflare backend into the independent reliability/watchdog side of Phase 2. Phase 1 remains untouched on `phase1-cloudflare-setup`.
+This branch builds on Phase 2's reliable signed ingest and cloud watchdog. It adds the server-side representation and parent live view for Phase 3 positioning data while keeping the Phase 1/2 packet format backward-compatible.
 
-## Phase 2 additions
+## Phase 3 additions
 
-- signed `/api/device/<id>/health` heartbeat endpoint;
-- strict health-payload schema validation and size limits;
-- health packets contain operational state, not coordinates;
-- D1 device-health metadata: last health, status, recovery count, queue depth and app version;
-- per-device Durable Object stores current location and current health separately;
-- independent cloud watchdog derives **device health** separately from **position freshness**;
-- Durable Object alarm reevaluates stale/offline state even if the phone stops talking entirely;
-- hibernating Durable Object WebSockets instead of an in-memory socket set;
-- WebSocket automatically pushes location, health and status transitions;
-- parent Phase 2 map shows DEVICE and POSITION as separate statuses;
-- parent can see network state, pending local records, recovery count and app version;
-- setup script safely upgrades an existing Phase 1 D1 database or initializes a new one;
-- Phase 2 D1 column migration is introspected before ALTER statements, making setup rerunnable;
-- one-command setup still keeps the Cloudflare API token out of disk/config files.
+- accepts legacy 43-byte V1 location packets and new 90-byte V2 Phase 3 packets;
+- V2 keeps the phone's raw location separate from Brick's trusted/estimated location;
+- stores measurable uncertainty instead of invented confidence percentages;
+- exposes measured speed in km/h plus speed accuracy when Android supplies it;
+- exposes bearing/bearing accuracy and altitude/vertical accuracy where available;
+- exposes broad activity mode only: stationary, walking, running, bicycle, vehicle, unknown;
+- exposes Activity Recognition confidence without pretending it distinguishes car/bus/train;
+- exposes position quality/source: measured fused vs inertial/last-known fallback;
+- exposes GNSS satellite quality telemetry without solving raw GNSS server-side;
+- parent live panel now shows quality, uncertainty, speed, movement, source and GNSS evidence;
+- old clients remain able to upload V1 packets during staged upgrades;
+- current state remains in the per-device Durable Object; detailed route history still belongs to Phase 4;
+- a coarse network-evidence slot exists in the Durable Object for Cloudflare country/region evidence, but it is not treated as a coordinate or precise fallback.
 
-## One-command setup / upgrade
+## Accuracy rules
 
-Prerequisites: Node.js 20+ and a Cloudflare account with Workers, D1, R2, Queues and Zero Trust enabled.
+The parent map uses the trusted/estimated position for display but keeps the raw reading separately in state. A raw fix marked rejected or mock cannot silently overwrite the trusted position.
+
+`PRECISE`, `ASSISTED`, `ANCHORED`, `ESTIMATED`, `COARSE`, `LAST_KNOWN`, and `UNKNOWN` are semantic states. The UI does not show made-up probability percentages.
+
+## Route constraints
+
+Phase 3 does not snap estimates to arbitrary roads just because a map is visible. Proper route-constrained fallback requires a real road/path graph. That graph is not yet part of the Cloudflare deployment, so the current Phase 3 fallback remains explicitly inertial/last-known with growing uncertainty rather than generating a false street-level answer.
+
+## One-command deployment
+
+The existing Phase 2 installer remains valid because Phase 3 does not require a new D1 schema migration for current live state. Run:
 
 ```bash
 npm run setup
 ```
 
-The installer can be run against a fresh account or an existing Phase 1 deployment. It:
+It creates/reuses the same D1/R2/Queues/Durable Object/Access resources and deploys the Phase 3 Worker code.
 
-1. creates/reuses D1, R2, Queue and DLQ;
-2. generates Wrangler config;
-3. installs dependencies and type-checks;
-4. applies the base schema;
-5. inspects the D1 `devices` table and adds only missing Phase 2 health columns;
-6. applies the rerunnable Phase 2 health schema;
-7. deploys the Worker;
-8. creates/reuses Cloudflare Access protection for `/parent*`.
+## Security and privacy
 
-The token is prompted without echoing and is not written to `setup-state.json`.
+The existing signed device endpoints, replay/idempotency protection, Cloudflare Access parent boundary, WAF/rate-limit layout, and no-coordinate operational logging rules remain unchanged. Network evidence, when enabled, is always coarse context and never converted into a fake exact map pin.
 
-## Security layout
+## Validation boundary
 
-- `/parent*` — Cloudflare Access required;
-- `/api/pair/complete` — short-lived one-time pairing token + rate limit;
-- `/api/device/<id>/location` — device ECDSA signature + packet validation + rate limit;
-- `/api/device/<id>/health` — device ECDSA signature + strict JSON validation + rate limit;
-- `/healthz` — no family/location data.
+Strict TypeScript CI validates the Worker. Actual positioning accuracy and fallback quality can only be evaluated with the real OPPO field test. Compile/typecheck success is not a claim of metre-level accuracy.
 
-## Watchdog semantics in Phase 2
+## Later phases
 
-Device health and position freshness are deliberately different. A phone can still be online and healthy while its position source is stale. The parent UI therefore does not collapse every failure into a single misleading “offline” state.
-
-Current Phase 2 watchdog thresholds are conservative starter values that will be tuned during the real OPPO qualification work:
-
-- signed health heartbeat received within 45 s: device healthy;
-- 45–75 s: device degraded;
-- >75 s: device offline;
-- location received within 15 s: position fresh;
-- 15–60 s: position stale;
-- >60 s: position unavailable.
-
-These are operational thresholds, not claims about GPS accuracy.
-
-## Still outside Phase 2
-
-Activity recognition, speed, GNSS-quality scoring, trusted-position filtering and fallback positioning remain Phase 3. Detailed history/R2 route segments, SOS, I'm Safe, trips and geofences remain Phase 4. Full dashboard polish, health history, map hosting/privacy and reverse geocoding remain Phase 5. Release torture testing and the final security/privacy/reliability audit remain Phase 6.
+Phase 4 adds durable location history, route playback, trips, places/geofences, SOS and I'm Safe. Phase 5 completes parent dashboard polish, private map/geocoder infrastructure and operational Device Health. Phase 6 is the final reliability/security/privacy qualification.
