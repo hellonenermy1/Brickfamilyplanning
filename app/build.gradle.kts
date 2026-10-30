@@ -5,6 +5,17 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val releaseKeystorePath = providers.environmentVariable("BRICK_KEYSTORE_PATH").orNull
+val releaseKeystorePassword = providers.environmentVariable("BRICK_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("BRICK_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("BRICK_KEY_PASSWORD").orNull
+val releaseSigningAvailable = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.brick.safety"
     compileSdk = 36
@@ -13,11 +24,35 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.5.1-phase5c"
+        versionCode = 6
+        versionName = "0.6.0-phase6-rc"
     }
 
     buildFeatures { viewBinding = true }
+
+    signingConfigs {
+        if (releaseSigningAvailable) {
+            create("brickRelease") {
+                storeFile = file(requireNotNull(releaseKeystorePath))
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            isShrinkResources = false
+            if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("brickRelease")
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
