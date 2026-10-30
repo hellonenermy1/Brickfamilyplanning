@@ -23,9 +23,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      BRICK_PARENT_PASSWORD: ${{ secrets.BRICK_PARENT_PASSWORD }}
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
     steps:
       - name: Checkout selected branch
@@ -44,11 +45,19 @@ jobs:
             echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2
             exit 1
           fi
+          if [ -z "${BRICK_PARENT_PASSWORD:-}" ]; then
+            echo 'Missing GitHub Actions secret: BRICK_PARENT_PASSWORD' >&2
+            exit 1
+          fi
+          if [ "${#BRICK_PARENT_PASSWORD}" -lt 16 ]; then
+            echo 'BRICK_PARENT_PASSWORD must be at least 16 characters.' >&2
+            exit 1
+          fi
           if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
             echo 'Missing workflow input: cloudflare_account_id' >&2
             exit 1
           fi
-          echo "Cloudflare credentials are present (secret value not printed)."
+          echo 'Cloudflare token, parent password, and Account ID are present (secret values not printed).'
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -58,6 +67,12 @@ jobs:
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           npm run build:parent-assets
+          npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
+          node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
+          if grep -F '/access/' scripts/setup.mjs; then
+            echo 'Cloudflare Access dependency found in no-card setup.' >&2
+            exit 1
+          fi
 
       - name: Provision and deploy Brick
         run: npm run setup
@@ -77,9 +92,9 @@ jobs:
           console.log('Brick deployment state');
           console.log('Parent dashboard: https://' + s.workerHost + '/parent');
           console.log('Child API base:    https://' + s.workerHost);
-          console.log('D1:                ' + s.resources.D1_NAME);
-          console.log('History R2:        ' + s.resources.R2_NAME);
-          console.log('Private map R2:    ' + s.resources.MAPS_NAME);
+          console.log('Main D1:           ' + s.resources.D1_NAME);
+          console.log('Private map D1:    ' + s.resources.MAP_D1_NAME);
+          console.log('Parent auth:       Brick secure session (no Zero Trust required)');
           NODE
           else
             echo 'setup-state.json was not created; inspect the failed step above.'
