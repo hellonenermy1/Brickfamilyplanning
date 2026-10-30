@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS trips (
   arrival_candidate_since INTEGER,
   arrival_candidate_count INTEGER NOT NULL DEFAULT 0,
   last_alert_at INTEGER,
+  stationary_since INTEGER,
+  last_stop_alert_at INTEGER,
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
 CREATE INDEX IF NOT EXISTS idx_trips_device_state ON trips(device_id, state, started_at DESC);
