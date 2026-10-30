@@ -1,48 +1,68 @@
-# Brick V1 — Phase 1 Cloudflare Setup
+# Brick V1 — Phase 2 Cloudflare Reliability
 
-This branch contains the Phase 1 Cloudflare backend and parent dashboard plus a one-command installer.
+This branch upgrades the Phase 1 Cloudflare backend into the independent reliability/watchdog side of Phase 2. Phase 1 remains untouched on `phase1-cloudflare-setup`.
 
-## What the installer creates
+## Phase 2 additions
 
-- D1 database (`brick-family-v1`) in the APAC location hint;
-- private R2 bucket (`brick-family-v1-history`);
-- Queue (`brick-family-v1-events`);
-- dead-letter Queue (`brick-family-v1-dlq`);
-- Worker + SQLite-backed Durable Object migration;
-- built-in Worker rate-limiting bindings;
-- D1 schema;
-- Cloudflare Access protection for `/parent*`, restricted to Cloudflare account members;
-- Workers Observability.
+- signed `/api/device/<id>/health` heartbeat endpoint;
+- strict health-payload schema validation and size limits;
+- health packets contain operational state, not coordinates;
+- D1 device-health metadata: last health, status, recovery count, queue depth and app version;
+- per-device Durable Object stores current location and current health separately;
+- independent cloud watchdog derives **device health** separately from **position freshness**;
+- Durable Object alarm reevaluates stale/offline state even if the phone stops talking entirely;
+- hibernating Durable Object WebSockets instead of an in-memory socket set;
+- WebSocket automatically pushes location, health and status transitions;
+- parent Phase 2 map shows DEVICE and POSITION as separate statuses;
+- parent can see network state, pending local records, recovery count and app version;
+- setup script safely upgrades an existing Phase 1 D1 database or initializes a new one;
+- Phase 2 D1 column migration is introspected before ALTER statements, making setup rerunnable;
+- one-command setup still keeps the Cloudflare API token out of disk/config files.
 
-The child API endpoints remain outside Access because the Android device authenticates each packet with its own Android-Keystore P-256 key. The parent dashboard and parent WebSocket/API routes are under `/parent*` and require Cloudflare Access.
-
-## One-command setup
+## One-command setup / upgrade
 
 Prerequisites: Node.js 20+ and a Cloudflare account with Workers, D1, R2, Queues and Zero Trust enabled.
-
-Run:
 
 ```bash
 npm run setup
 ```
 
-The script prompts for the Cloudflare API token without echoing it. It never writes the token to the repository or `setup-state.json`.
+The installer can be run against a fresh account or an existing Phase 1 deployment. It:
 
-If preferred, provide `CLOUDFLARE_API_TOKEN` and optionally `CLOUDFLARE_ACCOUNT_ID` as environment variables.
+1. creates/reuses D1, R2, Queue and DLQ;
+2. generates Wrangler config;
+3. installs dependencies and type-checks;
+4. applies the base schema;
+5. inspects the D1 `devices` table and adds only missing Phase 2 health columns;
+6. applies the rerunnable Phase 2 health schema;
+7. deploys the Worker;
+8. creates/reuses Cloudflare Access protection for `/parent*`.
 
-### API token permissions
-
-Give the token only the permissions needed for this setup: Workers Scripts Write, D1 Write, Workers R2 Storage Write, Queues Write, Access Apps and Policies Write, Access Organizations/Identity Providers/Groups Write, plus enough Account read permission to enumerate the target account when `CLOUDFLARE_ACCOUNT_ID` is not supplied.
+The token is prompted without echoing and is not written to `setup-state.json`.
 
 ## Security layout
 
-- `/parent*` — Cloudflare Access required.
-- `/api/pair/complete` — public endpoint, but requires a short-lived one-time token and is rate limited.
-- `/api/device/<id>/location` — public ingress endpoint, but requires the registered device's ECDSA signature and is rate limited per device.
-- `/healthz` — contains no family/location data.
+- `/parent*` — Cloudflare Access required;
+- `/api/pair/complete` — short-lived one-time pairing token + rate limit;
+- `/api/device/<id>/location` — device ECDSA signature + packet validation + rate limit;
+- `/api/device/<id>/health` — device ECDSA signature + strict JSON validation + rate limit;
+- `/healthz` — no family/location data.
 
-This path split is intentional: Cloudflare documents that Worker-level Access currently blocks WebSocket upgrades, while hostname/path-based Access supports protecting a WebSocket-backed parent application.
+## Watchdog semantics in Phase 2
 
-## Phase boundary
+Device health and position freshness are deliberately different. A phone can still be online and healthy while its position source is stale. The parent UI therefore does not collapse every failure into a single misleading “offline” state.
 
-Phase 1 proves secure pairing + durable signed ingest + current live map. Detailed R2 location history is Phase 4; Device Owner and the self-healing Android reliability supervisor are Phase 2; advanced GPS quality/fallback is Phase 3; production map privacy and full Device Health UI are Phase 5; final torture/security/privacy audit is Phase 6.
+Current Phase 2 watchdog thresholds are conservative starter values that will be tuned during the real OPPO qualification work:
+
+- signed health heartbeat received within 45 s: device healthy;
+- 45–75 s: device degraded;
+- >75 s: device offline;
+- location received within 15 s: position fresh;
+- 15–60 s: position stale;
+- >60 s: position unavailable.
+
+These are operational thresholds, not claims about GPS accuracy.
+
+## Still outside Phase 2
+
+Activity recognition, speed, GNSS-quality scoring, trusted-position filtering and fallback positioning remain Phase 3. Detailed history/R2 route segments, SOS, I'm Safe, trips and geofences remain Phase 4. Full dashboard polish, health history, map hosting/privacy and reverse geocoding remain Phase 5. Release torture testing and the final security/privacy/reliability audit remain Phase 6.
