@@ -18,7 +18,6 @@ object ManagedPolicy {
         if (!dpm.isDeviceOwnerApp(context.packageName)) return false
         val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
 
-        // Keep the policy surface deliberately narrow: only what Brick needs for safety tracking.
         listOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -44,8 +43,10 @@ object ManagedPolicy {
             }
         }
 
-        dpm.setLocationEnabled(admin, true)
-        dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)
+        if (Build.VERSION.SDK_INT >= 30) {
+            dpm.setLocationEnabled(admin, true)
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)
+        }
         return true
     }
 }
