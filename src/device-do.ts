@@ -24,6 +24,24 @@ export type DeviceHealth = {
   batteryPct?: number;
   charging?: boolean;
   sosActive?: boolean;
+  serviceActive?: boolean;
+  fineLocationPermission?: boolean;
+  backgroundLocationPermission?: boolean;
+  activityRecognitionPermission?: boolean;
+  notificationPermission?: boolean;
+  batteryOptimizationExempt?: boolean;
+  powerSaveMode?: boolean;
+  backgroundRestricted?: boolean;
+  networkValidated?: boolean;
+  dataSaverRestricted?: boolean;
+  accelerometerAvailable?: boolean;
+  gyroscopeAvailable?: boolean;
+  rotationVectorAvailable?: boolean;
+  stepCounterAvailable?: boolean;
+  stepDetectorAvailable?: boolean;
+  lastSelfRecoveryAgeMs?: number | null;
+  operationalStatus?: "healthy" | "degraded";
+  operationalReason?: string;
 };
 
 export type NetworkEvidence = {
@@ -90,7 +108,9 @@ export class BrickDevice extends DurableObject {
 
     const deviceStatus: Derived["deviceStatus"] = !health
       ? "unknown"
-      : heartbeatAge <= 45_000 ? "healthy" : heartbeatAge <= 75_000 ? "degraded" : "offline";
+      : heartbeatAge > 75_000 ? "offline"
+      : heartbeatAge > 45_000 || health.operationalStatus === "degraded" ? "degraded"
+      : "healthy";
 
     const interval = Math.min(Math.max(health?.trackingIntervalMs ?? 5_000, 3_000), 120_000);
     const freshLimit = Math.max(15_000, interval * 2.5);
