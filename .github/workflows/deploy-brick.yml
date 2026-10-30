@@ -1,4 +1,4 @@
-name: Deploy Brick Phase 5B
+name: Deploy Brick Phase 5C
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: brick-phase5b-production
+  group: brick-phase5c-production
   cancel-in-progress: false
 
 jobs:
@@ -63,14 +63,36 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Validate deployment source
+        shell: bash
         run: |
+          set -euo pipefail
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           npm run build:parent-assets
+          node scripts/audit-privacy.mjs
+          node scripts/check-parent-module.mjs
+
           npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
           node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
+
+          npx esbuild src/phase5c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5c.mjs
+          node scripts/test-phase5c.mjs file:///tmp/brick-phase5c.mjs
+
+          npx esbuild src/phase5-ops.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-ops.mjs
+          node scripts/test-phase5-ops.mjs /tmp/brick-phase5-ops.mjs
+
+          npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
+          node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
+
+          npx esbuild src/d1-r2-compat.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-d1-compat.mjs
+          node scripts/test-d1-budget.mjs file:///tmp/brick-d1-compat.mjs
+
           if grep -F '/access/' scripts/setup.mjs; then
             echo 'Cloudflare Access dependency found in no-card setup.' >&2
+            exit 1
+          fi
+          if grep -E 'R2_BUCKET|r2_buckets|queues|dead_letter|brick-family-v1-history' wrangler.template.jsonc scripts/setup.mjs; then
+            echo 'Billing-gated R2/Queue dependency found in no-card deployment.' >&2
             exit 1
           fi
 
@@ -102,8 +124,8 @@ jobs:
 
       - name: Upload non-secret deployment state
         if: ${{ always() && hashFiles('setup-state.json') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: brick-phase5b-deployment-state
+          name: brick-phase5c-deployment-state
           path: setup-state.json
           retention-days: 7
