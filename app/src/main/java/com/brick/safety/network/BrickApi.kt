@@ -8,6 +8,7 @@ import java.util.UUID
 
 object BrickApi {
     data class PairResult(val deviceId: String, val apiBase: String)
+    data class SafetyEnvelope(val eventId: String, val kind: String, val payload: ByteArray)
 
     fun completePairing(baseUrl: String, token: String): PairResult {
         val url = URL(baseUrl.trimEnd('/') + "/api/pair/complete")
@@ -46,15 +47,19 @@ object BrickApi {
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
     }
 
-    fun sendSafetyEvent(baseUrl: String, deviceId: String, kind: String, detail: JSONObject = JSONObject()): String {
+    fun createSafetyEnvelope(kind: String, detail: JSONObject = JSONObject()): SafetyEnvelope {
         val eventId = UUID.randomUUID().toString()
-        val event = JSONObject()
+        val payload = JSONObject()
             .put("protocol", 1)
             .put("eventId", eventId)
             .put("kind", kind)
             .put("createdAtMs", System.currentTimeMillis())
             .put("detail", detail)
-        val payload = event.toString().toByteArray(Charsets.UTF_8)
+            .toString().toByteArray(Charsets.UTF_8)
+        return SafetyEnvelope(eventId, kind, payload)
+    }
+
+    fun sendSafetyPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedEventId: String): String {
         val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/event")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
@@ -64,7 +69,8 @@ object BrickApi {
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Safety event upload failed ${c.responseCode}: $text")
         val response = JSONObject(text)
-        if (response.optString("eventId") != eventId) error("Safety event ACK mismatch")
-        return eventId
+        val ack = response.optString("eventId")
+        if (ack != expectedEventId) error("Safety event ACK mismatch")
+        return ack
     }
 }
