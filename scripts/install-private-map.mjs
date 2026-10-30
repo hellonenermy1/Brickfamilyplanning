@@ -8,6 +8,7 @@ const META_KEY = 'basemap/singapore.meta.json';
 const BBOX = process.env.BRICK_MAP_BBOX || '103.55,1.12,104.12,1.50';
 const MAX_ZOOM = process.env.BRICK_MAP_MAXZOOM || '15';
 const PMTILES_IMAGE = 'ghcr.io/protomaps/go-pmtiles:v1.31.2';
+const WRANGLER_SAFE_BYTES = 300 * 1024 * 1024;
 const cacheDir = path.resolve('.brick-map-cache');
 const outFile = path.join(cacheDir, 'singapore.pmtiles');
 const metaFile = path.join(cacheDir, 'singapore.meta.json');
@@ -64,6 +65,20 @@ if (hasPmtiles) {
 
 const stat = await fs.stat(outFile);
 if (stat.size < 1_000_000) throw new Error(`Extracted PMTiles file is unexpectedly small (${stat.size} bytes). Refusing to upload.`);
+
+let uploadMethod = 'wrangler';
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+if (stat.size <= WRANGLER_SAFE_BYTES) {
+  await run(npx, ['wrangler', 'r2', 'object', 'put', `${MAP_BUCKET}/${MAP_KEY}`, '--remote', '--file', outFile, '--content-type', 'application/vnd.pmtiles', '--cache-control', 'private, max-age=86400', '--config', 'wrangler.jsonc', '--force']);
+} else {
+  const rcloneRemote = process.env.BRICK_R2_RCLONE_REMOTE?.replace(/\/$/, '');
+  if (!rcloneRemote || !(await hasCommand('rclone'))) {
+    throw new Error(`Extracted map is ${(stat.size / 1024 / 1024).toFixed(1)} MiB, above Brick's safe Wrangler upload threshold. Configure rclone for R2 and set BRICK_R2_RCLONE_REMOTE (example: r2:brick-family-v1-maps), then rerun. The map file remains at ${outFile}.`);
+  }
+  uploadMethod = 'rclone-multipart';
+  await run('rclone', ['copyto', outFile, `${rcloneRemote}/${MAP_KEY}`, '--s3-chunk-size=64M', '--s3-upload-concurrency=4', '--progress']);
+}
+
 const metadata = {
   region: 'singapore',
   bbox: BBOX.split(',').map(Number),
@@ -72,12 +87,10 @@ const metadata = {
   sourceType: 'Protomaps OSM-derived daily basemap',
   installedAt: new Date().toISOString(),
   bytes: stat.size,
+  uploadMethod,
   attribution: '© OpenStreetMap contributors · Protomaps'
 };
 await fs.writeFile(metaFile, JSON.stringify(metadata, null, 2));
-
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-await run(npx, ['wrangler', 'r2', 'object', 'put', `${MAP_BUCKET}/${MAP_KEY}`, '--remote', '--file', outFile, '--content-type', 'application/vnd.pmtiles', '--cache-control', 'private, max-age=86400', '--config', 'wrangler.jsonc', '--force']);
 await run(npx, ['wrangler', 'r2', 'object', 'put', `${MAP_BUCKET}/${META_KEY}`, '--remote', '--file', metaFile, '--content-type', 'application/json', '--cache-control', 'private, max-age=300', '--config', 'wrangler.jsonc', '--force']);
 
-console.log(`Private Singapore basemap installed: ${MAP_BUCKET}/${MAP_KEY} (${(stat.size / 1024 / 1024).toFixed(1)} MiB)`);
+console.log(`Private Singapore basemap installed: ${MAP_BUCKET}/${MAP_KEY} (${(stat.size / 1024 / 1024).toFixed(1)} MiB via ${uploadMethod})`);
