@@ -35,6 +35,7 @@ export function classifyHealth(h: DeviceHealth): HealthClassification {
 
   const checks: Array<[boolean, string, HealthClassification["severity"]]> = [
     [h.serviceActive === false, "tracker_service_inactive", "critical"],
+    [h.journalWriteHealthy === false, "local_journal_write_failed", "critical"],
     [h.fineLocationPermission === false, "fine_location_permission_missing", "critical"],
     [!h.locationEnabled, "location_disabled", "critical"],
     [!h.locationSubscribed, "location_subscription_inactive", "critical"],
@@ -66,6 +67,8 @@ function incidentDetail(h: DeviceHealth, classification: HealthClassification) {
     batteryOptimizationExempt: h.batteryOptimizationExempt ?? null,
     backgroundRestricted: h.backgroundRestricted ?? null,
     networkValidated: h.networkValidated ?? null,
+    journalWriteHealthy: h.journalWriteHealthy ?? null,
+    lastJournalWriteFailureAgeMs: h.lastJournalWriteFailureAgeMs ?? null,
     pendingRecords: h.pendingRecords,
     pendingSafetyEvents: h.pendingSafetyEvents ?? 0,
     oldestPendingAgeMs: h.oldestPendingAgeMs,
