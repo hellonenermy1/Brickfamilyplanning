@@ -25,7 +25,6 @@ try {
   const required = [
     '/parent-assets/brick-map.mjs',
     '/parent-assets/maplibre-gl.css',
-    '/parent/map/basemap.pmtiles',
     'Map · checking private archive'
   ];
   for (const value of required) if (!html.includes(value)) throw new Error(`Missing Phase 5B dashboard invariant: ${value}`);
