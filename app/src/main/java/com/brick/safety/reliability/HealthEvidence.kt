@@ -25,6 +25,12 @@ object HealthEvidence {
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
 
+        // Health is signed, but signatures alone do not prevent replay. Burn a durable monotonic
+        // sequence before transmission. Gaps are harmless; reuse after a failed disk commit is not,
+        // so the server rejects any sequence it has already accepted.
+        val healthSequence = prefs.getLong("healthSequence", 0L) + 1L
+        val healthCounterWriteHealthy = prefs.edit().putLong("healthSequence", healthSequence).commit()
+
         val activeNetwork = connectivity.activeNetwork
         val caps = activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
         val networkValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
@@ -33,6 +39,9 @@ object HealthEvidence {
             ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
         return JSONObject()
+            .put("healthSequence", healthSequence)
+            .put("healthSentAtMs", now)
+            .put("healthCounterWriteHealthy", healthCounterWriteHealthy)
             .put("fineLocationPermission", granted(Manifest.permission.ACCESS_FINE_LOCATION))
             .put("backgroundLocationPermission", granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
             .put("activityRecognitionPermission", granted(Manifest.permission.ACTIVITY_RECOGNITION))
