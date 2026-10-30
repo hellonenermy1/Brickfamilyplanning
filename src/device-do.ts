@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { LivePacket } from "./protocol";
+import { activityName, qualityName, sourceName, type LivePacket } from "./protocol";
 
 export type DeviceHealth = {
   protocol: number;
@@ -15,15 +15,33 @@ export type DeviceHealth = {
   managed: boolean;
   recoveryCount: number;
   appVersion: string;
+  activityMode?: string;
+  activityConfidence?: number;
+  trackingIntervalMs?: number;
+  gnssUsedInFix?: number;
+  gnssTotal?: number;
 };
 
 type StoredHealth = DeviceHealth & { receivedAt: number };
 type LatestState = {
   epoch: number;
   sequence: number;
-  lat: number;
-  lon: number;
-  accuracyM: number;
+  lat: number | null;
+  lon: number | null;
+  uncertaintyM: number;
+  raw: { lat: number; lon: number; accuracyM: number | null; accepted: boolean; mock: boolean } | null;
+  speedKph: number | null;
+  speedAccuracyKph: number | null;
+  bearingDeg: number | null;
+  bearingAccuracyDeg: number | null;
+  altitudeM: number | null;
+  verticalAccuracyM: number | null;
+  activity: string;
+  activityConfidence: number;
+  quality: string;
+  source: string;
+  gnss: { usedInFix: number; total: number; averageCn0DbHz: number | null };
+  fallback: boolean;
   batteryPct: number;
   charging: boolean;
   wallTimeMs: number;
@@ -38,9 +56,7 @@ type Derived = {
 
 export class BrickDevice extends DurableObject {
   private async ensureWatchdog() {
-    if ((await this.ctx.storage.getAlarm()) === null) {
-      await this.ctx.storage.setAlarm(Date.now() + 15_000);
-    }
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + 15_000);
   }
 
   private async derive(now = Date.now()): Promise<Derived> {
@@ -51,19 +67,13 @@ export class BrickDevice extends DurableObject {
 
     const deviceStatus: Derived["deviceStatus"] = !health
       ? "unknown"
-      : heartbeatAge <= 45_000
-        ? "healthy"
-        : heartbeatAge <= 75_000
-          ? "degraded"
-          : "offline";
+      : heartbeatAge <= 45_000 ? "healthy" : heartbeatAge <= 75_000 ? "degraded" : "offline";
 
     const positionStatus: Derived["positionStatus"] = !latest
       ? "unknown"
-      : positionAge <= 15_000
-        ? "fresh"
-        : positionAge <= 60_000
-          ? "stale"
-          : "unavailable";
+      : latest.lat === null || latest.lon === null
+        ? "unavailable"
+        : positionAge <= 15_000 ? "fresh" : positionAge <= 60_000 ? "stale" : "unavailable";
 
     return { deviceStatus, positionStatus, evaluatedAt: now };
   }
@@ -85,12 +95,37 @@ export class BrickDevice extends DurableObject {
   }
 
   async setLatest(packet: LivePacket) {
+    const raw = packet.rawLatE7 !== null && packet.rawLonE7 !== null ? {
+      lat: packet.rawLatE7 / 1e7,
+      lon: packet.rawLonE7 / 1e7,
+      accuracyM: packet.rawAccuracyCm === null ? null : packet.rawAccuracyCm / 100,
+      accepted: packet.rawAccepted,
+      mock: packet.rawMock
+    } : null;
+
     const state: LatestState = {
       epoch: packet.epoch,
       sequence: packet.sequence,
-      lat: packet.latE7 / 1e7,
-      lon: packet.lonE7 / 1e7,
-      accuracyM: packet.accuracyCm / 100,
+      lat: packet.trustedLatE7 === null ? null : packet.trustedLatE7 / 1e7,
+      lon: packet.trustedLonE7 === null ? null : packet.trustedLonE7 / 1e7,
+      uncertaintyM: packet.uncertaintyCm / 100,
+      raw,
+      speedKph: packet.speedCms === null ? null : packet.speedCms * 0.036,
+      speedAccuracyKph: packet.speedAccuracyCms === null ? null : packet.speedAccuracyCms * 0.036,
+      bearingDeg: packet.bearingCdeg === null ? null : packet.bearingCdeg / 100,
+      bearingAccuracyDeg: packet.bearingAccuracyCdeg === null ? null : packet.bearingAccuracyCdeg / 100,
+      altitudeM: packet.altitudeCm === null ? null : packet.altitudeCm / 100,
+      verticalAccuracyM: packet.verticalAccuracyCm === null ? null : packet.verticalAccuracyCm / 100,
+      activity: activityName(packet.activity),
+      activityConfidence: packet.activityConfidence,
+      quality: qualityName(packet.quality),
+      source: sourceName(packet.source),
+      gnss: {
+        usedInFix: packet.gnssUsedInFix,
+        total: packet.gnssTotal,
+        averageCn0DbHz: packet.gnssAverageCn0Tenth > 0 ? packet.gnssAverageCn0Tenth / 10 : null
+      },
+      fallback: packet.fallback,
       batteryPct: packet.batteryPct,
       charging: packet.charging,
       wallTimeMs: packet.wallTimeMs,
@@ -120,9 +155,7 @@ export class BrickDevice extends DurableObject {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
-    if (url.pathname.endsWith("/state")) {
-      return Response.json(await this.snapshot());
-    }
+    if (url.pathname.endsWith("/state")) return Response.json(await this.snapshot());
     if (url.pathname.endsWith("/ws")) {
       if (req.headers.get("Upgrade") !== "websocket") return new Response("Expected websocket", { status: 426 });
       const pair = new WebSocketPair();
@@ -135,7 +168,6 @@ export class BrickDevice extends DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
-    // Parent channel is server-push only. Ignore client data except a tiny ping.
     if (typeof message === "string" && message === "ping") ws.send("pong");
   }
 
