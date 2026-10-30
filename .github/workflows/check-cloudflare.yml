@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 3
+name: Check Brick Cloudflare Phase 4
 
 on:
   push:
-    branches: [phase3-cloudflare-position-intelligence]
+    branches: [phase4-cloudflare-safety-history]
   pull_request:
     branches: [main]
   workflow_dispatch:
