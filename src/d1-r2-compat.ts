@@ -1,202 +1,49 @@
-const DAY_MS = 86_400_000;
-const HISTORY_NAMESPACE = "history";
-const MAP_KEY = "basemap/singapore.pmtiles";
-const META_KEY = "basemap/singapore.meta.json";
+import type { BrickDevice } from "./device-do";
+import { evaluateSafety } from "./phase4";
+import { trustedPoint, type HistoryPoint } from "./history-codec";
+import type { LivePacket } from "./protocol";
 
-function bytesFromD1(value: unknown): Uint8Array {
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-  if (Array.isArray(value)) return Uint8Array.from(value.map(Number));
-  throw new Error("invalid D1 BLOB value");
+const DAY_MS=86_400_000;
+const RAW_DAYS=30;
+const TRUSTED_DAYS=90;
+const MAP_KEY="basemap/singapore.pmtiles";
+const META_KEY="basemap/singapore.meta.json";
+const MISSING=-2147483648;
+const TRUSTED_RECORD_BYTES=48;
+const RAW_RECORD_BYTES=90;
+
+function bytesFromD1(value:unknown):Uint8Array{if(value instanceof ArrayBuffer)return new Uint8Array(value);if(ArrayBuffer.isView(value))return new Uint8Array(value.buffer,value.byteOffset,value.byteLength);if(Array.isArray(value))return Uint8Array.from(value.map(Number));throw new Error("invalid D1 BLOB value")}
+function streamOf(bytes:Uint8Array){return new Blob([bytes]).stream()}
+function fakeObject(key:string,bytes:Uint8Array,contentType="application/octet-stream",contentEncoding?:string,sizeOverride?:number,range?:{offset:number;length:number}){const totalSize=sizeOverride??bytes.byteLength;const etag=`\"d1-${totalSize}-${key.length}\"`;return{key,version:"d1",size:totalSize,etag,httpEtag:etag,uploaded:new Date(),httpMetadata:{contentType,contentEncoding},customMetadata:{},range,body:streamOf(bytes),bodyUsed:false,checksums:{},storageClass:"Standard",writeHttpMetadata(headers:Headers){headers.set("Content-Type",contentType);if(contentEncoding)headers.set("Content-Encoding",contentEncoding)},async arrayBuffer(){return bytes.slice().buffer},async text(){return new TextDecoder().decode(bytes)},async json<T>(){return JSON.parse(new TextDecoder().decode(bytes)) as T},async blob(){return new Blob([bytes],{type:contentType})}}}
+function putNullableInt(v:DataView,o:number,value:number|null){v.setInt32(o,value===null?MISSING:value,false)}
+function encodeRawPacket(p:LivePacket){const b=new ArrayBuffer(RAW_RECORD_BYTES),v=new DataView(b);let o=0;v.setUint8(o++,2);v.setUint32(o,p.epoch,false);o+=4;v.setBigUint64(o,BigInt(p.sequence),false);o+=8;v.setBigUint64(o,BigInt(Math.trunc(p.elapsedRealtimeMs)),false);o+=8;v.setBigUint64(o,BigInt(Math.trunc(p.wallTimeMs)),false);o+=8;for(const x of[p.rawLatE7,p.rawLonE7,p.rawAccuracyCm,p.trustedLatE7,p.trustedLonE7]){putNullableInt(v,o,x);o+=4}v.setInt32(o,p.uncertaintyCm,false);o+=4;for(const x of[p.speedCms,p.speedAccuracyCms,p.bearingCdeg,p.bearingAccuracyCdeg,p.altitudeCm,p.verticalAccuracyCm]){putNullableInt(v,o,x);o+=4}v.setUint8(o++,p.batteryPct);let flags=0;if(p.charging)flags|=1;if(p.rawAccepted)flags|=2;if(p.rawMock)flags|=4;if(p.fallback)flags|=0x40;v.setUint16(o,flags,false);o+=2;v.setUint8(o++,p.activity);v.setUint8(o++,p.activityConfidence);v.setUint8(o++,p.quality);v.setUint8(o++,p.source);v.setUint8(o++,p.gnssUsedInFix);v.setUint8(o++,p.gnssTotal);v.setUint16(o,p.gnssAverageCn0Tenth,false);o+=2;v.setUint16(o,p.stepDelta,false);return new Uint8Array(b)}
+function encodeTrustedRecord(p:LivePacket){const t=trustedPoint(p),b=new ArrayBuffer(TRUSTED_RECORD_BYTES),v=new DataView(b);v.setUint32(0,t.epoch,false);v.setUint32(4,t.sequence>>>0,false);v.setFloat64(8,t.wallTimeMs,false);v.setInt32(16,t.trustedLatE7??MISSING,false);v.setInt32(20,t.trustedLonE7??MISSING,false);v.setUint32(24,t.uncertaintyCm,false);v.setInt32(28,t.speedCms??MISSING,false);v.setInt32(32,t.speedAccuracyCms??MISSING,false);v.setInt32(36,t.bearingCdeg??MISSING,false);v.setUint8(40,t.batteryPct);let f=0;if(t.charging)f|=1;if(t.fallback)f|=2;if(t.rawAccepted)f|=4;v.setUint8(41,f);v.setUint8(42,t.activity);v.setUint8(43,t.activityConfidence);v.setUint8(44,t.quality);v.setUint8(45,t.source);return new Uint8Array(b)}
+function nullable(v:number){return v===MISSING?null:v}
+function decodeTrustedBlob(value:unknown):HistoryPoint[]{const bytes=bytesFromD1(value);if(bytes.byteLength%TRUSTED_RECORD_BYTES!==0)throw new Error("corrupt trusted history blob");const out:HistoryPoint[]=[];for(let o=0;o<bytes.byteLength;o+=TRUSTED_RECORD_BYTES){const v=new DataView(bytes.buffer,bytes.byteOffset+o,TRUSTED_RECORD_BYTES),flags=v.getUint8(41);out.push({epoch:v.getUint32(0,false),sequence:v.getUint32(4,false),wallTimeMs:v.getFloat64(8,false),trustedLatE7:nullable(v.getInt32(16,false)),trustedLonE7:nullable(v.getInt32(20,false)),uncertaintyCm:v.getUint32(24,false),speedCms:nullable(v.getInt32(28,false)),speedAccuracyCms:nullable(v.getInt32(32,false)),bearingCdeg:nullable(v.getInt32(36,false)),batteryPct:v.getUint8(40),charging:(flags&1)!==0,fallback:(flags&2)!==0,rawAccepted:(flags&4)!==0,activity:v.getUint8(42),activityConfidence:v.getUint8(43),quality:v.getUint8(44),source:v.getUint8(45)})}return out}
+
+async function archiveHour(db:D1Database,deviceId:string,p:LivePacket){const now=Date.now();if(p.wallTimeMs<now-TRUSTED_DAYS*DAY_MS)return;const hour=Math.floor(p.wallTimeMs/3_600_000)*3_600_000,rawExpires=hour+RAW_DAYS*DAY_MS,trustedExpires=hour+TRUSTED_DAYS*DAY_MS,raw=p.wallTimeMs<now-RAW_DAYS*DAY_MS?null:encodeRawPacket(p),trusted=encodeTrustedRecord(p);await db.prepare("INSERT INTO history_hours(device_id,hour_start,raw_blob,trusted_blob,point_count,raw_expires_at,trusted_expires_at,updated_at) VALUES(?1,?2,?3,?4,1,?5,?6,?7) ON CONFLICT(device_id,hour_start) DO UPDATE SET raw_blob=CASE WHEN excluded.raw_blob IS NULL THEN history_hours.raw_blob ELSE CAST(COALESCE(history_hours.raw_blob,X'') || excluded.raw_blob AS BLOB) END,trusted_blob=CAST(history_hours.trusted_blob || excluded.trusted_blob AS BLOB),point_count=history_hours.point_count+1,updated_at=excluded.updated_at").bind(deviceId,hour,raw,trusted,rawExpires,trustedExpires,now).run()}
+
+export class D1InlineEventQueue{
+  constructor(private readonly env:{DB:D1Database;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>}){}
+  async send(message:unknown){const m=message as{type?:string;deviceId?:string;packet?:LivePacket};if(m.type!=="location"||!m.deviceId||!m.packet)return;await archiveHour(this.env.DB,m.deviceId,m.packet);const events=await evaluateSafety(this.env as never,m.deviceId,m.packet);if(events.length){const stub=this.env.BRICK_DEVICE.get(this.env.BRICK_DEVICE.idFromName(m.deviceId));for(const event of events)await stub.pushSafetyEvent(event)}}
+  async sendBatch(messages:{body:unknown}[]){for(const m of messages)await this.send(m.body)}
 }
 
-function streamOf(bytes: Uint8Array) {
-  return new Blob([bytes]).stream();
+export class D1HistoryBucket{
+  constructor(private readonly db:D1Database){}
+  async put(){throw new Error("D1 hourly history is written through EVENTS.send, not R2 put")}
+  async list(options:{prefix?:string;cursor?:string;limit?:number}={}){const prefix=options.prefix??"",match=/^history\/trusted\/([^/]+)\/(\d{4}-\d{2}-\d{2})\/$/.exec(prefix);if(!match)return{objects:[],truncated:false,cursor:undefined,delimitedPrefixes:[]};const deviceId=match[1],start=Date.parse(`${match[2]}T00:00:00Z`),end=start+DAY_MS,after=Number(options.cursor||start-1),limit=Math.max(1,Math.min(1000,options.limit??1000));const rows=await this.db.prepare("SELECT hour_start,length(trusted_blob) AS bytes,updated_at FROM history_hours WHERE device_id=?1 AND hour_start>=?2 AND hour_start<?3 AND hour_start>?4 AND trusted_expires_at>?5 ORDER BY hour_start LIMIT ?6").bind(deviceId,start,end,after,Date.now(),limit+1).all<{hour_start:number;bytes:number;updated_at:number}>();const selected=rows.results.slice(0,limit),truncated=rows.results.length>limit;return{objects:selected.map(r=>({key:`history/trusted/${deviceId}/${match[2]}/${r.hour_start}.json`,size:r.bytes,uploaded:new Date(r.updated_at)})),truncated,cursor:truncated&&selected.length?String(selected[selected.length-1].hour_start):undefined,delimitedPrefixes:[]}}
+  async get(key:string){const m=/^history\/trusted\/([^/]+)\/\d{4}-\d{2}-\d{2}\/(\d+)\.json$/.exec(key);if(!m)return null;const row=await this.db.prepare("SELECT trusted_blob,updated_at FROM history_hours WHERE device_id=?1 AND hour_start=?2 AND trusted_expires_at>?3").bind(m[1],Number(m[2]),Date.now()).first<{trusted_blob:unknown;updated_at:number}>();if(!row)return null;const bytes=new TextEncoder().encode(JSON.stringify({points:decodeTrustedBlob(row.trusted_blob)})),obj=fakeObject(key,bytes,"application/json");obj.uploaded=new Date(row.updated_at);return obj}
 }
 
-function fakeObject(key: string, bytes: Uint8Array, contentType = "application/octet-stream", contentEncoding?: string, metadata: Record<string, string> = {}, sizeOverride?: number, range?: { offset: number; length: number }) {
-  const totalSize = sizeOverride ?? bytes.byteLength;
-  const etag = `\"d1-${totalSize}-${key.length}\"`;
-  return {
-    key,
-    version: "d1",
-    size: totalSize,
-    etag,
-    httpEtag: etag,
-    uploaded: new Date(),
-    httpMetadata: { contentType, contentEncoding },
-    customMetadata: metadata,
-    range,
-    body: streamOf(bytes),
-    bodyUsed: false,
-    checksums: {},
-    storageClass: "Standard",
-    writeHttpMetadata(headers: Headers) {
-      if (contentType) headers.set("Content-Type", contentType);
-      if (contentEncoding) headers.set("Content-Encoding", contentEncoding);
-    },
-    async arrayBuffer() { return bytes.slice().buffer; },
-    async text() { return new TextDecoder().decode(bytes); },
-    async json<T>() { return JSON.parse(new TextDecoder().decode(bytes)) as T; },
-    async blob() { return new Blob([bytes], { type: contentType }); }
-  };
+type MapManifest={total_bytes:number;chunk_bytes:number;chunk_count:number;sha256_hex:string;metadata_json:string|null;installed_at:number};
+function parseByteRange(value:string|null,total:number){if(!value)return null;const m=/^bytes=(\d*)-(\d*)$/i.exec(value.trim());if(!m||(!m[1]&&!m[2]))throw new Error("invalid range");let start:number,end:number;if(!m[1]){const suffix=Math.max(1,Number(m[2]));start=Math.max(0,total-suffix);end=total-1}else{start=Number(m[1]);end=m[2]?Number(m[2]):total-1}if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||start>=total)throw new Error("range not satisfiable");return{start,end:Math.min(end,total-1)}}
+export class D1MapBucket{
+  constructor(private readonly db:D1Database){}
+  private manifest(){return this.db.prepare("SELECT total_bytes,chunk_bytes,chunk_count,sha256_hex,metadata_json,installed_at FROM map_manifest WHERE id=1").first<MapManifest>()}
+  async head(key:string){const m=await this.manifest();if(!m)return null;if(key===META_KEY){const b=new TextEncoder().encode(m.metadata_json??"{}");return fakeObject(key,b,"application/json")}if(key!==MAP_KEY)return null;const obj=fakeObject(key,new Uint8Array(),"application/vnd.pmtiles",undefined,m.total_bytes);obj.etag=`\"${m.sha256_hex}\"`;obj.httpEtag=obj.etag;obj.uploaded=new Date(m.installed_at);return obj}
+  async get(key:string,options?:{range?:Headers;onlyIf?:Headers}){const m=await this.manifest();if(!m)return null;if(key===META_KEY)return fakeObject(key,new TextEncoder().encode(m.metadata_json??"{}"),"application/json");if(key!==MAP_KEY)return null;const etag=`\"${m.sha256_hex}\"`,ifNone=options?.onlyIf?.get?.("If-None-Match");if(ifNone===etag)return{key,size:m.total_bytes,etag:m.sha256_hex,httpEtag:etag,uploaded:new Date(m.installed_at)};let range=parseByteRange(options?.range?.get?.("Range")??null,m.total_bytes);if(!range){if(m.total_bytes>8_000_000)throw new Error("full PMTiles download disabled; use Range");range={start:0,end:m.total_bytes-1}}const first=Math.floor(range.start/m.chunk_bytes),last=Math.floor(range.end/m.chunk_bytes),rows=await this.db.prepare("SELECT chunk_index,body FROM map_chunks WHERE chunk_index BETWEEN ?1 AND ?2 ORDER BY chunk_index").bind(first,last).all<{chunk_index:number;body:unknown}>();if(rows.results.length!==last-first+1)throw new Error("private map chunk missing");const length=range.end-range.start+1,out=new Uint8Array(length);let written=0;for(const row of rows.results){const chunk=bytesFromD1(row.body),abs=row.chunk_index*m.chunk_bytes,from=Math.max(range.start,abs)-abs,to=Math.min(range.end+1,abs+chunk.byteLength)-abs;if(to>from){out.set(chunk.subarray(from,to),written);written+=to-from}}const obj=fakeObject(key,out,"application/vnd.pmtiles",undefined,m.total_bytes,{offset:range.start,length});obj.etag=m.sha256_hex;obj.httpEtag=etag;obj.uploaded=new Date(m.installed_at);return obj}
 }
 
-async function toBytes(value: unknown): Promise<Uint8Array> {
-  if (value instanceof ArrayBuffer) return new Uint8Array(value);
-  if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-  if (typeof value === "string") return new TextEncoder().encode(value);
-  if (value instanceof ReadableStream) return new Uint8Array(await new Response(value).arrayBuffer());
-  if (value instanceof Blob) return new Uint8Array(await value.arrayBuffer());
-  throw new Error("unsupported D1 object value");
-}
-
-export class D1HistoryBucket {
-  constructor(private readonly db: D1Database) {}
-
-  async put(key: string, value: unknown, options?: { httpMetadata?: { contentType?: string; contentEncoding?: string }; customMetadata?: Record<string, string> }) {
-    const bytes = await toBytes(value);
-    if (bytes.byteLength > 1_800_000) throw new Error(`history chunk too large for D1 row: ${bytes.byteLength}`);
-    const now = Date.now();
-    const expiresAt = key.startsWith("history/raw/") ? now + 30 * DAY_MS : key.startsWith("history/trusted/") ? now + 90 * DAY_MS : null;
-    await this.db.prepare(
-      "INSERT INTO blob_objects(namespace,object_key,created_at,expires_at,content_type,content_encoding,metadata_json,byte_length,body) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9) ON CONFLICT(namespace,object_key) DO NOTHING"
-    ).bind(
-      HISTORY_NAMESPACE,
-      key,
-      now,
-      expiresAt,
-      options?.httpMetadata?.contentType ?? null,
-      options?.httpMetadata?.contentEncoding ?? null,
-      JSON.stringify(options?.customMetadata ?? {}),
-      bytes.byteLength,
-      bytes
-    ).run();
-    return { key };
-  }
-
-  async get(key: string) {
-    const row = await this.db.prepare(
-      "SELECT body,content_type,content_encoding,metadata_json,byte_length,created_at FROM blob_objects WHERE namespace=?1 AND object_key=?2 AND (expires_at IS NULL OR expires_at>?3)"
-    ).bind(HISTORY_NAMESPACE, key, Date.now()).first<{ body: unknown; content_type: string | null; content_encoding: string | null; metadata_json: string | null; byte_length: number; created_at: number }>();
-    if (!row) return null;
-    const bytes = bytesFromD1(row.body);
-    const metadata = row.metadata_json ? JSON.parse(row.metadata_json) as Record<string, string> : {};
-    const obj = fakeObject(key, bytes, row.content_type ?? "application/octet-stream", row.content_encoding ?? undefined, metadata);
-    obj.uploaded = new Date(row.created_at);
-    return obj;
-  }
-
-  async list(options: { prefix?: string; cursor?: string; limit?: number } = {}) {
-    const prefix = options.prefix ?? "";
-    const after = options.cursor ?? "";
-    const limit = Math.max(1, Math.min(1000, options.limit ?? 1000));
-    const rows = await this.db.prepare(
-      "SELECT object_key,byte_length,created_at FROM blob_objects WHERE namespace=?1 AND object_key LIKE ?2 AND object_key>?3 AND (expires_at IS NULL OR expires_at>?4) ORDER BY object_key LIMIT ?5"
-    ).bind(HISTORY_NAMESPACE, `${prefix}%`, after, Date.now(), limit + 1).all<{ object_key: string; byte_length: number; created_at: number }>();
-    const selected = rows.results.slice(0, limit);
-    const truncated = rows.results.length > limit;
-    return {
-      objects: selected.map(r => ({ key: r.object_key, size: r.byte_length, uploaded: new Date(r.created_at) })),
-      truncated,
-      cursor: truncated && selected.length ? selected[selected.length - 1].object_key : undefined,
-      delimitedPrefixes: [] as string[]
-    };
-  }
-}
-
-type MapManifest = {
-  total_bytes: number;
-  chunk_bytes: number;
-  chunk_count: number;
-  sha256_hex: string;
-  metadata_json: string | null;
-  installed_at: number;
-};
-
-function parseByteRange(value: string | null, total: number) {
-  if (!value) return null;
-  const m = /^bytes=(\d*)-(\d*)$/i.exec(value.trim());
-  if (!m) throw new Error("invalid range");
-  if (!m[1] && !m[2]) throw new Error("invalid range");
-  let start: number, end: number;
-  if (!m[1]) {
-    const suffix = Math.max(1, Number(m[2]));
-    start = Math.max(0, total - suffix); end = total - 1;
-  } else {
-    start = Number(m[1]);
-    end = m[2] ? Number(m[2]) : total - 1;
-  }
-  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= total) throw new Error("range not satisfiable");
-  return { start, end: Math.min(end, total - 1) };
-}
-
-export class D1MapBucket {
-  constructor(private readonly db: D1Database) {}
-
-  private manifest() {
-    return this.db.prepare("SELECT total_bytes,chunk_bytes,chunk_count,sha256_hex,metadata_json,installed_at FROM map_manifest WHERE id=1").first<MapManifest>();
-  }
-
-  async head(key: string) {
-    const m = await this.manifest();
-    if (!m) return null;
-    if (key === META_KEY) {
-      const bytes = new TextEncoder().encode(m.metadata_json ?? "{}");
-      return fakeObject(key, bytes, "application/json", undefined, {}, bytes.byteLength);
-    }
-    if (key !== MAP_KEY) return null;
-    const empty = new Uint8Array();
-    const obj = fakeObject(key, empty, "application/vnd.pmtiles", undefined, {}, m.total_bytes);
-    obj.etag = `\"${m.sha256_hex}\"`; obj.httpEtag = obj.etag; obj.uploaded = new Date(m.installed_at);
-    return obj;
-  }
-
-  async get(key: string, options?: { range?: Headers; onlyIf?: Headers }) {
-    const m = await this.manifest();
-    if (!m) return null;
-    if (key === META_KEY) {
-      const bytes = new TextEncoder().encode(m.metadata_json ?? "{}");
-      return fakeObject(key, bytes, "application/json");
-    }
-    if (key !== MAP_KEY) return null;
-    const ifNone = options?.onlyIf?.get?.("If-None-Match");
-    const etag = `\"${m.sha256_hex}\"`;
-    if (ifNone && ifNone === etag) return { key, size: m.total_bytes, etag: m.sha256_hex, httpEtag: etag, uploaded: new Date(m.installed_at) };
-    let range: { start: number; end: number } | null;
-    try { range = parseByteRange(options?.range?.get?.("Range") ?? null, m.total_bytes); }
-    catch { return null; }
-    if (!range) {
-      // PMTiles clients use byte ranges. Refuse a huge whole-file materialization in a 128 MB Worker.
-      if (m.total_bytes > 8_000_000) throw new Error("full PMTiles download is disabled; use HTTP Range requests");
-      range = { start: 0, end: m.total_bytes - 1 };
-    }
-    const first = Math.floor(range.start / m.chunk_bytes), last = Math.floor(range.end / m.chunk_bytes);
-    const rows = await this.db.prepare("SELECT chunk_index,body FROM map_chunks WHERE chunk_index BETWEEN ?1 AND ?2 ORDER BY chunk_index").bind(first, last).all<{ chunk_index: number; body: unknown }>();
-    if (rows.results.length !== last - first + 1) throw new Error("private map chunk missing");
-    const length = range.end - range.start + 1;
-    const out = new Uint8Array(length);
-    let written = 0;
-    for (const row of rows.results) {
-      const chunk = bytesFromD1(row.body);
-      const absoluteStart = row.chunk_index * m.chunk_bytes;
-      const from = Math.max(range.start, absoluteStart) - absoluteStart;
-      const to = Math.min(range.end + 1, absoluteStart + chunk.byteLength) - absoluteStart;
-      if (to > from) { out.set(chunk.subarray(from, to), written); written += to - from; }
-    }
-    const obj = fakeObject(key, out, "application/vnd.pmtiles", undefined, {}, m.total_bytes, { offset: range.start, length });
-    obj.etag = m.sha256_hex; obj.httpEtag = etag; obj.uploaded = new Date(m.installed_at);
-    return obj;
-  }
-}
-
-export function withD1ObjectStores<T extends { DB: D1Database }>(env: T) {
-  return {
-    ...env,
-    HISTORY: new D1HistoryBucket(env.DB) as unknown as R2Bucket
-  };
-}
-
-export async function cleanupExpiredD1Objects(db: D1Database) {
-  await db.prepare("DELETE FROM blob_objects WHERE expires_at IS NOT NULL AND expires_at<?1").bind(Date.now()).run();
-}
+export function withD1ObjectStores<T extends{DB:D1Database;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>}>(env:T){return{...env,HISTORY:new D1HistoryBucket(env.DB) as unknown as R2Bucket,EVENTS:new D1InlineEventQueue(env) as unknown as Queue}}
+export async function cleanupExpiredD1Objects(db:D1Database){const now=Date.now();await db.batch([db.prepare("UPDATE history_hours SET raw_blob=NULL WHERE raw_blob IS NOT NULL AND raw_expires_at<=?1").bind(now),db.prepare("DELETE FROM history_hours WHERE trusted_expires_at<=?1").bind(now)])}
