@@ -14,6 +14,14 @@ import {
   updateGeofence,
   updateRetention
 } from "./phase4";
+import {
+  alertPersistentIncidents,
+  cleanupOps,
+  listHealthIncidents,
+  openOfflineIncident,
+  recordHealthObservation,
+  reliability
+} from "./phase5-ops";
 import { processHistoryBatch } from "./history-store";
 import { parentV4Html } from "./parent-v4";
 export { BrickDevice };
@@ -161,24 +169,32 @@ function validHealth(x: unknown): x is DeviceHealth {
   if (h.gnssUsedInFix !== undefined && (typeof h.gnssUsedInFix !== "number" || h.gnssUsedInFix < 0 || h.gnssUsedInFix > 255)) return false;
   if (h.gnssTotal !== undefined && (typeof h.gnssTotal !== "number" || h.gnssTotal < 0 || h.gnssTotal > 255)) return false;
   if (h.batteryPct !== undefined && (typeof h.batteryPct !== "number" || !Number.isInteger(h.batteryPct) || h.batteryPct < 0 || h.batteryPct > 100)) return false;
-  if (h.charging !== undefined && typeof h.charging !== "boolean") return false;
-  if (h.sosActive !== undefined && typeof h.sosActive !== "boolean") return false;
+  const boolFields = [
+    "charging", "sosActive", "serviceActive", "fineLocationPermission", "backgroundLocationPermission",
+    "activityRecognitionPermission", "notificationPermission", "batteryOptimizationExempt", "powerSaveMode",
+    "backgroundRestricted", "networkValidated", "dataSaverRestricted", "accelerometerAvailable", "gyroscopeAvailable",
+    "rotationVectorAvailable", "stepCounterAvailable", "stepDetectorAvailable"
+  ];
+  for (const field of boolFields) if (h[field] !== undefined && typeof h[field] !== "boolean") return false;
+  if (h.lastSelfRecoveryAgeMs !== undefined && h.lastSelfRecoveryAgeMs !== null && (typeof h.lastSelfRecoveryAgeMs !== "number" || h.lastSelfRecoveryAgeMs < 0)) return false;
   return true;
 }
 
 async function ingestHealth(req: Request, env: Env, id: string) {
   const rl = await env.DEVICE_RATE.limit({ key: `${id}:health` }); if (!rl.success) return json({ error: "rate limited" }, 429);
   const d = await getAuthorizedDevice(env, id); if (!d) return json({ error: "device unauthorized" }, 401);
-  const v = await verifySignedPayload(req, d, 4096); if (v instanceof Response) return v;
+  const v = await verifySignedPayload(req, d, 8192); if (v instanceof Response) return v;
   let h: unknown; try { h = JSON.parse(new TextDecoder().decode(v)); } catch { return json({ error: "invalid health JSON" }, 400); }
   if (!validHealth(h)) return json({ error: "invalid health schema" }, 400);
-  const now = Date.now(), status = h.locationEnabled && h.locationSubscribed ? "healthy" : "degraded";
+  const now = Date.now();
+  const classification = await recordHealthObservation(env, id, h, now);
+  const serverHealth: DeviceHealth = { ...h, operationalStatus: classification.status, operationalReason: classification.reason };
   await env.DB.prepare("UPDATE devices SET last_health_at=?1,health_status=?2,recovery_count=?3,pending_records=?4,app_version=?5 WHERE id=?6 AND revoked_at IS NULL")
-    .bind(now, status, h.recoveryCount, h.pendingRecords, h.appVersion, id).run();
+    .bind(now, classification.status, h.recoveryCount, h.pendingRecords, h.appVersion, id).run();
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id));
   const cf = req.cf as Record<string, unknown> | undefined;
   await Promise.all([
-    stub.setHealth(h),
+    stub.setHealth(serverHealth),
     stub.setNetworkEvidence({
       country: typeof cf?.country === "string" ? cf.country : null,
       region: typeof cf?.region === "string" ? cf.region : null,
@@ -187,7 +203,7 @@ async function ingestHealth(req: Request, env: Env, id: string) {
       receivedAt: now
     })
   ]);
-  return json({ ok: true, receivedAt: now });
+  return json({ ok: true, receivedAt: now, healthStatus: classification.status, healthReason: classification.reason });
 }
 
 function validSafetyEvent(x: unknown): x is SafetyEvent {
@@ -246,6 +262,19 @@ async function parentDeviceProxy(req: Request, env: Env, id: string, kind: "stat
   return kind === "state" ? noStore(await stub.fetch(new Request("https://do/state"))) : stub.fetch(new Request("https://do/ws", { method: req.method, headers: req.headers }));
 }
 
+async function runOpsWatchdog(env: Env) {
+  const now = Date.now();
+  const devices = await env.DB.prepare("SELECT id,created_at,last_health_at FROM devices WHERE revoked_at IS NULL").all<{ id: string; created_at: number; last_health_at: number | null }>();
+  for (const device of devices.results) {
+    const last = device.last_health_at ?? device.created_at;
+    if (now - last >= 90_000) await openOfflineIncident(env, device.id, last + 75_000, now);
+  }
+  const alerts = await alertPersistentIncidents(env, now);
+  for (const { deviceId, event } of alerts) {
+    await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).pushSafetyEvent(event);
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const u = new URL(req.url);
@@ -273,6 +302,19 @@ export default {
     if (req.method === "GET" && m) return listSafetyEvents(req, env, decodeURIComponent(m[1]));
     m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/ws$/);
     if (m) return parentDeviceProxy(req, env, decodeURIComponent(m[1]), "ws");
+
+    m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/health\/incidents$/);
+    if (req.method === "GET" && m) {
+      const id = decodeURIComponent(m[1]), d = await ensureParentDevice(req, env, id); if (d) return d;
+      const n = Number(u.searchParams.get("limit") ?? "100");
+      return noStore(await listHealthIncidents(env, id, Number.isFinite(n) ? n : 100));
+    }
+    m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/reliability$/);
+    if (req.method === "GET" && m) {
+      const id = decodeURIComponent(m[1]), d = await ensureParentDevice(req, env, id); if (d) return d;
+      const days = Number(u.searchParams.get("days") ?? "30");
+      return noStore(await reliability(env, id, Number.isFinite(days) ? days : 30));
+    }
 
     m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/geofences$/);
     if (m) {
@@ -334,7 +376,10 @@ export default {
     await processHistoryBatch(batch, env);
   },
 
-  async scheduled(_controller: ScheduledController, env: Env) {
-    await runRetentionCleanup(env);
+  async scheduled(controller: ScheduledController, env: Env) {
+    await runOpsWatchdog(env);
+    if (controller.cron === "17 3 * * *") {
+      await Promise.all([runRetentionCleanup(env), cleanupOps(env)]);
+    }
   }
 } satisfies ExportedHandler<Env>;
