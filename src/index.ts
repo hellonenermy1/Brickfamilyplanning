@@ -64,40 +64,58 @@ async function completePairing(req: Request, env: Env) {
   const rl = await env.PAIR_RATE.limit({ key: `pair-complete:${body.token.slice(0, 12)}` });
   if (!rl.success) return json({ error: "rate limited" }, 429);
   if (body.publicKeySpkiB64.length > 2048) return json({ error: "bad public key" }, 400);
+
   const hash = await sha256Hex(body.token);
-  const row = await env.DB.prepare("SELECT device_name, expires_at, consumed_at FROM pairing_tokens WHERE token_hash=?1")
-    .bind(hash).first<{device_name: string; expires_at: number; consumed_at: number | null}>();
-  if (!row || row.consumed_at || row.expires_at < Date.now()) return json({ error: "invalid or expired token" }, 400);
-  const deviceId = crypto.randomUUID();
   const now = Date.now();
-  await env.DB.batch([
-    env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)")
-      .bind(deviceId, row.device_name, body.publicKeySpkiB64, now),
-    env.DB.prepare("UPDATE pairing_tokens SET consumed_at=?1 WHERE token_hash=?2 AND consumed_at IS NULL").bind(now, hash)
-  ]);
+
+  // Atomically consume the token so two simultaneous pairing requests cannot both win.
+  const consumed = await env.DB.prepare(
+    "UPDATE pairing_tokens SET consumed_at=?1 WHERE token_hash=?2 AND consumed_at IS NULL AND expires_at>=?1 RETURNING device_name"
+  ).bind(now, hash).first<{ device_name: string }>();
+  if (!consumed) return json({ error: "invalid or expired token" }, 400);
+
+  const deviceId = crypto.randomUUID();
+  try {
+    await env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)")
+      .bind(deviceId, consumed.device_name, body.publicKeySpkiB64, now).run();
+  } catch {
+    // Pairing token remains consumed by design; a failed registration must use a fresh token.
+    return json({ error: "device registration failed; create a new pairing code" }, 500);
+  }
   return json({ deviceId, apiBase: new URL(req.url).origin });
 }
 
 async function ingest(req: Request, env: Env, deviceId: string) {
   const rl = await env.DEVICE_RATE.limit({ key: deviceId });
   if (!rl.success) return json({ error: "rate limited" }, 429);
-  const device = await env.DB.prepare("SELECT public_key_spki_b64, revoked_at, last_epoch, last_sequence FROM devices WHERE id=?1")
-    .bind(deviceId).first<{public_key_spki_b64: string; revoked_at: number | null; last_epoch: number; last_sequence: number}>();
+
+  const device = await env.DB.prepare("SELECT public_key_spki_b64, revoked_at FROM devices WHERE id=?1")
+    .bind(deviceId).first<{public_key_spki_b64: string; revoked_at: number | null}>();
   if (!device || device.revoked_at) return json({ error: "device unauthorized" }, 401);
+
   const sig = req.headers.get("X-Brick-Signature");
   if (!sig || sig.length > 512) return json({ error: "missing or invalid signature" }, 401);
   const payload = await req.arrayBuffer();
   if (payload.byteLength !== 43) return json({ error: "bad packet length" }, 400);
   if (!(await verifyDeviceSignature(device.public_key_spki_b64, payload, sig))) return json({ error: "bad signature" }, 401);
+
   let packet;
   try { packet = decodeLivePacket(payload); } catch (e) { return json({ error: String(e) }, 400); }
-  if (packet.epoch < device.last_epoch || (packet.epoch === device.last_epoch && packet.sequence <= device.last_sequence)) {
-    return json({ ack: packet.sequence, duplicate: true });
-  }
-  await env.DB.batch([
-    env.DB.prepare("UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4").bind(packet.epoch, packet.sequence, Date.now(), deviceId),
-    env.DB.prepare("INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES(?1,?2,?3,'location',?4)").bind(deviceId, packet.epoch, packet.sequence, Date.now())
+  const now = Date.now();
+
+  // The conditional update makes sequence advancement monotonic even if requests arrive concurrently.
+  // D1 batch executes transactionally: either the device cursor and matching event commit together, or neither does.
+  const [advance] = await env.DB.batch([
+    env.DB.prepare(
+      "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
+    ).bind(packet.epoch, packet.sequence, now, deviceId),
+    env.DB.prepare(
+      "INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) SELECT ?1,?2,?3,'location',?4 FROM devices WHERE id=?1 AND last_epoch=?2 AND last_sequence=?3"
+    ).bind(deviceId, packet.epoch, packet.sequence, now)
   ]);
+
+  if ((advance.meta.changes ?? 0) === 0) return json({ ack: packet.sequence, duplicate: true });
+
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
   await stub.setLatest(packet);
   await env.EVENTS.send({ deviceId, packet });
