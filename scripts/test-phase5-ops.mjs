@@ -20,9 +20,11 @@ function base(overrides = {}) {
     locationSubscribed: true,
     managed: true,
     recoveryCount: 0,
-    appVersion: '0.5.0-phase5',
+    appVersion: '0.5.1-phase5c',
     trackingIntervalMs: 5000,
     serviceActive: true,
+    journalWriteHealthy: true,
+    lastJournalWriteFailureAgeMs: null,
     fineLocationPermission: true,
     backgroundLocationPermission: true,
     activityRecognitionPermission: true,
@@ -37,6 +39,11 @@ let c = classifyHealth(base());
 assert.equal(c.status, 'healthy');
 assert.equal(c.reason, 'ok');
 assert.equal(c.positionAvailable, true);
+
+c = classifyHealth(base({ journalWriteHealthy: false, lastJournalWriteFailureAgeMs: 1000 }));
+assert.equal(c.status, 'degraded');
+assert.equal(c.reason, 'local_journal_write_failed');
+assert.equal(c.severity, 'critical');
 
 c = classifyHealth(base({ fineLocationPermission: false }));
 assert.equal(c.status, 'degraded');
