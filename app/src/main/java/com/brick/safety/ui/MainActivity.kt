@@ -14,6 +14,7 @@ import com.brick.safety.databinding.ActivityMainBinding
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
+import com.brick.safety.reliability.SafetyDispatcher
 import com.brick.safety.reliability.ServiceControl
 import java.util.concurrent.Executors
 
@@ -39,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
-        b.safeButton.setOnClickListener { sendSafetyEvent("safe_checkin", "● I’m Safe sent") }
+        b.safeButton.setOnClickListener { queueSafetyEvent("safe_checkin", false) }
         b.sosButton.setOnClickListener { if (sosPending) cancelSos() else beginSosCountdown() }
         refresh()
     }
@@ -63,16 +64,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendSafetyEvent(kind: String, successText: String) {
-        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val deviceId = prefs.getString("deviceId", null) ?: return
-        val apiBase = prefs.getString("apiBase", null) ?: return
+    private fun queueSafetyEvent(kind: String, critical: Boolean) {
+        if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
         b.safeButton.isEnabled = false
+        if (critical) b.sosButton.isEnabled = false
+        val priority = if (critical) SafetyDispatcher.PRIORITY_CRITICAL else SafetyDispatcher.PRIORITY_NORMAL
+        val eventId = SafetyDispatcher.enqueue(this, kind, priority = priority)
+        b.status.text = if (critical) "● SOS queued — sending…" else "● I’m Safe queued — sending…"
         io.execute {
-            runCatching { BrickApi.sendSafetyEvent(apiBase, deviceId, kind) }
-                .onSuccess { runOnUiThread { b.status.text = successText; b.safeButton.isEnabled = true } }
-                .onFailure { runOnUiThread { b.status.text = "● Check-in could not reach parent"; b.safeButton.isEnabled = true } }
+            SafetyDispatcher.drain(this, 20)
+            val stillPending = SafetyDispatcher.pendingCount(this) > 0
+            runOnUiThread {
+                b.status.text = when {
+                    critical && stillPending -> "● SOS saved — will retry automatically"
+                    critical -> "● SOS sent"
+                    stillPending -> "● I’m Safe saved — will retry automatically"
+                    else -> "● I’m Safe sent"
+                }
+                b.safeButton.isEnabled = true
+                b.sosButton.isEnabled = true
+            }
         }
+        @Suppress("UNUSED_VARIABLE") val stableEventId = eventId
     }
 
     private fun beginSosCountdown() {
@@ -88,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         if (sosSecondsLeft <= 0) {
             sosPending = false
             b.sosButton.text = "SOS"
-            sendSosNow()
+            queueSafetyEvent("sos_started", true)
             return
         }
         b.status.text = "● SOS in $sosSecondsLeft — tap SOS to cancel"
@@ -103,19 +116,6 @@ class MainActivity : AppCompatActivity() {
         b.sosButton.text = "SOS"
         b.safeButton.isEnabled = true
         b.status.text = "● SOS cancelled"
-    }
-
-    private fun sendSosNow() {
-        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val deviceId = prefs.getString("deviceId", null) ?: return
-        val apiBase = prefs.getString("apiBase", null) ?: return
-        b.sosButton.isEnabled = false
-        b.status.text = "● Sending SOS…"
-        io.execute {
-            runCatching { BrickApi.sendSafetyEvent(apiBase, deviceId, "sos_started") }
-                .onSuccess { runOnUiThread { b.status.text = "● SOS sent"; b.sosButton.isEnabled = true; b.safeButton.isEnabled = true } }
-                .onFailure { runOnUiThread { b.status.text = "● SOS delivery failed — retry"; b.sosButton.isEnabled = true; b.safeButton.isEnabled = true } }
-        }
     }
 
     private fun requestPermissionsAndStart() {
