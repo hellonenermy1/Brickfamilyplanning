@@ -16,6 +16,9 @@ export type DeviceHealth = {
   managed: boolean;
   recoveryCount: number;
   appVersion: string;
+  healthSequence?: number;
+  healthSentAtMs?: number;
+  healthCounterWriteHealthy?: boolean;
   activityMode?: string;
   activityConfidence?: number;
   trackingIntervalMs?: number;
@@ -68,6 +71,7 @@ export type RealtimeSafetyEvent = {
 };
 
 type StoredHealth = DeviceHealth & { receivedAt: number };
+type SequenceHighWater = { epoch: number; sequence: number };
 type LatestState = {
   epoch: number;
   sequence: number;
@@ -98,6 +102,10 @@ type Derived = {
   positionStatus: "fresh" | "stale" | "unavailable" | "unknown";
   evaluatedAt: number;
 };
+
+function advances(candidate: SequenceHighWater, current: SequenceHighWater | undefined) {
+  return !current || candidate.epoch > current.epoch || (candidate.epoch === current.epoch && candidate.sequence > current.sequence);
+}
 
 export class BrickDevice extends DurableObject {
   private async ensureWatchdog() {
@@ -193,6 +201,15 @@ export class BrickDevice extends DurableObject {
     await this.ctx.storage.put("latest", state);
     await this.ensureWatchdog();
     this.broadcast("location", { state, derived: await this.derive() });
+  }
+
+  async claimSafetyEvaluation(epoch: number, sequence: number): Promise<boolean> {
+    if (!Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(sequence) || sequence <= 0) return false;
+    const next = { epoch, sequence };
+    const current = await this.ctx.storage.get<SequenceHighWater>("safetyEvalHighWater");
+    if (!advances(next, current)) return false;
+    await this.ctx.storage.put("safetyEvalHighWater", next);
+    return true;
   }
 
   async setHealth(health: DeviceHealth) {
