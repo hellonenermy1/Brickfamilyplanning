@@ -24,9 +24,9 @@ class CrashOutbox(context: Context) : SQLiteOpenHelper(context, "brick_crash_out
             put("payload", JournalCipher.encrypt(payload))
             put("created_ms", System.currentTimeMillis())
         }, SQLiteDatabase.CONFLICT_IGNORE)
-        // Diagnostics are lower priority than location evidence. Keep a bounded recent set during a crash loop.
+        // Diagnostics are lower priority than location evidence. Keep exactly the newest bounded pending set during a crash loop.
         writableDatabase.execSQL(
-            "DELETE FROM crash_reports WHERE acked=0 AND id < (SELECT COALESCE(MAX(id)-?,0) FROM crash_reports)",
+            "DELETE FROM crash_reports WHERE acked=0 AND id <= (SELECT COALESCE(MAX(id)-?,0) FROM crash_reports)",
             arrayOf(MAX_PENDING_DIAGNOSTICS)
         )
     }
