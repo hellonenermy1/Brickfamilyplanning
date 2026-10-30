@@ -2,6 +2,7 @@ import core, { BrickDevice } from "./index";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { D1MapBucket, cleanupExpiredD1Objects, withD1ObjectStores } from "./d1-r2-compat";
+import { phase5CGuardDatabase } from "./phase5c-d1-guard";
 import { handleParentLogin, handleParentLogout, parentAuthorized, unauthorizedParent } from "./parent-auth";
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
 export { BrickDevice };
@@ -30,7 +31,9 @@ const parentHeaders = {
   "Cache-Control": "no-store"
 };
 
-function coreEnv(env: RuntimeEnv): CoreEnv { return withD1ObjectStores(env) as CoreEnv; }
+function coreEnv(env: RuntimeEnv): CoreEnv {
+  return withD1ObjectStores({ ...env, DB: phase5CGuardDatabase(env.DB) }) as CoreEnv;
+}
 function mapEnv(env: RuntimeEnv) { return { MAPS: new D1MapBucket(env.MAP_DB) as unknown as R2Bucket }; }
 function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>): Request<unknown, IncomingRequestCfProperties> {
   const headers = new Headers(req.headers);
