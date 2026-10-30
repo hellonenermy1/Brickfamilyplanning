@@ -49,15 +49,18 @@ object BrickApi {
 
     fun createSafetyEnvelope(
         kind: String,
+        eventSequence: Long,
         detail: JSONObject = JSONObject(),
         latitude: Double? = null,
         longitude: Double? = null,
         accuracyM: Double? = null
     ): SafetyEnvelope {
+        require(eventSequence > 0L)
         val eventId = UUID.randomUUID().toString()
         val event = JSONObject()
             .put("protocol", 1)
             .put("eventId", eventId)
+            .put("eventSequence", eventSequence)
             .put("kind", kind)
             .put("createdAtMs", System.currentTimeMillis())
             .put("detail", detail)
