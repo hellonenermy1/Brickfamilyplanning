@@ -1,6 +1,7 @@
--- Phase 5B no-R2 history backend.
+-- Phase 5B no-R2 history + compact dedupe backend.
 -- One row per device/hour is append-updated as new locations arrive.
 -- Raw wire packets expire after 30 days; trusted-only compact records expire after 90 days.
+-- Location dedupe uses 30 sequence bits per row, avoiding one D1 row per packet.
 
 CREATE TABLE IF NOT EXISTS history_hours (
   device_id TEXT NOT NULL,
@@ -16,3 +17,22 @@ CREATE TABLE IF NOT EXISTS history_hours (
 
 CREATE INDEX IF NOT EXISTS idx_history_hours_retention
   ON history_hours(trusted_expires_at, raw_expires_at);
+
+CREATE TABLE IF NOT EXISTS location_seen_blocks (
+  device_id TEXT NOT NULL,
+  epoch INTEGER NOT NULL,
+  block_index INTEGER NOT NULL,
+  mask INTEGER NOT NULL,
+  received_count INTEGER NOT NULL,
+  min_offset INTEGER NOT NULL,
+  max_offset INTEGER NOT NULL,
+  first_seen_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  PRIMARY KEY(device_id, epoch, block_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_location_seen_blocks_retention
+  ON location_seen_blocks(last_seen_at);
+
+CREATE INDEX IF NOT EXISTS idx_location_seen_blocks_reliability
+  ON location_seen_blocks(device_id, epoch, last_seen_at);
