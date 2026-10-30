@@ -40,7 +40,9 @@ async function passwordMatches(candidate: string, expected: string): Promise<boo
 
 async function sessionKey(secret: string): Promise<CryptoKey> {
   const keyBytes = await sha256(`brick-parent-session-v1\u0000${secret}`);
-  return crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+  const raw = new ArrayBuffer(keyBytes.byteLength);
+  new Uint8Array(raw).set(keyBytes);
+  return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
 
 async function signPayload(payload: string, secret: string): Promise<string> {
