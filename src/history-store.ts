@@ -1,5 +1,5 @@
 import type { BrickDevice } from "./device-do";
-import { evaluateSafety } from "./phase4";
+import { evaluateSafetyV6 } from "./safety-evaluator-v6";
 import type { LivePacket } from "./protocol";
 import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./history-codec";
 
@@ -70,7 +70,7 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
       continue;
     }
     const packet = body.packet as LivePacket;
-    if (!Number.isFinite(packet.wallTimeMs) || packet.wallTimeMs <= 0 || !Number.isSafeInteger(packet.sequence) || packet.sequence < 0 || !Number.isSafeInteger(packet.epoch) || packet.epoch < 0) {
+    if (!Number.isFinite(packet.wallTimeMs) || packet.wallTimeMs <= 0 || !Number.isSafeInteger(packet.sequence) || packet.sequence <= 0 || !Number.isSafeInteger(packet.epoch) || packet.epoch < 0) {
       message.ack();
       continue;
     }
@@ -85,8 +85,8 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
     group.entries.push({ message, packet });
   }
 
-  // Wrangler config fixes Queue consumer concurrency at 1. That makes this deterministic
-  // read-merge-write safe across invocations while retaining at-least-once retries.
+  // Queue consumer concurrency is fixed at 1 in wrangler.template.jsonc. This makes each
+  // deterministic segment a serialized read/merge/write operation under at-least-once delivery.
   for (const group of groups.values()) {
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
@@ -111,11 +111,9 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
         })
       ]);
 
-      // Safety evaluation is independently sequence/idempotency guarded. If the queue retries after
-      // R2 succeeded but before ACK, re-running these packets cannot duplicate a logical alert.
       const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(group.deviceId));
       for (const entry of group.entries) {
-        const events = await evaluateSafety(env, group.deviceId, entry.packet);
+        const events = await evaluateSafetyV6(env, group.deviceId, entry.packet);
         for (const event of events) await stub.pushSafetyEvent(event);
       }
       for (const entry of group.entries) entry.message.ack();
