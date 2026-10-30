@@ -46,21 +46,29 @@ export function decodeLivePacket(buf: ArrayBuffer): LivePacket {
   throw new Error(`unsupported packet version ${version}`);
 }
 
+function safeUint64(v: DataView, offset: number, field: string): number {
+  const n = v.getBigUint64(offset, false);
+  if (n > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(`${field} exceeds safe integer range`);
+  return Number(n);
+}
+
 function decodeV1(v: DataView): LivePacket {
   if (v.byteLength !== V1_BYTES) throw new Error(`bad v1 packet length ${v.byteLength}`);
   let o = 1;
   const epoch = v.getUint32(o, false); o += 4;
-  const sequence = Number(v.getBigUint64(o, false)); o += 8;
-  const elapsedRealtimeMs = Number(v.getBigUint64(o, false)); o += 8;
-  const wallTimeMs = Number(v.getBigUint64(o, false)); o += 8;
+  const sequence = safeUint64(v, o, "sequence"); o += 8;
+  const elapsedRealtimeMs = safeUint64(v, o, "elapsed realtime"); o += 8;
+  const wallTimeMs = safeUint64(v, o, "wall time"); o += 8;
   const latE7 = v.getInt32(o, false); o += 4;
   const lonE7 = v.getInt32(o, false); o += 4;
   const accuracyCm = v.getUint32(o, false); o += 4;
   const batteryPct = v.getUint8(o); o += 1;
   const flags = v.getUint8(o);
+  if (sequence <= 0 || elapsedRealtimeMs <= 0 || wallTimeMs <= 0) throw new Error("bad v1 ordering fields");
   validateCoordinate(latE7, lonE7);
   if (batteryPct > 100) throw new Error("bad battery");
   if (accuracyCm > 10_000_000) throw new Error("bad accuracy");
+  if ((flags & ~0x01) !== 0) throw new Error("unknown v1 flags");
   return {
     version: 1, epoch, sequence, elapsedRealtimeMs, wallTimeMs,
     rawLatE7: latE7, rawLonE7: lonE7, rawAccuracyCm: accuracyCm,
@@ -77,9 +85,9 @@ function decodeV2(v: DataView): LivePacket {
   if (v.byteLength !== V2_BYTES) throw new Error(`bad v2 packet length ${v.byteLength}`);
   let o = 1;
   const epoch = v.getUint32(o, false); o += 4;
-  const sequence = Number(v.getBigUint64(o, false)); o += 8;
-  const elapsedRealtimeMs = Number(v.getBigUint64(o, false)); o += 8;
-  const wallTimeMs = Number(v.getBigUint64(o, false)); o += 8;
+  const sequence = safeUint64(v, o, "sequence"); o += 8;
+  const elapsedRealtimeMs = safeUint64(v, o, "elapsed realtime"); o += 8;
+  const wallTimeMs = safeUint64(v, o, "wall time"); o += 8;
   const rawLatE7 = nullableInt(v.getInt32(o, false)); o += 4;
   const rawLonE7 = nullableInt(v.getInt32(o, false)); o += 4;
   const rawAccuracyCm = nullableInt(v.getInt32(o, false)); o += 4;
@@ -103,17 +111,31 @@ function decodeV2(v: DataView): LivePacket {
   const gnssAverageCn0Tenth = v.getUint16(o, false); o += 2;
   const stepDelta = v.getUint16(o, false);
 
+  if (sequence <= 0 || elapsedRealtimeMs <= 0 || wallTimeMs <= 0) throw new Error("bad ordering fields");
+  if ((flags & ~0x7f) !== 0) throw new Error("unknown packet flags");
   if ((rawLatE7 === null) !== (rawLonE7 === null)) throw new Error("partial raw coordinate");
   if ((trustedLatE7 === null) !== (trustedLonE7 === null)) throw new Error("partial trusted coordinate");
   if (rawLatE7 !== null && rawLonE7 !== null) validateCoordinate(rawLatE7, rawLonE7);
   if (trustedLatE7 !== null && trustedLonE7 !== null) validateCoordinate(trustedLatE7, trustedLonE7);
   if (rawAccuracyCm !== null && (rawAccuracyCm < 0 || rawAccuracyCm > 50_000_000)) throw new Error("bad raw accuracy");
   if (uncertaintyCm < 0 || uncertaintyCm > 50_000_000) throw new Error("bad uncertainty");
+  if (speedCms !== null && (speedCms < 0 || speedCms > 20_000)) throw new Error("bad speed");
+  if (speedAccuracyCms !== null && (speedAccuracyCms < 0 || speedAccuracyCms > 20_000)) throw new Error("bad speed accuracy");
+  if (bearingCdeg !== null && (bearingCdeg < 0 || bearingCdeg >= 36_000)) throw new Error("bad bearing");
+  if (bearingAccuracyCdeg !== null && (bearingAccuracyCdeg < 0 || bearingAccuracyCdeg > 36_000)) throw new Error("bad bearing accuracy");
+  if (altitudeCm !== null && (altitudeCm < -2_000_000 || altitudeCm > 10_000_000)) throw new Error("bad altitude");
+  if (verticalAccuracyCm !== null && (verticalAccuracyCm < 0 || verticalAccuracyCm > 10_000_000)) throw new Error("bad vertical accuracy");
   if (batteryPct > 100) throw new Error("bad battery");
+  if (activity > 5) throw new Error("bad activity");
   if (activityConfidence > 100) throw new Error("bad activity confidence");
   if (quality < 1 || quality > 7) throw new Error("bad quality");
   if (source > 3) throw new Error("bad source");
-  if (bearingCdeg !== null && (bearingCdeg < 0 || bearingCdeg >= 36_000)) throw new Error("bad bearing");
+  if (gnssUsedInFix > gnssTotal) throw new Error("bad GNSS satellite counts");
+  if (gnssAverageCn0Tenth > 1000) throw new Error("bad GNSS C/N0");
+  if ((flags & 0x04) !== 0 && (flags & 0x02) !== 0) throw new Error("mock fix cannot be accepted");
+  if ((flags & 0x02) !== 0 && (trustedLatE7 === null || trustedLonE7 === null)) throw new Error("accepted raw fix missing trusted coordinate");
+  if (source === 1 && (flags & 0x40) !== 0) throw new Error("fused source cannot be marked fallback");
+  if (source !== 1 && (flags & 0x40) === 0) throw new Error("fallback source missing fallback flag");
 
   return {
     version: 2, epoch, sequence, elapsedRealtimeMs, wallTimeMs,
