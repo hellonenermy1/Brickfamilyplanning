@@ -26,6 +26,19 @@ CREATE TABLE IF NOT EXISTS geofences (
 );
 CREATE INDEX IF NOT EXISTS idx_geofences_device ON geofences(device_id, enabled);
 
+CREATE TABLE IF NOT EXISTS geofence_state (
+  geofence_id TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  stable_state TEXT NOT NULL DEFAULT 'unknown',
+  candidate_state TEXT,
+  candidate_since INTEGER,
+  candidate_count INTEGER NOT NULL DEFAULT 0,
+  last_distance_m REAL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(geofence_id) REFERENCES geofences(id),
+  FOREIGN KEY(device_id) REFERENCES devices(id)
+);
+
 CREATE TABLE IF NOT EXISTS trips (
   id TEXT PRIMARY KEY,
   device_id TEXT NOT NULL,
@@ -33,9 +46,13 @@ CREATE TABLE IF NOT EXISTS trips (
   destination_name TEXT,
   destination_latitude REAL,
   destination_longitude REAL,
+  destination_radius_m REAL NOT NULL DEFAULT 120,
   expected_arrival_at INTEGER,
   started_at INTEGER NOT NULL,
   ended_at INTEGER,
+  arrival_candidate_since INTEGER,
+  arrival_candidate_count INTEGER NOT NULL DEFAULT 0,
+  last_alert_at INTEGER,
   FOREIGN KEY(device_id) REFERENCES devices(id)
 );
 CREATE INDEX IF NOT EXISTS idx_trips_device_state ON trips(device_id, state, started_at DESC);
