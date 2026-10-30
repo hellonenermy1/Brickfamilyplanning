@@ -7,6 +7,8 @@ import { handleParentLogin, handleParentLogout, parentAuthorized, unauthorizedPa
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
 export { BrickDevice };
 
+const MAX_GEOFENCES_PER_DEVICE = 8;
+
 type RuntimeEnv = {
   DB: D1Database;
   MAP_DB: D1Database;
@@ -47,6 +49,14 @@ function sameOriginMutation(req: Request) {
 }
 function csrfDenied() {
   return Response.json({ error: "same-origin request required" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+}
+async function forwardParentMutation(req: Request<unknown, IncomingRequestCfProperties>, env: RuntimeEnv, ctx: ExecutionContext) {
+  if (!(await parentAuthorized(req, env))) return unauthorizedParent(req);
+  if (!sameOriginMutation(req)) return csrfDenied();
+  if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
+  const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
+  ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
+  return response;
 }
 
 const coreHandler = core as ExportedHandler<CoreEnv>;
@@ -100,13 +110,26 @@ export default {
     if (req.method === "POST" && m) return ingestCrashReport(req, env, decodeURIComponent(m[1]));
 
     if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
+
+    m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/geofences$/);
+    if (req.method === "POST" && m) {
+      if (!(await parentAuthorized(req, env))) return unauthorizedParent(req);
+      if (!sameOriginMutation(req)) return csrfDenied();
+      const deviceId = decodeURIComponent(m[1]);
+      const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM geofences WHERE device_id=?1").bind(deviceId).first<{ n: number }>();
+      if (Number(row?.n ?? 0) >= MAX_GEOFENCES_PER_DEVICE) {
+        const response = Response.json({ error: `Free-plan Brick supports up to ${MAX_GEOFENCES_PER_DEVICE} geofences per device` }, { status: 409, headers: { "Cache-Control": "no-store" } });
+        ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status, { reason: "geofence_limit" }));
+        return response;
+      }
+      return forwardParentMutation(req, env, ctx);
+    }
+
     if (u.pathname.startsWith("/parent/")) {
       if (!(await parentAuthorized(req, env))) return unauthorizedParent(req);
       if (!sameOriginMutation(req)) return csrfDenied();
       const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
-      if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-        ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
-      }
+      if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
       return response;
     }
     return coreHandler.fetch(req, coreEnv(env), ctx);
