@@ -77,11 +77,17 @@ export class BrickDevice extends DurableObject {
       ? "unknown"
       : heartbeatAge <= 45_000 ? "healthy" : heartbeatAge <= 75_000 ? "degraded" : "offline";
 
+    // Phase 3 intentionally slows a stationary tracker. Freshness must follow the requested
+    // interval or a healthy stationary device would be falsely marked unavailable.
+    const interval = Math.min(Math.max(health?.trackingIntervalMs ?? 5_000, 3_000), 120_000);
+    const freshLimit = Math.max(15_000, interval * 2.5);
+    const staleLimit = Math.max(60_000, interval * 3 + 30_000);
+
     const positionStatus: Derived["positionStatus"] = !latest
       ? "unknown"
       : latest.lat === null || latest.lon === null
         ? "unavailable"
-        : positionAge <= 15_000 ? "fresh" : positionAge <= 60_000 ? "stale" : "unavailable";
+        : positionAge <= freshLimit ? "fresh" : positionAge <= staleLimit ? "stale" : "unavailable";
 
     return { deviceStatus, positionStatus, evaluatedAt: now };
   }
@@ -185,11 +191,6 @@ export class BrickDevice extends DurableObject {
     if (typeof message === "string" && message === "ping") ws.send("pong");
   }
 
-  async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    try { ws.close(code, reason); } catch {}
-  }
-
-  async webSocketError(ws: WebSocket) {
-    try { ws.close(1011, "websocket error"); } catch {}
-  }
+  async webSocketClose(ws: WebSocket, code: number, reason: string) { try { ws.close(code, reason); } catch {} }
+  async webSocketError(ws: WebSocket) { try { ws.close(1011, "websocket error"); } catch {} }
 }
