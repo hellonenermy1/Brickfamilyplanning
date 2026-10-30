@@ -1,4 +1,4 @@
-import { verifyDeviceSignature } from "./crypto";
+import { validDevicePublicKey, verifyDeviceSignature } from "./crypto";
 
 export type DeviceJsonSecurityEnv = { DB: D1Database };
 type DeviceKeyRow = { public_key_spki_b64: string; revoked_at: number | null };
@@ -9,6 +9,22 @@ function jsonError(error: string, status: number) {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+export async function validatePairingPublicKey(req: Request): Promise<Response | null> {
+  const length = Number(req.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(length) && length > 4096) return jsonError("pairing payload too large", 400);
+  let value: unknown;
+  try { value = await req.clone().json(); } catch { return jsonError("invalid pairing JSON", 400); }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return jsonError("invalid pairing JSON", 400);
+  const body = value as Record<string, unknown>;
+  const token = body.token;
+  const publicKey = body.publicKeySpkiB64;
+  if (typeof token !== "string" || token.length < 16 || token.length > 256) return jsonError("invalid pairing token", 400);
+  if (typeof publicKey !== "string" || publicKey.length > 2048 || !(await validDevicePublicKey(publicKey))) {
+    return jsonError("invalid P-256 device public key", 400);
+  }
+  return null;
+}
+
 async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, maxBytes = 8192): Promise<SignedJson | Response> {
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return jsonError("missing or invalid signature", 401);
@@ -16,8 +32,7 @@ async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: st
   if (!row || row.revoked_at) return jsonError("device unauthorized", 401);
   const body = await req.clone().arrayBuffer();
   if (!body.byteLength || body.byteLength > maxBytes) return jsonError("invalid payload size", 400);
-  let ok = false;
-  try { ok = await verifyDeviceSignature(row.public_key_spki_b64, body, signature); } catch { ok = false; }
+  const ok = await verifyDeviceSignature(row.public_key_spki_b64, body, signature);
   if (!ok) return jsonError("bad signature", 401);
   let value: unknown;
   try { value = JSON.parse(new TextDecoder().decode(body)); } catch { return jsonError("invalid JSON", 400); }
@@ -61,8 +76,6 @@ export async function validateSafetyReplayWindow(req: Request, env: DeviceJsonSe
   if (!safePositiveInteger(eventSequence)) return jsonError("missing safety event sequence", 400);
   if (!safeTimestamp(createdAt)) return jsonError("invalid safety event timestamp", 400);
   if (createdAt > now + 5 * 60_000) return jsonError("safety event timestamp is in the future", 400);
-  // The child journal is designed for 7-14 days offline. Thirty days leaves recovery margin while
-  // ensuring an event cannot be resurrected after the server's idempotency retention expires.
   if (createdAt < now - 30 * 86_400_000) return jsonError("safety event is too old", 409);
   return null;
 }
