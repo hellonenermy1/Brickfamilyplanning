@@ -22,6 +22,14 @@ export type DeviceHealth = {
   gnssTotal?: number;
 };
 
+export type NetworkEvidence = {
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  colo: string | null;
+  receivedAt: number;
+};
+
 type StoredHealth = DeviceHealth & { receivedAt: number };
 type LatestState = {
   epoch: number;
@@ -79,12 +87,13 @@ export class BrickDevice extends DurableObject {
   }
 
   private async snapshot() {
-    const [latest, health, derived] = await Promise.all([
+    const [latest, health, networkEvidence, derived] = await Promise.all([
       this.ctx.storage.get<LatestState>("latest"),
       this.ctx.storage.get<StoredHealth>("health"),
+      this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
       this.derive()
     ]);
-    return { latest: latest ?? null, health: health ?? null, derived };
+    return { latest: latest ?? null, health: health ?? null, networkEvidence: networkEvidence ?? null, derived };
   }
 
   private broadcast(type: string, payload: unknown) {
@@ -141,6 +150,11 @@ export class BrickDevice extends DurableObject {
     await this.ctx.storage.put("health", stored);
     await this.ensureWatchdog();
     this.broadcast("health", { health: stored, derived: await this.derive() });
+  }
+
+  async setNetworkEvidence(evidence: NetworkEvidence) {
+    await this.ctx.storage.put("networkEvidence", evidence);
+    this.broadcast("networkEvidence", { networkEvidence: evidence, derived: await this.derive() });
   }
 
   async alarm() {
