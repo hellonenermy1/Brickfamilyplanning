@@ -1,0 +1,94 @@
+name: Deploy Brick Phase 5B
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID'
+        required: true
+        type: string
+      install_map:
+        description: 'Install/update the private Singapore map after deployment'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-phase5b-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Preflight credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2
+            exit 1
+          fi
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo 'Missing workflow input: cloudflare_account_id' >&2
+            exit 1
+          fi
+          echo "Cloudflare credentials are present (secret value not printed)."
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate deployment source
+        run: |
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          npm run build:parent-assets
+
+      - name: Provision and deploy Brick
+        run: npm run setup
+
+      - name: Install private Singapore map
+        if: ${{ inputs.install_map }}
+        run: npm run map:install
+
+      - name: Show deployment result
+        if: always()
+        shell: bash
+        run: |
+          if [ -f setup-state.json ]; then
+            node - <<'NODE'
+          const fs = require('fs');
+          const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
+          console.log('Brick deployment state');
+          console.log('Parent dashboard: https://' + s.workerHost + '/parent');
+          console.log('Child API base:    https://' + s.workerHost);
+          console.log('D1:                ' + s.resources.D1_NAME);
+          console.log('History R2:        ' + s.resources.R2_NAME);
+          console.log('Private map R2:    ' + s.resources.MAPS_NAME);
+          NODE
+          else
+            echo 'setup-state.json was not created; inspect the failed step above.'
+          fi
+
+      - name: Upload non-secret deployment state
+        if: ${{ always() && hashFiles('setup-state.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase5b-deployment-state
+          path: setup-state.json
+          retention-days: 7
