@@ -72,7 +72,7 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }
 
     fun ackExact(epoch: Int, seq: Long) {
-        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf(epoch, seq))
+        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf<Any>(epoch, seq))
         writableDatabase.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
     }
 }
