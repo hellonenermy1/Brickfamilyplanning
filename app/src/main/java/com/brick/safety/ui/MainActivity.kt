@@ -59,11 +59,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestPermissionsAndStart() {
+        val permissions = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-            if (Build.VERSION.SDK_INT >= 33) permissions += Manifest.permission.POST_NOTIFICATIONS
-            foregroundPermissions.launch(permissions.toTypedArray())
-        } else {
+            permissions += Manifest.permission.ACCESS_FINE_LOCATION
+            permissions += Manifest.permission.ACCESS_COARSE_LOCATION
+        }
+        if (Build.VERSION.SDK_INT >= 29 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.ACTIVITY_RECOGNITION
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+
+        if (permissions.isNotEmpty()) foregroundPermissions.launch(permissions.toTypedArray())
+        else {
             requestBackgroundIfUseful()
             startServiceNow()
         }
