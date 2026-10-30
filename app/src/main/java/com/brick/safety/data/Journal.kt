@@ -23,6 +23,7 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }
 
     data class Pending(val id: Long, val epoch: Int, val seq: Long, val payload: ByteArray)
+    data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
 
     fun nextPending(limit: Int = 100): List<Pending> {
         val out = mutableListOf<Pending>()
@@ -30,6 +31,16 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
             while (c.moveToNext()) out += Pending(c.getLong(0), c.getInt(1), c.getLong(2), JournalCipher.decrypt(c.getBlob(3)))
         }
         return out
+    }
+
+    fun stats(): Stats {
+        readableDatabase.rawQuery(
+            "SELECT COUNT(*), MIN(created_ms) FROM packets WHERE acked=0",
+            emptyArray()
+        ).use { c ->
+            c.moveToFirst()
+            return Stats(c.getInt(0), if (c.isNull(1)) null else c.getLong(1))
+        }
     }
 
     fun ackExact(epoch: Int, seq: Long) {
