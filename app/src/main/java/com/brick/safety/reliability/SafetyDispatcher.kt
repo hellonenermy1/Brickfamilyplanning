@@ -20,7 +20,7 @@ object SafetyDispatcher {
         val charging: Boolean
     )
 
-    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String {
+    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
         val snapshot = snapshot(context)
         val enriched = JSONObject(detail.toString())
             .put("batteryPct", snapshot.batteryPct)
@@ -35,10 +35,11 @@ object SafetyDispatcher {
             longitude = snapshot.longitude,
             accuracyM = snapshot.accuracyM
         )
-        SafetyOutbox(context).use { outbox ->
+        val saved = SafetyOutbox(context).use { outbox ->
             outbox.append(envelope.eventId, envelope.kind, envelope.payload, priority)
         }
-        ServiceControl.ensureTracking(context)
+        if (!saved) return null
+        runCatching { ServiceControl.ensureTracking(context) }
         return envelope.eventId
     }
 
