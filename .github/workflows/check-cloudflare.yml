@@ -25,6 +25,8 @@ jobs:
         run: |
           node --check scripts/setup.mjs
           node --check scripts/install-private-map.mjs
+      - name: Type-check private map browser module
+        run: npx tsc -p tsconfig.web.json --noEmit
       - name: Build self-hosted parent assets
         run: npm run build:parent-assets
       - name: Verify private map browser assets
