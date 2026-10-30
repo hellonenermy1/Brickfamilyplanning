@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import com.brick.safety.BuildConfig
 import com.brick.safety.R
 import com.brick.safety.activity.ActivityEngine
 import com.brick.safety.activity.ActivityMode
@@ -22,6 +23,7 @@ import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
+import com.brick.safety.reliability.HealthEvidence
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.google.android.gms.location.*
@@ -337,7 +339,7 @@ class BrickLocationService : Service() {
             .put("locationSubscribed", locationSubscribed)
             .put("managed", ManagedPolicy.isDeviceOwner(this))
             .put("recoveryCount", recoveryCount)
-            .put("appVersion", "0.4.0-phase4")
+            .put("appVersion", BuildConfig.VERSION_NAME)
             .put("activityMode", activity.mode.name.lowercase())
             .put("activityConfidence", activity.confidence)
             .put("trackingIntervalMs", trackingIntervalMs)
@@ -346,6 +348,14 @@ class BrickLocationService : Service() {
             .put("batteryPct", batteryPct)
             .put("charging", bm.isCharging)
             .put("sosActive", isSosActive())
+            .put("serviceActive", true)
+
+        val evidence = HealthEvidence.collect(this)
+        val keys = evidence.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            health.put(key, evidence.get(key))
+        }
 
         healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
