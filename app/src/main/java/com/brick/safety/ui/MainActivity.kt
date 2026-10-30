@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +20,9 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private val io = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var sosPending = false
+    private var sosSecondsLeft = 0
 
     private val foregroundPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         requestBackgroundIfUseful()
@@ -34,8 +39,8 @@ class MainActivity : AppCompatActivity() {
         runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
-        b.safeButton.setOnClickListener { b.status.text = "● Safe check-in queued" }
-        b.sosButton.setOnClickListener { b.status.text = "● SOS UI reserved for Phase 4" }
+        b.safeButton.setOnClickListener { sendSafetyEvent("safe_checkin", "● I’m Safe sent") }
+        b.sosButton.setOnClickListener { if (sosPending) cancelSos() else beginSosCountdown() }
         refresh()
     }
 
@@ -55,6 +60,61 @@ class MainActivity : AppCompatActivity() {
             } catch (_: Exception) {
                 runOnUiThread { b.status.text = "● Pairing failed"; b.pairButton.isEnabled = true }
             }
+        }
+    }
+
+    private fun sendSafetyEvent(kind: String, successText: String) {
+        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
+        val deviceId = prefs.getString("deviceId", null) ?: return
+        val apiBase = prefs.getString("apiBase", null) ?: return
+        b.safeButton.isEnabled = false
+        io.execute {
+            runCatching { BrickApi.sendSafetyEvent(apiBase, deviceId, kind) }
+                .onSuccess { runOnUiThread { b.status.text = successText; b.safeButton.isEnabled = true } }
+                .onFailure { runOnUiThread { b.status.text = "● Check-in could not reach parent"; b.safeButton.isEnabled = true } }
+        }
+    }
+
+    private fun beginSosCountdown() {
+        if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
+        sosPending = true
+        sosSecondsLeft = 3
+        b.safeButton.isEnabled = false
+        tickSos()
+    }
+
+    private fun tickSos() {
+        if (!sosPending) return
+        if (sosSecondsLeft <= 0) {
+            sosPending = false
+            b.sosButton.text = "SOS"
+            sendSosNow()
+            return
+        }
+        b.status.text = "● SOS in $sosSecondsLeft — tap SOS to cancel"
+        b.sosButton.text = "CANCEL SOS"
+        sosSecondsLeft--
+        mainHandler.postDelayed({ tickSos() }, 1_000L)
+    }
+
+    private fun cancelSos() {
+        sosPending = false
+        mainHandler.removeCallbacksAndMessages(null)
+        b.sosButton.text = "SOS"
+        b.safeButton.isEnabled = true
+        b.status.text = "● SOS cancelled"
+    }
+
+    private fun sendSosNow() {
+        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
+        val deviceId = prefs.getString("deviceId", null) ?: return
+        val apiBase = prefs.getString("apiBase", null) ?: return
+        b.sosButton.isEnabled = false
+        b.status.text = "● Sending SOS…"
+        io.execute {
+            runCatching { BrickApi.sendSafetyEvent(apiBase, deviceId, "sos_started") }
+                .onSuccess { runOnUiThread { b.status.text = "● SOS sent"; b.sosButton.isEnabled = true; b.safeButton.isEnabled = true } }
+                .onFailure { runOnUiThread { b.status.text = "● SOS delivery failed — retry"; b.sosButton.isEnabled = true; b.safeButton.isEnabled = true } }
         }
     }
 
@@ -107,5 +167,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() { io.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() {
+        sosPending = false
+        mainHandler.removeCallbacksAndMessages(null)
+        io.shutdownNow()
+        super.onDestroy()
+    }
 }
