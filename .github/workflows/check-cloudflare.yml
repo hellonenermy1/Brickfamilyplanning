@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
       - name: Validate Codespaces configuration
         run: |
           node -e "JSON.parse(require('fs').readFileSync('.devcontainer/devcontainer.json','utf8')); console.log('devcontainer JSON OK')"
