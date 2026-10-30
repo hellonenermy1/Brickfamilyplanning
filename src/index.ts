@@ -5,12 +5,14 @@ import {
   createGeofence,
   deleteGeofence,
   finishTrip,
+  getRetention,
   history,
   listGeofences,
   listTrips,
   runRetentionCleanup,
   startTrip,
-  updateGeofence
+  updateGeofence,
+  updateRetention
 } from "./phase4";
 import { processHistoryBatch } from "./history-store";
 import { parentV4Html } from "./parent-v4";
@@ -160,6 +162,7 @@ function validHealth(x: unknown): x is DeviceHealth {
   if (h.gnssTotal !== undefined && (typeof h.gnssTotal !== "number" || h.gnssTotal < 0 || h.gnssTotal > 255)) return false;
   if (h.batteryPct !== undefined && (typeof h.batteryPct !== "number" || !Number.isInteger(h.batteryPct) || h.batteryPct < 0 || h.batteryPct > 100)) return false;
   if (h.charging !== undefined && typeof h.charging !== "boolean") return false;
+  if (h.sosActive !== undefined && typeof h.sosActive !== "boolean") return false;
   return true;
 }
 
@@ -316,6 +319,14 @@ export default {
       const from = Number(u.searchParams.get("from")), to = Number(u.searchParams.get("to"));
       return noStore(await history(env, id, from, to));
     }
+
+    m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/retention$/);
+    if (m) {
+      const id = decodeURIComponent(m[1]), d = await ensureParentDevice(req, env, id); if (d) return d;
+      if (req.method === "GET") return noStore(await getRetention(env, id));
+      if (req.method === "PATCH") return noStore(await updateRetention(req, env, id));
+    }
+
     return new Response("Not found", { status: 404, headers: securityHeaders });
   },
 
