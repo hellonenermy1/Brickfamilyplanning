@@ -1,0 +1,66 @@
+import { verifyDeviceSignature } from "./crypto";
+
+export type DeviceJsonSecurityEnv = { DB: D1Database };
+type DeviceKeyRow = { public_key_spki_b64: string; revoked_at: number | null };
+
+type SignedJson = { body: ArrayBuffer; json: Record<string, unknown> };
+
+function jsonError(error: string, status: number) {
+  return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, maxBytes = 8192): Promise<SignedJson | Response> {
+  const signature = req.headers.get("X-Brick-Signature");
+  if (!signature || signature.length > 512) return jsonError("missing or invalid signature", 401);
+  const row = await env.DB.prepare("SELECT public_key_spki_b64,revoked_at FROM devices WHERE id=?1").bind(deviceId).first<DeviceKeyRow>();
+  if (!row || row.revoked_at) return jsonError("device unauthorized", 401);
+  const body = await req.clone().arrayBuffer();
+  if (!body.byteLength || body.byteLength > maxBytes) return jsonError("invalid payload size", 400);
+  let ok = false;
+  try { ok = await verifyDeviceSignature(row.public_key_spki_b64, body, signature); } catch { ok = false; }
+  if (!ok) return jsonError("bad signature", 401);
+  let value: unknown;
+  try { value = JSON.parse(new TextDecoder().decode(body)); } catch { return jsonError("invalid JSON", 400); }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return jsonError("invalid JSON object", 400);
+  return { body, json: value as Record<string, unknown> };
+}
+
+function safePositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+function safeTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+}
+
+export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, now = Date.now()): Promise<Response | null> {
+  const verified = await signedJson(req, env, deviceId);
+  if (verified instanceof Response) return verified;
+  const sequence = verified.json.healthSequence;
+  const sentAt = verified.json.healthSentAtMs;
+  if (!safePositiveInteger(sequence) || !safeTimestamp(sentAt)) return jsonError("missing health replay evidence", 400);
+  if (sentAt > now + 120_000) return jsonError("health timestamp is in the future", 400);
+  if (sentAt < now - 10 * 60_000) return jsonError("stale health heartbeat", 409);
+
+  const result = await env.DB.prepare(
+    "UPDATE devices SET last_health_sequence=?1 WHERE id=?2 AND revoked_at IS NULL AND last_health_sequence<?1"
+  ).bind(sequence, deviceId).run();
+  if ((result.meta.changes ?? 0) !== 1) return jsonError("replayed or out-of-order health heartbeat", 409);
+  return null;
+}
+
+export async function validateSafetyReplayWindow(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, now = Date.now()): Promise<Response | null> {
+  const verified = await signedJson(req, env, deviceId);
+  if (verified instanceof Response) return verified;
+  const eventId = verified.json.eventId;
+  const eventSequence = verified.json.eventSequence;
+  const createdAt = verified.json.createdAtMs;
+  if (typeof eventId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(eventId)) return jsonError("invalid safety event id", 400);
+  if (!safePositiveInteger(eventSequence)) return jsonError("missing safety event sequence", 400);
+  if (!safeTimestamp(createdAt)) return jsonError("invalid safety event timestamp", 400);
+  if (createdAt > now + 5 * 60_000) return jsonError("safety event timestamp is in the future", 400);
+  // The child journal is designed for 7-14 days offline. Thirty days leaves recovery margin while
+  // ensuring an event cannot be resurrected after the server's idempotency retention expires.
+  if (createdAt < now - 30 * 86_400_000) return jsonError("safety event is too old", 409);
+  return null;
+}
