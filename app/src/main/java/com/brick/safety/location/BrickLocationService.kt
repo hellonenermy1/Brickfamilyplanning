@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.IBinder
@@ -32,6 +33,7 @@ class BrickLocationService : Service() {
     companion object {
         const val ACTION_ENSURE_RUNNING = "com.brick.safety.action.ENSURE_RUNNING"
         private const val LOCATION_STALE_MS = 45_000L
+        private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
     }
 
@@ -41,6 +43,7 @@ class BrickLocationService : Service() {
     private val uploadPumpRunning = AtomicBoolean(false)
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
+    private lateinit var connectivity: ConnectivityManager
     private val seq = AtomicLong()
     private var epoch: Int = 1
     private var serviceStartedElapsed = 0L
@@ -50,11 +53,23 @@ class BrickLocationService : Service() {
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
 
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            kickUploadPump()
+            lastHealthElapsed = 0L
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            lastHealthElapsed = 0L
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         serviceStartedElapsed = SystemClock.elapsedRealtime()
         fused = LocationServices.getFusedLocationProviderClient(this)
         journal = Journal(this)
+        connectivity = getSystemService(ConnectivityManager::class.java)
         createChannel()
         startForeground(1001, notification("Safety active"))
 
@@ -65,6 +80,7 @@ class BrickLocationService : Service() {
 
         runCatching { ManagedPolicy.apply(this) }
         RecoveryScheduler.ensureScheduled(this)
+        runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
         startTracking()
         kickUploadPump()
         startSupervisor()
@@ -86,8 +102,8 @@ class BrickLocationService : Service() {
             .setMinUpdateIntervalMillis(2_000L)
             .setMaxUpdateDelayMillis(6_000L)
             .build()
+        locationSubscribed = true
         fused.requestLocationUpdates(req, callback, mainLooper)
-            .addOnSuccessListener { locationSubscribed = true }
             .addOnFailureListener { locationSubscribed = false }
     }
 
@@ -129,8 +145,8 @@ class BrickLocationService : Service() {
                 val prefs = getSharedPreferences("brick", MODE_PRIVATE)
                 val deviceId = prefs.getString("deviceId", null) ?: return@execute
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
+                if (!networkAvailable()) return@execute
 
-                // Reconnect behavior: restore "now" first, then fill historical gaps.
                 val newest = journal.latestPending()
                 if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
 
@@ -141,11 +157,19 @@ class BrickLocationService : Service() {
                 }
             } finally {
                 uploadPumpRunning.set(false)
-                if (journal.stats().pendingCount > 0 && networkAvailable()) {
+                if (journal.stats().pendingCount > 0 && networkAvailable() && !supervisor.isShutdown) {
                     supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)
                 }
             }
         }
+    }
+
+    private fun noteRecovery() {
+        recoveryCount += 1
+        getSharedPreferences("brick", MODE_PRIVATE).edit()
+            .putInt("recoveryCount", recoveryCount)
+            .putLong("lastSelfRecoveryWallMs", System.currentTimeMillis())
+            .apply()
     }
 
     private fun startSupervisor() {
@@ -159,12 +183,9 @@ class BrickLocationService : Service() {
             }
 
             val stale = lastLocationElapsed > 0L && now - lastLocationElapsed > LOCATION_STALE_MS
-            if ((!locationSubscribed || stale) && locationEnabled) {
-                recoveryCount += 1
-                getSharedPreferences("brick", MODE_PRIVATE).edit()
-                    .putInt("recoveryCount", recoveryCount)
-                    .putLong("lastSelfRecoveryWallMs", System.currentTimeMillis())
-                    .apply()
+            val neverProducedFix = lastLocationElapsed == 0L && now - serviceStartedElapsed > FIRST_FIX_TIMEOUT_MS
+            if ((!locationSubscribed || stale || neverProducedFix) && locationEnabled) {
+                noteRecovery()
                 startTracking()
             }
 
@@ -200,9 +221,8 @@ class BrickLocationService : Service() {
     private fun networkAvailable(): Boolean = networkKind() != "offline"
 
     private fun networkKind(): String {
-        val cm = getSystemService(ConnectivityManager::class.java)
-        val network = cm.activeNetwork ?: return "offline"
-        val caps = cm.getNetworkCapabilities(network) ?: return "offline"
+        val network = connectivity.activeNetwork ?: return "offline"
+        val caps = connectivity.getNetworkCapabilities(network) ?: return "offline"
         return when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "mobile"
@@ -228,13 +248,16 @@ class BrickLocationService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         RecoveryScheduler.ensureScheduled(this)
+        RecoveryScheduler.scheduleSoon(this, 15)
         super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
+        runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         runCatching { fused.removeLocationUpdates(callback) }
         locationSubscribed = false
         RecoveryScheduler.ensureScheduled(this)
+        RecoveryScheduler.scheduleSoon(this, 15)
         supervisor.shutdownNow()
         networkIo.shutdownNow()
         healthIo.shutdownNow()
