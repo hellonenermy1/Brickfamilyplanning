@@ -33,7 +33,7 @@ function denied() { return Response.json({ error: "Cloudflare Access authenticat
 const coreHandler = core as ExportedHandler<Env>;
 
 export default {
-  async fetch(req: Request, env: Env, ctx: ExecutionContext) {
+  async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
     if (u.pathname === "/parent" || u.pathname === "/parent/") {
       if (!parentAuthorized(req)) return denied();
