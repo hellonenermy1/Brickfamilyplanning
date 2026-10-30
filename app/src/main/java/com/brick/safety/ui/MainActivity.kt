@@ -83,7 +83,12 @@ class MainActivity : AppCompatActivity() {
     private fun queueCheckIn() {
         if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
         b.safeButton.isEnabled = false
-        SafetyDispatcher.enqueue(this, "safe_checkin", priority = SafetyDispatcher.PRIORITY_NORMAL)
+        if (SafetyDispatcher.enqueue(this, "safe_checkin", priority = SafetyDispatcher.PRIORITY_NORMAL) == null) {
+            b.status.text = "● I’m Safe NOT SAVED — storage error"
+            b.safeButton.isEnabled = true
+            renderSosState()
+            return
+        }
         b.status.text = "● I’m Safe queued — sending…"
         io.execute {
             SafetyDispatcher.drain(this, 20)
@@ -126,8 +131,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun activateSos() {
+        if (SafetyDispatcher.enqueue(this, "sos_started", priority = SafetyDispatcher.PRIORITY_CRITICAL) == null) {
+            b.status.text = "● SOS NOT SAVED — storage error"
+            b.safeButton.isEnabled = true
+            renderSosState()
+            return
+        }
         getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", true).apply()
-        SafetyDispatcher.enqueue(this, "sos_started", priority = SafetyDispatcher.PRIORITY_CRITICAL)
         runCatching { ServiceControl.ensureTracking(this) }
         b.status.text = "● SOS ACTIVE — sending…"
         b.safeButton.isEnabled = true
@@ -143,8 +153,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endSos() {
+        if (SafetyDispatcher.enqueue(this, "sos_cancelled", priority = SafetyDispatcher.PRIORITY_CRITICAL) == null) {
+            b.status.text = "● SOS ACTIVE — end update NOT SAVED"
+            renderSosState()
+            return
+        }
         getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", false).apply()
-        SafetyDispatcher.enqueue(this, "sos_cancelled", priority = SafetyDispatcher.PRIORITY_CRITICAL)
         runCatching { ServiceControl.ensureTracking(this) }
         b.status.text = "● Ending SOS…"
         renderSosState()
