@@ -72,7 +72,7 @@ export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePa
 }
 
 export async function createGeofence(req:Request,env:Phase4Env,deviceId:string){
-  const b=await req.json<Record<string,unknown>>().catch(()=>({}));
+  const b:Record<string,unknown>=await req.json<Record<string,unknown>>().catch(()=>({} as Record<string,unknown>));
   const name=typeof b.name==="string"?b.name.trim().slice(0,64):""; const lat=Number(b.latitude),lon=Number(b.longitude),radius=Number(b.radiusM);
   if(!name||!Number.isFinite(lat)||lat< -90||lat>90||!Number.isFinite(lon)||lon< -180||lon>180||!Number.isFinite(radius)||radius<25||radius>5000)return Response.json({error:"invalid geofence"},{status:400});
   const id=crypto.randomUUID(); await env.DB.prepare("INSERT INTO geofences(id,device_id,name,latitude,longitude,radius_m,enabled,created_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7)").bind(id,deviceId,name,lat,lon,radius,Date.now()).run();
@@ -81,7 +81,7 @@ export async function createGeofence(req:Request,env:Phase4Env,deviceId:string){
 export async function listGeofences(env:Phase4Env,deviceId:string){ const r=await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled,created_at FROM geofences WHERE device_id=?1 ORDER BY created_at").bind(deviceId).all(); return Response.json({geofences:r.results}); }
 
 export async function startTrip(req:Request,env:Phase4Env,deviceId:string){
-  const b=await req.json<Record<string,unknown>>().catch(()=>({})); const name=typeof b.destinationName==="string"?b.destinationName.trim().slice(0,80):null;
+  const b:Record<string,unknown>=await req.json<Record<string,unknown>>().catch(()=>({} as Record<string,unknown>)); const name=typeof b.destinationName==="string"?b.destinationName.trim().slice(0,80):null;
   const lat=b.latitude==null?null:Number(b.latitude),lon=b.longitude==null?null:Number(b.longitude),expected=b.expectedArrivalAt==null?null:Number(b.expectedArrivalAt),radius=b.radiusM==null?120:Number(b.radiusM);
   if((lat===null)!==(lon===null)|| (lat!==null&&(!Number.isFinite(lat)||!Number.isFinite(lon!)||lat< -90||lat>90||lon!< -180||lon!>180)) || !Number.isFinite(radius)||radius<50||radius>1000)return Response.json({error:"invalid trip"},{status:400});
   await env.DB.prepare("UPDATE trips SET state='cancelled',ended_at=?1 WHERE device_id=?2 AND state='active'").bind(Date.now(),deviceId).run();
