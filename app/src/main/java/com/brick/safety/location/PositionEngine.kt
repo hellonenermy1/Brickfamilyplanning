@@ -58,10 +58,11 @@ class PositionEngine(
     )
 
     private val prefs = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
-    private var lastTrusted: Anchor? = loadRecentAnchor()
-    private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
-    private var runningStrideM = prefs.getFloat("runningStrideM", 1.05f).coerceIn(0.70f, 1.80f)
+    @Volatile private var lastTrusted: Anchor? = loadRecentAnchor()
+    @Volatile private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
+    @Volatile private var runningStrideM = prefs.getFloat("runningStrideM", 1.05f).coerceIn(0.70f, 1.80f)
 
+    @Synchronized
     fun evaluate(raw: Location, activityInput: ActivitySnapshot): PositionSample {
         val nowElapsed = SystemClock.elapsedRealtime()
         val activity = freshActivity(activityInput, nowElapsed)
@@ -85,17 +86,16 @@ class PositionEngine(
                 accepted = false
             }
 
-            // A very weak fresh fix should not replace a recent, much better anchor.
             val anchorAge = nowElapsed - previous.elapsedMs
             if (raw.accuracy > 500f && anchorAge < 5 * 60_000L) accepted = false
         }
 
-        if (!accepted) return fallback(raw, activity, mock, nowElapsed)
+        if (!accepted) return fallbackForRejectedRaw(raw, activity, mock, nowElapsed)
 
         val stepTotal = motion.snapshot().totalSteps
         calibrateStride(previous, raw, activity, stepTotal)
 
-        val speed = when {
+        var speed = when {
             raw.hasSpeed() && raw.speed.isFinite() && raw.speed >= 0f -> raw.speed
             previous != null && rawElapsed > previous.elapsedMs -> {
                 val dt = (rawElapsed - previous.elapsedMs) / 1000f
@@ -103,7 +103,15 @@ class PositionEngine(
             }
             else -> null
         }
-        val speedAcc = if (raw.hasSpeedAccuracy()) raw.speedAccuracyMetersPerSecond else null
+        var speedAcc = if (raw.hasSpeedAccuracy()) raw.speedAccuracyMetersPerSecond else null
+
+        // Suppress stationary GPS/Doppler noise instead of presenting tiny fake speeds.
+        if (activity.mode == ActivityMode.STATIONARY &&
+            speed != null && speed <= 1.2f && (speedAcc == null || speedAcc >= 0.6f)) {
+            speed = 0f
+            speedAcc = speedAcc ?: 1.0f
+        }
+
         val bearing = if (raw.hasBearing()) normalizeDegrees(raw.bearing) else previous?.bearingDeg
         val bearingAcc = if (raw.hasBearingAccuracy()) raw.bearingAccuracyDegrees else null
         val quality = when {
@@ -139,20 +147,47 @@ class PositionEngine(
     }
 
     /** Called when fresh fused fixes stop arriving. Never pretends this is measured GPS. */
+    @Synchronized
     fun fallback(activityInput: ActivitySnapshot): PositionSample? {
         val nowElapsed = SystemClock.elapsedRealtime()
-        return fallback(null, freshActivity(activityInput, nowElapsed), false, nowElapsed)
+        return buildFallback(null, freshActivity(activityInput, nowElapsed), false, nowElapsed)
     }
 
-    private fun fallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, nowElapsed: Long): PositionSample? {
+    private fun fallbackForRejectedRaw(raw: Location, activity: ActivitySnapshot, rawMock: Boolean, nowElapsed: Long): PositionSample {
+        return buildFallback(raw, activity, rawMock, nowElapsed) ?: PositionSample(
+            rawLat = raw.latitude.takeIf { it.isFinite() },
+            rawLon = raw.longitude.takeIf { it.isFinite() },
+            rawAccuracyM = raw.accuracy.takeIf { it.isFinite() && it >= 0f },
+            trustedLat = null,
+            trustedLon = null,
+            uncertaintyM = 5_000f,
+            speedMps = null,
+            speedAccuracyMps = null,
+            bearingDeg = null,
+            bearingAccuracyDeg = null,
+            altitudeM = null,
+            verticalAccuracyM = null,
+            rawAccepted = false,
+            rawMock = rawMock,
+            activity = activity,
+            quality = PositionQuality.UNKNOWN,
+            source = PositionSource.UNKNOWN,
+            gnss = gnss.snapshot(),
+            stepDelta = 0,
+            elapsedRealtimeMs = nowElapsed,
+            wallTimeMs = System.currentTimeMillis()
+        )
+    }
+
+    private fun buildFallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, nowElapsed: Long): PositionSample? {
         val anchor = lastTrusted
         val gnssSnapshot = gnss.snapshot()
         val rawElapsed = raw?.elapsedRealtimeNanos?.div(1_000_000L)
         if (anchor == null) {
             return if (raw != null && !rawMock && raw.latitude.isFinite() && raw.longitude.isFinite()) {
                 PositionSample(
-                    raw.latitude, raw.longitude, raw.accuracy,
-                    raw.latitude, raw.longitude, max(raw.accuracy, 500f),
+                    raw.latitude, raw.longitude, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
+                    raw.latitude, raw.longitude, max(raw.accuracy.takeIf { it.isFinite() && it >= 0f } ?: 500f, 500f),
                     null, null, null, null,
                     if (raw.hasAltitude()) raw.altitude else null,
                     if (raw.hasVerticalAccuracy()) raw.verticalAccuracyMeters else null,
@@ -179,7 +214,8 @@ class PositionEngine(
                     val stride = if (activity.mode == ActivityMode.RUNNING) runningStrideM else walkingStrideM
                     val distance = steps * stride
                     val projected = project(anchor.lat, anchor.lon, distance.toDouble(), heading.toDouble())
-                    lat = projected.first; lon = projected.second
+                    lat = projected.first
+                    lon = projected.second
                     uncertainty = anchor.accuracyM + 8f + (distance * 0.30f) + (ageSec * 0.9).toFloat()
                     quality = PositionQuality.ESTIMATED
                     source = PositionSource.INERTIAL
@@ -188,11 +224,11 @@ class PositionEngine(
             ActivityMode.VEHICLE, ActivityMode.BICYCLE -> {
                 val speed = anchor.speedMps
                 val course = anchor.bearingDeg
-                // Constant-velocity propagation is intentionally short. Beyond this, last-known is safer.
                 if (speed != null && course != null && ageSec <= 20.0) {
-                    val distance = speed * ageSec
+                    val distance = speed.toDouble() * ageSec
                     val projected = project(anchor.lat, anchor.lon, distance, course.toDouble())
-                    lat = projected.first; lon = projected.second
+                    lat = projected.first
+                    lon = projected.second
                     uncertainty = anchor.accuracyM + 15f + (ageSec * 4f).toFloat() + (distance * 0.15).toFloat()
                     quality = PositionQuality.ESTIMATED
                     source = PositionSource.INERTIAL
@@ -202,7 +238,7 @@ class PositionEngine(
         }
 
         return PositionSample(
-            raw?.latitude, raw?.longitude, raw?.accuracy,
+            raw?.latitude?.takeIf { it.isFinite() }, raw?.longitude?.takeIf { it.isFinite() }, raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
             lat, lon, uncertainty.coerceAtMost(5_000f),
             null, null, heading, null,
             null, null,
