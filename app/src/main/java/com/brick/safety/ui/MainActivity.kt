@@ -1,28 +1,37 @@
 package com.brick.safety.ui
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.brick.safety.databinding.ActivityMainBinding
-import com.brick.safety.location.BrickLocationService
+import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
+import com.brick.safety.reliability.RecoveryScheduler
+import com.brick.safety.reliability.ServiceControl
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private val io = Executors.newSingleThreadExecutor()
 
-    private val permission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
+    private val foregroundPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        requestBackgroundIfUseful()
+        refresh()
+    }
+    private val backgroundPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
+
+        RecoveryScheduler.ensureScheduled(this)
+        runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
         b.safeButton.setOnClickListener { b.status.text = "● Safe check-in queued" }
@@ -38,7 +47,10 @@ class MainActivity : AppCompatActivity() {
         io.execute {
             try {
                 val r = BrickApi.completePairing(base, token)
-                getSharedPreferences("brick", MODE_PRIVATE).edit().putString("deviceId", r.deviceId).putString("apiBase", r.apiBase).apply()
+                getSharedPreferences("brick", MODE_PRIVATE).edit()
+                    .putString("deviceId", r.deviceId)
+                    .putString("apiBase", r.apiBase)
+                    .apply()
                 runOnUiThread { requestPermissionsAndStart() }
             } catch (_: Exception) {
                 runOnUiThread { b.status.text = "● Pairing failed"; b.pairButton.isEnabled = true }
@@ -48,12 +60,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestPermissionsAndStart() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.POST_NOTIFICATIONS))
-        } else startServiceNow()
+            val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (Build.VERSION.SDK_INT >= 33) permissions += Manifest.permission.POST_NOTIFICATIONS
+            foregroundPermissions.launch(permissions.toTypedArray())
+        } else {
+            requestBackgroundIfUseful()
+            startServiceNow()
+        }
+    }
+
+    private fun requestBackgroundIfUseful() {
+        if (ManagedPolicy.isDeviceOwner(this)) return
+        if (Build.VERSION.SDK_INT >= 29 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            backgroundPermission.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
     }
 
     private fun startServiceNow() {
-        ContextCompat.startForegroundService(this, Intent(this, BrickLocationService::class.java))
+        runCatching { ServiceControl.ensureTracking(this) }
         b.status.text = "● Safety active"
     }
 
@@ -66,7 +92,7 @@ class MainActivity : AppCompatActivity() {
             b.safeButton.isEnabled = true; b.sosButton.isEnabled = true
             startServiceNow()
         } else {
-            b.status.text = if (paired) "● Location permission needed" else "● Setup required"
+            b.status.text = if (paired) "● Location needs attention" else "● Setup required"
         }
     }
 
