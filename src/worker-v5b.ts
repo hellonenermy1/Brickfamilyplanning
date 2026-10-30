@@ -49,7 +49,7 @@ function sameOriginMutation(req: Request) {
 function csrfDenied() {
   return Response.json({ error: "same-origin request required" }, { status: 403, headers: { "Cache-Control": "no-store" } });
 }
-async function journalEvidenceDenied(req: Request): Promise<Response | null> {
+async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
   let value: unknown;
   try {
     const body = await req.clone().arrayBuffer();
@@ -58,12 +58,16 @@ async function journalEvidenceDenied(req: Request): Promise<Response | null> {
   } catch { return null; }
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const h = value as Record<string, unknown>;
-  if (h.journalWriteHealthy !== undefined && typeof h.journalWriteHealthy !== "boolean") {
-    return Response.json({ error: "invalid journal health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  for (const field of ["journalWriteHealthy", "safetyOutboxWriteHealthy"]) {
+    if (h[field] !== undefined && typeof h[field] !== "boolean") {
+      return Response.json({ error: "invalid local durability health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
   }
-  if (h.lastJournalWriteFailureAgeMs !== undefined && h.lastJournalWriteFailureAgeMs !== null &&
-      (typeof h.lastJournalWriteFailureAgeMs !== "number" || !Number.isFinite(h.lastJournalWriteFailureAgeMs) || h.lastJournalWriteFailureAgeMs < 0)) {
-    return Response.json({ error: "invalid journal health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  for (const field of ["lastJournalWriteFailureAgeMs", "lastSafetyOutboxWriteFailureAgeMs"]) {
+    const v = h[field];
+    if (v !== undefined && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
+      return Response.json({ error: "invalid local durability health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
   }
   return null;
 }
@@ -128,7 +132,7 @@ export default {
 
     m = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
     if (req.method === "POST" && m) {
-      const denied = await journalEvidenceDenied(req);
+      const denied = await localDurabilityEvidenceDenied(req);
       if (denied) return denied;
     }
 
