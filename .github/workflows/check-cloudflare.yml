@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 5
+name: Check Brick Cloudflare Phase 5B
 
 on:
   push:
-    branches: [phase5-cloudflare-parent-ops]
+    branches: [phase5b-private-map-places]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -21,11 +21,24 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Syntax-check setup script
-        run: node --check scripts/setup.mjs
+      - name: Syntax-check setup and private map installer
+        run: |
+          node --check scripts/setup.mjs
+          node --check scripts/install-private-map.mjs
+      - name: Build self-hosted parent assets
+        run: npm run build:parent-assets
+      - name: Verify private map browser assets
+        run: |
+          test -s public/brick-map.mjs
+          test -s public/maplibre-gl.css
+          test -s public/maplibre-gl-worker.mjs
+          if grep -E 'unpkg\.com/maplibre-gl|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com' public/brick-map.mjs; then
+            echo 'External live map endpoint found in self-hosted bundle' >&2
+            exit 1
+          fi
       - name: Type-check Worker
         run: npm run typecheck
-      - name: Parse parent dashboard module
+      - name: Render and parse Phase 5B parent dashboard
         run: node scripts/check-parent-module.mjs
       - name: Validate Phase 5 health classification
         run: |
