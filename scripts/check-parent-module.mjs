@@ -23,20 +23,21 @@ try {
   if (typeof html !== 'string' || html.length < 10_000) throw new Error('Phase 5B dashboard did not render a complete HTML document');
 
   const required = [
-    '/parent-assets/brick-map.mjs',
-    '/parent-assets/maplibre-gl.css',
+    '/brick-map.mjs',
+    '/maplibre-gl.css',
     'Map · checking private archive'
   ];
   for (const value of required) if (!html.includes(value)) throw new Error(`Missing Phase 5B dashboard invariant: ${value}`);
 
   const forbidden = [
+    '/parent-assets/',
     'unpkg.com/maplibre-gl',
     'demotiles.maplibre.org',
     'nominatim.openstreetmap.org',
     'maps.googleapis.com',
     'maps.google.com'
   ];
-  for (const value of forbidden) if (html.includes(value)) throw new Error(`Privacy regression: live parent HTML contains ${value}`);
+  for (const value of forbidden) if (html.includes(value)) throw new Error(`Privacy/deployment regression: live parent HTML contains ${value}`);
 
   const match = html.match(/<script\s+type=["']module["']>([\s\S]*?)<\/script>/);
   if (!match) throw new Error('Could not find Phase 5B parent dashboard module script');
