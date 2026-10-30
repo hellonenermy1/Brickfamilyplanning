@@ -22,6 +22,7 @@ object HealthEvidence {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
+        val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
 
         val activeNetwork = connectivity.activeNetwork
         val caps = activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
@@ -46,5 +47,7 @@ object HealthEvidence {
             .put("stepCounterAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null)
             .put("stepDetectorAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null)
             .put("lastSelfRecoveryAgeMs", if (lastRecovery > 0L) now - lastRecovery else JSONObject.NULL)
+            .put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))
+            .put("lastJournalWriteFailureAgeMs", if (lastJournalFailure > 0L) now - lastJournalFailure else JSONObject.NULL)
     }
 }

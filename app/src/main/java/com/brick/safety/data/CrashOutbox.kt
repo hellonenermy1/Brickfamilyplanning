@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class CrashOutbox(context: Context) : SQLiteOpenHelper(context, "brick_crash_outbox.db", null, 1) {
+    companion object { private const val MAX_PENDING_DIAGNOSTICS = 500 }
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE crash_reports(id INTEGER PRIMARY KEY AUTOINCREMENT, report_id TEXT NOT NULL UNIQUE, payload BLOB NOT NULL, created_ms INTEGER NOT NULL, acked INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE INDEX idx_crash_pending ON crash_reports(acked,id)")
@@ -22,6 +24,11 @@ class CrashOutbox(context: Context) : SQLiteOpenHelper(context, "brick_crash_out
             put("payload", JournalCipher.encrypt(payload))
             put("created_ms", System.currentTimeMillis())
         }, SQLiteDatabase.CONFLICT_IGNORE)
+        // Diagnostics are lower priority than location evidence. Keep a bounded recent set during a crash loop.
+        writableDatabase.execSQL(
+            "DELETE FROM crash_reports WHERE acked=0 AND id < (SELECT COALESCE(MAX(id)-?,0) FROM crash_reports)",
+            arrayOf(MAX_PENDING_DIAGNOSTICS)
+        )
     }
 
     fun pending(limit: Int = 10): List<Pending> {

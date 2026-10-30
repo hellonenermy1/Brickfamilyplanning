@@ -36,7 +36,7 @@ object CrashReporter {
         ).joinToString("|")
         val signature = MessageDigest.getInstance("SHA-256")
             .digest(signatureMaterial.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) }
+            .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
         val reportId = UUID.randomUUID().toString()
         val version = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
