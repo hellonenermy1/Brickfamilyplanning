@@ -32,4 +32,16 @@ object BrickApi {
         if (c.responseCode !in 200..299) error("Upload failed ${c.responseCode}: $text")
         return JSONObject(text).getLong("ack")
     }
+
+    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
+        val payload = health.toString().toByteArray(Charsets.UTF_8)
+        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/health")
+        val c = url.openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/json")
+        c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
+        c.outputStream.use { it.write(payload) }
+        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
+    }
 }
