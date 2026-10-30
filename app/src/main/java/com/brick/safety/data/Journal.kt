@@ -40,6 +40,16 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
         }
     }
 
+    fun maxSequence(epoch: Int): Long {
+        readableDatabase.rawQuery(
+            "SELECT COALESCE(MAX(seq),0) FROM packets WHERE epoch=?",
+            arrayOf(epoch.toString())
+        ).use { c ->
+            c.moveToFirst()
+            return c.getLong(0)
+        }
+    }
+
     data class Pending(val id: Long, val epoch: Int, val seq: Long, val payload: ByteArray)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
 
