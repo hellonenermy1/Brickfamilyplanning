@@ -42,6 +42,8 @@ export type DeviceHealth = {
   lastSelfRecoveryAgeMs?: number | null;
   journalWriteHealthy?: boolean;
   lastJournalWriteFailureAgeMs?: number | null;
+  safetyOutboxWriteHealthy?: boolean;
+  lastSafetyOutboxWriteFailureAgeMs?: number | null;
   operationalStatus?: "healthy" | "degraded";
   operationalReason?: string;
 };
