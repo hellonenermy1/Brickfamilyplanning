@@ -1,4 +1,4 @@
-import { BrickDevice } from "./device-do";
+import { BrickDevice, type DeviceHealth } from "./device-do";
 import { decodeLivePacket } from "./protocol";
 import { randomToken, sha256Hex, verifyDeviceSignature } from "./crypto";
 export { BrickDevice };
@@ -16,6 +16,8 @@ type Env = {
 
 type PairStartBody = { name?: string };
 type PairCompleteBody = { token?: string; publicKeySpkiB64?: string };
+
+type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
 
 const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
@@ -45,6 +47,21 @@ function parentAuthorized(req: Request): boolean {
 async function parentOnly(req: Request) {
   if (!parentAuthorized(req)) return json({ error: "Cloudflare Access authentication required" }, 401);
   return null;
+}
+
+async function getAuthorizedDevice(env: Env, deviceId: string): Promise<DeviceRecord | null> {
+  const device = await env.DB.prepare("SELECT public_key_spki_b64, revoked_at FROM devices WHERE id=?1")
+    .bind(deviceId).first<DeviceRecord>();
+  return device && !device.revoked_at ? device : null;
+}
+
+async function verifySignedPayload(req: Request, device: DeviceRecord, maxBytes: number): Promise<ArrayBuffer | Response> {
+  const sig = req.headers.get("X-Brick-Signature");
+  if (!sig || sig.length > 512) return json({ error: "missing or invalid signature" }, 401);
+  const payload = await req.arrayBuffer();
+  if (payload.byteLength === 0 || payload.byteLength > maxBytes) return json({ error: "invalid payload size" }, 400);
+  if (!(await verifyDeviceSignature(device.public_key_spki_b64, payload, sig))) return json({ error: "bad signature" }, 401);
+  return payload;
 }
 
 async function createPairing(req: Request, env: Env) {
@@ -88,22 +105,15 @@ async function completePairing(req: Request, env: Env) {
 async function ingest(req: Request, env: Env, deviceId: string) {
   const rl = await env.DEVICE_RATE.limit({ key: deviceId });
   if (!rl.success) return json({ error: "rate limited" }, 429);
-
-  const device = await env.DB.prepare("SELECT public_key_spki_b64, revoked_at FROM devices WHERE id=?1")
-    .bind(deviceId).first<{public_key_spki_b64: string; revoked_at: number | null}>();
-  if (!device || device.revoked_at) return json({ error: "device unauthorized" }, 401);
-
-  const sig = req.headers.get("X-Brick-Signature");
-  if (!sig || sig.length > 512) return json({ error: "missing or invalid signature" }, 401);
-  const payload = await req.arrayBuffer();
-  if (payload.byteLength !== 43) return json({ error: "bad packet length" }, 400);
-  if (!(await verifyDeviceSignature(device.public_key_spki_b64, payload, sig))) return json({ error: "bad signature" }, 401);
+  const device = await getAuthorizedDevice(env, deviceId);
+  if (!device) return json({ error: "device unauthorized" }, 401);
+  const verified = await verifySignedPayload(req, device, 43);
+  if (verified instanceof Response) return verified;
+  if (verified.byteLength !== 43) return json({ error: "bad packet length" }, 400);
 
   let packet;
-  try { packet = decodeLivePacket(payload); } catch (e) { return json({ error: String(e) }, 400); }
+  try { packet = decodeLivePacket(verified); } catch (e) { return json({ error: String(e) }, 400); }
   const now = Date.now();
-
-  await env.EVENTS.send({ deviceId, packet });
 
   const [firstSeen, advance] = await env.DB.batch([
     env.DB.prepare(
@@ -116,18 +126,59 @@ async function ingest(req: Request, env: Env, deviceId: string) {
 
   const isNew = (firstSeen.meta.changes ?? 0) > 0;
   const isNewest = (advance.meta.changes ?? 0) > 0;
-
+  if (isNew) await env.EVENTS.send({ type: "location", deviceId, packet });
   if (isNewest) {
     const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
     await stub.setLatest(packet);
   }
-
   return json({ ack: packet.sequence, duplicate: !isNew, liveAdvanced: isNewest });
+}
+
+function validHealth(x: unknown): x is DeviceHealth {
+  if (!x || typeof x !== "object") return false;
+  const h = x as Record<string, unknown>;
+  const network = h.network;
+  return h.protocol === 1 &&
+    typeof h.elapsedRealtimeMs === "number" && h.elapsedRealtimeMs >= 0 &&
+    typeof h.serviceUptimeMs === "number" && h.serviceUptimeMs >= 0 &&
+    (h.locationAgeMs === null || (typeof h.locationAgeMs === "number" && h.locationAgeMs >= 0)) &&
+    (h.ackAgeMs === null || (typeof h.ackAgeMs === "number" && h.ackAgeMs >= 0)) &&
+    typeof h.pendingRecords === "number" && Number.isInteger(h.pendingRecords) && h.pendingRecords >= 0 && h.pendingRecords <= 10_000_000 &&
+    (h.oldestPendingAgeMs === null || (typeof h.oldestPendingAgeMs === "number" && h.oldestPendingAgeMs >= 0)) &&
+    (network === "wifi" || network === "mobile" || network === "other" || network === "offline") &&
+    typeof h.locationEnabled === "boolean" && typeof h.locationSubscribed === "boolean" &&
+    typeof h.managed === "boolean" && typeof h.recoveryCount === "number" && Number.isInteger(h.recoveryCount) && h.recoveryCount >= 0 &&
+    typeof h.appVersion === "string" && h.appVersion.length <= 64;
+}
+
+async function ingestHealth(req: Request, env: Env, deviceId: string) {
+  const rl = await env.DEVICE_RATE.limit({ key: `${deviceId}:health` });
+  if (!rl.success) return json({ error: "rate limited" }, 429);
+  const device = await getAuthorizedDevice(env, deviceId);
+  if (!device) return json({ error: "device unauthorized" }, 401);
+  const verified = await verifySignedPayload(req, device, 4096);
+  if (verified instanceof Response) return verified;
+
+  let health: unknown;
+  try { health = JSON.parse(new TextDecoder().decode(verified)); } catch { return json({ error: "invalid health JSON" }, 400); }
+  if (!validHealth(health)) return json({ error: "invalid health schema" }, 400);
+
+  const now = Date.now();
+  const status = health.locationEnabled && health.locationSubscribed ? "healthy" : "degraded";
+  await env.DB.prepare(
+    "UPDATE devices SET last_health_at=?1, health_status=?2, recovery_count=?3, pending_records=?4, app_version=?5 WHERE id=?6 AND revoked_at IS NULL"
+  ).bind(now, status, health.recoveryCount, health.pendingRecords, health.appVersion, deviceId).run();
+
+  const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
+  await stub.setHealth(health);
+  return json({ ok: true, receivedAt: now });
 }
 
 async function listDevices(req: Request, env: Env) {
   const denied = await parentOnly(req); if (denied) return denied;
-  const result = await env.DB.prepare("SELECT id,name,created_at,last_seen_at,revoked_at FROM devices ORDER BY created_at DESC").all();
+  const result = await env.DB.prepare(
+    "SELECT id,name,created_at,last_seen_at,last_health_at,health_status,recovery_count,pending_records,app_version,revoked_at FROM devices ORDER BY created_at DESC"
+  ).all();
   return json({ devices: result.results });
 }
 
@@ -141,7 +192,7 @@ async function parentDeviceProxy(req: Request, env: Env, deviceId: string, kind:
 }
 
 function parentHtml() {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css"><style>html,body{margin:0;font-family:system-ui;background:#f4f6f8;color:#121417}header{height:56px;padding:0 20px;background:#fff;border-bottom:1px solid #e4e7eb;display:flex;align-items:center;justify-content:space-between}.wrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:calc(100vh - 57px)}#map{min-height:540px}.panel{background:#fff;padding:20px;border-left:1px solid #e4e7eb}.row{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid #eef0f2}.muted{color:#69727d}.good{color:#177245}.bad{color:#b42318}button,input,select{font:inherit}button{cursor:pointer}input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cfd5dc;border-radius:8px}.primary{margin-top:8px;width:100%;padding:11px;border:0;border-radius:8px;background:#121417;color:white}pre{white-space:pre-wrap;word-break:break-all;background:#f5f6f7;padding:10px;border-radius:8px}@media(max-width:760px){.wrap{grid-template-columns:1fr}.panel{border-left:0;border-top:1px solid #ddd}#map{min-height:55vh}}</style></head><body><header><strong>BRICK</strong><span id="status" class="muted">Loading…</span></header><div class="wrap"><div id="map"></div><aside class="panel"><label>Device</label><select id="devices"></select><h2 id="name">No device</h2><div class="row"><span>Position</span><b id="quality">—</b></div><div class="row"><span>Accuracy</span><b id="accuracy">—</b></div><div class="row"><span>Battery</span><b id="battery">—</b></div><div class="row"><span>Charging</span><b id="charging">—</b></div><div class="row"><span>Updated</span><b id="updated">—</b></div><hr><h3>Pair device</h3><input id="pairName" value="Child phone" maxlength="64"><button id="pairBtn" class="primary">Create 10-minute pairing code</button><pre id="pairOut">—</pre></aside></div><script type="module">import maplibregl from 'https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs';const map=new maplibregl.Map({container:'map',style:'https://demotiles.maplibre.org/style.json',center:[103.8198,1.3521],zoom:11});let marker,ws,timer,current;function render(s){if(!s)return;document.querySelector('#status').textContent='Device online';document.querySelector('#status').className='good';document.querySelector('#quality').textContent='PRECISE';document.querySelector('#accuracy').textContent='±'+s.accuracyM.toFixed(0)+' m';document.querySelector('#battery').textContent=s.batteryPct+'%';document.querySelector('#charging').textContent=s.charging?'Yes':'No';document.querySelector('#updated').textContent=Math.max(0,Math.round((Date.now()-s.receivedAt)/1000))+' sec ago';const ll=[s.lon,s.lat];if(!marker){marker=new maplibregl.Marker().setLngLat(ll).addTo(map);map.flyTo({center:ll,zoom:16});}else marker.setLngLat(ll)}async function connect(id){current=id;if(ws)ws.close();const proto=location.protocol==='https:'?'wss://':'ws://';ws=new WebSocket(proto+location.host+'/parent/api/device/'+encodeURIComponent(id)+'/ws');ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='location')render(m.state)};ws.onclose=()=>{if(current===id)timer=setTimeout(()=>connect(id),1500)}}async function load(){const r=await fetch('/parent/api/devices');const j=await r.json();const sel=document.querySelector('#devices');sel.innerHTML='';for(const d of j.devices||[]){const o=document.createElement('option');o.value=d.id;o.textContent=d.name;sel.appendChild(o)}if(sel.value){document.querySelector('#name').textContent=sel.options[sel.selectedIndex].text;connect(sel.value)}else{document.querySelector('#status').textContent='No paired device'}sel.onchange=()=>{document.querySelector('#name').textContent=sel.options[sel.selectedIndex]?.text||'Device';connect(sel.value)}}load();document.querySelector('#pairBtn').onclick=async()=>{const r=await fetch('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:document.querySelector('#pairName').value})});const j=await r.json();document.querySelector('#pairOut').textContent=j.token?('Pairing token (expires in 10 min):\n'+j.token):JSON.stringify(j,null,2);setTimeout(load,2500)};</script></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css"><style>html,body{margin:0;font-family:system-ui;background:#f4f6f8;color:#121417}header{height:56px;padding:0 20px;background:#fff;border-bottom:1px solid #e4e7eb;display:flex;align-items:center;justify-content:space-between}.wrap{display:grid;grid-template-columns:minmax(0,1fr) 350px;min-height:calc(100vh - 57px)}#map{min-height:540px}.panel{background:#fff;padding:20px;border-left:1px solid #e4e7eb}.row{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #eef0f2}.muted{color:#69727d}.good{color:#177245}.warn{color:#a15c00}.bad{color:#b42318}button,input,select{font:inherit}button{cursor:pointer}input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cfd5dc;border-radius:8px}.primary{margin-top:8px;width:100%;padding:11px;border:0;border-radius:8px;background:#121417;color:white}pre{white-space:pre-wrap;word-break:break-all;background:#f5f6f7;padding:10px;border-radius:8px}@media(max-width:760px){.wrap{grid-template-columns:1fr}.panel{border-left:0;border-top:1px solid #ddd}#map{min-height:55vh}}</style></head><body><header><strong>BRICK</strong><span><b id="deviceHealth">DEVICE —</b> · <b id="positionHealth">POSITION —</b></span></header><div class="wrap"><div id="map"></div><aside class="panel"><label>Device</label><select id="devices"></select><h2 id="name">No device</h2><div class="row"><span>Accuracy</span><b id="accuracy">—</b></div><div class="row"><span>Battery</span><b id="battery">—</b></div><div class="row"><span>Charging</span><b id="charging">—</b></div><div class="row"><span>Network</span><b id="network">—</b></div><div class="row"><span>Pending records</span><b id="pending">—</b></div><div class="row"><span>Self-recoveries</span><b id="recoveries">—</b></div><div class="row"><span>App</span><b id="version">—</b></div><div class="row"><span>Updated</span><b id="updated">—</b></div><hr><h3>Pair device</h3><input id="pairName" value="Child phone" maxlength="64"><button id="pairBtn" class="primary">Create 10-minute pairing code</button><pre id="pairOut">—</pre></aside></div><script type="module">import maplibregl from 'https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs';const map=new maplibregl.Map({container:'map',style:'https://demotiles.maplibre.org/style.json',center:[103.8198,1.3521],zoom:11});let marker,ws,timer,current,last;const $=s=>document.querySelector(s);function statusEl(el,text,state){el.textContent=text;el.className=state==='healthy'||state==='fresh'?'good':state==='degraded'||state==='stale'?'warn':state==='unknown'?'muted':'bad'}function renderSnapshot(s){if(!s)return;last=s;const l=s.latest,h=s.health,d=s.derived||{};statusEl($('#deviceHealth'),'DEVICE '+String(d.deviceStatus||'unknown').toUpperCase(),d.deviceStatus);statusEl($('#positionHealth'),'POSITION '+String(d.positionStatus||'unknown').toUpperCase(),d.positionStatus);if(l){$('#accuracy').textContent='±'+l.accuracyM.toFixed(0)+' m';$('#battery').textContent=l.batteryPct+'%';$('#charging').textContent=l.charging?'Yes':'No';$('#updated').textContent=Math.max(0,Math.round((Date.now()-l.receivedAt)/1000))+' sec ago';const ll=[l.lon,l.lat];if(!marker){marker=new maplibregl.Marker().setLngLat(ll).addTo(map);map.flyTo({center:ll,zoom:16})}else marker.setLngLat(ll)}if(h){$('#network').textContent=h.network;$('#pending').textContent=h.pendingRecords;$('#recoveries').textContent=h.recoveryCount;$('#version').textContent=h.appVersion}}function mergeMessage(m){if(m.type==='snapshot'){renderSnapshot(m);return}const n=structuredClone(last||{latest:null,health:null,derived:{}});if(m.type==='location')n.latest=m.state;if(m.type==='health')n.health=m.health;if(m.derived)n.derived=m.derived;renderSnapshot(n)}async function connect(id){current=id;if(ws)ws.close();const proto=location.protocol==='https:'?'wss://':'ws://';ws=new WebSocket(proto+location.host+'/parent/api/device/'+encodeURIComponent(id)+'/ws');ws.onmessage=e=>mergeMessage(JSON.parse(e.data));ws.onclose=()=>{if(current===id)timer=setTimeout(()=>connect(id),1500)}}async function load(){const r=await fetch('/parent/api/devices');const j=await r.json();const sel=$('#devices');sel.innerHTML='';for(const d of j.devices||[]){const o=document.createElement('option');o.value=d.id;o.textContent=d.name;sel.appendChild(o)}if(sel.value){$('#name').textContent=sel.options[sel.selectedIndex].text;connect(sel.value)}else{$('#deviceHealth').textContent='NO PAIRED DEVICE'}sel.onchange=()=>{$('#name').textContent=sel.options[sel.selectedIndex]?.text||'Device';connect(sel.value)}}load();$('#pairBtn').onclick=async()=>{const r=await fetch('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});const j=await r.json();$('#pairOut').textContent=j.token?('Pairing token (expires in 10 min):\\n'+j.token):JSON.stringify(j,null,2);setTimeout(load,2500)};</script></body></html>`;
 }
 
 export default {
@@ -150,9 +201,16 @@ export default {
     if (url.pathname === "/") return Response.redirect(new URL("/parent", url), 302);
     if (url.pathname === "/healthz") return json({ ok: true, env: env.APP_ENV });
     if (req.method === "POST" && url.pathname === "/api/pair/complete") return completePairing(req, env);
-    const ingestMatch = url.pathname.match(/^\/api\/device\/([^/]+)\/location$/);
-    if (req.method === "POST" && ingestMatch) return ingest(req, env, decodeURIComponent(ingestMatch[1]));
-    if (url.pathname === "/parent" || url.pathname === "/parent/") { const denied = await parentOnly(req); if (denied) return denied; return new Response(parentHtml(), { headers: { "content-type": "text/html; charset=utf-8", ...securityHeaders } }); }
+
+    const locationMatch = url.pathname.match(/^\/api\/device\/([^/]+)\/location$/);
+    if (req.method === "POST" && locationMatch) return ingest(req, env, decodeURIComponent(locationMatch[1]));
+    const healthMatch = url.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
+    if (req.method === "POST" && healthMatch) return ingestHealth(req, env, decodeURIComponent(healthMatch[1]));
+
+    if (url.pathname === "/parent" || url.pathname === "/parent/") {
+      const denied = await parentOnly(req); if (denied) return denied;
+      return new Response(parentHtml(), { headers: { "content-type": "text/html; charset=utf-8", ...securityHeaders } });
+    }
     if (req.method === "POST" && url.pathname === "/parent/api/pair/start") return createPairing(req, env);
     if (req.method === "GET" && url.pathname === "/parent/api/devices") return listDevices(req, env);
     const stateMatch = url.pathname.match(/^\/parent\/api\/device\/([^/]+)\/state$/);
@@ -161,5 +219,7 @@ export default {
     if (wsMatch) return parentDeviceProxy(req, env, decodeURIComponent(wsMatch[1]), "ws");
     return new Response("Not found", { status: 404, headers: securityHeaders });
   },
-  async queue(batch: MessageBatch<unknown>) { for (const message of batch.messages) message.ack(); }
+  async queue(batch: MessageBatch<unknown>) {
+    for (const message of batch.messages) message.ack();
+  }
 } satisfies ExportedHandler<Env>;
