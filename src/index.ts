@@ -14,6 +14,9 @@ type Env = {
   APP_ENV: string;
 };
 
+type PairStartBody = { name?: string };
+type PairCompleteBody = { token?: string; publicKeySpkiB64?: string };
+
 const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
@@ -48,7 +51,7 @@ async function createPairing(req: Request, env: Env) {
   const denied = await parentOnly(req); if (denied) return denied;
   const rl = await env.PAIR_RATE.limit({ key: "parent-pair-start" });
   if (!rl.success) return json({ error: "rate limited" }, 429);
-  const body = await req.json<{ name?: string }>().catch(() => ({}));
+  const body: PairStartBody = await req.json<PairStartBody>().catch(() => ({}));
   const name = (body.name ?? "Child device").trim().slice(0, 64) || "Child device";
   const token = randomToken(24);
   const tokenHash = await sha256Hex(token);
@@ -59,7 +62,7 @@ async function createPairing(req: Request, env: Env) {
 }
 
 async function completePairing(req: Request, env: Env) {
-  const body = await req.json<{ token?: string; publicKeySpkiB64?: string }>().catch(() => ({}));
+  const body: PairCompleteBody = await req.json<PairCompleteBody>().catch(() => ({}));
   if (!body.token || !body.publicKeySpkiB64) return json({ error: "missing fields" }, 400);
   const rl = await env.PAIR_RATE.limit({ key: `pair-complete:${body.token.slice(0, 12)}` });
   if (!rl.success) return json({ error: "rate limited" }, 429);
@@ -100,11 +103,8 @@ async function ingest(req: Request, env: Env, deviceId: string) {
   try { packet = decodeLivePacket(payload); } catch (e) { return json({ error: String(e) }, 400); }
   const now = Date.now();
 
-  // Queue first: a verified first attempt is durably handed off before we ACK it.
-  // Queue delivery is intentionally idempotent downstream, so an HTTP retry may enqueue a duplicate safely.
   await env.EVENTS.send({ deviceId, packet });
 
-  // Store every first-seen signed sequence, including late packets, but advance the live cursor only monotonically.
   const [firstSeen, advance] = await env.DB.batch([
     env.DB.prepare(
       "INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES(?1,?2,?3,'location',?4)"
