@@ -1,50 +1,58 @@
-# Brick V1 — Phase 2 Child Reliability
+# Brick V1 — Phase 3 Child Position Intelligence
 
-This branch advances the Phase 1 child tracker into the Phase 2 reliability/self-healing layer. Phase 1 remains untouched on `phase1-child-apk`.
+This branch builds directly on the validated Phase 2 reliability branch. Phase 3 is only the positioning/intelligence layer; Phase 1 and Phase 2 branches remain untouched.
 
-## Phase 2 scope implemented here
+## Implemented Phase 3 scope
 
-- Android foreground location service remains the primary live engine;
-- `START_STICKY` process recovery;
-- reboot / locked-boot / app-update recovery receiver;
-- WorkManager 2.12.0 as a secondary persisted recovery path, not the live tracker;
-- local supervisor checks location-subscription freshness every 15 seconds;
-- stale location subscriptions are recreated rather than rebooting the app/phone;
-- managed-mode support using Android Device Owner APIs;
-- managed mode enables Location and blocks ordinary Location-setting changes only;
-- encrypted journal remains write-before-send;
-- single upload pump prevents thousands of network timeout tasks from piling up during outages;
-- newest pending position is restored first after connectivity returns, then older gaps reconcile;
-- exact ACK matching prevents silent queue loss;
-- periodic signed health heartbeat to Cloudflare;
-- queue depth, oldest pending age, network type, location state, service uptime, recovery count and managed-state health telemetry;
-- separate health and location upload executors so large backlogs do not hide device health;
-- no coordinates in the health heartbeat;
-- minimal child UI remains unchanged in normal use.
+- Android Fused Location Provider remains the primary measured position source;
+- raw Android location and Brick trusted/estimated position are transmitted separately;
+- horizontal accuracy, speed, speed accuracy, bearing, bearing accuracy, altitude and vertical accuracy are retained when Android provides them;
+- monotonic location timestamps are used for ordering/freshness;
+- mock locations are flagged and are never promoted to trusted position;
+- basic physics/jump plausibility filtering prevents obvious teleport fixes from replacing the trusted anchor;
+- weak fixes cannot replace a recent substantially better trusted fix;
+- stationary low-speed noise is suppressed instead of displaying fake movement;
+- broad Activity Recognition only: stationary, walking, running, bicycle, vehicle and unknown;
+- Brick deliberately does not claim car/bus/train from Activity Recognition;
+- adaptive tracking: vehicle 3s, running 3s, bicycle 4s, walking 5s, unknown 8s, stationary 60s;
+- low-power Activity Transition API plus confidence sampling;
+- GNSS status quality telemetry: total satellites, satellites used in fix and average C/N0;
+- GNSS telemetry is diagnostic only; Brick does not implement its own raw-GNSS solver;
+- local step detector and rotation-vector heading inputs stay on-device;
+- short walking/running inertial fallback using learned stride + heading;
+- very short vehicle/bicycle constant-velocity fallback, capped at 20 seconds;
+- walking/running inertial projection is capped at 120 seconds;
+- uncertainty expands during fallback and the source is explicitly marked estimated/inertial;
+- last trusted anchor is persisted for short process-recovery windows;
+- stride calibration only occurs between good trusted fixes;
+- the position engine is synchronized so fused and fallback calculations cannot race;
+- V2 compact signed binary packet includes raw/trusted positions, uncertainty, speed, activity and GNSS quality;
+- the Phase 3 Cloudflare backend remains backward-compatible with Phase 1/2 V1 packets.
 
-## Managed mode
+## Accuracy rules
 
-Brick includes a minimal `DeviceAdminReceiver` and Device Owner policy controller. It deliberately does **not** turn the phone into a kiosk. When Brick is actually provisioned as Device Owner, it uses only the safety-critical capability required in this phase: keep Android Location enabled and prevent accidental changes to that setting.
+Brick never relabels an estimate as GPS. Rejected raw measurements remain raw evidence. If there is no trustworthy anchor, a rejected/stale/mock reading does not become the trusted current location.
 
-Device Owner cannot be claimed merely because the APK contains these APIs. Provisioning must be done through Android's supported device-owner provisioning flow, and the Reno10 Pro / Reno14 Pro ColorOS 15 behavior still needs real-device validation before Brick calls this path reliable.
+Phase 3 uses the states PRECISE, ASSISTED, ANCHORED, ESTIMATED, COARSE, LAST_KNOWN and UNKNOWN. Numerical confidence percentages are not invented; measurable uncertainty is sent instead.
 
-## Recovery model
+## Deliberate exclusions
 
-Normal failures should converge automatically:
+- No custom raw-GNSS position solving.
+- No constant Wi-Fi scanning.
+- No carrier tower triangulation.
+- No camera/microphone localization.
+- No permanent 1-second GPS.
+- No long-duration inertial fantasy tracking.
+- No fake bus/train/car classification.
+- BLE anchor scanning is not enabled until actual trusted anchor hardware is configured.
+- Route/path snapping is not enabled until Brick has a real usable road/path graph. Until then, fallback stays explicitly estimated rather than being snapped to an invented road.
 
-1. location records are encrypted and committed locally;
-2. one sender drains the journal;
-3. no ACK means the record stays pending;
-4. network recovery restarts the sender automatically;
-5. a stale location subscription is recreated automatically;
-6. WorkManager periodically reconciles state;
-7. reboot/app replacement re-establishes tracking through supported Android lifecycle hooks;
-8. Cloudflare independently watches signed health heartbeats.
+## Build and validation
 
-## Build
+Every push to `phase3-child-position-intelligence` compiles, runs Android lint and publishes `brick-child-phase3-debug-apk` on success.
 
-Every push to `phase2-child-reliability` compiles, runs Android lint, and builds an installable debug APK artifact named `brick-child-phase2-debug-apk`.
+Compile/lint proves the code builds. It does **not** prove real positioning quality on OPPO/ColorOS. Reno10 Pro / Reno14 Pro field testing remains required, including outdoors, indoors, tunnel/elevator, stationary drift, activity changes, GPS loss and GPS recovery.
 
-## Still intentionally outside Phase 2
+## Later phases
 
-Activity recognition, transport mode, speed accuracy, GNSS-quality filtering, bad-fix rejection and fallback positioning remain Phase 3. History, real SOS/I'm Safe delivery, trips and geofences remain Phase 4. The full polished Device Health/history dashboard and map/privacy work remain Phase 5. Release qualification and the complete security/reliability/privacy audit remain Phase 6.
+Phase 4 adds durable location history, route playback, trips, places/geofences, real SOS and I'm Safe. Phase 5 finishes the parent experience, map/privacy infrastructure and operational Device Health UI. Phase 6 performs final security/privacy/reliability qualification.
