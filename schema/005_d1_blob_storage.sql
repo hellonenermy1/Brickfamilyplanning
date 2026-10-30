@@ -1,7 +1,7 @@
 -- Phase 5B no-R2 history + compact dedupe backend.
 -- One row per device/hour is append-updated as new locations arrive.
 -- Raw wire packets expire after 30 days; trusted-only compact records expire after 90 days.
--- Location dedupe uses 30 sequence bits per row, avoiding one D1 row per packet.
+-- Exact location dedupe stores 20 sequence bits per WITHOUT ROWID record to avoid hot-path index amplification.
 
 CREATE TABLE IF NOT EXISTS history_hours (
   device_id TEXT NOT NULL,
@@ -29,10 +29,4 @@ CREATE TABLE IF NOT EXISTS location_seen_blocks (
   first_seen_at INTEGER NOT NULL,
   last_seen_at INTEGER NOT NULL,
   PRIMARY KEY(device_id, epoch, block_index)
-);
-
-CREATE INDEX IF NOT EXISTS idx_location_seen_blocks_retention
-  ON location_seen_blocks(last_seen_at);
-
-CREATE INDEX IF NOT EXISTS idx_location_seen_blocks_reliability
-  ON location_seen_blocks(device_id, epoch, last_seen_at);
+) WITHOUT ROWID;
