@@ -23,7 +23,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
-      - name: Audit privacy crash and local-journal contracts
+      - name: Audit privacy crash local-journal and sequence contracts
         shell: bash
         run: |
           set -euo pipefail
@@ -42,9 +42,12 @@ jobs:
           grep -F '.put("exceptionSignature", signature)' app/src/main/java/com/brick/safety/reliability/CrashReporter.kt >/dev/null
           grep -F 'MAX_PENDING_DIAGNOSTICS = 500' app/src/main/java/com/brick/safety/data/CrashOutbox.kt >/dev/null
           grep -F 'putBoolean("journalWriteHealthy", false)' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'fun maxSequence(epoch: Int): Long' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'journal.maxSequence(epoch)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
           grep -F '.put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'android:name=".BrickApplication"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'versionName = "0.5.1-phase5c"' app/build.gradle.kts >/dev/null
+          grep -F 'jvmTarget.set(JvmTarget.JVM_17)' app/build.gradle.kts >/dev/null
           grep -F 'android:id="@+id/fixButton"' app/src/main/res/layout/activity_main.xml >/dev/null
       - name: Compile, lint, and build debug APK
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug --stacktrace
