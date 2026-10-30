@@ -34,6 +34,7 @@ jobs:
           test -s public/brick-map.mjs
           test -s public/maplibre-gl.css
           test -s public/maplibre-gl-worker.mjs
+          grep -F '/parent/map/basemap.pmtiles' public/brick-map.mjs >/dev/null
           if grep -E 'unpkg\.com/maplibre-gl|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com' public/brick-map.mjs; then
             echo 'External live map endpoint found in self-hosted bundle' >&2
             exit 1
