@@ -2,6 +2,7 @@ import core, { BrickDevice } from "./index";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
+import { reserveHealthReplay, validateSafetyReplayWindow } from "./device-json-security";
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
 export { BrickDevice };
 
@@ -79,7 +80,7 @@ async function localDurabilityEvidenceDenied(req: Request): Promise<Response | n
   } catch { return null; }
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const h = value as Record<string, unknown>;
-  for (const field of ["journalWriteHealthy", "safetyOutboxWriteHealthy"]) {
+  for (const field of ["journalWriteHealthy", "safetyOutboxWriteHealthy", "healthCounterWriteHealthy"]) {
     if (h[field] !== undefined && typeof h[field] !== "boolean") {
       return Response.json({ error: "invalid local durability health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
@@ -146,10 +147,18 @@ export default {
     m = u.pathname.match(/^\/api\/device\/([^/]+)\/crash$/);
     if (req.method === "POST" && m) return ingestCrashReport(req, env, decodeURIComponent(m[1]));
 
+    m = u.pathname.match(/^\/api\/device\/([^/]+)\/event$/);
+    if (req.method === "POST" && m) {
+      const denied = await validateSafetyReplayWindow(req, env, decodeURIComponent(m[1]));
+      if (denied) return denied;
+    }
+
     m = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
     if (req.method === "POST" && m) {
-      const denied = await localDurabilityEvidenceDenied(req);
-      if (denied) return denied;
+      const durabilityDenied = await localDurabilityEvidenceDenied(req);
+      if (durabilityDenied) return durabilityDenied;
+      const replayDenied = await reserveHealthReplay(req, env, decodeURIComponent(m[1]));
+      if (replayDenied) return replayDenied;
     }
 
     if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
