@@ -4,16 +4,20 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.location.GnssStatusCompat
 import androidx.core.location.LocationManagerCompat
 import java.util.concurrent.Executor
 
 class GnssQualityMonitor(private val context: Context) {
+    companion object { private const val GNSS_STALE_MS = 30_000L }
+
     data class Snapshot(
         val totalSatellites: Int = 0,
         val usedInFix: Int = 0,
-        val averageCn0DbHz: Float? = null
+        val averageCn0DbHz: Float? = null,
+        val updatedElapsedMs: Long = 0L
     )
 
     private val locationManager = context.getSystemService(LocationManager::class.java)
@@ -33,7 +37,8 @@ class GnssQualityMonitor(private val context: Context) {
             latest = Snapshot(
                 totalSatellites = status.satelliteCount.coerceIn(0, 255),
                 usedInFix = used.coerceIn(0, 255),
-                averageCn0DbHz = if (used > 0) sum / used else null
+                averageCn0DbHz = if (used > 0) sum / used else null,
+                updatedElapsedMs = SystemClock.elapsedRealtime()
             )
         }
 
@@ -44,17 +49,27 @@ class GnssQualityMonitor(private val context: Context) {
 
     fun start(executor: Executor = ContextCompat.getMainExecutor(context)) {
         if (registered) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            latest = Snapshot()
+            return
+        }
         registered = runCatching {
             LocationManagerCompat.registerGnssStatusCallback(locationManager, executor, callback)
         }.getOrDefault(false)
+        if (!registered) latest = Snapshot()
     }
 
     fun stop() {
-        if (!registered) return
+        if (!registered) { latest = Snapshot(); return }
         runCatching { LocationManagerCompat.unregisterGnssStatusCallback(locationManager, callback) }
         registered = false
+        latest = Snapshot()
     }
 
-    fun snapshot(): Snapshot = latest
+    fun snapshot(): Snapshot {
+        val value = latest
+        val now = SystemClock.elapsedRealtime()
+        if (value.updatedElapsedMs <= 0L || value.updatedElapsedMs > now || now - value.updatedElapsedMs > GNSS_STALE_MS) return Snapshot()
+        return value
+    }
 }
