@@ -29,6 +29,12 @@ jobs:
         run: |
           node --check scripts/setup.mjs
           node --check scripts/install-private-map.mjs
+      - name: Validate free-account static asset configuration
+        run: |
+          if grep -F '"base_path"' wrangler.template.jsonc; then
+            echo 'Non-root assets.base_path is not allowed in the no-card deployment.' >&2
+            exit 1
+          fi
       - name: Type-check private map browser module
         run: npx tsc -p tsconfig.web.json --noEmit
       - name: Build self-hosted parent assets
@@ -39,6 +45,11 @@ jobs:
           test -s public/maplibre-gl.css
           test -s public/maplibre-gl-worker.mjs
           grep -F '/parent/map/basemap.pmtiles' public/brick-map.mjs >/dev/null
+          grep -F '/maplibre-gl-worker.mjs?v=6.16.0' public/brick-map.mjs >/dev/null
+          if grep -F '/parent-assets/' public/brick-map.mjs; then
+            echo 'Old non-root parent-assets path found in browser bundle.' >&2
+            exit 1
+          fi
           if grep -E 'unpkg\.com/maplibre-gl|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com' public/brick-map.mjs; then
             echo 'External live map endpoint found in self-hosted bundle' >&2
             exit 1
