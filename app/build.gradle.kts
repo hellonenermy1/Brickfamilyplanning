@@ -11,8 +11,8 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-phase1"
+        versionCode = 2
+        versionName = "0.2.0-phase2"
     }
 
     buildFeatures { viewBinding = true }
@@ -27,6 +27,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
 }
