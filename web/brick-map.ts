@@ -4,6 +4,7 @@ import { layers, LIGHT } from "@protomaps/basemaps";
 
 const SOURCE_ID = "brick-basemap";
 let protocolInstalled = false;
+type SourceFeature = ReturnType<maplibregl.Map["querySourceFeatures"]>[number];
 
 function ensureProtocol() {
   if (protocolInstalled) return;
@@ -35,7 +36,6 @@ export function createBrickMap(container: string | HTMLElement) {
     zoom: 11,
     minZoom: 8,
     maxZoom: 19,
-    attributionControl: true,
     cooperativeGestures: false
   });
 }
@@ -57,15 +57,23 @@ function visitCoordinates(value: unknown, cb: (lon: number, lat: number) => void
   for (const child of value) visitCoordinates(child, cb);
 }
 
-function featureDistance(feature: maplibregl.MapGeoJSONFeature, lon: number, lat: number) {
+function visitGeometry(geometry: SourceFeature["geometry"], cb: (lon: number, lat: number) => void) {
+  if (geometry.type === "GeometryCollection") {
+    for (const child of geometry.geometries) visitGeometry(child, cb);
+    return;
+  }
+  visitCoordinates(geometry.coordinates, cb);
+}
+
+function featureDistance(feature: SourceFeature, lon: number, lat: number) {
   let best = Number.POSITIVE_INFINITY;
-  visitCoordinates((feature.geometry as GeoJSON.Geometry).coordinates, (x, y) => {
+  visitGeometry(feature.geometry, (x, y) => {
     best = Math.min(best, distanceM(lon, lat, x, y));
   });
   return best;
 }
 
-function featureName(feature: maplibregl.MapGeoJSONFeature) {
+function featureName(feature: SourceFeature) {
   const p = feature.properties ?? {};
   return String(p["name:en"] || p.name || "").trim();
 }
@@ -87,7 +95,7 @@ export function resolveBrickPlace(map: maplibregl.Map, lon: number, lat: number)
   ] as const;
 
   for (const [sourceLayer, rank, maxDistance] of specs) {
-    let features: maplibregl.MapGeoJSONFeature[] = [];
+    let features: SourceFeature[] = [];
     try { features = map.querySourceFeatures(SOURCE_ID, { sourceLayer }); } catch { continue; }
     for (const feature of features) {
       const d = featureDistance(feature, lon, lat);
