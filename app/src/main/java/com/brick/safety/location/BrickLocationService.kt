@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.brick.safety.R
 import com.brick.safety.activity.ActivityEngine
 import com.brick.safety.activity.ActivityMode
+import com.brick.safety.data.CrashOutbox
 import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
 import com.brick.safety.managed.ManagedPolicy
@@ -51,6 +52,7 @@ class BrickLocationService : Service() {
 
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
+    private lateinit var crashOutbox: CrashOutbox
     private lateinit var connectivity: ConnectivityManager
     private lateinit var activityEngine: ActivityEngine
     private lateinit var motionEngine: MotionEngine
@@ -84,6 +86,7 @@ class BrickLocationService : Service() {
         serviceStartedElapsed = SystemClock.elapsedRealtime()
         fused = LocationServices.getFusedLocationProviderClient(this)
         journal = Journal(this)
+        crashOutbox = CrashOutbox(this)
         connectivity = getSystemService(ConnectivityManager::class.java)
         activityEngine = ActivityEngine(this)
         motionEngine = MotionEngine(this)
@@ -192,12 +195,23 @@ class BrickLocationService : Service() {
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
         return try {
             val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
-            if (ack != p.seq) throw IllegalStateException("ACK mismatch: expected ${p.seq}, got $ack")
+            if (ack != p.seq) throw IllegalStateException("ACK mismatch")
             journal.ackExact(p.epoch, p.seq)
             lastAckElapsed = SystemClock.elapsedRealtime()
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private fun drainCrashReports(baseUrl: String, deviceId: String) {
+        val pending = runCatching { crashOutbox.pending(10) }.getOrDefault(emptyList())
+        for (report in pending) {
+            val sent = runCatching {
+                BrickApi.sendCrashPayload(baseUrl, deviceId, report.payload, report.reportId)
+                crashOutbox.ack(report.reportId)
+            }.isSuccess
+            if (!sent) break
         }
     }
 
@@ -213,6 +227,9 @@ class BrickLocationService : Service() {
                 SafetyDispatcher.drain(this, 100)
                 if (SafetyDispatcher.pendingCount(this) > 0) return@execute
 
+                // Diagnostics are deliberately lower priority than safety packets and never block location delivery.
+                drainCrashReports(baseUrl, deviceId)
+
                 val newest = journal.latestPending()
                 if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
 
@@ -224,7 +241,8 @@ class BrickLocationService : Service() {
             } finally {
                 uploadPumpRunning.set(false)
                 val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
-                if ((pendingSafety || journal.stats().pendingCount > 0) && networkAvailable() && !supervisor.isShutdown) {
+                val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false)
+                if ((pendingSafety || pendingCrash || journal.stats().pendingCount > 0) && networkAvailable() && !supervisor.isShutdown) {
                     supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)
                 }
             }
@@ -262,7 +280,7 @@ class BrickLocationService : Service() {
             }
 
             checkBatterySafety()
-            if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0)) kickUploadPump()
+            if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0 || runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false))) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
     }
@@ -410,6 +428,7 @@ class BrickLocationService : Service() {
         supervisor.shutdownNow()
         networkIo.shutdownNow()
         healthIo.shutdownNow()
+        crashOutbox.close()
         journal.close()
         super.onDestroy()
     }

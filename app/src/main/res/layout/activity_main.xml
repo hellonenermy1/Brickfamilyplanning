@@ -19,6 +19,9 @@
     <Button android:id="@+id/pairButton" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="10dp" android:text="PAIR" />
 
+    <Button android:id="@+id/fixButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" android:text="FIX" android:visibility="gone" />
+
     <Space android:layout_width="1dp" android:layout_height="32dp" />
 
     <Button android:id="@+id/safeButton" android:layout_width="match_parent" android:layout_height="56dp"

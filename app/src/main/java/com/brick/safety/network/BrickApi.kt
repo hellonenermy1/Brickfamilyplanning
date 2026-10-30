@@ -83,4 +83,18 @@ object BrickApi {
         if (ack != expectedEventId) error("Safety event ACK mismatch")
         return ack
     }
+
+    fun sendCrashPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedReportId: String): String {
+        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/crash")
+        val c = url.openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/json")
+        c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
+        c.outputStream.use { it.write(payload) }
+        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        if (c.responseCode !in 200..299) error("Crash report upload failed ${c.responseCode}")
+        val ack = JSONObject(text).optString("reportId")
+        if (ack != expectedReportId) error("Crash report ACK mismatch")
+        return ack
+    }
 }

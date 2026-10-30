@@ -1,11 +1,15 @@
 package com.brick.safety.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -40,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
+        b.fixButton.setOnClickListener { fixAttention() }
         b.safeButton.setOnClickListener { queueCheckIn() }
         b.sosButton.setOnClickListener {
             when {
@@ -48,6 +53,11 @@ class MainActivity : AppCompatActivity() {
                 else -> beginSosCountdown()
             }
         }
+        refresh()
+    }
+
+    override fun onResume() {
+        super.onResume()
         refresh()
     }
 
@@ -180,31 +190,71 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestBackgroundIfUseful() {
         if (ManagedPolicy.isDeviceOwner(this)) return
-        if (Build.VERSION.SDK_INT >= 29 &&
+        if (Build.VERSION.SDK_INT >= 29 && Build.VERSION.SDK_INT < 30 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             backgroundPermission.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
+    private fun locationEnabled(): Boolean = runCatching {
+        getSystemService(LocationManager::class.java).isLocationEnabled
+    }.getOrDefault(false)
+
+    private fun backgroundGranted(): Boolean = Build.VERSION.SDK_INT < 29 ||
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private fun attentionReason(): String? {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return "Location permission needs attention"
+        if (!locationEnabled()) return "Location needs attention"
+        if (!ManagedPolicy.isDeviceOwner(this) && !backgroundGranted()) return "Background location needs attention"
+        return null
+    }
+
+    private fun fixAttention() {
+        when {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED -> requestPermissionsAndStart()
+            !locationEnabled() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            !ManagedPolicy.isDeviceOwner(this) && !backgroundGranted() -> startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            )
+            else -> refresh()
+        }
+    }
+
     private fun startServiceNow() {
-        runCatching { ServiceControl.ensureTracking(this) }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            runCatching { ServiceControl.ensureTracking(this) }
+        }
         b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
         renderSosState()
     }
 
     private fun refresh() {
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
-        val location = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (paired && location) {
-            b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
-            b.serverUrl.visibility = View.GONE; b.pairingToken.visibility = View.GONE; b.pairButton.visibility = View.GONE
-            b.safeButton.isEnabled = true; b.sosButton.isEnabled = true
-            renderSosState()
-            startServiceNow()
-        } else {
-            b.status.text = if (paired) "● Location needs attention" else "● Setup required"
+        b.serverUrl.visibility = if (paired) View.GONE else View.VISIBLE
+        b.pairingToken.visibility = if (paired) View.GONE else View.VISIBLE
+        b.pairButton.visibility = if (paired) View.GONE else View.VISIBLE
+        b.safeButton.isEnabled = paired
+        b.sosButton.isEnabled = paired
+
+        if (!paired) {
+            b.fixButton.visibility = View.GONE
+            b.status.text = "● Setup required"
+            return
         }
+
+        val attention = attentionReason()
+        b.fixButton.visibility = if (attention == null) View.GONE else View.VISIBLE
+        if (attention != null) {
+            b.status.text = "● $attention"
+            renderSosState()
+            return
+        }
+
+        b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
+        renderSosState()
+        startServiceNow()
     }
 
     override fun onDestroy() {
