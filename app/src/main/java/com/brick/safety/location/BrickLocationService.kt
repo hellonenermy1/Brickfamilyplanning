@@ -104,6 +104,7 @@ class BrickLocationService : Service() {
         runCatching { gnssMonitor.start() }
 
         startTracking(desiredIntervalMs())
+        checkBatterySafety()
         kickUploadPump()
         startSupervisor()
         startFallbackTicker()
@@ -114,6 +115,7 @@ class BrickLocationService : Service() {
         runCatching { motionEngine.start() }
         runCatching { gnssMonitor.start() }
         if (!locationSubscribed) startTracking(desiredIntervalMs())
+        checkBatterySafety()
         kickUploadPump()
         return START_STICKY
     }
@@ -193,11 +195,9 @@ class BrickLocationService : Service() {
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
                 if (!networkAvailable()) return@execute
 
-                // P0/P1 safety events always drain before routine position backlog.
                 SafetyDispatcher.drain(this, 100)
                 if (SafetyDispatcher.pendingCount(this) > 0) return@execute
 
-                // Restore the parent's "now" first, then fill historical gaps.
                 val newest = journal.latestPending()
                 if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
 
@@ -246,9 +246,48 @@ class BrickLocationService : Service() {
                 startTracking(desired)
             }
 
+            checkBatterySafety()
             if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0)) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
+    }
+
+    private fun checkBatterySafety() {
+        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
+        if (!prefs.contains("deviceId")) return
+        val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
+        val charging = bm.isCharging
+        var lowLatched = prefs.getBoolean("batteryLowLatched", false)
+        var criticalLatched = prefs.getBoolean("batteryCriticalLatched", false)
+
+        if (pct <= 5 && !criticalLatched) {
+            SafetyDispatcher.enqueue(this, "battery_critical", priority = SafetyDispatcher.PRIORITY_CRITICAL)
+            criticalLatched = true
+            lowLatched = true
+        } else if (pct <= 15 && !lowLatched) {
+            SafetyDispatcher.enqueue(this, "battery_low", priority = SafetyDispatcher.PRIORITY_IMPORTANT)
+            lowLatched = true
+        }
+        if (pct >= 20) lowLatched = false
+        if (pct >= 10) criticalLatched = false
+
+        val initialized = prefs.getBoolean("chargingStateInitialized", false)
+        val previousCharging = prefs.getBoolean("lastChargingState", charging)
+        if (initialized && charging != previousCharging) {
+            SafetyDispatcher.enqueue(
+                this,
+                if (charging) "charging_started" else "charging_stopped",
+                priority = SafetyDispatcher.PRIORITY_NORMAL
+            )
+        }
+
+        prefs.edit()
+            .putBoolean("batteryLowLatched", lowLatched)
+            .putBoolean("batteryCriticalLatched", criticalLatched)
+            .putBoolean("chargingStateInitialized", true)
+            .putBoolean("lastChargingState", charging)
+            .apply()
     }
 
     private fun desiredIntervalMs(): Long = when (activityEngine.snapshot().mode) {
@@ -268,6 +307,8 @@ class BrickLocationService : Service() {
         val stats = journal.stats()
         val activity = activityEngine.snapshot()
         val gnss = gnssMonitor.snapshot()
+        val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        val batteryPct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val health = JSONObject()
             .put("protocol", 1)
             .put("elapsedRealtimeMs", now)
@@ -288,6 +329,8 @@ class BrickLocationService : Service() {
             .put("trackingIntervalMs", trackingIntervalMs)
             .put("gnssUsedInFix", gnss.usedInFix)
             .put("gnssTotal", gnss.totalSatellites)
+            .put("batteryPct", batteryPct)
+            .put("charging", bm.isCharging)
 
         healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
