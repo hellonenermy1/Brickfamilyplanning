@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 5B
+name: Check Brick Cloudflare Phase 5B No-R2
 
 on:
   push:
-    branches: [phase5b-private-map-places]
+    branches: [phase5b-no-r2]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -55,14 +55,30 @@ jobs:
         run: |
           npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
-      - name: Validate SQL schemas on fresh database
+      - name: Validate main D1 schemas and BLOB append semantics
         run: |
           python - <<'PY'
           import sqlite3, pathlib
           db = sqlite3.connect(':memory:')
-          for name in ['001_init.sql', '002_phase2_health.sql', '003_phase4_safety.sql', '004_phase5_operations.sql']:
-              sql = pathlib.Path('schema', name).read_text()
-              db.executescript(sql)
+          for name in ['001_init.sql','002_phase2_health.sql','003_phase4_safety.sql','004_phase5_operations.sql','005_d1_blob_storage.sql']:
+              db.executescript(pathlib.Path('schema', name).read_text())
               print('OK', name)
+          db.execute("INSERT INTO history_hours(device_id,hour_start,raw_blob,trusted_blob,point_count,raw_expires_at,trusted_expires_at,updated_at) VALUES('d',1,?, ?,1,9,9,1)",(b'abc',b'123'))
+          db.execute("UPDATE history_hours SET raw_blob=CAST(COALESCE(raw_blob,X'') || ? AS BLOB), trusted_blob=CAST(trusted_blob || ? AS BLOB), point_count=point_count+1 WHERE device_id='d' AND hour_start=1",(b'def',b'456'))
+          row=db.execute("SELECT raw_blob,trusted_blob,point_count FROM history_hours").fetchone()
+          assert row==(b'abcdef',b'123456',2), row
+          print('OK D1 BLOB append semantics')
+          db.close()
+          PY
+      - name: Validate separate map D1 schema
+        run: |
+          python - <<'PY'
+          import sqlite3, pathlib
+          db=sqlite3.connect(':memory:')
+          db.executescript(pathlib.Path('schema/006_d1_map_storage.sql').read_text())
+          db.execute("INSERT INTO map_chunks(chunk_index,body,byte_length,sha256_hex) VALUES(0,?,?,?)",(b'abc',3,'x'))
+          db.execute("INSERT INTO map_manifest(id,total_bytes,chunk_bytes,chunk_count,sha256_hex,metadata_json,installed_at) VALUES(1,3,32768,1,'x','{}',1)")
+          assert db.execute('SELECT total_bytes FROM map_manifest WHERE id=1').fetchone()[0]==3
+          print('OK 006_d1_map_storage.sql')
           db.close()
           PY
