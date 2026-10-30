@@ -35,7 +35,7 @@ function ensureProtocol() {
   privateArchive = new PMTiles(privateMapUrl());
   protocol.add(privateArchive);
   maplibregl.addProtocol("pmtiles", protocol.tile);
-  maplibregl.setWorkerUrl("/parent-assets/maplibre-gl-worker.mjs?v=6.16.0");
+  maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs?v=6.16.0");
   protocolInstalled = true;
 }
 
