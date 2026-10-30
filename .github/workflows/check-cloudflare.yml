@@ -1,8 +1,8 @@
-name: Check Brick Cloudflare Phase 1
+name: Check Brick Cloudflare Phase 2
 
 on:
   push:
-    branches: [phase1-cloudflare-setup]
+    branches: [phase2-cloudflare-reliability]
   pull_request:
     branches: [main]
   workflow_dispatch:
