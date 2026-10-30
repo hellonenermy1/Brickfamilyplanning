@@ -16,6 +16,8 @@ import android.os.SystemClock
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.brick.safety.R
+import com.brick.safety.activity.ActivityEngine
+import com.brick.safety.activity.ActivityMode
 import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
 import com.brick.safety.managed.ManagedPolicy
@@ -28,6 +30,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.max
 
 class BrickLocationService : Service() {
     companion object {
@@ -40,18 +43,27 @@ class BrickLocationService : Service() {
     private val networkIo = Executors.newSingleThreadExecutor()
     private val healthIo = Executors.newSingleThreadExecutor()
     private val supervisor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private val fallbackTicker: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val uploadPumpRunning = AtomicBoolean(false)
+
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
     private lateinit var connectivity: ConnectivityManager
+    private lateinit var activityEngine: ActivityEngine
+    private lateinit var motionEngine: MotionEngine
+    private lateinit var gnssMonitor: GnssQualityMonitor
+    private lateinit var positionEngine: PositionEngine
+
     private val seq = AtomicLong()
     private var epoch: Int = 1
     private var serviceStartedElapsed = 0L
     @Volatile private var lastLocationElapsed = 0L
+    @Volatile private var lastFallbackElapsed = 0L
     @Volatile private var lastAckElapsed = 0L
     @Volatile private var lastHealthElapsed = 0L
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
+    @Volatile private var trackingIntervalMs = 3_000L
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -70,6 +82,11 @@ class BrickLocationService : Service() {
         fused = LocationServices.getFusedLocationProviderClient(this)
         journal = Journal(this)
         connectivity = getSystemService(ConnectivityManager::class.java)
+        activityEngine = ActivityEngine(this)
+        motionEngine = MotionEngine(this)
+        gnssMonitor = GnssQualityMonitor(this)
+        positionEngine = PositionEngine(this, motionEngine, gnssMonitor)
+
         createChannel()
         startForeground(1001, notification("Safety active"))
 
@@ -81,26 +98,37 @@ class BrickLocationService : Service() {
         runCatching { ManagedPolicy.apply(this) }
         RecoveryScheduler.ensureScheduled(this)
         runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
-        startTracking()
+        runCatching { activityEngine.start() }
+        runCatching { motionEngine.start() }
+        runCatching { gnssMonitor.start() }
+
+        startTracking(desiredIntervalMs())
         kickUploadPump()
         startSupervisor()
+        startFallbackTicker()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!locationSubscribed) startTracking()
+        runCatching { activityEngine.start() }
+        runCatching { motionEngine.start() }
+        runCatching { gnssMonitor.start() }
+        if (!locationSubscribed) startTracking(desiredIntervalMs())
         kickUploadPump()
         return START_STICKY
     }
 
-    private fun startTracking() {
+    private fun startTracking(intervalMs: Long) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             locationSubscribed = false
             return
         }
         runCatching { fused.removeLocationUpdates(callback) }
-        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3_000L)
-            .setMinUpdateIntervalMillis(2_000L)
-            .setMaxUpdateDelayMillis(6_000L)
+        trackingIntervalMs = intervalMs
+        val activity = activityEngine.snapshot().mode
+        val priority = if (activity == ActivityMode.STATIONARY) Priority.PRIORITY_BALANCED_POWER_ACCURACY else Priority.PRIORITY_HIGH_ACCURACY
+        val req = LocationRequest.Builder(priority, intervalMs)
+            .setMinUpdateIntervalMillis(max(2_000L, intervalMs / 2))
+            .setMaxUpdateDelayMillis(max(intervalMs * 2, 6_000L))
             .build()
         locationSubscribed = true
         fused.requestLocationUpdates(req, callback, mainLooper)
@@ -115,15 +143,32 @@ class BrickLocationService : Service() {
     }
 
     private fun record(location: Location) {
+        val sample = positionEngine.evaluate(location, activityEngine.snapshot())
+        recordSample(sample)
+    }
+
+    private fun recordSample(sample: PositionSample) {
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         if (prefs.getString("deviceId", null).isNullOrBlank() || prefs.getString("apiBase", null).isNullOrBlank()) return
         val sequence = seq.incrementAndGet()
         prefs.edit().putLong("sequence", sequence).apply()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
-        val packet = Protocol.encodeLive(epoch, sequence, location, pct, bm.isCharging)
+        val packet = Protocol.encodePosition(epoch, sequence, sample, pct, bm.isCharging)
         journal.append(epoch, sequence, packet)
         kickUploadPump()
+    }
+
+    private fun startFallbackTicker() {
+        fallbackTicker.scheduleWithFixedDelay({
+            val now = SystemClock.elapsedRealtime()
+            val threshold = max(8_000L, trackingIntervalMs * 2 + 2_000L)
+            if (lastLocationElapsed == 0L || now - lastLocationElapsed < threshold) return@scheduleWithFixedDelay
+            if (now - lastFallbackElapsed < 5_000L) return@scheduleWithFixedDelay
+            val sample = positionEngine.fallback(activityEngine.snapshot()) ?: return@scheduleWithFixedDelay
+            lastFallbackElapsed = now
+            recordSample(sample)
+        }, 5, 3, TimeUnit.SECONDS)
     }
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
@@ -147,6 +192,7 @@ class BrickLocationService : Service() {
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
                 if (!networkAvailable()) return@execute
 
+                // Restore the parent's "now" first, then fill historical gaps.
                 val newest = journal.latestPending()
                 if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
 
@@ -182,16 +228,30 @@ class BrickLocationService : Service() {
                 runCatching { ManagedPolicy.apply(this) }
             }
 
-            val stale = lastLocationElapsed > 0L && now - lastLocationElapsed > LOCATION_STALE_MS
+            val desired = desiredIntervalMs()
+            if (locationSubscribed && desired != trackingIntervalMs && locationEnabled) {
+                startTracking(desired)
+            }
+
+            val stale = lastLocationElapsed > 0L && now - lastLocationElapsed > max(LOCATION_STALE_MS, trackingIntervalMs * 3)
             val neverProducedFix = lastLocationElapsed == 0L && now - serviceStartedElapsed > FIRST_FIX_TIMEOUT_MS
             if ((!locationSubscribed || stale || neverProducedFix) && locationEnabled) {
                 noteRecovery()
-                startTracking()
+                startTracking(desired)
             }
 
             if (networkAvailable() && journal.stats().pendingCount > 0) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
+    }
+
+    private fun desiredIntervalMs(): Long = when (activityEngine.snapshot().mode) {
+        ActivityMode.VEHICLE -> 3_000L
+        ActivityMode.RUNNING -> 3_000L
+        ActivityMode.BICYCLE -> 4_000L
+        ActivityMode.WALKING -> 5_000L
+        ActivityMode.STATIONARY -> 60_000L
+        ActivityMode.UNKNOWN -> 8_000L
     }
 
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
@@ -200,6 +260,8 @@ class BrickLocationService : Service() {
         val deviceId = prefs.getString("deviceId", null) ?: return
         val baseUrl = prefs.getString("apiBase", null) ?: return
         val stats = journal.stats()
+        val activity = activityEngine.snapshot()
+        val gnss = gnssMonitor.snapshot()
         val health = JSONObject()
             .put("protocol", 1)
             .put("elapsedRealtimeMs", now)
@@ -213,7 +275,12 @@ class BrickLocationService : Service() {
             .put("locationSubscribed", locationSubscribed)
             .put("managed", ManagedPolicy.isDeviceOwner(this))
             .put("recoveryCount", recoveryCount)
-            .put("appVersion", "0.2.0-phase2")
+            .put("appVersion", "0.3.0-phase3")
+            .put("activityMode", activity.mode.name.lowercase())
+            .put("activityConfidence", activity.confidence)
+            .put("trackingIntervalMs", trackingIntervalMs)
+            .put("gnssUsedInFix", gnss.usedInFix)
+            .put("gnssTotal", gnss.totalSatellites)
 
         healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
@@ -255,9 +322,13 @@ class BrickLocationService : Service() {
     override fun onDestroy() {
         runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         runCatching { fused.removeLocationUpdates(callback) }
+        runCatching { activityEngine.stop() }
+        runCatching { motionEngine.stop() }
+        runCatching { gnssMonitor.stop() }
         locationSubscribed = false
         RecoveryScheduler.ensureScheduled(this)
         RecoveryScheduler.scheduleSoon(this, 15)
+        fallbackTicker.shutdownNow()
         supervisor.shutdownNow()
         networkIo.shutdownNow()
         healthIo.shutdownNow()
