@@ -55,9 +55,13 @@ function parentHtmlResponse() {
 function coreEnv(env: RuntimeEnv): CoreEnv { return env; }
 function mapEnv(env: RuntimeEnv) { return { MAPS: env.MAPS }; }
 
+// index.ts is retained as the internal Phase 1-5 router and historically gates parent routes on
+// Cf-Access-Jwt-Assertion. Only this outer Phase 6 wrapper is externally reachable for /parent*.
+// We synthesize the header only AFTER cryptographically verifying the real Access JWT above, so
+// the legacy core can never turn header presence into an external trust decision.
 function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>): Request<unknown, IncomingRequestCfProperties> {
   const headers = new Headers(req.headers);
-  headers.set("X-Brick-Internal-Parent", "verified");
+  headers.set("Cf-Access-Jwt-Assertion", "phase6-outer-wrapper-verified");
   return new Request(req, { headers }) as Request<unknown, IncomingRequestCfProperties>;
 }
 
@@ -84,6 +88,9 @@ async function localDurabilityEvidenceDenied(req: Request): Promise<Response | n
     if (h[field] !== undefined && typeof h[field] !== "boolean") {
       return Response.json({ error: "invalid local durability health evidence" }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
+  }
+  if (h.healthCounterWriteHealthy === false) {
+    return Response.json({ error: "health replay counter could not be persisted" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   for (const field of ["lastJournalWriteFailureAgeMs", "lastSafetyOutboxWriteFailureAgeMs"]) {
     const v = h[field];
