@@ -1,6 +1,7 @@
 package com.brick.safety.activity
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -31,9 +32,9 @@ class ActivityEngine(private val context: Context) {
         )
     }
 
+    @SuppressLint("MissingPermission")
     fun start() {
         if (!hasPermission()) return
-        // ON_FOOT deliberately excluded: it overlaps WALKING/RUNNING and can make transitions flap.
         val types = intArrayOf(
             DetectedActivity.STILL,
             DetectedActivity.WALKING,
@@ -49,19 +50,26 @@ class ActivityEngine(private val context: Context) {
                     .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT).build())
             }
         }
-        client.requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), transitionIntent)
-        // Sampling still accepts generic ON_FOOT as a fallback classification/confidence signal.
-        client.requestActivityUpdates(10_000L, sampleIntent)
+
+        try {
+            client.requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), transitionIntent)
+            client.requestActivityUpdates(10_000L, sampleIntent)
+        } catch (_: SecurityException) {
+            // Permission may be revoked between our check and the Play Services call.
+            ActivityState.write(context, ActivityMode.UNKNOWN, 0)
+        }
     }
 
+    @SuppressLint("MissingPermission")
     fun stop() {
-        runCatching { client.removeActivityUpdates(sampleIntent) }
-        runCatching { client.removeActivityTransitionUpdates(transitionIntent) }
+        // Removal can also throw if permission was revoked while Brick was running.
+        try { client.removeActivityUpdates(sampleIntent) } catch (_: SecurityException) {}
+        try { client.removeActivityTransitionUpdates(transitionIntent) } catch (_: SecurityException) {}
     }
 
     fun snapshot(): ActivitySnapshot = ActivityState.read(context)
 
-    private fun hasPermission(): Boolean = Build.VERSION.SDK_INT < 29 || ContextCompat.checkSelfPermission(
+    private fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(
         context, Manifest.permission.ACTIVITY_RECOGNITION
     ) == PackageManager.PERMISSION_GRANTED
 
