@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_horizontal"
+    android:padding="28dp">
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="BRICK" android:textSize="28sp" android:textStyle="bold" />
+
+    <TextView android:id="@+id/status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="34dp" android:text="● Setup required" android:textSize="18sp" />
+
+    <EditText android:id="@+id/serverUrl" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="32dp" android:hint="https://brick.example.com" android:inputType="textUri" />
+
+    <EditText android:id="@+id/pairingToken" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:hint="Pairing code" android:inputType="text" />
+
+    <Button android:id="@+id/pairButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:text="PAIR" />
+
+    <Space android:layout_width="1dp" android:layout_height="32dp" />
+
+    <Button android:id="@+id/safeButton" android:layout_width="match_parent" android:layout_height="56dp"
+        android:text="I'M SAFE" android:enabled="false" />
+
+    <Button android:id="@+id/sosButton" android:layout_width="match_parent" android:layout_height="64dp"
+        android:layout_marginTop="16dp" android:text="SOS" android:enabled="false" />
+</LinearLayout>
