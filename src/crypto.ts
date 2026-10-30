@@ -5,6 +5,10 @@ function b64ToBytes(s: string): Uint8Array {
   return out;
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 function derEcdsaToP1363(der: Uint8Array, scalarBytes = 32): Uint8Array {
   if (der.length === scalarBytes * 2) return der;
   if (der.length < 8 || der[0] !== 0x30) throw new Error("invalid ECDSA DER signature");
@@ -43,7 +47,7 @@ export async function sha256Hex(input: string): Promise<string> {
 export async function verifyDeviceSignature(publicKeySpkiB64: string, payload: ArrayBuffer, sigB64: string): Promise<boolean> {
   const key = await crypto.subtle.importKey(
     "spki",
-    b64ToBytes(publicKeySpkiB64),
+    toArrayBuffer(b64ToBytes(publicKeySpkiB64)),
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["verify"]
@@ -52,7 +56,7 @@ export async function verifyDeviceSignature(publicKeySpkiB64: string, payload: A
   return crypto.subtle.verify(
     { name: "ECDSA", hash: "SHA-256" },
     key,
-    p1363,
+    toArrayBuffer(p1363),
     payload
   );
 }
