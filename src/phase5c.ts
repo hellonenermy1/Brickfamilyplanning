@@ -8,7 +8,7 @@ export type Phase5CEnv = {
 };
 
 type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
-type CrashReport = {
+export type CrashReport = {
   protocol: 1;
   reportId: string;
   appVersion: string;
@@ -28,7 +28,7 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function validCrashReport(value: unknown): value is CrashReport {
+export function validCrashReport(value: unknown): value is CrashReport {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const x = value as Record<string, unknown>;
   const keys = Object.keys(x);
