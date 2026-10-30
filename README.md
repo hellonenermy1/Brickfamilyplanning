@@ -2,6 +2,24 @@
 
 Phase 5B builds on the frozen Phase 5A parent/operations layer. It removes the parent map's live third-party map dependency and gives Brick a Singapore-focused, OSM-derived place/street lookup path that stays inside the Brick deployment.
 
+## GitHub Codespaces setup
+
+This branch includes `.devcontainer/devcontainer.json`, so GitHub Codespaces can prepare the Brick Cloudflare environment automatically with Node.js 24, Docker-in-Docker, npm dependencies, the self-hosted parent map assets, and port 8787 forwarding for Wrangler development.
+
+Create the Codespace from the **`phase5b-private-map-places`** branch. GitHub may recommend the Codespaces secret `CLOUDFLARE_API_TOKEN`. If you set it, the setup script will read it from the environment. If you do not set it, `npm run setup` will prompt for the token securely in the terminal instead.
+
+After the Codespace finishes building, run:
+
+```bash
+npm run codespaces:check
+npm run setup
+npm run map:install
+```
+
+`codespaces:check` validates Node, npm, the Docker daemon, Wrangler, the required Brick setup files, and whether the optional Cloudflare token secret is present. It does not create or modify Cloudflare resources.
+
+The Cloudflare token must never be pasted into a source file, `.env` file that is committed, `devcontainer.json`, or GitHub issue/chat. GitHub Codespaces secrets are exposed as environment variables only inside authorized Codespaces.
+
 ## What Phase 5B adds
 
 - MapLibre GL JS is bundled and served from Brick's own `/parent-assets` path.
@@ -58,7 +76,7 @@ The installer:
 4. uploads it to `brick-family-v1-maps/basemap/singapore.pmtiles`;
 5. writes installation metadata alongside the map archive.
 
-You need either the `pmtiles` CLI or Docker for the extraction step. The native `pmtiles` CLI is preferred.
+You need either the `pmtiles` CLI or Docker for the extraction step. The Codespaces dev container includes Docker-in-Docker, so the installer can use the Docker fallback without anything installed on your own computer.
 
 ### Large archive handling
 
