@@ -1,4 +1,8 @@
-export const LIVE_PACKET_VERSION = 1;
+export const LIVE_PACKET_VERSION_V1 = 1;
+export const LIVE_PACKET_VERSION_V2 = 2;
+export const V1_BYTES = 43;
+export const V2_BYTES = 90;
+const MISSING = -2147483648;
 
 export type LivePacket = {
   version: number;
@@ -6,22 +10,45 @@ export type LivePacket = {
   sequence: number;
   elapsedRealtimeMs: number;
   wallTimeMs: number;
-  latE7: number;
-  lonE7: number;
-  accuracyCm: number;
+  rawLatE7: number | null;
+  rawLonE7: number | null;
+  rawAccuracyCm: number | null;
+  trustedLatE7: number | null;
+  trustedLonE7: number | null;
+  uncertaintyCm: number;
+  speedCms: number | null;
+  speedAccuracyCms: number | null;
+  bearingCdeg: number | null;
+  bearingAccuracyCdeg: number | null;
+  altitudeCm: number | null;
+  verticalAccuracyCm: number | null;
   batteryPct: number;
   charging: boolean;
+  rawAccepted: boolean;
+  rawMock: boolean;
+  fallback: boolean;
+  activity: number;
+  activityConfidence: number;
+  quality: number;
+  source: number;
+  gnssUsedInFix: number;
+  gnssTotal: number;
+  gnssAverageCn0Tenth: number;
+  stepDelta: number;
 };
 
-// Phase 1 binary wire layout (big endian):
-// u8 version | u32 epoch | u64 seq | u64 elapsedMs | u64 wallMs |
-// i32 latE7 | i32 lonE7 | u32 accuracyCm | u8 battery | u8 flags
-// Total = 43 bytes before signature/header metadata.
 export function decodeLivePacket(buf: ArrayBuffer): LivePacket {
-  if (buf.byteLength !== 43) throw new Error(`bad packet length ${buf.byteLength}`);
-  const v = new DataView(buf);
-  let o = 0;
-  const version = v.getUint8(o); o += 1;
+  const view = new DataView(buf);
+  if (buf.byteLength < 1) throw new Error("empty packet");
+  const version = view.getUint8(0);
+  if (version === LIVE_PACKET_VERSION_V1) return decodeV1(view);
+  if (version === LIVE_PACKET_VERSION_V2) return decodeV2(view);
+  throw new Error(`unsupported packet version ${version}`);
+}
+
+function decodeV1(v: DataView): LivePacket {
+  if (v.byteLength !== V1_BYTES) throw new Error(`bad v1 packet length ${v.byteLength}`);
+  let o = 1;
   const epoch = v.getUint32(o, false); o += 4;
   const sequence = Number(v.getBigUint64(o, false)); o += 8;
   const elapsedRealtimeMs = Number(v.getBigUint64(o, false)); o += 8;
@@ -31,12 +58,94 @@ export function decodeLivePacket(buf: ArrayBuffer): LivePacket {
   const accuracyCm = v.getUint32(o, false); o += 4;
   const batteryPct = v.getUint8(o); o += 1;
   const flags = v.getUint8(o);
-
-  if (version !== LIVE_PACKET_VERSION) throw new Error("unsupported packet version");
-  if (latE7 < -900000000 || latE7 > 900000000) throw new Error("bad latitude");
-  if (lonE7 < -1800000000 || lonE7 > 1800000000) throw new Error("bad longitude");
+  validateCoordinate(latE7, lonE7);
   if (batteryPct > 100) throw new Error("bad battery");
   if (accuracyCm > 10_000_000) throw new Error("bad accuracy");
+  return {
+    version: 1, epoch, sequence, elapsedRealtimeMs, wallTimeMs,
+    rawLatE7: latE7, rawLonE7: lonE7, rawAccuracyCm: accuracyCm,
+    trustedLatE7: latE7, trustedLonE7: lonE7, uncertaintyCm: accuracyCm,
+    speedCms: null, speedAccuracyCms: null, bearingCdeg: null, bearingAccuracyCdeg: null,
+    altitudeCm: null, verticalAccuracyCm: null,
+    batteryPct, charging: (flags & 1) !== 0, rawAccepted: true, rawMock: false, fallback: false,
+    activity: 0, activityConfidence: 0, quality: accuracyCm <= 2_000 ? 1 : accuracyCm <= 10_000 ? 2 : 5,
+    source: 1, gnssUsedInFix: 0, gnssTotal: 0, gnssAverageCn0Tenth: 0, stepDelta: 0
+  };
+}
 
-  return { version, epoch, sequence, elapsedRealtimeMs, wallTimeMs, latE7, lonE7, accuracyCm, batteryPct, charging: (flags & 1) !== 0 };
+function decodeV2(v: DataView): LivePacket {
+  if (v.byteLength !== V2_BYTES) throw new Error(`bad v2 packet length ${v.byteLength}`);
+  let o = 1;
+  const epoch = v.getUint32(o, false); o += 4;
+  const sequence = Number(v.getBigUint64(o, false)); o += 8;
+  const elapsedRealtimeMs = Number(v.getBigUint64(o, false)); o += 8;
+  const wallTimeMs = Number(v.getBigUint64(o, false)); o += 8;
+  const rawLatE7 = nullableInt(v.getInt32(o, false)); o += 4;
+  const rawLonE7 = nullableInt(v.getInt32(o, false)); o += 4;
+  const rawAccuracyCm = nullableInt(v.getInt32(o, false)); o += 4;
+  const trustedLatE7 = nullableInt(v.getInt32(o, false)); o += 4;
+  const trustedLonE7 = nullableInt(v.getInt32(o, false)); o += 4;
+  const uncertaintyCm = v.getInt32(o, false); o += 4;
+  const speedCms = nullableInt(v.getInt32(o, false)); o += 4;
+  const speedAccuracyCms = nullableInt(v.getInt32(o, false)); o += 4;
+  const bearingCdeg = nullableInt(v.getInt32(o, false)); o += 4;
+  const bearingAccuracyCdeg = nullableInt(v.getInt32(o, false)); o += 4;
+  const altitudeCm = nullableInt(v.getInt32(o, false)); o += 4;
+  const verticalAccuracyCm = nullableInt(v.getInt32(o, false)); o += 4;
+  const batteryPct = v.getUint8(o); o += 1;
+  const flags = v.getUint16(o, false); o += 2;
+  const activity = v.getUint8(o); o += 1;
+  const activityConfidence = v.getUint8(o); o += 1;
+  const quality = v.getUint8(o); o += 1;
+  const source = v.getUint8(o); o += 1;
+  const gnssUsedInFix = v.getUint8(o); o += 1;
+  const gnssTotal = v.getUint8(o); o += 1;
+  const gnssAverageCn0Tenth = v.getUint16(o, false); o += 2;
+  const stepDelta = v.getUint16(o, false);
+
+  if ((rawLatE7 === null) !== (rawLonE7 === null)) throw new Error("partial raw coordinate");
+  if ((trustedLatE7 === null) !== (trustedLonE7 === null)) throw new Error("partial trusted coordinate");
+  if (rawLatE7 !== null && rawLonE7 !== null) validateCoordinate(rawLatE7, rawLonE7);
+  if (trustedLatE7 !== null && trustedLonE7 !== null) validateCoordinate(trustedLatE7, trustedLonE7);
+  if (rawAccuracyCm !== null && (rawAccuracyCm < 0 || rawAccuracyCm > 50_000_000)) throw new Error("bad raw accuracy");
+  if (uncertaintyCm < 0 || uncertaintyCm > 50_000_000) throw new Error("bad uncertainty");
+  if (batteryPct > 100) throw new Error("bad battery");
+  if (activityConfidence > 100) throw new Error("bad activity confidence");
+  if (quality < 1 || quality > 7) throw new Error("bad quality");
+  if (source > 3) throw new Error("bad source");
+  if (bearingCdeg !== null && (bearingCdeg < 0 || bearingCdeg >= 36_000)) throw new Error("bad bearing");
+
+  return {
+    version: 2, epoch, sequence, elapsedRealtimeMs, wallTimeMs,
+    rawLatE7, rawLonE7, rawAccuracyCm,
+    trustedLatE7, trustedLonE7, uncertaintyCm,
+    speedCms, speedAccuracyCms, bearingCdeg, bearingAccuracyCdeg,
+    altitudeCm, verticalAccuracyCm,
+    batteryPct,
+    charging: (flags & 0x01) !== 0,
+    rawAccepted: (flags & 0x02) !== 0,
+    rawMock: (flags & 0x04) !== 0,
+    fallback: (flags & 0x40) !== 0,
+    activity, activityConfidence, quality, source,
+    gnssUsedInFix, gnssTotal, gnssAverageCn0Tenth, stepDelta
+  };
+}
+
+function nullableInt(value: number): number | null { return value === MISSING ? null : value; }
+
+function validateCoordinate(latE7: number, lonE7: number) {
+  if (latE7 < -900000000 || latE7 > 900000000) throw new Error("bad latitude");
+  if (lonE7 < -1800000000 || lonE7 > 1800000000) throw new Error("bad longitude");
+}
+
+export function activityName(code: number): string {
+  return ["unknown", "stationary", "walking", "running", "bicycle", "vehicle"][code] ?? "unknown";
+}
+
+export function qualityName(code: number): string {
+  return ["unknown", "precise", "assisted", "anchored", "estimated", "coarse", "last_known", "unknown"][code] ?? "unknown";
+}
+
+export function sourceName(code: number): string {
+  return ["unknown", "fused", "inertial", "last_known"][code] ?? "unknown";
 }
