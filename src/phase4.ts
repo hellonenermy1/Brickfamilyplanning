@@ -25,6 +25,8 @@ type Trip = {
   arrival_candidate_since: number | null;
   arrival_candidate_count: number;
   last_alert_at: number | null;
+  stationary_since: number | null;
+  last_stop_alert_at: number | null;
 };
 
 type StoredHistoryPoint = {
@@ -124,34 +126,55 @@ export async function evaluateSafety(env: Phase4Env, deviceId: string, packet: L
   }
 
   const trip = await env.DB.prepare(
-    "SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1"
+    "SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at,stationary_since,last_stop_alert_at FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1"
   ).bind(deviceId).first<Trip>();
   if (!trip) return generated;
 
+  let distanceToDestination: number | null = null;
   if (trip.destination_latitude !== null && trip.destination_longitude !== null) {
-    const d = distanceM(lat, lon, trip.destination_latitude, trip.destination_longitude);
-    if (d <= trip.destination_radius_m) {
+    distanceToDestination = distanceM(lat, lon, trip.destination_latitude, trip.destination_longitude);
+    if (distanceToDestination <= trip.destination_radius_m) {
       const since = trip.arrival_candidate_since ?? now, count = (trip.arrival_candidate_count ?? 0) + 1;
       if (count >= 2 && now - since >= 10_000) {
         await env.DB.prepare(
-          "UPDATE trips SET state='arrived',ended_at=?1,arrival_candidate_since=NULL,arrival_candidate_count=0 WHERE id=?2 AND state='active'"
+          "UPDATE trips SET state='arrived',ended_at=?1,arrival_candidate_since=NULL,arrival_candidate_count=0,stationary_since=NULL WHERE id=?2 AND state='active'"
         ).bind(now, trip.id).run();
         generated.push(await internalEvent(env, deviceId, "trip_ended", lat, lon, accuracyM, {
-          tripId: trip.id, reason: "arrived", destination: trip.destination_name, distanceM: Math.round(d)
+          tripId: trip.id, reason: "arrived", destination: trip.destination_name, distanceM: Math.round(distanceToDestination)
         }));
-      } else {
-        await env.DB.prepare("UPDATE trips SET arrival_candidate_since=?1,arrival_candidate_count=?2 WHERE id=?3")
-          .bind(since, count, trip.id).run();
+        return generated;
       }
+      await env.DB.prepare("UPDATE trips SET arrival_candidate_since=?1,arrival_candidate_count=?2 WHERE id=?3")
+        .bind(since, count, trip.id).run();
     } else if (trip.arrival_candidate_count > 0) {
       await env.DB.prepare("UPDATE trips SET arrival_candidate_since=NULL,arrival_candidate_count=0 WHERE id=?1").bind(trip.id).run();
     }
   }
 
+  const stationary = packet.activity === 1;
+  const awayFromDestination = distanceToDestination === null || distanceToDestination > trip.destination_radius_m * 1.5;
+  if (stationary && awayFromDestination) {
+    const stationarySince = trip.stationary_since ?? now;
+    if (trip.stationary_since === null) {
+      await env.DB.prepare("UPDATE trips SET stationary_since=?1 WHERE id=?2 AND state='active'").bind(now, trip.id).run();
+    }
+    if (now - stationarySince >= 10 * 60_000 && (!trip.last_stop_alert_at || now - trip.last_stop_alert_at >= 30 * 60_000)) {
+      await env.DB.prepare("UPDATE trips SET last_stop_alert_at=?1 WHERE id=?2 AND state='active'").bind(now, trip.id).run();
+      generated.push(await internalEvent(env, deviceId, "trip_alert", lat, lon, accuracyM, {
+        tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name,
+        stoppedMinutes: Math.floor((now - stationarySince) / 60_000),
+        distanceToDestinationM: distanceToDestination === null ? null : Math.round(distanceToDestination)
+      }));
+    }
+  } else if (trip.stationary_since !== null) {
+    await env.DB.prepare("UPDATE trips SET stationary_since=NULL WHERE id=?1 AND state='active'").bind(trip.id).run();
+  }
+
   if (trip.expected_arrival_at && now > trip.expected_arrival_at + 10 * 60_000 && (!trip.last_alert_at || now - trip.last_alert_at > 30 * 60_000)) {
     await env.DB.prepare("UPDATE trips SET last_alert_at=?1 WHERE id=?2").bind(now, trip.id).run();
     generated.push(await internalEvent(env, deviceId, "trip_alert", lat, lon, accuracyM, {
-      tripId: trip.id, reason: "overdue", destination: trip.destination_name
+      tripId: trip.id, reason: "overdue", destination: trip.destination_name,
+      distanceToDestinationM: distanceToDestination === null ? null : Math.round(distanceToDestination)
     }));
   }
   return generated;
@@ -161,27 +184,22 @@ export async function createGeofence(req: Request, env: Phase4Env, deviceId: str
   const b: Record<string, unknown> = await req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
   const name = typeof b.name === "string" ? b.name.trim().slice(0, 64) : "";
   const lat = Number(b.latitude), lon = Number(b.longitude), radius = Number(b.radiusM);
-  if (!name || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 25 || radius > 5000) {
-    return json({ error: "invalid geofence" }, 400);
-  }
+  if (!name || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 25 || radius > 5000) return json({ error: "invalid geofence" }, 400);
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    "INSERT INTO geofences(id,device_id,name,latitude,longitude,radius_m,enabled,created_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7)"
-  ).bind(id, deviceId, name, lat, lon, radius, Date.now()).run();
+  await env.DB.prepare("INSERT INTO geofences(id,device_id,name,latitude,longitude,radius_m,enabled,created_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7)")
+    .bind(id, deviceId, name, lat, lon, radius, Date.now()).run();
   return json({ id, name, latitude: lat, longitude: lon, radiusM: radius, enabled: true });
 }
 
 export async function listGeofences(env: Phase4Env, deviceId: string) {
-  const r = await env.DB.prepare(
-    "SELECT id,name,latitude,longitude,radius_m,enabled,created_at FROM geofences WHERE device_id=?1 ORDER BY created_at"
-  ).bind(deviceId).all();
+  const r = await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled,created_at FROM geofences WHERE device_id=?1 ORDER BY created_at")
+    .bind(deviceId).all();
   return json({ geofences: r.results });
 }
 
 export async function updateGeofence(req: Request, env: Phase4Env, deviceId: string, geofenceId: string) {
-  const current = await env.DB.prepare(
-    "SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE id=?1 AND device_id=?2"
-  ).bind(geofenceId, deviceId).first<Geofence>();
+  const current = await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE id=?1 AND device_id=?2")
+    .bind(geofenceId, deviceId).first<Geofence>();
   if (!current) return json({ error: "geofence not found" }, 404);
   const b: Record<string, unknown> = await req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
   const name = typeof b.name === "string" ? b.name.trim().slice(0, 64) : current.name;
@@ -189,12 +207,9 @@ export async function updateGeofence(req: Request, env: Phase4Env, deviceId: str
   const lon = b.longitude === undefined ? current.longitude : Number(b.longitude);
   const radius = b.radiusM === undefined ? current.radius_m : Number(b.radiusM);
   const enabled = b.enabled === undefined ? current.enabled : (b.enabled === true ? 1 : b.enabled === false ? 0 : -1);
-  if (!name || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 25 || radius > 5000 || enabled < 0) {
-    return json({ error: "invalid geofence" }, 400);
-  }
+  if (!name || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 25 || radius > 5000 || enabled < 0) return json({ error: "invalid geofence" }, 400);
   await env.DB.batch([
-    env.DB.prepare("UPDATE geofences SET name=?1,latitude=?2,longitude=?3,radius_m=?4,enabled=?5 WHERE id=?6 AND device_id=?7")
-      .bind(name, lat, lon, radius, enabled, geofenceId, deviceId),
+    env.DB.prepare("UPDATE geofences SET name=?1,latitude=?2,longitude=?3,radius_m=?4,enabled=?5 WHERE id=?6 AND device_id=?7").bind(name, lat, lon, radius, enabled, geofenceId, deviceId),
     env.DB.prepare("DELETE FROM geofence_state WHERE geofence_id=?1").bind(geofenceId)
   ]);
   return json({ id: geofenceId, name, latitude: lat, longitude: lon, radiusM: radius, enabled: enabled === 1 });
@@ -210,44 +225,31 @@ export async function deleteGeofence(env: Phase4Env, deviceId: string, geofenceI
 export async function startTrip(req: Request, env: Phase4Env, deviceId: string): Promise<Response> {
   const existing = await env.DB.prepare("SELECT id FROM trips WHERE device_id=?1 AND state='active' LIMIT 1").bind(deviceId).first();
   if (existing) return json({ error: "an active trip already exists; end or cancel it first" }, 409);
-
   const b: Record<string, unknown> = await req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
   const name = typeof b.destinationName === "string" ? b.destinationName.trim().slice(0, 80) : "Destination";
-  const lat = Number(b.latitude), lon = Number(b.longitude);
-  const expected = b.expectedArrivalAt == null ? null : Number(b.expectedArrivalAt);
-  const radius = b.radiusM == null ? 120 : Number(b.radiusM);
-  const now = Date.now();
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 50 || radius > 1000 ||
-    (expected !== null && (!Number.isFinite(expected) || expected < now - 60_000 || expected > now + 30 * 86_400_000))) {
-    return json({ error: "invalid trip" }, 400);
-  }
-
+  const lat = Number(b.latitude), lon = Number(b.longitude), expected = b.expectedArrivalAt == null ? null : Number(b.expectedArrivalAt), radius = b.radiusM == null ? 120 : Number(b.radiusM), now = Date.now();
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180 || !Number.isFinite(radius) || radius < 50 || radius > 1000 || (expected !== null && (!Number.isFinite(expected) || expected < now - 60_000 || expected > now + 30 * 86_400_000))) return json({ error: "invalid trip" }, 400);
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    "INSERT INTO trips(id,device_id,state,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,started_at) VALUES(?1,?2,'active',?3,?4,?5,?6,?7,?8)"
-  ).bind(id, deviceId, name || "Destination", lat, lon, radius, expected, now).run();
+  await env.DB.prepare("INSERT INTO trips(id,device_id,state,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,started_at) VALUES(?1,?2,'active',?3,?4,?5,?6,?7,?8)")
+    .bind(id, deviceId, name || "Destination", lat, lon, radius, expected, now).run();
   const event = await internalEvent(env, deviceId, "trip_started", lat, lon, null, { tripId: id, destination: name || "Destination" });
   return json({ id, state: "active", event });
 }
 
 export async function finishTrip(env: Phase4Env, deviceId: string, tripId: string, reason: "cancelled" | "ended") {
-  const trip = await env.DB.prepare(
-    "SELECT id,destination_name FROM trips WHERE id=?1 AND device_id=?2 AND state='active'"
-  ).bind(tripId, deviceId).first<{ id: string; destination_name: string | null }>();
+  const trip = await env.DB.prepare("SELECT id,destination_name FROM trips WHERE id=?1 AND device_id=?2 AND state='active'")
+    .bind(tripId, deviceId).first<{ id: string; destination_name: string | null }>();
   if (!trip) return json({ error: "active trip not found" }, 404);
   const now = Date.now(), state = reason === "cancelled" ? "cancelled" : "ended";
-  await env.DB.prepare("UPDATE trips SET state=?1,ended_at=?2 WHERE id=?3 AND device_id=?4 AND state='active'")
+  await env.DB.prepare("UPDATE trips SET state=?1,ended_at=?2,stationary_since=NULL WHERE id=?3 AND device_id=?4 AND state='active'")
     .bind(state, now, tripId, deviceId).run();
-  const event = await internalEvent(env, deviceId, "trip_ended", null, null, null, {
-    tripId, reason, destination: trip.destination_name
-  });
+  const event = await internalEvent(env, deviceId, "trip_ended", null, null, null, { tripId, reason, destination: trip.destination_name });
   return json({ id: tripId, state, event });
 }
 
 export async function listTrips(env: Phase4Env, deviceId: string) {
-  const r = await env.DB.prepare(
-    "SELECT id,state,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,started_at,ended_at,last_alert_at FROM trips WHERE device_id=?1 ORDER BY started_at DESC LIMIT 100"
-  ).bind(deviceId).all();
+  const r = await env.DB.prepare("SELECT id,state,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,started_at,ended_at,last_alert_at,stationary_since,last_stop_alert_at FROM trips WHERE device_id=?1 ORDER BY started_at DESC LIMIT 100")
+    .bind(deviceId).all();
   return json({ trips: r.results });
 }
 
@@ -280,36 +282,43 @@ function summarize(points: StoredHistoryPoint[]) {
   const modes: string[] = [], stops: { start: number; end: number; durationMs: number }[] = [];
   let stationaryStart: number | null = null;
   const addMode = (name: string) => { if (name !== "unknown" && modes[modes.length - 1] !== name) modes.push(name); };
-
   for (let i = 0; i < points.length; i++) {
-    const p = points[i], mode = activityName(p.activity);
+    const p = points[i], mode = activityName(p.activity), kph = p.speedCms === null ? null : p.speedCms * 0.036;
     addMode(mode);
-    const kph = p.speedCms === null ? null : p.speedCms * 0.036;
     if (kph !== null && p.rawAccepted && !p.fallback) maxTrustedKph = Math.max(maxTrustedKph, kph);
-    if (mode === "stationary") {
-      stationaryStart ??= p.wallTimeMs;
-    } else if (stationaryStart !== null) {
-      const duration = p.wallTimeMs - stationaryStart;
-      if (duration >= 5 * 60_000) stops.push({ start: stationaryStart, end: p.wallTimeMs, durationMs: duration });
-      stationaryStart = null;
-    }
+    if (mode === "stationary") stationaryStart ??= p.wallTimeMs;
+    else if (stationaryStart !== null) { const duration = p.wallTimeMs - stationaryStart; if (duration >= 5 * 60_000) stops.push({ start: stationaryStart, end: p.wallTimeMs, durationMs: duration }); stationaryStart = null; }
     if (i === 0) continue;
     const prev = points[i - 1], dt = p.wallTimeMs - prev.wallTimeMs;
     if (dt <= 0 || dt > 15 * 60_000) continue;
-    const moving = mode !== "stationary" || (kph !== null && kph >= 1);
-    if (moving) movingTime += dt;
+    if (mode !== "stationary" || (kph !== null && kph >= 1)) movingTime += dt;
     if (prev.trustedLatE7 === null || prev.trustedLonE7 === null || p.trustedLatE7 === null || p.trustedLonE7 === null) continue;
     const segment = distanceM(prev.trustedLatE7 / 1e7, prev.trustedLonE7 / 1e7, p.trustedLatE7 / 1e7, p.trustedLonE7 / 1e7);
     const plausibleMax = Math.max(500, dt / 1000 * 100 + (prev.uncertaintyCm + p.uncertaintyCm) / 100);
     if (segment <= plausibleMax) distance += segment;
   }
-  if (stationaryStart !== null) {
-    const end = points[points.length - 1].wallTimeMs, duration = end - stationaryStart;
-    if (duration >= 5 * 60_000) stops.push({ start: stationaryStart, end, durationMs: duration });
-  }
+  if (stationaryStart !== null) { const end = points[points.length - 1].wallTimeMs, duration = end - stationaryStart; if (duration >= 5 * 60_000) stops.push({ start: stationaryStart, end, durationMs: duration }); }
   const durationMs = points[points.length - 1].wallTimeMs - points[0].wallTimeMs;
-  const averageMovingKph = movingTime > 0 ? (distance / (movingTime / 1000)) * 3.6 : 0;
-  return { distanceM: Math.round(distance), durationMs, movingTimeMs: movingTime, averageMovingKph, maxTrustedKph, modes, stops };
+  return { distanceM: Math.round(distance), durationMs, movingTimeMs: movingTime, averageMovingKph: movingTime > 0 ? (distance / (movingTime / 1000)) * 3.6 : 0, maxTrustedKph, modes, stops };
+}
+
+function simplifyForDisplay(points: StoredHistoryPoint[]) {
+  if (points.length <= 2) return points;
+  const out: StoredHistoryPoint[] = [points[0]];
+  let last = points[0];
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i];
+    if (p.trustedLatE7 === null || p.trustedLonE7 === null) continue;
+    const lastHas = last.trustedLatE7 !== null && last.trustedLonE7 !== null;
+    const moved = lastHas ? distanceM(last.trustedLatE7! / 1e7, last.trustedLonE7! / 1e7, p.trustedLatE7 / 1e7, p.trustedLonE7 / 1e7) : Number.POSITIVE_INFINITY;
+    const timeGap = p.wallTimeMs - last.wallTimeMs;
+    const semanticChange = p.activity !== last.activity || p.quality !== last.quality || p.fallback !== last.fallback;
+    if (moved >= 12 || timeGap >= 30_000 || semanticChange) { out.push(p); last = p; }
+    if (out.length >= 4000) break;
+  }
+  const final = points[points.length - 1];
+  if (out[out.length - 1].sequence !== final.sequence || out[out.length - 1].epoch !== final.epoch) out.push(final);
+  return out;
 }
 
 export async function history(env: Phase4Env, deviceId: string, fromMs: number, toMs: number) {
@@ -318,25 +327,31 @@ export async function history(env: Phase4Env, deviceId: string, fromMs: number, 
   const safe = deviceId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const days: string[] = [];
   for (let t = new Date(start).setUTCHours(0, 0, 0, 0); t <= end; t += 86_400_000) days.push(new Date(t).toISOString().slice(0, 10));
-
   let points = await readHistoryPrefix(env, `history/trusted/${safe}`, days, start, end, 20_000);
   if (!points.length) points = await readHistoryPrefix(env, `history/${safe}`, days, start, end, 20_000);
   points.sort((a, b) => a.wallTimeMs - b.wallTimeMs || a.sequence - b.sequence);
-  const deduped: StoredHistoryPoint[] = [];
-  let previousKey = "";
-  for (const p of points) {
-    const key = `${p.epoch}:${p.sequence}`;
-    if (key !== previousKey) deduped.push(p);
-    previousKey = key;
-  }
-  return json({ points: deduped, truncated: deduped.length >= 20_000, summary: summarize(deduped) });
+  const deduped: StoredHistoryPoint[] = []; const seen = new Set<string>();
+  for (const p of points) { const key = `${p.epoch}:${p.sequence}`; if (!seen.has(key)) { seen.add(key); deduped.push(p); } }
+  return json({ points: deduped, displayPoints: simplifyForDisplay(deduped), truncated: deduped.length >= 20_000, summary: summarize(deduped) });
+}
+
+export async function getRetention(env: Phase4Env, deviceId: string) {
+  const row = await env.DB.prepare("SELECT safety_event_days FROM retention_settings WHERE device_id=?1").bind(deviceId).first<{ safety_event_days: number }>();
+  return json({ rawHistoryDays: 30, trustedHistoryDays: 90, safetyEventDays: row?.safety_event_days ?? 180 });
+}
+
+export async function updateRetention(req: Request, env: Phase4Env, deviceId: string) {
+  const b: Record<string, unknown> = await req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>));
+  const days = Number(b.safetyEventDays);
+  if (!Number.isInteger(days) || days < 30 || days > 3650) return json({ error: "safetyEventDays must be 30..3650" }, 400);
+  await env.DB.prepare("INSERT INTO retention_settings(device_id,safety_event_days,updated_at) VALUES(?1,?2,?3) ON CONFLICT(device_id) DO UPDATE SET safety_event_days=excluded.safety_event_days,updated_at=excluded.updated_at")
+    .bind(deviceId, days, Date.now()).run();
+  return json({ rawHistoryDays: 30, trustedHistoryDays: 90, safetyEventDays: days });
 }
 
 export async function runRetentionCleanup(env: Phase4Env) {
   const now = Date.now();
-  await env.DB.prepare(
-    "DELETE FROM safety_events WHERE server_created_at < (?1 - COALESCE((SELECT safety_event_days FROM retention_settings WHERE device_id=safety_events.device_id),180) * 86400000)"
-  ).bind(now).run();
+  await env.DB.prepare("DELETE FROM safety_events WHERE server_created_at < (?1 - COALESCE((SELECT safety_event_days FROM retention_settings WHERE device_id=safety_events.device_id),180) * 86400000)").bind(now).run();
   await env.DB.prepare("DELETE FROM pairing_tokens WHERE expires_at < ?1").bind(now - 86_400_000).run();
   await env.DB.prepare("DELETE FROM device_events WHERE created_at < ?1").bind(now - 30 * 86_400_000).run();
 }
