@@ -37,7 +37,7 @@ function parentHeaders(scriptNonce: string) {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()",
-    "Content-Security-Policy": `default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'nonce-${scriptNonce}'; connect-src 'self' wss:; img-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; media-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+    "Content-Security-Policy": `default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-${scriptNonce}'; connect-src 'self' wss:; img-src 'self' data: blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; media-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
     "X-Frame-Options": "DENY",
     "Strict-Transport-Security": "max-age=31536000",
     "Cross-Origin-Opener-Policy": "same-origin",
