@@ -1,14 +1,8 @@
-import type { BrickDevice } from "./device-do";
-import { evaluateSafetyV6 } from "./safety-evaluator-v6";
 import type { LivePacket } from "./protocol";
 import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./history-codec";
 
 type QueueLocation = { type: "location"; deviceId: string; packet: LivePacket };
-type Env = {
-  DB: D1Database;
-  HISTORY: R2Bucket;
-  BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
-};
+type Env = { HISTORY: R2Bucket };
 
 type StoredRawSegment = {
   v?: number;
@@ -85,8 +79,10 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
     group.entries.push({ message, packet });
   }
 
-  // Queue consumer concurrency is fixed at 1 in wrangler.template.jsonc. This makes each
-  // deterministic segment a serialized read/merge/write operation under at-least-once delivery.
+  // Queues explicitly do not guarantee publication order. History processing is therefore
+  // order-independent: each 15-minute segment is read/merged/deduplicated by sequence and written
+  // back deterministically. Location-derived safety is evaluated synchronously before client ACK,
+  // not here, so Queue reordering can never corrupt geofence/trip state.
   for (const group of groups.values()) {
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
@@ -111,11 +107,6 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
         })
       ]);
 
-      const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(group.deviceId));
-      for (const entry of group.entries) {
-        const events = await evaluateSafetyV6(env, group.deviceId, entry.packet);
-        for (const event of events) await stub.pushSafetyEvent(event);
-      }
       for (const entry of group.entries) entry.message.ack();
     } catch {
       for (const entry of group.entries) entry.message.retry();
