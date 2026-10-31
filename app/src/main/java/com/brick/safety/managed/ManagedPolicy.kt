@@ -24,27 +24,21 @@ object ManagedPolicy {
         if (!runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)) return false
         val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
 
-        listOf(
+        val permissions = mutableListOf(
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_BACKGROUND_LOCATION,
             Manifest.permission.ACTIVITY_RECOGNITION
-        ).forEach { permission ->
+        )
+        if (Build.VERSION.SDK_INT >= 31) permissions += Manifest.permission.BLUETOOTH_SCAN
+        if (Build.VERSION.SDK_INT >= 33) permissions += Manifest.permission.POST_NOTIFICATIONS
+
+        permissions.forEach { permission ->
             runCatching {
                 dpm.setPermissionGrantState(
                     admin,
                     context.packageName,
                     permission,
-                    DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
-                )
-            }
-        }
-        if (Build.VERSION.SDK_INT >= 33) {
-            runCatching {
-                dpm.setPermissionGrantState(
-                    admin,
-                    context.packageName,
-                    Manifest.permission.POST_NOTIFICATIONS,
                     DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
                 )
             }
