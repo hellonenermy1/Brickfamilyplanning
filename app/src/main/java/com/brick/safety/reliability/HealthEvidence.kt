@@ -24,6 +24,7 @@ object HealthEvidence {
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
+        val bleAnchorConfigCount = prefs.getInt("bleAnchorConfigCount", 0).coerceIn(0, 8)
 
         fun ageSince(wallMs: Long): Any = if (wallMs > 0L) (now - wallMs).coerceAtLeast(0L) else JSONObject.NULL
 
@@ -45,6 +46,7 @@ object HealthEvidence {
             .put("fineLocationPermission", granted(Manifest.permission.ACCESS_FINE_LOCATION))
             .put("backgroundLocationPermission", granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
             .put("activityRecognitionPermission", granted(Manifest.permission.ACTIVITY_RECOGNITION))
+            .put("bleAnchorConfigCount", bleAnchorConfigCount)
             .put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))
             .put("notificationPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
             .put("batteryOptimizationExempt", powerManager.isIgnoringBatteryOptimizations(context.packageName))
