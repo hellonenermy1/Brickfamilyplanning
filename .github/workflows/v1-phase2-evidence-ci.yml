@@ -1,8 +1,6 @@
 name: Brick V1 Phase 2 — Evidence Foundation CI
 
 on:
-  push:
-    branches: [v1-p2-evidence-cloud]
   pull_request:
     branches: [main]
     paths:
@@ -69,19 +67,14 @@ jobs:
           npm run build:parent-assets
           node scripts/audit-privacy.mjs
           node scripts/check-parent-module.mjs
-
           npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
           node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
-
           npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-json-security.mjs
           node scripts/test-public-pairing-limits.mjs /tmp/brick-device-json-security.mjs
-
           npx esbuild src/phase5-ops.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-ops.mjs
           node scripts/test-phase5-ops.mjs /tmp/brick-phase5-ops.mjs
-
           npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
-
           npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
           npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
           npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-v6.mjs
