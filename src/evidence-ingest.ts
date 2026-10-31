@@ -75,15 +75,16 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
   if (existingAcks) return { protocol: 1, batchId: batch.batchId, acked: existingAcks, duplicateBatch: true };
 
   const payloadHashes = await Promise.all(batch.records.map(r => sha256Hex(r.payload)));
+  const recordAlreadyExists: boolean[] = [];
   let existingRecordCount = 0;
   for (let i = 0; i < batch.records.length; i++) {
     const existing = await readExistingRecord(env, deviceId, batch.records[i]);
-    if (existing) {
-      if (!sameRecord(existing, batch.records[i], payloadHashes[i])) {
-        throw new EvidenceConflict("evidence sequence or record id collision");
-      }
-      existingRecordCount += 1;
+    if (existing && !sameRecord(existing, batch.records[i], payloadHashes[i])) {
+      throw new EvidenceConflict("evidence sequence or record id collision");
     }
+    const exists = existing !== null;
+    recordAlreadyExists.push(exists);
+    if (exists) existingRecordCount += 1;
   }
 
   // A transport retry may legitimately rebuild the same records under a fresh batch UUID after the
@@ -113,10 +114,8 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
 
   const now = Date.now();
   const statements: D1PreparedStatement[] = [
-    // This is intentionally a hard INSERT, not INSERT OR IGNORE. D1 batch() is transactional:
-    // a concurrent request that claims the same (device,batchId) first makes this statement fail,
-    // rolling back every later record/link/state write in this transaction. That prevents a losing
-    // conflicting request from contaminating the accepted batch before the post-write verification.
+    // Hard batch-ID claim: a concurrent request that already owns this (device,batchId) makes the
+    // transactional D1 batch fail and roll back every later record/link/state write.
     env.DB.prepare(
       "INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?1,?2,1,?3,?4,?5,?6,?7)"
     ).bind(deviceId, batch.batchId, batch.records.length, buffer.byteLength, batchSha, r2Key, now)
@@ -124,14 +123,22 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
 
   const latestByProvider = new Map<number, EvidenceRecord>();
   batch.records.forEach((record, index) => {
+    // Exact records observed during preflight are intentionally reused. Records that were absent
+    // must be hard-inserted, not INSERT OR IGNORE: if another signed request claims the same
+    // (epoch,sequence) or recordId between preflight and this transaction, the unique-constraint
+    // failure rolls back this whole batch instead of silently linking to the competitor's record.
+    if (!recordAlreadyExists[index]) {
+      statements.push(
+        env.DB.prepare(
+          "INSERT INTO evidence_records(device_id,epoch,sequence,record_id,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256,first_seen_at) " +
+          "VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)"
+        ).bind(deviceId, record.epoch, record.sequence, record.recordId, record.provider, record.family, record.capability, record.health, record.quality,
+          record.independenceGroup, record.elapsedRealtimeMs, record.wallTimeMs, payloadHashes[index], now)
+      );
+    }
     statements.push(
       env.DB.prepare(
-        "INSERT OR IGNORE INTO evidence_records(device_id,epoch,sequence,record_id,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256,first_seen_at) " +
-        "VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)"
-      ).bind(deviceId, record.epoch, record.sequence, record.recordId, record.provider, record.family, record.capability, record.health, record.quality,
-        record.independenceGroup, record.elapsedRealtimeMs, record.wallTimeMs, payloadHashes[index], now),
-      env.DB.prepare(
-        "INSERT OR IGNORE INTO evidence_batch_records(device_id,batch_id,record_id,epoch,sequence) VALUES(?1,?2,?3,?4,?5)"
+        "INSERT INTO evidence_batch_records(device_id,batch_id,record_id,epoch,sequence) VALUES(?1,?2,?3,?4,?5)"
       ).bind(deviceId, batch.batchId, record.recordId, record.epoch, record.sequence)
     );
     const current = latestByProvider.get(record.provider);
