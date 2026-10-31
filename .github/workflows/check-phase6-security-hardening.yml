@@ -37,6 +37,16 @@ jobs:
           grep -F 'u.pathname.endsWith("/ws") && !sameOriginWebSocket(req)' src/worker-v5b.ts >/dev/null
           grep -F 'same-origin WebSocket upgrade required' src/worker-v5b.ts >/dev/null
 
+      - name: Require bounded authenticated parent mutation bodies
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const MAX_PARENT_MUTATION_BYTES = 32 * 1024' src/worker-v5b.ts >/dev/null
+          grep -F 'async function parentMutationBodyDenied(req: Request)' src/worker-v5b.ts >/dev/null
+          grep -F 'const stream = req.clone().body' src/worker-v5b.ts >/dev/null
+          grep -F 'total > MAX_PARENT_MUTATION_BYTES' src/worker-v5b.ts >/dev/null
+          grep -F 'const bodyDenied = await parentMutationBodyDenied(req)' src/worker-v5b.ts >/dev/null
+
       - name: Require edge-IP rate limiting before public pairing validation
         shell: bash
         run: |
