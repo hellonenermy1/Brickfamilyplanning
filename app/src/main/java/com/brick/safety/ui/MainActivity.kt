@@ -20,6 +20,9 @@ import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.brick.safety.reliability.ServiceControl
+import com.google.android.gms.mlkit.codescanner.GmsBarcodeScannerOptions
+import com.google.android.gms.mlkit.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -43,6 +46,7 @@ class MainActivity : AppCompatActivity() {
         runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { ManagedPolicy.apply(this) }
 
+        b.scanPairButton.setOnClickListener { scanPairingQr() }
         b.pairButton.setOnClickListener { pair() }
         b.fixButton.setOnClickListener { fixAttention() }
         b.safeButton.setOnClickListener { queueCheckIn() }
@@ -61,10 +65,47 @@ class MainActivity : AppCompatActivity() {
         refresh()
     }
 
+    private fun scanPairingQr() {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom()
+            .build()
+        b.scanPairButton.isEnabled = false
+        b.status.text = "● Scan Brick pairing QR"
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { barcode ->
+                val raw = barcode.rawValue
+                val uri = raw?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                val api = uri?.getQueryParameter("api")
+                val token = uri?.getQueryParameter("token")
+                val valid = uri?.scheme == "brick" && uri.host == "pair" &&
+                    !api.isNullOrBlank() && api.startsWith("https://") &&
+                    !token.isNullOrBlank() && token.length in 16..256
+                if (!valid) {
+                    b.status.text = "● Invalid Brick pairing QR"
+                    b.scanPairButton.isEnabled = true
+                    return@addOnSuccessListener
+                }
+                b.serverUrl.setText(api)
+                b.pairingToken.setText(token)
+                b.scanPairButton.isEnabled = true
+                pair()
+            }
+            .addOnCanceledListener {
+                b.status.text = "● Setup required"
+                b.scanPairButton.isEnabled = true
+            }
+            .addOnFailureListener {
+                b.status.text = "● QR scan unavailable — use manual pairing"
+                b.scanPairButton.isEnabled = true
+            }
+    }
+
     private fun pair() {
         val base = b.serverUrl.text.toString().trim()
         val token = b.pairingToken.text.toString().trim()
         if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
+        b.scanPairButton.isEnabled = false
         b.pairButton.isEnabled = false; b.status.text = "● Pairing…"
         io.execute {
             try {
@@ -75,7 +116,11 @@ class MainActivity : AppCompatActivity() {
                     .apply()
                 runOnUiThread { requestPermissionsAndStart() }
             } catch (_: Exception) {
-                runOnUiThread { b.status.text = "● Pairing failed"; b.pairButton.isEnabled = true }
+                runOnUiThread {
+                    b.status.text = "● Pairing failed"
+                    b.scanPairButton.isEnabled = true
+                    b.pairButton.isEnabled = true
+                }
             }
         }
     }
@@ -246,9 +291,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
+        b.scanPairButton.visibility = if (paired) View.GONE else View.VISIBLE
         b.serverUrl.visibility = if (paired) View.GONE else View.VISIBLE
         b.pairingToken.visibility = if (paired) View.GONE else View.VISIBLE
         b.pairButton.visibility = if (paired) View.GONE else View.VISIBLE
+        if (!paired) b.scanPairButton.isEnabled = true
         b.safeButton.isEnabled = paired
         b.sosButton.isEnabled = paired
 
