@@ -111,7 +111,8 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
       } else {
         if (f.candidate === desired && f.candidateSince !== null) f.candidateCount += 1;
         else { f.candidate = desired; f.candidateSince = eventTime; f.candidateCount = 1; }
-        if (f.candidateCount >= 2 && f.candidateSince !== null && eventTime - f.candidateSince >= 10_000) {
+        const candidateSince = f.candidateSince;
+        if (f.candidateCount >= 2 && candidateSince !== null && eventTime - candidateSince >= 10_000) {
           const next = desired;
           events.push(await eventRecord(
             env, deviceId, next === "inside" ? "geofence_enter" : "geofence_exit", packet, lat, lon, accuracyM,
@@ -131,7 +132,8 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
         if (dist <= trip.destination_radius_m) {
           trip.arrival_candidate_since ??= eventTime;
           trip.arrival_candidate_count += 1;
-          if (trip.arrival_candidate_count >= 2 && eventTime - trip.arrival_candidate_since >= 10_000) {
+          const arrivalSince = trip.arrival_candidate_since;
+          if (trip.arrival_candidate_count >= 2 && arrivalSince !== null && eventTime - arrivalSince >= 10_000) {
             tripState = "arrived"; tripEndedAt = eventTime;
             events.push(await eventRecord(
               env, deviceId, "trip_ended", packet, lat, lon, accuracyM,
@@ -150,11 +152,12 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
         const away = dist === null || dist > trip.destination_radius_m * 1.5;
         if (stationary && away) {
           trip.stationary_since ??= eventTime;
-          if (eventTime - trip.stationary_since >= 600_000 && (!trip.last_stop_alert_at || eventTime - trip.last_stop_alert_at >= 1_800_000)) {
+          const stationarySince = trip.stationary_since;
+          if (stationarySince !== null && eventTime - stationarySince >= 600_000 && (!trip.last_stop_alert_at || eventTime - trip.last_stop_alert_at >= 1_800_000)) {
             trip.last_stop_alert_at = eventTime;
             events.push(await eventRecord(
               env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
-              { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name, stoppedMinutes: Math.floor((eventTime - trip.stationary_since) / 60_000), distanceToDestinationM: dist === null ? null : Math.round(dist) },
+              { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name, stoppedMinutes: Math.floor((eventTime - stationarySince) / 60_000), distanceToDestinationM: dist === null ? null : Math.round(dist) },
               `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`
             ));
           }
@@ -194,6 +197,8 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
   const highest = usable[usable.length - 1];
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
   await stub.commitSafetyEvaluation(highest.epoch, highest.sequence);
-  for (const { event } of events) await stub.pushSafetyEvent(event);
+  // D1 is the durable source of truth. A transient realtime/WebSocket broadcast failure must not
+  // turn a successfully persisted safety transition into a failed ingest/duplicate reconstruction.
+  await Promise.allSettled(events.map(({ event }) => stub.pushSafetyEvent(event)));
   return events.map(e => e.event);
 }
