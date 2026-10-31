@@ -38,6 +38,7 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     }
 
     private val prefs = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
+    private val phase3 = Phase3PositioningEngine(context, motion)
     @Volatile private var lastTrusted: Anchor? = loadRecentAnchor()
     @Volatile private var lastBleAnchor: BleEvidence? = null
     @Volatile private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
@@ -110,6 +111,15 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val anchor = Anchor(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, wall, speed, bearing, stepTotal, activity.mode)
         lastTrusted = anchor
         persistAnchor(anchor)
+
+        // Do not train/re-anchor Phase 3 from a very coarse Android point. Those points remain valid
+        // raw/fused observations, but trusted motion/path learning uses only precise/assisted fixes.
+        if (quality == PositionQuality.PRECISE || quality == PositionQuality.ASSISTED) {
+            runCatching {
+                phase3.onTrustedFix(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, wall, speed, bearing, activity)
+            }
+        }
+
         return PositionSample(
             raw.latitude, raw.longitude, raw.accuracy, raw.latitude, raw.longitude, raw.accuracy,
             speed, speedAcc, bearing, bearingAcc,
@@ -125,6 +135,17 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         return buildBestFallback(null, freshActivity(activityInput, now), false, now)
     }
 
+    @Synchronized
+    fun shouldRefreshPrivateMap(lat: Double, lon: Double, wallMs: Long): Boolean =
+        phase3.shouldRefreshPrivateMap(lat, lon, wallMs)
+
+    @Synchronized
+    fun mergePrivateMap(centerLat: Double, centerLon: Double, wallMs: Long, segments: Collection<LocalRouteSegment>) =
+        phase3.mergePrivateMap(centerLat, centerLon, wallMs, segments)
+
+    @Synchronized
+    fun phase3Health(): Phase3PositioningHealth = phase3.health()
+
     private fun rejectedSample(raw: Location, activity: ActivitySnapshot, mock: Boolean, now: Long): PositionSample {
         return buildBestFallback(raw, activity, mock, now) ?: PositionSample(
             raw.latitude.takeIf { it.isFinite() && it in -90.0..90.0 }, raw.longitude.takeIf { it.isFinite() && it in -180.0..180.0 }, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
@@ -134,7 +155,9 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     }
 
     private fun buildBestFallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
-        return buildFromBleAnchor(raw, activity, rawMock, now) ?: buildFromAnchor(raw, activity, rawMock, now)
+        return buildFromBleAnchor(raw, activity, rawMock, now)
+            ?: buildFromPhase3(raw, activity, rawMock, now)
+            ?: buildFromAnchor(raw, activity, rawMock, now)
     }
 
     private fun buildFromBleAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
@@ -168,6 +191,37 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         )
     }
 
+    private fun buildFromPhase3(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
+        val fallback = runCatching { phase3.fallback(activity, now) }.getOrNull() ?: return null
+        val estimate = fallback.position
+        if (estimate.expired || !estimate.lat.isFinite() || estimate.lat !in -90.0..90.0 || !estimate.lon.isFinite() || estimate.lon !in -180.0..180.0) return null
+        val wall = lastTrusted?.let { it.wallMs + (now - it.elapsedMs).coerceAtLeast(0L) } ?: System.currentTimeMillis()
+        return PositionSample(
+            raw?.latitude?.takeIf { it.isFinite() && it in -90.0..90.0 },
+            raw?.longitude?.takeIf { it.isFinite() && it in -180.0..180.0 },
+            raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
+            estimate.lat,
+            estimate.lon,
+            estimate.uncertaintyM.coerceIn(3f, 5_000f),
+            estimate.speedMps?.takeIf { it.isFinite() && it >= 0f },
+            null,
+            estimate.headingDeg?.takeIf { it.isFinite() }?.let(::normalizeDegrees),
+            null,
+            null,
+            null,
+            false,
+            rawMock,
+            activity,
+            PositionQuality.ESTIMATED,
+            PositionSource.INERTIAL,
+            gnss.snapshot(),
+            fallback.stepDelta,
+            now,
+            wall
+        )
+    }
+
+    /** Retained conservative fail-safe underneath Phase 3. */
     private fun buildFromAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
         val a = lastTrusted ?: return null
         if (now < a.elapsedMs) return null
