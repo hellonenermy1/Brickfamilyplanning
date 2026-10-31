@@ -74,7 +74,7 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
             context = context,
             journal = journal,
             transport = EvidenceTransport { _, _, batch ->
-                val record = batch.records.single()
+                val record = EvidenceProtocol.decodeBatch(batch.bytes).records.single()
                 listOf(EvidenceAck(record.epoch, record.sequence + 1, record.observation.recordId))
             },
             coreBacklogProbe = { false },
