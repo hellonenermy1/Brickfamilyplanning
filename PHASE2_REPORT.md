@@ -20,7 +20,7 @@ Source existence or source review alone does not pass this gate.
 Snapshot at this report update:
 
 - Android `v1-p2-evidence-android`: `389bc8744341aebcc42f74f79403fd2b3d5d5873` — PR #7, draft/unmerged.
-- Cloud `v1-p2-evidence-cloud`: `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17` — PR #6, draft/unmerged.
+- Cloud `v1-p2-evidence-cloud`: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c` — PR #6, draft/unmerged.
 
 These are staging snapshots, not permanent release identifiers. Neither branch is promoted into canonical `apk-download` / `main` until the final paired heads receive real hosted verification.
 
@@ -58,15 +58,9 @@ Evidence uses its own WorkManager chain rather than generic replaceable recovery
 
 ### Paired identity boundary
 
-Brick's server pairing creates IDs using `crypto.randomUUID()`. Android now refuses to persist or drain evidence unless stored `deviceId` is canonical lowercase RFC-4122 version 4 / variant 2 and `apiBase` is present. Corrupt/path-like or non-v4 IDs therefore cannot create an unsendable evidence backlog or unsafe URL path.
+Brick's server pairing creates IDs using `crypto.randomUUID()`. Android refuses to persist or drain evidence unless stored `deviceId` is canonical lowercase RFC-4122 version 4 / variant 2 and `apiBase` is present. Corrupt/path-like or non-v4 IDs therefore cannot create an unsendable evidence backlog or unsafe URL path.
 
-Instrumentation source covers:
-
-- unpaired installation → no evidence persisted;
-- ID without API base → rejected;
-- valid v4 ID + API base → accepted;
-- path-like corrupt ID → rejected and cannot drain;
-- canonical-looking non-v4 UUID → rejected.
+Instrumentation source covers unpaired/API-base cases plus path-like corrupt IDs and canonical-looking non-v4 UUIDs.
 
 ## Evidence Batch v1
 
@@ -94,7 +88,7 @@ Shared Android/TypeScript golden vector remains byte-identical:
 
 ## Cloud foundation implemented and hardened
 
-`worker-v7` preserves the prior worker behavior and adds only the evidence route. The signed evidence handler is now isolated in `src/evidence-route.ts` so the actual request path can be executed in a focused integration harness.
+`worker-v7` preserves the prior worker behavior and adds only the evidence route. The signed evidence handler is isolated in `src/evidence-route.ts` so the actual request path can be executed in a focused integration harness.
 
 Evidence route requires:
 
@@ -121,24 +115,22 @@ The raw device ID is not exposed in the R2 key/metadata. Including `batchSha` al
 
 The first D1 statement is a hard `INSERT INTO evidence_batches`, not `INSERT OR IGNORE`.
 
-Because D1 `batch()` is transactional, a concurrent request that already claimed the same `(deviceId,batchId)` makes the losing transaction fail and roll back all later evidence-record/link/state writes. The losing raw R2 object is unreferenced and expires under the bounded raw-evidence retention rule.
+A concurrent request that already claimed the same `(deviceId,batchId)` makes the losing transactional D1 batch fail and roll back all later evidence-record/link/state writes. The losing raw object is unreferenced and expires under bounded raw-evidence retention.
 
 ### Record replay protection / storage amplification prevention
 
 If every record in a fresh transport batch UUID already exists and exactly matches durable record identity/metadata/payload hash, the server returns the exact ACK set immediately with `duplicateRecords:true`.
 
-It does **not** create another `evidence_batches` row or raw R2 object. This prevents repeated reconstruction of the same accepted records under new batch UUIDs from growing durable storage indefinitely.
+It does **not** create another `evidence_batches` row or raw R2 object.
 
 ### Idempotency and collision behavior
-
-Cloud persistence:
 
 - exact same batch retry → exact ACK, no R2 rewrite;
 - same durable records under a new batch UUID → exact ACK, no new durable storage;
 - record ID/epoch/sequence collision with changed content → conflict;
 - accepted batch UUID reused with changed bytes → conflict;
 - provider health orders by durable epoch/sequence, not device wall clock;
-- exact batch membership is verified before ACK for newly persisted batches.
+- newly persisted batch membership is read back before exact ACK.
 
 ## Schema / provisioning foundation
 
@@ -152,11 +144,11 @@ Environment used for local Cloud checks:
 
 - Node.js 22.16.0;
 - TypeScript 5.8.3;
-- Node `node:sqlite` D1-style in-memory harness;
+- Node `node:sqlite` D1-style harness;
 - in-memory R2-style harness;
 - Node Web Crypto P-256 for signed-route testing.
 
-Executed Cloud protocol/persistence checks passed:
+Cloud protocol/persistence checks passed:
 
 - exact shared golden vector;
 - protocol bounds/trailing/version/order rejection;
@@ -169,11 +161,11 @@ Executed Cloud protocol/persistence checks passed:
 - Android epoch-bound rejection;
 - simulated competing batch-ID claim between preflight and D1 transaction; losing transaction leaves zero evidence records/links and later retry becomes conflict.
 
-Observed local result:
+Observed:
 
 `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
 
-Executed signed HTTP route checks also passed using a real generated P-256 keypair:
+Signed HTTP route checks passed with a real generated P-256 keypair:
 
 - path decoder rejects non-v4/path-control/bad-encoding device IDs;
 - missing/bad signature → 401 and requester bucket only;
@@ -181,12 +173,11 @@ Executed signed HTTP route checks also passed using a real generated P-256 keypa
 - valid request persists before 200/exact ACK;
 - exact retry does not rewrite storage;
 - fresh batch UUID with already-durable records does not grow storage;
-- requester-rate block occurs before device/crypto path;
-- authenticated device-rate block occurs after signature and before persistence;
+- requester/device rate-limit rejection ordering is correct;
 - revoked device fails closed;
 - signed malformed protocol fails closed without persistence.
 
-Observed local result:
+Observed:
 
 `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
@@ -215,6 +206,7 @@ Android:
 - lint;
 - original live packet remains V2 / 90 bytes;
 - DB-owned evidence append;
+- canonical lowercase v4/variant-2 paired identity checks;
 - safety/location/crash priority;
 - dedicated evidence worker with `KEEP` + `APPEND_OR_REPLACE` continuation;
 - network constraint;
@@ -224,10 +216,10 @@ Android:
 
 ## Hosted CI blocker
 
-Latest checked hosted run for the current Cloud head:
+Latest checked hosted run for the final Cloud staging snapshot:
 
-- run `41211811795`
-- head `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
+- run `41212250461`
+- head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
 
 Observed:
 
@@ -235,7 +227,7 @@ Observed:
 - Cloud protocol/persistence/regression: failure, `runner_id: 0`, `steps: []`;
 - Android instrumentation: skipped.
 
-No runner executed any source step. This is an infrastructure/no-runner failure, **not** a source failure and **not** a pass.
+No runner executed source steps. This is an infrastructure/no-runner failure, **not** a source failure and **not** a pass.
 
 ## Exit-gate status
 
@@ -280,4 +272,4 @@ When GitHub supplies a runner:
 6. only then merge PR #7 into `apk-download` and PR #6 into `main`;
 7. rerun canonical post-merge checks;
 8. deploy/verify the evidence endpoint against real Cloudflare before claiming live integration;
-9. update audit records and mark Phase 2 accepted only if the observed evidence supports it.
+9. mark Phase 2 accepted only if the observed evidence supports it.
