@@ -60,16 +60,32 @@ class EvidenceJournal(
     private fun noteHealthy(operationHealthy: Boolean) {
         val now = System.currentTimeMillis()
         val priorFailure = healthPrefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
-        val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
+        val freshPriorFailure = priorFailure > 0L && (now < priorFailure || now - priorFailure < FAILURE_HOLD_MS)
 
         // Quarantined rows are retained as diagnostic history and reported separately in Stats.
         // They must not poison current journal health forever after Brick has successfully isolated
-        // the bad row and resumed normal reads/writes. A real failure is held unhealthy for a short
-        // window, then a later successful operation can demonstrate automatic recovery.
+        // the bad row. A real failure is held unhealthy briefly; a later successful journal probe or
+        // operation can then demonstrate automatic recovery.
         val healthy = operationHealthy && !freshPriorFailure
         healthPrefs.edit().putBoolean("evidenceJournalHealthy", healthy).apply {
             if (!operationHealthy) putLong("lastEvidenceJournalFailureWallMs", now)
         }.apply()
+    }
+
+    /**
+     * Re-check current journal readability without altering queued/quarantined evidence. Health
+     * collection calls this so a quiet device can recover from an expired failure latch even when no
+     * new evidence happens to be written after the hold window.
+     */
+    fun refreshHealth(): Boolean {
+        val readable = runCatching {
+            readableDatabase.rawQuery("SELECT 1 FROM evidence LIMIT 1", emptyArray()).use { cursor ->
+                // Executing the query successfully is the health signal; an empty table is healthy.
+                if (cursor.moveToFirst()) cursor.getInt(0)
+            }
+        }.isSuccess
+        noteHealthy(readable)
+        return healthPrefs.getBoolean("evidenceJournalHealthy", false)
     }
 
     private fun quarantine(rowId: Long) {
