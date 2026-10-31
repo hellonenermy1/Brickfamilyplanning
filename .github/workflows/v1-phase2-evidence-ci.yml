@@ -1,0 +1,177 @@
+name: Brick V1 Phase 2 — Evidence Foundation CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'schema/**'
+      - 'scripts/**'
+      - 'wrangler.template.jsonc'
+      - 'package.json'
+      - '.github/workflows/v1-phase2-evidence-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Cloud protocol / persistence / regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Static and type checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/setup-v1-phase2.mjs
+          node --check scripts/test-phase2-evidence.mjs
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          grep -F '"main": "src/worker-v7.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'evidence_batches' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'evidence_records' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'device_evidence_state' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'atlas_models' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'witness_authorizations' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
+
+      - name: Phase 2 protocol + durable idempotency integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
+          npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+
+      - name: Existing Phase 6 regression gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          node scripts/audit-privacy.mjs
+          node scripts/check-parent-module.mjs
+          npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
+          node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
+          npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-json-security.mjs
+          node scripts/test-public-pairing-limits.mjs /tmp/brick-device-json-security.mjs
+          npx esbuild src/phase5-ops.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-ops.mjs
+          node scripts/test-phase5-ops.mjs /tmp/brick-phase5-ops.mjs
+          npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
+          node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
+          npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
+          npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
+          npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-v6.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-store.mjs
+          npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-v6.mjs
+          node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
+          node scripts/test-backup-restore.mjs /tmp/brick-backup-restore-v6.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+          node scripts/test-route-history.mjs /tmp/brick-history-store.mjs
+          node scripts/test-dlq-recovery.mjs /tmp/brick-queue-v6.mjs
+
+  android-build:
+    name: Android compile / lint / dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: v1-p2-evidence-android
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Verify exact dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/gradle.lockfile
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Compile app and Phase 2 instrumentation tests
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+
+      - name: Verify evidence code did not replace the live V2 protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const val VERSION: Byte = 2' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'EvidenceDispatcher(applicationContext).drainIfSafe' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+
+  android-instrumentation:
+    name: Android evidence journal / protocol instrumentation
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: v1-p2-evidence-android
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android emulator image
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'emulator' 'platforms;android-35' 'system-images;android-35;google_apis;x86_64'
+          echo no | avdmanager create avd --force --name brick-p2 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+
+      - name: Boot emulator and run Phase 2 tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chmod 666 /dev/kvm || true
+          nohup "$ANDROID_HOME/emulator/emulator" -avd brick-p2 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then break; fi
+            sleep 5
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          adb shell input keyevent 82 || true
+          gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+
+      - name: Emulator log on failure
+        if: failure()
+        run: tail -n 300 /tmp/brick-emulator.log || true
