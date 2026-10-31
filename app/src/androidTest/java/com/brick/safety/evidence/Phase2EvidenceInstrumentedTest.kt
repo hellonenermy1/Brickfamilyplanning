@@ -7,6 +7,10 @@ import java.util.UUID
 
 @Suppress("DEPRECATION")
 class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
+    companion object {
+        private const val GOLDEN_HEX = "425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e"
+    }
+
     private lateinit var context: Context
 
     private class TestCipher : EvidenceCipher {
@@ -68,6 +72,32 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
             assertTrue(expected.observation.payload.contentEquals(actual.observation.payload))
             assertEquals(expected.observation.independenceGroup, actual.observation.independenceGroup)
         }
+    }
+
+    fun testProtocolGoldenVectorMatchesCloudContract() {
+        val golden = EvidenceRecord(
+            epoch = 7,
+            sequence = 42L,
+            observation = EvidenceObservation(
+                recordId = "12345678-1234-5678-9abc-def012345678",
+                elapsedRealtimeMs = 123_456_789L,
+                wallTimeMs = 1_761_930_000_123L,
+                provider = EvidenceProviderId.DUMMY_TEST,
+                family = EvidenceFamily.DUMMY_TEST,
+                independenceGroup = "dummy:test:scene",
+                capability = ProviderCapability.SUPPORTED,
+                health = ProviderHealth.HEALTHY,
+                quality = EvidenceQuality.HIGH,
+                payload = "phase2-golden".toByteArray(Charsets.UTF_8)
+            )
+        )
+        val bytes = EvidenceProtocol.encodeBatch(
+            listOf(golden),
+            batchId = "00112233-4455-6677-8899-aabbccddeeff"
+        ).bytes
+        assertEquals(GOLDEN_HEX, bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) })
+        val decoded = EvidenceProtocol.decodeBatch(bytes)
+        assertEquals(golden, decoded.records.single())
     }
 
     fun testEncryptedJournalSurvivesReopenAndExactAck() {
