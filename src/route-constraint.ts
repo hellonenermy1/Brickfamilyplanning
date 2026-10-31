@@ -8,8 +8,8 @@ const DETAIL_ZOOM = 15;
 const ROUTE_SOURCE_CODE = 4;
 
 type Coord = [number, number];
-type Segment = { a: Coord; b: Coord };
-type Nearest = { lon: number; lat: number; distanceM: number };
+export type RouteSegment = { a: Coord; b: Coord };
+export type NearestRoutePoint = { lon: number; lat: number; distanceM: number };
 
 class R2PmtilesSource implements Source {
   constructor(private readonly bucket: R2Bucket, private readonly key = MAP_KEY) {}
@@ -22,7 +22,7 @@ class R2PmtilesSource implements Source {
 }
 
 const archives = new WeakMap<object, PMTiles>();
-const roadCache = new Map<string, Promise<Segment[]>>();
+const roadCache = new Map<string, Promise<RouteSegment[]>>();
 
 function archiveFor(bucket: R2Bucket) {
   const key = bucket as unknown as object;
@@ -48,8 +48,8 @@ function projectMeters(lon: number, lat: number, refLon: number, refLat: number)
 function isCoord(value: unknown): value is Coord {
   return Array.isArray(value) && value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number";
 }
-function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }): Segment[] {
-  const out: Segment[] = [];
+function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }): RouteSegment[] {
+  const out: RouteSegment[] = [];
   const addLine = (value: unknown) => {
     if (!Array.isArray(value)) return;
     const coords = value.filter(isCoord);
@@ -60,8 +60,8 @@ function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }
   return out;
 }
 
-export function nearestRoutePoint(lon: number, lat: number, segments: Segment[]): Nearest | null {
-  let best: Nearest | null = null;
+export function nearestRoutePoint(lon: number, lat: number, segments: RouteSegment[]): NearestRoutePoint | null {
+  let best: NearestRoutePoint | null = null;
   for (const segment of segments) {
     const [ax, ay] = projectMeters(segment.a[0], segment.a[1], lon, lat);
     const [bx, by] = projectMeters(segment.b[0], segment.b[1], lon, lat);
@@ -89,7 +89,7 @@ function trimCache() {
   }
 }
 
-async function decodeRoadSegments(archive: PMTiles, z: number, x: number, y: number): Promise<Segment[]> {
+async function decodeRoadSegments(archive: PMTiles, z: number, x: number, y: number): Promise<RouteSegment[]> {
   const key = `${z}/${x}/${y}`;
   const cached = roadCache.get(key);
   if (cached) return cached;
@@ -99,7 +99,7 @@ async function decodeRoadSegments(archive: PMTiles, z: number, x: number, y: num
     const tile = new VectorTile(new PbfReader(new Uint8Array(response.data)));
     const layer = tile.layers.roads;
     if (!layer) return [];
-    const out: Segment[] = [];
+    const out: RouteSegment[] = [];
     for (let i = 0; i < layer.length; i++) {
       const feature = layer.feature(i);
       const geo = feature.toGeoJSON(x, y, z) as unknown as { geometry?: { type?: string; coordinates?: unknown } };
@@ -117,7 +117,7 @@ async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
   const header = await archive.getHeader();
   const z = Math.min(DETAIL_ZOOM, header.maxZoom);
   const center = tileFor(lon, lat, z), n = 2 ** z;
-  const jobs: Promise<Segment[]>[] = [];
+  const jobs: Promise<RouteSegment[]>[] = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const x = center.x + dx, y = center.y + dy;
     if (x >= 0 && y >= 0 && x < n && y < n) jobs.push(decodeRoadSegments(archive, z, x, y));
@@ -127,7 +127,7 @@ async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
 
 export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucket): Promise<LivePacket> {
   // Source 2 is the child inertial estimate. Fused/last-known fixes are never map-snapped here.
-  if (packet.version !== 2 || packet.positionSource !== 2 || packet.quality !== 4) return packet;
+  if (packet.version !== 2 || packet.source !== 2 || packet.quality !== 4) return packet;
   if (packet.trustedLatE7 === null || packet.trustedLonE7 === null) return packet;
   if (![2, 3, 4, 5].includes(packet.activity)) return packet; // walking/running/bicycle/vehicle only
   const lat = packet.trustedLatE7 / 1e7, lon = packet.trustedLonE7 / 1e7;
@@ -138,14 +138,15 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
     const nearest = nearestRoutePoint(lon, lat, segments);
     if (!nearest) return packet;
     const maxByMode = packet.activity === 5 || packet.activity === 4 ? 60 : 35;
-    const thresholdM = Math.min(maxByMode, Math.max(12, packet.uncertaintyM * 0.4));
+    const uncertaintyM = packet.uncertaintyCm / 100;
+    const thresholdM = Math.min(maxByMode, Math.max(12, uncertaintyM * 0.4));
     if (nearest.distanceM > thresholdM) return packet;
     return {
       ...packet,
       trustedLatE7: Math.round(nearest.lat * 1e7),
       trustedLonE7: Math.round(nearest.lon * 1e7),
-      uncertaintyM: Math.max(packet.uncertaintyM, Math.round(nearest.distanceM + 8)),
-      positionSource: ROUTE_SOURCE_CODE
+      uncertaintyCm: Math.max(packet.uncertaintyCm, Math.round((nearest.distanceM + 8) * 100)),
+      source: ROUTE_SOURCE_CODE
     };
   } catch {
     // Private map absence/corruption must never invent a route or block location delivery.
