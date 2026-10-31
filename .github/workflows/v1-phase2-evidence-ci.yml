@@ -53,21 +53,28 @@ jobs:
           grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
 
-          # Phase 2 concurrency/replay/privacy invariants. These complement the executable harnesses
-          # below and deliberately fail if a later refactor removes hard D1 identity claims,
-          # content-addressed raw storage, replay dedupe, canonical ID checks or split rate buckets.
+          # Phase 2 concurrency/replay/privacy/body-bound invariants. These complement the executable
+          # harnesses below and deliberately fail if a later refactor removes the hard D1 claims,
+          # content-addressed storage, bounded stream reader, canonical IDs or split rate buckets.
           grep -F '"INSERT INTO evidence_batches(' src/evidence-ingest.ts >/dev/null
           ! grep -F 'INSERT OR IGNORE INTO evidence_batches' src/evidence-ingest.ts >/dev/null
           grep -F '"INSERT INTO evidence_records(' src/evidence-ingest.ts >/dev/null
           ! grep -F 'INSERT OR IGNORE INTO evidence_records' src/evidence-ingest.ts >/dev/null
           grep -F '${batch.batchId}-${batchSha}.brev' src/evidence-ingest.ts >/dev/null
           grep -F 'duplicateRecords: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'allowRaceRetry' src/evidence-ingest.ts >/dev/null
+          grep -F 'raced: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)' src/evidence-route.ts >/dev/null
+          ! grep -F 'await req.arrayBuffer()' src/evidence-route.ts >/dev/null
           grep -F 'evidence-attempt:' src/evidence-route.ts >/dev/null
           grep -F 'evidence-device:${deviceId}' src/evidence-route.ts >/dev/null
           grep -F 'DEVICE_ID_RE' src/evidence-route.ts >/dev/null
           grep -F 'handleEvidenceRequest(req, env, deviceId)' src/worker-v7.ts >/dev/null
           grep -F 'p1363ToDer' scripts/test-phase2-evidence-route.mjs >/dev/null
           grep -F 'signLikeAndroid' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'Buffer.alloc(65_537' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'identical requests racing' scripts/test-phase2-evidence.mjs >/dev/null
+          grep -F 'mixed-race' scripts/test-phase2-evidence.mjs >/dev/null
 
       - name: Phase 2 protocol + durable idempotency integration tests
         shell: bash
