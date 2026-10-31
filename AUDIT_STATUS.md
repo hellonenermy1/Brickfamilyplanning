@@ -1,6 +1,6 @@
 # Brick Audit Status
 
-Last updated: 2026-10-31
+Last updated: 2026-11-01
 
 ## Current acceptance state
 
@@ -10,16 +10,15 @@ Brick remains a **release candidate**, not production-qualified.
 - Version code: `6`
 - Package: `com.brick.safety`
 - Qualification: `candidate-not-real-device-qualified`
-- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED + FURTHER HARDENED / PRIOR LOCAL CLOUD-PROTOCOL-ROUTE EVIDENCE RETAINED / FINAL PAIRED HEAD EXECUTION BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
+- V1 program: **Phase 1 ACCEPTED; Phase 2 ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED; Phases 3–9 not accepted**
 
-No Phase 2 source has been promoted to canonical `main` or `apk-download`.
+No Phase 2 source is promoted to canonical `main` or `apk-download`.
 
-## Contract / audit artifacts
+## Canonical V1 artifacts
 
-Canonical V1 contract: project `Yes.docx` version 1.
+Contract: project `Yes.docx` version 1.
 
 Phase 1:
-
 - `PHASE1_BASELINE.md`
 - `V1_ARCHITECTURE_FREEZE.md`
 - `V1_PHASES.md`
@@ -28,139 +27,102 @@ Phase 1:
 - `PHASE1_REPORT.md`
 
 Phase 2:
-
 - `PHASE2_REPORT.md`
 - `PHASE2_LOCAL_VERIFICATION.md`
+- `PHASE2_CHECKPOINT_2026-11-01.md`
+- `PHASE2_ACCEPTANCE_READINESS_2026-11-01.md`
 
-The duplicate source headings are normalized as `23G-UI` and `23G-GROUND`.
+The duplicate source headings remain normalized as `23G-UI` and `23G-GROUND`.
 
-## Retained Phase 6 baseline
+## Repository / exact Phase 2 pair
 
-Fully validated source commit:
-
-`176d94f604eb562a59260ef380ee680a564acfcc`
-
-Git tree:
-
-`b5f4ea6e97e9e2afef7a01c8386829f316b4af2e`
-
-The later pre-cleanup hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree. All eight normal Phase 6 CI workflows previously passed on that retained baseline. That proves the old candidate foundation, not the new Phase 2 additions.
-
-## Repository organization
-
-Canonical:
-
+Canonical branches:
 - `main` — Cloudflare/runtime
 - `apk-download` — Android
-- `audit-progress` — audit/progress/project memory
+- `audit-progress` — documentation/audit
 
 Phase 2 staging:
+- Cloud `v1-p2-evidence-cloud` / PR #6 / `1d880b703dd5d0c5f581926426a0db29e6c67b8b`
+- Android `v1-p2-evidence-android` / PR #7 / `9d1d04532abc52b679075fe2e330c3d2daafab3b`
 
-- `v1-p2-evidence-cloud` — PR #6, draft/unmerged
-- `v1-p2-evidence-android` — PR #7, draft/unmerged
+Both PRs remain draft, mergeable and deliberately unmerged. Cloud CI pins the exact Android SHA.
 
-Current exact paired checkpoint:
+## Phase 1
 
-- Android: `4ec37a2021bcd575cfefeadd58c968675965a8e7`
-- Cloud: `60697dc37cb325574e9bd22283e2b3dd1d847817`
+**ACCEPTED.** Contract/baseline/architecture freeze only; no runtime feature claim.
 
-The Cloud CI workflow pins the exact Android SHA above. Acceptance is tied to executed verification of the paired heads, not merely to source existence.
+## Phase 2 source state
 
-## Phase 1 — ACCEPTED
+The evidence/data foundation now includes:
 
-Phase 1 froze the baseline, nine-phase program, architecture invariants, requirement IDs, complete source coverage and non-goals. No runtime feature was added in Phase 1.
-
-## Phase 2 — SOURCE IMPLEMENTED + FURTHER HARDENED / NOT ACCEPTED
-
-Implemented staging source includes:
-
-- canonical evidence/provider/family/capability/health/quality model;
-- mandatory independence groups;
-- adaptive bounded sampling;
-- separate encrypted Android evidence journal;
-- DB-owned transactional evidence sequence allocation;
-- canonical paired v4/variant-2 identity boundary;
-- exact ACK deletion semantics plus dispatcher-level exact ACK-set validation;
-- wire-order-safe pending queue for recovery/import inserts;
-- quarantine history separated from current journal-health recovery;
-- quiet journal read probe through `refreshHealth()` and health telemetry;
+- canonical evidence/provider/family/capability/health/quality + independence groups;
+- bounded adaptive sampling interface;
+- separate encrypted Android evidence journal using Brick's existing Keystore-backed cipher;
+- DB-owned transactional sequence allocation;
+- exact ACK deletion boundary and dispatcher ACK-set verification;
+- strict ACK JSON numeric parsing;
+- canonical v4 pairing/API-origin boundary;
+- re-pair owner isolation;
+- wire-order pending reads;
 - safety/live-location/crash priority over evidence;
-- dedicated network-constrained evidence worker;
-- fast healthy catch-up plus bounded persistent-failure backoff to a 15-minute cap;
-- separate bounded binary BREV v1 protocol;
-- canonical UUID / wire-safe integer rules and shared Android/TypeScript golden vector;
-- signed evidence route isolated in `src/evidence-route.ts` and delegated from worker-v7;
-- requester-attempt and authenticated-device rate buckets separated;
-- actual streaming body bound using `readBoundedBody()` rather than unbounded `req.arrayBuffer()`;
-- content-addressed raw R2 objects using hashed device identity plus exact batch hash;
-- hard transactional D1 claims for batch and new-record identities;
-- record-level replay dedupe without storage amplification;
-- bounded one-pass convergence for legitimate same-batch/mixed-record races;
-- exact conflicts remain fail-closed;
-- provider-health ordering by epoch/sequence rather than wall clock;
-- Android-compatible DER ECDSA route-test source;
-- schema and retention foundations without claiming later algorithms;
-- Android instrumentation source for restart/ACK/priority/sequence/pairing/wire-order/quarantine/health/backoff behavior;
-- deterministic paired CI that pins the exact Android source SHA.
+- dedicated WorkManager catch-up with bounded failure backoff;
+- permanent 409 conflict isolation;
+- recoverable journal health and bounded 30-day/2,048-row quarantine;
+- separate BREV v1 protocol while preserving live-location V2 / 90-byte packet;
+- signed + streaming-bounded evidence route;
+- requester/device rate buckets split by authentication boundary;
+- D1/R2 persist-before-ACK;
+- privacy-reduced content-addressed raw evidence;
+- hard transactional batch/new-record claims;
+- exact retry/replay dedupe and bounded legitimate-race convergence;
+- exact batch-link validation plus composite identity FK;
+- rerun-safe batch-link identity triggers for older already-created Phase 2 schemas;
+- 30-day raw evidence R2 lifecycle;
+- test/CI/deploy gates for core persistence, link integrity and signed route;
+- later-phase tables remain foundations only and do not claim later algorithms.
 
-### Evidence level
+## Fresh current execution evidence
 
-Earlier Phase 2 heads received real local protocol/Cloud route/persistence execution, including the shared golden vector, persistence-before-ACK, replay/dedupe, collision handling, batch-ID race rollback, signed-route behavior and targeted record-race/DER-format checks.
+PASS markers earned in this continuation:
 
-Observed earlier markers include:
+- `PHASE2_CURRENT_CLOUD_ACCEPTANCE_HARNESS_PASS`
+- `PHASE2_CURRENT_CLOUD_RERUN_TRIGGER_PASS`
+- `PHASE2_CURRENT_ANDROID_KOTLIN_PROTOCOL_PASS`
+- `PHASE2_CURRENT_ANDROID_ACK_JVM_STUB_PASS`
+- `PHASE2_CURRENT_ANDROID_DISPATCHER_JVM_STUB_PASS`
+- `PHASE2_CURRENT_ANDROID_QUARANTINE_SQL_PASS`
 
-- `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
-- `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
-- `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+Cloud current logic received meaningful execution for protocol, D1-style transactional persistence, R2-style storage, replay/dedupe, conflicts, P-256 Android-DER signatures, body bounds, rate ordering and schema integrity.
 
-The final paired heads add further hardening after those runs. Those earlier passes are retained as useful evidence but are **not** represented as full verification of final Cloud `60697dc3...` and Android `4ec37a20...`.
+Android current model/protocol, ACK parser, dispatcher logic and quarantine SQL semantics received execution at pure/JVM/SQLite boundaries. These results are **not** Android framework, Keystore, WorkManager, emulator or OPPO/ColorOS proof.
 
-### Hosted CI blocker
+## Hosted run blocker
 
-Latest checked hosted run:
+Latest exact run/retry: `41221221445`.
 
-- run `41215211883`
-- Cloud head `60697dc37cb325574e9bd22283e2b3dd1d847817`
-- pinned Android head `4ec37a2021bcd575cfefeadd58c968675965a8e7`
-
-Observed:
-
-- Android compile/lint/dependency-lock: failure with `runner_id: 0`, empty runner name and `steps: []`;
-- Cloud protocol/persistence/regression: failure with `runner_id: 0`, empty runner name and `steps: []`;
+- Cloud prerequisite job: failed before source steps / no runner execution.
+- Android compile/lint/dependency-lock job: same.
 - Android instrumentation: skipped.
 
-No runner executed source steps. This is **not a source pass and not evidence of source failure**. It does not satisfy `CI_VERIFIED`.
+GitHub Actions public status was operational when checked. The repeated no-step behavior appears repository/account-path specific, but the connected API does not expose enough billing/entitlement/annotation detail to identify the exact cause. It remains neither pass nor source failure.
 
-### Merge / acceptance rule
+## Phase 2 acceptance rule
 
-PR #6 and PR #7 remain draft/unmerged deliberately.
+Do **not** mark Phase 2 accepted or merge PR #6/#7 until all required gates actually pass:
 
-Phase 2 is accepted only after actual execution proves:
+1. hosted exact-pair Cloud + Android execution;
+2. Android dependency-lock, compile, instrumentation APK compile and lint;
+3. actual Android instrumentation of journal/restart/ACK/re-pair/Core-priority/conflict/quarantine behavior;
+4. agreed physical OPPO/ColorOS Phase 2 qualification — JVM/emulator substitutes do not replace this gate;
+5. exact Cloudflare production deployment plus deployed D1/R2/schema/retention/route verification;
+6. canonical post-merge checks after the above are green.
 
-1. Cloud typecheck, protocol/persistence harness, signed-route harness and retained Phase 6 regressions pass on the final paired checkpoint;
-2. Android dependency lock, full compile and lint pass on the exact pinned Android SHA;
-3. Android emulator instrumentation passes;
-4. dummy evidence persists across restart, transmits, receives exact ACK and is removed without starving safety/live-location work;
-5. canonical post-merge checks pass;
-6. live Cloudflare deployment verifies the evidence route/schema/retention before any live-integration claim.
+Only then may Phase 2 move to **ACCEPTED** and Phase 3 unlock.
 
-## Phases 3–9
+## Remaining broader production blockers
 
-All remain **NOT ACCEPTED**. Phase 3 must not be treated as unlocked accepted work while the Phase 2 gate is open.
-
-## Remaining production blockers
-
-1. Close Phase 2 hosted/integration verification and complete later V1 phases.
-2. Stable Android production signing.
-3. Exact final live Cloudflare deployment with retained verifier evidence.
-4. Authenticated parent-browser smoke test.
-5. Physical Reno10/Reno14 ColorOS qualification.
-6. Full endurance/failure suite including 72h and 7-day untouched tests.
-7. Later Atlas/Witness/Ground/Shizuku/Location-control capability tests.
-8. Zero-manual-intervention proof after recoverable failures.
-9. Measured battery/storage/network/CPU/memory/wakeup/scan/cloud usage.
-10. Final backup and restore drill.
+Even after Phase 2 closes, Brick is not production-qualified until the later V1 phases and final release gates are complete, including stable Android signing, final authenticated parent testing, full Reno/ColorOS endurance/failure tests, measured resource usage and zero-manual-intervention proof.
 
 ## Audit principle
 
-Source existence, prior local harnesses, targeted invariant checks, final-head hosted CI, deployed Cloudflare state, Android hardware behavior and production qualification are separate evidence layers. Brick advances only to the level directly supported by observed evidence.
+Source existence, local/JVM/SQLite logic execution, hosted CI, deployed Cloudflare state, Android framework behavior, physical-device behavior and production qualification are separate evidence layers. Brick advances only to the level directly supported by observed evidence.
