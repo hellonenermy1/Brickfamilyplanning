@@ -44,7 +44,9 @@ export async function parentListBleAnchors(env: BleAnchorEnv, deviceId: string) 
 }
 
 export async function parentSetBleAnchor(req: Request, env: BleAnchorEnv, deviceId: string) {
-  const body = await req.json<Record<string, unknown>>().catch(() => ({}));
+  let body: Record<string, unknown>;
+  try { body = await req.json<Record<string, unknown>>(); }
+  catch { body = {}; }
   const geofenceId = typeof body.geofenceId === "string" ? body.geofenceId.trim() : "";
   const beaconUuid = normalizeUuid(body.beaconUuid);
   if (!geofenceId || geofenceId.length > 64 || !beaconUuid) return json({ error: "invalid BLE anchor" }, 400);
