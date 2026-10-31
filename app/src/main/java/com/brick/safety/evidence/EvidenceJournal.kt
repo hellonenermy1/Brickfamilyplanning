@@ -22,8 +22,9 @@ class EvidenceJournal(
 ) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     companion object {
         const val DATABASE_NAME = "brick_evidence.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
         private const val FAILURE_HOLD_MS = 120_000L
+        private val DEVICE_ID_RE = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
     }
 
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
@@ -42,6 +43,7 @@ class EvidenceJournal(
         )
         db.execSQL("CREATE INDEX idx_evidence_pending ON evidence(acked,id)")
         db.execSQL("CREATE TABLE evidence_sequence(epoch INTEGER PRIMARY KEY,next_seq INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE evidence_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1),device_id TEXT NOT NULL)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -52,10 +54,16 @@ class EvidenceJournal(
                     "SELECT epoch,COALESCE(MAX(seq),0)+1 FROM evidence GROUP BY epoch"
             )
         }
+        if (oldVersion < 3) {
+            // Phase 2 staging was not promoted to production before this migration. Existing test/dev
+            // rows therefore bind lazily to the first valid paired identity that uses the upgraded DB.
+            db.execSQL("CREATE TABLE IF NOT EXISTS evidence_owner(singleton INTEGER PRIMARY KEY CHECK(singleton=1),device_id TEXT NOT NULL)")
+        }
     }
 
     data class Pending(val id: Long, val record: EvidenceRecord)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
+    data class OwnerBinding(val changed: Boolean, val quarantinedPending: Int)
 
     private fun noteHealthy(operationHealthy: Boolean) {
         val now = System.currentTimeMillis()
@@ -70,6 +78,79 @@ class EvidenceJournal(
         healthPrefs.edit().putBoolean("evidenceJournalHealthy", healthy).apply {
             if (!operationHealthy) putLong("lastEvidenceJournalFailureWallMs", now)
         }.apply()
+    }
+
+    private fun noteIdentityChange(binding: OwnerBinding) {
+        if (!binding.changed) return
+        val previous = healthPrefs.getLong("evidenceIdentityQuarantinedRecordsTotal", 0L).coerceAtLeast(0L)
+        val added = binding.quarantinedPending.toLong().coerceAtLeast(0L)
+        val total = if (Long.MAX_VALUE - previous < added) Long.MAX_VALUE else previous + added
+        healthPrefs.edit()
+            .putLong("lastEvidenceIdentityChangeWallMs", System.currentTimeMillis())
+            .putLong("evidenceIdentityQuarantinedRecordsTotal", total)
+            .apply()
+    }
+
+    private fun bindOwnerInTransaction(db: SQLiteDatabase, deviceId: String): OwnerBinding {
+        val existing = db.rawQuery(
+            "SELECT device_id FROM evidence_owner WHERE singleton=1",
+            emptyArray()
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+
+        if (existing == null) {
+            db.insertOrThrow(
+                "evidence_owner",
+                null,
+                ContentValues().apply {
+                    put("singleton", 1)
+                    put("device_id", deviceId)
+                }
+            )
+            return OwnerBinding(changed = false, quarantinedPending = 0)
+        }
+        if (existing == deviceId) return OwnerBinding(changed = false, quarantinedPending = 0)
+
+        // Evidence collected for one paired child identity must never be uploaded under another.
+        // Preserve old pending rows locally as quarantine history, then rebind so a legitimate
+        // re-pair can collect fresh evidence without manual database cleanup.
+        val quarantined = db.update(
+            "evidence",
+            ContentValues().apply { put("acked", 2) },
+            "acked=0",
+            null
+        )
+        val changed = db.update(
+            "evidence_owner",
+            ContentValues().apply { put("device_id", deviceId) },
+            "singleton=1",
+            null
+        )
+        check(changed == 1) { "evidence owner rebind failed" }
+        return OwnerBinding(changed = true, quarantinedPending = quarantined)
+    }
+
+    /**
+     * Ensure the durable journal belongs to the currently paired Brick device. A pairing identity
+     * change quarantines any old unsent records instead of misattributing them to the new child.
+     */
+    fun ensureDeviceOwner(deviceId: String): OwnerBinding? {
+        if (!DEVICE_ID_RE.matches(deviceId)) return null
+        val db = writableDatabase
+        var binding: OwnerBinding? = null
+        var healthy = false
+        try {
+            db.beginTransaction()
+            binding = bindOwnerInTransaction(db, deviceId)
+            db.setTransactionSuccessful()
+            healthy = true
+        } catch (_: Throwable) {
+            binding = null
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+            noteHealthy(healthy)
+        }
+        if (healthy) binding?.let(::noteIdentityChange)
+        return binding
     }
 
     /**
@@ -101,16 +182,19 @@ class EvidenceJournal(
     }
 
     /**
-     * Atomically allocates the next sequence and persists the encrypted record. This method is the
-     * authoritative normal enqueue path; SharedPreferences is never used as the allocator.
+     * Atomically binds the current paired identity, allocates the next sequence and persists the
+     * encrypted record. SharedPreferences is never used as the allocator or owner authority.
      */
-    fun appendNew(epoch: Int, observation: EvidenceObservation): EvidenceRecord? {
+    fun appendNew(deviceId: String, epoch: Int, observation: EvidenceObservation): EvidenceRecord? {
+        if (!DEVICE_ID_RE.matches(deviceId)) return null
         require(epoch >= 0)
         val db = writableDatabase
         var record: EvidenceRecord? = null
+        var binding: OwnerBinding? = null
         var healthy = false
         try {
             db.beginTransaction()
+            binding = bindOwnerInTransaction(db, deviceId)
             db.execSQL(
                 "INSERT OR IGNORE INTO evidence_sequence(epoch,next_seq) VALUES(?,COALESCE((SELECT MAX(seq)+1 FROM evidence WHERE epoch=?),1))",
                 arrayOf(epoch, epoch)
@@ -148,6 +232,7 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
+        if (healthy) binding?.let(::noteIdentityChange)
         return record
     }
 

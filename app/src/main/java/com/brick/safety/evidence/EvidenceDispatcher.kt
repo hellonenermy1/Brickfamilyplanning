@@ -23,6 +23,7 @@ enum class EvidenceDrainStop {
     CORE_BACKLOG,
     TRANSPORT_FAILURE,
     ACK_FAILURE,
+    JOURNAL_FAILURE,
     IDENTITY_UNAVAILABLE
 }
 
@@ -50,10 +51,11 @@ class EvidenceDispatcher(
         // Refuse to persist new family-location evidence when pairing is incomplete or the stored
         // identity has been corrupted/tampered. This also guarantees the later HTTP path segment
         // matches the server's canonical Brick device-ID contract.
-        if (pairedDeviceId() == null || prefs.getString("apiBase", null).isNullOrBlank()) return false
+        val deviceId = pairedDeviceId() ?: return false
+        if (prefs.getString("apiBase", null).isNullOrBlank()) return false
 
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
-        val record = journal.appendNew(epoch, observation) ?: return false
+        val record = journal.appendNew(deviceId, epoch, observation) ?: return false
         // Preference is only a cheap observable cache. The SQLite journal owns allocation and can
         // recover the correct next sequence even if this async preference write never happens.
         prefs.edit().putLong("evidenceSequence", record.sequence).apply()
@@ -89,15 +91,30 @@ class EvidenceDispatcher(
         val deviceId = pairedDeviceId() ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
         val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() }
             ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
+
+        // Bind the encrypted journal to the same paired child identity used by this upload. If the
+        // pairing changed, old unsent evidence is preserved as quarantine history rather than being
+        // uploaded under the new device ID. A DB failure is distinct from an identity/config error.
+        if (journal.ensureDeviceOwner(deviceId) == null) {
+            return EvidenceDrainResult(0, EvidenceDrainStop.JOURNAL_FAILURE)
+        }
         if (coreBacklogPresent()) return EvidenceDrainResult(0, EvidenceDrainStop.CORE_BACKLOG)
 
         var sent = 0
         repeat(maxBatches.coerceIn(1, 8)) {
             // Recheck before every batch so safety/location work can preempt evidence between batches.
             if (coreBacklogPresent()) return EvidenceDrainResult(sent, EvidenceDrainStop.CORE_BACKLOG)
-            val pending = journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
+            val pending = try {
+                journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
+            } catch (_: Throwable) {
+                return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
+            }
             if (pending.isEmpty()) return EvidenceDrainResult(sent, EvidenceDrainStop.EMPTY)
-            val batch = EvidenceProtocol.encodeBatch(pending.map { it.record })
+            val batch = try {
+                EvidenceProtocol.encodeBatch(pending.map { it.record })
+            } catch (_: Throwable) {
+                return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
+            }
             val acked = try {
                 transport.send(baseUrl, deviceId, batch)
             } catch (_: Throwable) {
@@ -110,7 +127,7 @@ class EvidenceDispatcher(
             if (acked.size != expected.size || acked.toSet() != expected.toSet()) {
                 return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
             }
-            if (!journal.ackBatch(acked)) return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
+            if (!journal.ackBatch(acked)) return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
             sent += acked.size
         }
         return EvidenceDrainResult(sent, EvidenceDrainStop.BUDGET_EXHAUSTED)

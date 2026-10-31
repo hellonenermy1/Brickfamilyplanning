@@ -46,9 +46,9 @@ class EvidenceUploadWorker(
         return try {
             EvidenceDispatcher(applicationContext, scheduleRecovery = false).use { dispatcher ->
                 // Bound each worker run so evidence cannot monopolise execution. Healthy backlog
-                // catch-up remains fast. Persistent server/auth/ACK/config failures use a durable
-                // bounded exponential delay so evidence cannot wake the phone every 30 seconds
-                // forever while Brick Core is otherwise healthy.
+                // catch-up remains fast. Persistent server/auth/ACK/journal/config failures use a
+                // durable bounded exponential delay so evidence cannot wake the phone continuously
+                // while Brick Core is otherwise healthy.
                 val outcome = dispatcher.drainDetailed(maxBatches = 8)
                 val pending = dispatcher.stats().pendingCount
                 if (pending <= 0) {
@@ -65,6 +65,7 @@ class EvidenceUploadWorker(
                         }
                         EvidenceDrainStop.TRANSPORT_FAILURE,
                         EvidenceDrainStop.ACK_FAILURE,
+                        EvidenceDrainStop.JOURNAL_FAILURE,
                         EvidenceDrainStop.IDENTITY_UNAVAILABLE -> nextFailureDelaySeconds()
                         EvidenceDrainStop.EMPTY -> {
                             resetFailureStreak()
@@ -76,8 +77,8 @@ class EvidenceUploadWorker(
             }
             Result.success()
         } catch (_: Throwable) {
-            // Unexpected local journal/worker failure uses WorkManager's own retry semantics.
-            // Core tracking remains independent and is never failed by this worker.
+            // Unexpected local worker failure uses WorkManager's own retry semantics. Core tracking
+            // remains independent and is never failed by this low-priority evidence worker.
             Result.retry()
         }
     }
