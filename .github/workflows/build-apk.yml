@@ -115,6 +115,14 @@ jobs:
             echo 'Stable release signing secrets are not all configured; the release variant will still be built unsigned and audited.'
           fi
 
+      - name: Resolve exact Android dependency lock for this APK build
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:dependencies --write-locks
+          test -s app/gradle.lockfile
+          grep -F '=releaseRuntimeClasspath' app/gradle.lockfile >/dev/null
+
       - name: Compile, lint, and build debug + release variants
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
 
@@ -123,6 +131,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p phase6-apk-evidence
+          cp app/gradle.lockfile phase6-apk-evidence/gradle.lockfile
+          sha256sum app/gradle.lockfile > phase6-apk-evidence/gradle-lock-sha256.txt
           gradle --no-daemon :app:dependencies --configuration releaseRuntimeClasspath > phase6-apk-evidence/release-runtime-dependencies.txt
 
       - name: Verify APK contents, signatures, and provenance
@@ -168,6 +178,7 @@ jobs:
             echo "version_code=6"
             echo "build_type=release"
             echo "stable_signing_available=$RELEASE_AVAILABLE"
+            echo "gradle_lock_sha256=$(sha256sum app/gradle.lockfile | awk '{print $1}')"
             sha256sum "$release_apk"
           } > phase6-apk-evidence/release-provenance.txt
 
@@ -203,6 +214,14 @@ jobs:
         with:
           name: brick-child-phase6-release-apk
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Android dependency lock used by APK build
+        uses: actions/upload-artifact@v7
+        with:
+          name: brick-phase6-android-gradle-lock
+          path: app/gradle.lockfile
           if-no-files-found: error
           retention-days: 30
 
