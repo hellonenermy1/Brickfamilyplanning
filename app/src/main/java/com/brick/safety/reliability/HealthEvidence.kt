@@ -26,6 +26,11 @@ object HealthEvidence {
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
         val lastEvidenceJournalFailure = prefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
+        val lastEvidenceIdentityChange = prefs.getLong("lastEvidenceIdentityChangeWallMs", 0L)
+        val lastEvidenceServerConflict = prefs.getLong("lastEvidenceServerConflictWallMs", 0L)
+        val evidenceIdentityQuarantinedTotal = prefs.getLong("evidenceIdentityQuarantinedRecordsTotal", 0L).coerceAtLeast(0L)
+        val evidenceServerConflictTotal = prefs.getLong("evidenceServerConflictRecordsTotal", 0L).coerceAtLeast(0L)
+        val evidenceUploadFailureStreak = prefs.getInt("evidenceUploadFailureStreak", 0).coerceAtLeast(0)
         val bleAnchorConfigCount = prefs.getInt("bleAnchorConfigCount", 0).coerceIn(0, 8)
         val evidenceSnapshot = runCatching {
             EvidenceJournal(context).let { journal ->
@@ -83,5 +88,10 @@ object HealthEvidence {
             .put("evidencePendingRecords", evidenceStats?.pendingCount ?: -1)
             .put("evidenceQuarantinedRecords", evidenceStats?.quarantinedCount ?: -1)
             .put("evidenceOldestPendingAgeMs", evidenceStats?.oldestPendingMs?.let { (now - it).coerceAtLeast(0L) } ?: JSONObject.NULL)
+            .put("lastEvidenceIdentityChangeAgeMs", ageSince(lastEvidenceIdentityChange))
+            .put("evidenceIdentityQuarantinedRecordsTotal", evidenceIdentityQuarantinedTotal)
+            .put("lastEvidenceServerConflictAgeMs", ageSince(lastEvidenceServerConflict))
+            .put("evidenceServerConflictRecordsTotal", evidenceServerConflictTotal)
+            .put("evidenceUploadFailureStreak", evidenceUploadFailureStreak)
     }
 }
