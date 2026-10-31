@@ -1,6 +1,7 @@
 package com.brick.safety.reliability
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -39,12 +40,14 @@ object RecoveryScheduler {
 
     /**
      * Evidence can arrive continuously. KEEP is intentional: repeated observations must not keep
-     * replacing/postponing a pending evidence drain forever. Core recovery keeps its existing
-     * separate scheduling semantics above.
+     * replacing/postponing a pending drain. The dedicated worker retries until its durable queue is
+     * empty, but the dispatcher still yields whenever higher-priority Brick Core backlog exists.
      */
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
-        val request = OneTimeWorkRequestBuilder<RecoveryWorker>()
+        val request = OneTimeWorkRequestBuilder<EvidenceUploadWorker>()
             .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             EVIDENCE_SOON_WORK,
