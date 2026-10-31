@@ -9,6 +9,7 @@ import java.util.UUID
 class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
     companion object {
         private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
+        private const val SECOND_DEVICE_ID = "87654321-4321-4abc-8def-0123456789ab"
     }
 
     private lateinit var context: Context
@@ -103,5 +104,72 @@ class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
         assertInvalidDeviceIdRejected("../../victim")
         // Canonical UUID text but version 5; pairing only creates RFC-4122 v4 IDs.
         assertInvalidDeviceIdRejected("12345678-1234-5678-9abc-def012345678")
+    }
+
+    fun testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        assertTrue(
+            prefs.edit()
+                .putInt("epoch", 91)
+                .putString("deviceId", TEST_DEVICE_ID)
+                .putString("apiBase", "https://brick.invalid")
+                .commit()
+        )
+
+        var journal = EvidenceJournal(context, TestCipher)
+        var dispatcher = EvidenceDispatcher(
+            context,
+            journal,
+            EvidenceTransport { _, _, _ -> error("network must not run while creating old backlog") },
+            { false },
+            false
+        )
+        assertTrue(dispatcher.enqueue(observation()))
+        assertEquals(1, dispatcher.stats().pendingCount)
+        dispatcher.close()
+
+        // Simulate an authorised re-pair to a different Brick child identity while old evidence is
+        // still offline. The old record must never be uploaded under SECOND_DEVICE_ID.
+        assertTrue(prefs.edit().putString("deviceId", SECOND_DEVICE_ID).commit())
+        var transportCalls = 0
+        journal = EvidenceJournal(context, TestCipher)
+        dispatcher = EvidenceDispatcher(
+            context,
+            journal,
+            EvidenceTransport { _, _, _ -> transportCalls += 1; error("old evidence must not upload under new identity") },
+            { false },
+            false
+        )
+        val afterRebind = dispatcher.drainDetailed(maxBatches = 1)
+        assertEquals(EvidenceDrainStop.EMPTY, afterRebind.stop)
+        assertEquals(0, afterRebind.sentRecords)
+        assertEquals(0, transportCalls)
+        assertEquals(0, dispatcher.stats().pendingCount)
+        assertEquals(1, dispatcher.stats().quarantinedCount)
+        dispatcher.close()
+
+        // Fresh evidence for the new identity can continue automatically without manual DB cleanup.
+        journal = EvidenceJournal(context, TestCipher)
+        dispatcher = EvidenceDispatcher(
+            context,
+            journal,
+            EvidenceTransport { _, deviceId, batch ->
+                transportCalls += 1
+                assertEquals(SECOND_DEVICE_ID, deviceId)
+                EvidenceProtocol.decodeBatch(batch.bytes).records.map {
+                    EvidenceAck(it.epoch, it.sequence, it.observation.recordId)
+                }
+            },
+            { false },
+            false
+        )
+        assertTrue(dispatcher.enqueue(observation()))
+        val newIdentityDrain = dispatcher.drainDetailed(maxBatches = 1)
+        assertEquals(1, newIdentityDrain.sentRecords)
+        assertEquals(1, transportCalls)
+        assertEquals(0, dispatcher.stats().pendingCount)
+        assertEquals(1, dispatcher.stats().quarantinedCount)
+        assertEquals(1L, prefs.getLong("evidenceIdentityQuarantinedRecordsTotal", 0L))
+        dispatcher.close()
     }
 }
