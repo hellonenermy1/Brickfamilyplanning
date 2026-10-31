@@ -28,7 +28,10 @@ jobs:
           npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
           npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
           npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-store.mjs
       - name: Validate battery trend and private backup behavior
         run: node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
       - name: Validate route-constrained fallback geometry
         run: node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+      - name: Validate raw vs route-trusted R2 history preservation
+        run: node scripts/test-route-history.mjs /tmp/brick-history-store.mjs
