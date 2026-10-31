@@ -187,12 +187,23 @@ const invalidDevice = await manualFetch(`${origin}/api/device/deployment-smoke/l
   body: '{}'
 });
 assert(invalidDevice.status === 401 || invalidDevice.status === 429, `unsigned fake-device location request did not fail closed (HTTP ${invalidDevice.status})`);
-const invalidEvidence = await manualFetch(`${origin}/api/device/deployment-smoke/evidence`, {
+
+// Keep path validation and authentication as separate evidence. A non-v4 path must fail as 400;
+// then a syntactically valid but nonexistent v4 device must reach the auth boundary and fail 401
+// (or 429 if the public requester bucket is already exhausted).
+const invalidEvidencePath = await manualFetch(`${origin}/api/device/deployment-smoke/evidence`, {
   method: 'POST',
   headers: { 'content-type': 'application/vnd.brick.evidence' },
   body: new Uint8Array([0x42])
 });
-assert(invalidEvidence.status === 401 || invalidEvidence.status === 429, `unsigned fake-device evidence request did not fail closed (HTTP ${invalidEvidence.status})`);
+assert(invalidEvidencePath.status === 400, `invalid evidence device path did not fail as 400 (HTTP ${invalidEvidencePath.status})`);
+const fakeEvidenceDeviceId = '00000000-0000-4000-8000-000000000001';
+const unauthorizedEvidence = await manualFetch(`${origin}/api/device/${fakeEvidenceDeviceId}/evidence`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/vnd.brick.evidence' },
+  body: new Uint8Array([0x42])
+});
+assert(unauthorizedEvidence.status === 401 || unauthorizedEvidence.status === 429, `unsigned fake-v4 evidence request did not fail closed at auth (HTTP ${unauthorizedEvidence.status})`);
 
 // The workflow performs a strict, tagged deploy immediately before this verifier. Keep the exact
 // source SHA in non-secret evidence so the APK/backend freeze can prove which source was deployed.
@@ -229,7 +240,8 @@ const report = {
     parentRelease: parentRelease.status,
     invalidPair: invalidPair.status,
     invalidDevice: invalidDevice.status,
-    invalidEvidence: invalidEvidence.status
+    invalidEvidencePath: invalidEvidencePath.status,
+    unauthorizedEvidence: unauthorizedEvidence.status
   },
   privateMapRequired: requirePrivateMap,
   privateMapInstalled: Boolean(state?.privateMap?.installed),
