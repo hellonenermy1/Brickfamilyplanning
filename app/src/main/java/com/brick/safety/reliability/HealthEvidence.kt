@@ -26,10 +26,11 @@ object HealthEvidence {
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
 
         // Health is signed, but signatures alone do not prevent replay. Burn a durable monotonic
-        // sequence before transmission. Gaps are harmless; reuse after a failed disk commit is not,
-        // so the server rejects any sequence it has already accepted.
-        val healthSequence = prefs.getLong("healthSequence", 0L) + 1L
-        val healthCounterWriteHealthy = prefs.edit().putLong("healthSequence", healthSequence).commit()
+        // sequence before transmission. If the disk commit fails, publish sequence 0 so the server
+        // rejects this heartbeat instead of accepting a sequence the phone cannot safely remember.
+        val nextHealthSequence = prefs.getLong("healthSequence", 0L) + 1L
+        val healthCounterWriteHealthy = prefs.edit().putLong("healthSequence", nextHealthSequence).commit()
+        val healthSequence = if (healthCounterWriteHealthy) nextHealthSequence else 0L
 
         val activeNetwork = connectivity.activeNetwork
         val caps = activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
