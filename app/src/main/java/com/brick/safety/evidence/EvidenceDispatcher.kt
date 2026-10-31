@@ -6,6 +6,7 @@ import com.brick.safety.data.Journal
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import java.io.Closeable
+import java.util.UUID
 
 fun interface EvidenceTransport {
     fun send(baseUrl: String, deviceId: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck>
@@ -26,11 +27,18 @@ class EvidenceDispatcher(
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
+    private fun pairedDeviceId(): String? {
+        val value = prefs.getString("deviceId", null)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val parsed = runCatching { UUID.fromString(value) }.getOrNull() ?: return null
+        return value.takeIf { parsed.toString() == value }
+    }
+
     @Synchronized
     fun enqueue(observation: EvidenceObservation): Boolean {
-        // Follow the existing live-location behavior: do not accumulate unbound family-location
-        // evidence before this installation is paired to a Brick backend/device identity.
-        if (prefs.getString("deviceId", null).isNullOrBlank() || prefs.getString("apiBase", null).isNullOrBlank()) return false
+        // Pairing creates a canonical UUID device identity. Refuse to persist new family-location
+        // evidence when pairing is incomplete or the stored identity has been corrupted/tampered.
+        // This also guarantees the later HTTP path segment cannot contain path-control characters.
+        if (pairedDeviceId() == null || prefs.getString("apiBase", null).isNullOrBlank()) return false
 
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
         val record = journal.appendNew(epoch, observation) ?: return false
@@ -66,7 +74,7 @@ class EvidenceDispatcher(
      * but they must preserve this ordering invariant.
      */
     fun drainIfSafe(maxBatches: Int = 2): Int {
-        val deviceId = prefs.getString("deviceId", null)?.takeIf { it.isNotBlank() } ?: return 0
+        val deviceId = pairedDeviceId() ?: return 0
         val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() } ?: return 0
         if (coreBacklogPresent()) return 0
 
