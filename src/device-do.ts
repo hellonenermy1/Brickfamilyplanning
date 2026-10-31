@@ -1,6 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { activityName, qualityName, sourceName, type LivePacket, type RouteCorridor } from "./protocol";
 
+type Env = Record<string, never>;
+
 export type DeviceHealth = {
   protocol: number;
   elapsedRealtimeMs: number;
@@ -102,10 +104,14 @@ type LatestState = {
 
 type StoredSafetyEvent = RealtimeSafetyEvent & { receivedAt: number };
 
-export class BrickDevice extends DurableObject {
+function newer(epoch: number, sequence: number, current: SequenceHighWater | null) {
+  return current === null || epoch > current.epoch || (epoch === current.epoch && sequence > current.sequence);
+}
+
+export class BrickDevice extends DurableObject<Env> {
   private sockets = new Set<WebSocket>();
 
-  constructor(ctx: DurableObjectState, env: unknown) {
+  constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     for (const ws of this.ctx.getWebSockets()) this.sockets.add(ws);
   }
@@ -121,23 +127,23 @@ export class BrickDevice extends DurableObject {
     const state: LatestState = {
       epoch: packet.epoch,
       sequence: packet.sequence,
-      lat: packet.trustedLat,
-      lon: packet.trustedLon,
-      uncertaintyM: packet.uncertaintyM,
+      lat: packet.trustedLatE7 === null ? null : packet.trustedLatE7 / 1e7,
+      lon: packet.trustedLonE7 === null ? null : packet.trustedLonE7 / 1e7,
+      uncertaintyM: packet.uncertaintyCm / 100,
       routeCorridor: packet.routeCorridor ?? null,
-      raw: packet.rawLat === null || packet.rawLon === null ? null : {
-        lat: packet.rawLat,
-        lon: packet.rawLon,
-        accuracyM: packet.rawAccuracyM,
+      raw: packet.rawLatE7 === null || packet.rawLonE7 === null ? null : {
+        lat: packet.rawLatE7 / 1e7,
+        lon: packet.rawLonE7 / 1e7,
+        accuracyM: packet.rawAccuracyCm === null ? null : packet.rawAccuracyCm / 100,
         accepted: packet.rawAccepted,
         mock: packet.rawMock
       },
-      speedKph: packet.speedMps === null ? null : packet.speedMps * 3.6,
-      speedAccuracyKph: packet.speedAccuracyMps === null ? null : packet.speedAccuracyMps * 3.6,
-      bearingDeg: packet.bearingDeg,
-      bearingAccuracyDeg: packet.bearingAccuracyDeg,
-      altitudeM: packet.altitudeM,
-      verticalAccuracyM: packet.verticalAccuracyM,
+      speedKph: packet.speedCms === null ? null : packet.speedCms * 0.036,
+      speedAccuracyKph: packet.speedAccuracyCms === null ? null : packet.speedAccuracyCms * 0.036,
+      bearingDeg: packet.bearingCdeg === null ? null : packet.bearingCdeg / 100,
+      bearingAccuracyDeg: packet.bearingAccuracyCdeg === null ? null : packet.bearingAccuracyCdeg / 100,
+      altitudeM: packet.altitudeCm === null ? null : packet.altitudeCm / 100,
+      verticalAccuracyM: packet.verticalAccuracyCm === null ? null : packet.verticalAccuracyCm / 100,
       activity: activityName(packet.activity),
       activityConfidence: packet.activityConfidence,
       quality: qualityName(packet.quality),
@@ -176,9 +182,17 @@ export class BrickDevice extends DurableObject {
 
   async commitSequenceHighWater(epoch: number, sequence: number) {
     const current = await this.readSequenceHighWater();
-    if (!current || epoch > current.epoch || (epoch === current.epoch && sequence > current.sequence)) {
-      await this.ctx.storage.put("sequenceHighWater", { epoch, sequence });
-    }
+    if (newer(epoch, sequence, current)) await this.ctx.storage.put("sequenceHighWater", { epoch, sequence });
+  }
+
+  async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> {
+    const current = (await this.ctx.storage.get<SequenceHighWater>("safetyEvaluationHighWater")) ?? null;
+    return newer(epoch, sequence, current);
+  }
+
+  async commitSafetyEvaluation(epoch: number, sequence: number) {
+    const current = (await this.ctx.storage.get<SequenceHighWater>("safetyEvaluationHighWater")) ?? null;
+    if (newer(epoch, sequence, current)) await this.ctx.storage.put("safetyEvaluationHighWater", { epoch, sequence });
   }
 
   async readSafetyHighWater(): Promise<number> {
