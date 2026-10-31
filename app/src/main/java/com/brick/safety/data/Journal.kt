@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", null, 1) {
+    companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -20,11 +21,16 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }.getOrDefault(true)
 
     private fun noteJournalHealthy(operationHealthy: Boolean) {
-        val healthy = operationHealthy && !hasQuarantinedEvidence()
+        val now = System.currentTimeMillis()
+        val quarantined = hasQuarantinedEvidence()
+        val priorFailure = healthPrefs.getLong("lastJournalWriteFailureWallMs", 0L)
+        val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
+        val currentFailure = !operationHealthy || quarantined
+        val healthy = !currentFailure && !freshPriorFailure
         healthPrefs.edit()
             .putBoolean("journalWriteHealthy", healthy)
             .apply {
-                if (!healthy) putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
+                if (currentFailure) putLong("lastJournalWriteFailureWallMs", now)
             }
             .apply()
     }
@@ -93,7 +99,6 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     fun nextPending(limit: Int = 100): List<Pending> {
         val safeLimit = limit.coerceIn(1, 1_000)
         val out = mutableListOf<Pending>()
-        // Read extra rows so a few quarantined/corrupt records cannot starve the requested valid batch.
         readableDatabase.rawQuery(
             "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?",
             arrayOf((safeLimit + 32).toString())
