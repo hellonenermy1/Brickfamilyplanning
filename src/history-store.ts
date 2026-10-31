@@ -1,7 +1,7 @@
 import type { LivePacket } from "./protocol";
 import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./history-codec";
 
-type QueueLocation = { type: "location"; deviceId: string; packet: LivePacket };
+type QueueLocation = { type: "location"; deviceId: string; packet: LivePacket; rawPacket?: LivePacket };
 type Env = { HISTORY: R2Bucket };
 
 type StoredRawSegment = {
@@ -10,6 +10,7 @@ type StoredRawSegment = {
   segmentStartMs?: number;
   storedAt?: number;
   packets?: LivePacket[];
+  trustedPackets?: LivePacket[];
 };
 
 type Group = {
@@ -17,7 +18,7 @@ type Group = {
   day: string;
   epoch: number;
   segmentStartMs: number;
-  entries: { message: Message<unknown>; packet: LivePacket }[];
+  entries: { message: Message<unknown>; packet: LivePacket; rawPacket: LivePacket }[];
 };
 
 const SEGMENT_MS = 15 * 60 * 1000;
@@ -38,12 +39,21 @@ function segmentKeys(group: Group) {
   };
 }
 
-async function existingPackets(env: Env, key: string): Promise<LivePacket[]> {
+function validPacket(p: unknown): p is LivePacket {
+  if (!p || typeof p !== "object") return false;
+  const x = p as Partial<LivePacket>;
+  return Number.isSafeInteger(x.epoch) && Number.isSafeInteger(x.sequence) && Number.isSafeInteger(x.wallTimeMs);
+}
+
+async function existingSegment(env: Env, key: string): Promise<{ raw: LivePacket[]; trusted: LivePacket[] }> {
   const obj = await env.HISTORY.get(key);
-  if (!obj) return [];
+  if (!obj) return { raw: [], trusted: [] };
   const parsed = await readJsonObject<StoredRawSegment>(obj);
-  if (!Array.isArray(parsed.packets)) return [];
-  return parsed.packets.filter(p => p && typeof p === "object" && Number.isSafeInteger(p.epoch) && Number.isSafeInteger(p.sequence));
+  const raw = Array.isArray(parsed.packets) ? parsed.packets.filter(validPacket) : [];
+  // V3 and older segments predate server route-constraining, so their raw packet was also the
+  // authoritative trusted packet. V4+ stores both views to keep evidence immutable.
+  const trusted = Array.isArray(parsed.trustedPackets) ? parsed.trustedPackets.filter(validPacket) : raw;
+  return { raw, trusted };
 }
 
 function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: number): LivePacket[] {
@@ -53,6 +63,15 @@ function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: num
   const merged = [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
   if (merged.length > MAX_PACKETS_PER_SEGMENT) throw new Error("history segment packet bound exceeded");
   return merged;
+}
+
+function originalForQueue(body: Partial<QueueLocation>, packet: LivePacket): LivePacket {
+  const raw = body.rawPacket;
+  if (!validPacket(raw)) return packet;
+  // A Queue message may carry the original signed child packet only for the exact same identity/time.
+  // Never allow an unrelated raw packet to be attached to a server-trusted point.
+  if (raw.epoch !== packet.epoch || raw.sequence !== packet.sequence || raw.wallTimeMs !== packet.wallTimeMs) return packet;
+  return raw;
 }
 
 export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env) {
@@ -68,6 +87,7 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
       message.ack();
       continue;
     }
+    const rawPacket = originalForQueue(body, packet);
     const start = segmentStart(packet.wallTimeMs);
     const day = new Date(start).toISOString().slice(0, 10);
     const key = `${body.deviceId}|${start}|${packet.epoch}`;
@@ -76,7 +96,7 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
       group = { deviceId: body.deviceId, day, epoch: packet.epoch, segmentStartMs: start, entries: [] };
       groups.set(key, group);
     }
-    group.entries.push({ message, packet });
+    group.entries.push({ message, packet, rawPacket });
   }
 
   // Queues explicitly do not guarantee publication order. History processing is therefore
@@ -87,23 +107,34 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
       const keys = segmentKeys(group);
-      const oldPackets = await existingPackets(env, keys.raw);
-      const merged = mergePackets(oldPackets, group.entries.map(x => x.packet), group.epoch);
+      const old = await existingSegment(env, keys.raw);
+      const rawPackets = mergePackets(old.raw, group.entries.map(x => x.rawPacket), group.epoch);
+      const trustedPackets = mergePackets(old.trusted, group.entries.map(x => x.packet), group.epoch);
       const storedAt = Date.now();
-      const points = merged.map(trustedPoint);
+      const points = trustedPackets.map(trustedPoint);
       const [rawBody, trustedBody] = await Promise.all([
-        gzipJson({ v: 3, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, packets: merged }),
-        gzipJson({ v: 3, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, delta: encodeTrustedDelta(points) })
+        gzipJson({
+          v: 4,
+          deviceId: group.deviceId,
+          segmentStartMs: group.segmentStartMs,
+          storedAt,
+          packets: rawPackets,
+          // Keeping server-trusted packets beside raw packets lets later Queue retries merge the
+          // segment without recomputing/loss of the route-constrained result. Raw evidence remains
+          // the exact signed child packet in `packets`.
+          trustedPackets
+        }),
+        gzipJson({ v: 4, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, delta: encodeTrustedDelta(points) })
       ]);
 
       await Promise.all([
         env.HISTORY.put(keys.raw, rawBody, {
           httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v3", segmentMinutes: "15", epoch: String(group.epoch) }
+          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v4", segmentMinutes: "15", epoch: String(group.epoch) }
         }),
         env.HISTORY.put(keys.trusted, trustedBody, {
           httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v3", segmentMinutes: "15", epoch: String(group.epoch) }
+          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v4", segmentMinutes: "15", epoch: String(group.epoch) }
         })
       ]);
 
