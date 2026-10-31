@@ -19,8 +19,6 @@ type RecordRow = {
 
 export class EvidenceConflict extends Error {}
 
-function safeDeviceId(id: string) { return id.replace(/[^a-zA-Z0-9_-]/g, "_"); }
-
 async function sha256Hex(data: ArrayBuffer | Uint8Array): Promise<string> {
   const input = data instanceof Uint8Array ? data : new Uint8Array(data);
   const digest = await crypto.subtle.digest("SHA-256", input);
@@ -80,11 +78,14 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
     }
   }
 
-  const r2Key = `evidence/raw/${safeDeviceId(deviceId)}/${batch.batchId}.brev`;
+  // Raw object paths use a one-way device key rather than a sanitized identifier. This avoids
+  // path collisions between different identifiers and reduces identifier exposure in R2 metadata.
+  const deviceKey = await sha256Hex(new TextEncoder().encode(deviceId));
+  const r2Key = `evidence/raw/${deviceKey}/${batch.batchId}.brev`;
   await env.HISTORY.put(r2Key, buffer, {
     httpMetadata: { contentType: "application/vnd.brick.evidence" },
     customMetadata: {
-      deviceId,
+      deviceKey,
       protocol: "1",
       recordCount: String(batch.records.length),
       sha256: batchSha
