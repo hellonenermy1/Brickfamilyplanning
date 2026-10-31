@@ -203,7 +203,13 @@ export class BrickDevice extends DurableObject {
     this.broadcast("location", { state, derived: await this.derive() });
   }
 
-  async claimSafetyEvaluation(epoch: number, sequence: number): Promise<boolean> {
+  async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> {
+    if (!Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(sequence) || sequence <= 0) return false;
+    const current = await this.ctx.storage.get<SequenceHighWater>("safetyEvalHighWater");
+    return advances({ epoch, sequence }, current);
+  }
+
+  async commitSafetyEvaluation(epoch: number, sequence: number): Promise<boolean> {
     if (!Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(sequence) || sequence <= 0) return false;
     const next = { epoch, sequence };
     const current = await this.ctx.storage.get<SequenceHighWater>("safetyEvalHighWater");
