@@ -24,6 +24,9 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
 
+      - name: Block known high or critical npm dependency vulnerabilities
+        run: npm audit --audit-level=high
+
       - name: Require same-origin parent WebSocket upgrades
         shell: bash
         run: |
