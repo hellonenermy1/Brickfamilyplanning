@@ -2,6 +2,118 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — Brick V1 Phase 2: evidence/data foundation implementation
+
+### User request
+
+Start Phase 2 immediately, then continue from the existing Phase 2 branches without restarting or losing prior work.
+
+### Implementation completed in staging source
+
+Android branch `v1-p2-evidence-android` / PR #7 now contains the Phase 2 Android foundation:
+
+- canonical `EvidenceObservation`, `EvidenceRecord` and exact `EvidenceAck` model;
+- stable provider/family/capability/health/quality enums;
+- mandatory independence groups for later anti-double-counting;
+- provider lifecycle interface and adaptive sampling coordinator;
+- separate encrypted `brick_evidence.db` journal using Android-Keystore AES-GCM;
+- pending/delivered/quarantined evidence states;
+- strict epoch/sequence/record-ID identity;
+- exact local ACK semantics;
+- lower-priority dispatcher that refuses to drain evidence while SOS/safety, durable live-location or crash backlog exists;
+- signed HTTPS evidence transport with exact server ACK-set verification;
+- WorkManager best-effort evidence retry after core tracking recovery;
+- evidence-journal health telemetry;
+- test-only dummy evidence provider and Android instrumentation suite.
+
+Current Android Phase 2 staging head after source-review fixes:
+
+`62401f69608bec2dcf13b3d897a783180b9a0e56`
+
+Cloud branch `v1-p2-evidence-cloud` / PR #6 now contains:
+
+- strict TypeScript Evidence Batch v1 decoder;
+- signed `/api/device/{id}/evidence` endpoint in `worker-v7` while delegating all old runtime behavior to the Phase 6 worker;
+- idempotent D1/R2 evidence persistence;
+- exact batch/record collision detection;
+- `schema/008_v1_phase2_evidence.sql` with evidence tables and empty later-phase foundations for Atlas/witness/receiver/command/refined-history metadata;
+- Phase 2 setup wrapper;
+- cloud protocol/idempotency integration test source.
+
+Current Cloud Phase 2 staging head after the shared golden-vector test:
+
+`a1c6bb1df3a47644ab59893de55da9e71bfe1d47`
+
+### Protocol decision
+
+The existing 90-byte live location V2 packet is preserved. Phase 2 adds a separate bounded binary Evidence Batch v1 protocol instead of bloating the live tracking path.
+
+Evidence Batch v1 uses:
+
+- magic `BREV`;
+- version 1;
+- batch UUID;
+- maximum 24 records;
+- maximum 2,048-byte provider payload per record;
+- maximum 64-byte independence group;
+- maximum 65,536-byte batch;
+- strict epoch/sequence ordering;
+- unique record UUIDs;
+- exact ACK identity `(epoch, sequence, recordId)`.
+
+A fixed shared Android/TypeScript golden vector was added to catch byte-level protocol drift across languages.
+
+### Reliability / privacy improvements made during review
+
+- Evidence is lower priority than safety, live-location backlog and crash reports and rechecks this condition before every evidence batch.
+- Setup no longer intentionally activates `worker-v7` before schema 008 exists. The wrapper bootstraps the proven worker, applies schema 008 and raw-evidence retention first, then activates `worker-v7`.
+- Raw `evidence/raw/` R2 objects receive a 30-day lifecycle rule in Phase 2 setup source.
+- Android golden-vector test initially used data-class equality on a `ByteArray`, which would falsely fail because Kotlin arrays compare by identity. This was caught in source review and repaired to compare scalar fields plus payload `contentEquals`.
+
+### CI evidence and blocker
+
+Phase 2 CI is defined to run:
+
+- Cloud typecheck and evidence integration tests;
+- critical retained Phase 6 regression tests;
+- Android dependency-lock verification, compile, debug build and lint;
+- Android instrumentation compilation;
+- Android emulator instrumentation tests.
+
+However GitHub Actions currently fails before assigning a runner. Repeated Phase 2 attempts show:
+
+- `runner_id: 0`;
+- no runner name;
+- `steps: []` for both Android and Cloud jobs;
+- instrumentation skipped because Android build never starts.
+
+Latest explicitly checked run after the current cloud protocol test commit:
+
+`41208244208`
+
+This is an infrastructure/no-runner failure, **not** a source test failure. It is also **not** a pass. No CI or integration verification is claimed.
+
+### Current Phase 2 state
+
+**SOURCE IMPLEMENTED / CI EXECUTION BLOCKED / NOT ACCEPTED.**
+
+Neither PR #6 nor PR #7 has been merged into the canonical runtime branches. This is deliberate: Phase 2's exit gate requires executed proof rather than source existence.
+
+Detailed implementation and continuation evidence is in `PHASE2_REPORT.md`.
+
+### Required continuation
+
+When GitHub Actions can actually assign a runner:
+
+1. run/re-run the current Phase 2 workflow;
+2. require Cloud and Android jobs to execute real steps and pass;
+3. require Android emulator instrumentation to pass;
+4. repair any actual failures rather than bypassing the gate;
+5. only then merge PR #7 into `apk-download` and PR #6 into `main` with expected-head protection;
+6. update audit/memory status and only then mark Phase 2 accepted.
+
+---
+
 ## 2026-10-31 — New Brick V1 Phase 1: contract, baseline and architecture freeze
 
 ### User request
