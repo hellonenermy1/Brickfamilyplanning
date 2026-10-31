@@ -34,6 +34,10 @@ function sameRecord(row: RecordRow, record: EvidenceRecord, payloadSha: string) 
     row.elapsed_realtime_ms === record.elapsedRealtimeMs && row.wall_time_ms === record.wallTimeMs && row.payload_sha256 === payloadSha;
 }
 
+function newer(a: EvidenceRecord, b: EvidenceRecord) {
+  return a.epoch > b.epoch || (a.epoch === b.epoch && a.sequence > b.sequence);
+}
+
 async function readExistingRecord(env: EvidenceEnv, deviceId: string, record: EvidenceRecord): Promise<RecordRow | null> {
   return env.DB.prepare(
     "SELECT record_id,epoch,sequence,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256 " +
@@ -107,18 +111,22 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
       ).bind(deviceId, batch.batchId, record.recordId, record.epoch, record.sequence)
     );
     const current = latestByProvider.get(record.provider);
-    if (!current || record.wallTimeMs >= current.wallTimeMs) latestByProvider.set(record.provider, record);
+    if (!current || newer(record, current)) latestByProvider.set(record.provider, record);
   });
 
   for (const record of latestByProvider.values()) {
     statements.push(
       env.DB.prepare(
-        "INSERT INTO evidence_provider_health(device_id,provider,capability,health,reason,observed_at) VALUES(?1,?2,?3,?4,NULL,?5) " +
+        "INSERT INTO evidence_provider_health(device_id,provider,capability,health,reason,last_epoch,last_sequence,observed_wall_ms,received_at) " +
+        "VALUES(?1,?2,?3,?4,NULL,?5,?6,?7,?8) " +
         "ON CONFLICT(device_id,provider) DO UPDATE SET " +
-        "capability=CASE WHEN excluded.observed_at>=observed_at THEN excluded.capability ELSE capability END," +
-        "health=CASE WHEN excluded.observed_at>=observed_at THEN excluded.health ELSE health END," +
-        "observed_at=MAX(observed_at,excluded.observed_at)"
-      ).bind(deviceId, record.provider, record.capability, record.health, record.wallTimeMs)
+        "capability=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.capability ELSE capability END," +
+        "health=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.health ELSE health END," +
+        "last_epoch=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.last_epoch ELSE last_epoch END," +
+        "last_sequence=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.last_sequence ELSE last_sequence END," +
+        "observed_wall_ms=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.observed_wall_ms ELSE observed_wall_ms END," +
+        "received_at=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.received_at ELSE received_at END"
+      ).bind(deviceId, record.provider, record.capability, record.health, record.epoch, record.sequence, record.wallTimeMs, now)
     );
   }
 
