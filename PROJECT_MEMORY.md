@@ -22,7 +22,7 @@ Last updated: 2026-10-31
 Phase 1 is accepted as a documentation/contract phase. The program is:
 
 1. Contract, Baseline & Architecture Freeze — **ACCEPTED 2026-10-31**
-2. Evidence Platform, Protocol & Durable Data Foundation
+2. Evidence Platform, Protocol & Durable Data Foundation — **SOURCE IMPLEMENTED + HARDENED / HOSTED CI BLOCKED / NOT ACCEPTED**
 3. Motion Intelligence, Learned Odometry & Particle Positioning
 4. Environmental Fingerprint Atlas & Signal Trust Engine
 5. Unified Fusion, Learned Places, Routes, Witness Mesh & Ground Network
@@ -40,7 +40,65 @@ Phase 1 artifacts:
 - `PHASE1_SOURCE_COVERAGE.md`
 - `PHASE1_REPORT.md`
 
-Important Phase 1 truth: the current Phase 6 candidate is a strong foundation but is **not** the completed new V1 contract. Major Evidence Engine/Atlas/particle/Witness/Ground/Shizuku functionality remains for Phases 2–6, and production acceptance remains Phase 9.
+Phase 2 current-state artifacts:
+
+- `PHASE2_REPORT.md`
+- `PHASE2_LOCAL_VERIFICATION.md`
+- `AUDIT_STATUS.md`
+
+Important Phase 1 truth: the retained Phase 6 candidate is a strong foundation but is **not** the completed new V1 contract. Production acceptance remains Phase 9.
+
+## Phase 2 current resume state
+
+When Jayvian says to continue Phase 2, **do not restart**. Resume from the current staging branches and these rules:
+
+- Cloud staging: `v1-p2-evidence-cloud`, PR #6, draft/unmerged.
+- Android staging: `v1-p2-evidence-android`, PR #7, draft/unmerged.
+- Snapshot at this memory update:
+  - Cloud `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+  - Android `389bc8744341aebcc42f74f79403fd2b3d5d5873`
+- These SHA values are snapshots only; always re-read branch heads before modifying or merging.
+- Do not merge either PR until the final paired heads receive real hosted Cloud + Android + emulator execution.
+- Do not treat Phase 3 as unlocked/accepted while the Phase 2 exit gate remains open.
+
+Phase 2 permanent design decisions:
+
+1. **Separate evidence protocol.** Keep Brick Core's existing live V2 / 90-byte packet unchanged. Evidence uses bounded BREV v1 batches.
+2. **Evidence stays below safety.** Evidence never outranks SOS/safety, durable live location or crash backlog.
+3. **DB owns Android sequencing.** `brick_evidence.db` transactionally allocates sequence; SharedPreferences is only a cache.
+4. **Dedicated evidence catch-up worker.** Initial evidence work uses `KEEP`; bounded successors use `APPEND_OR_REPLACE`; network is required; generic RecoveryWorker restores Core first.
+5. **Paired identity is canonical v4.** Android only journals/drains evidence for canonical lowercase RFC-4122 v4/variant-2 device IDs created by pairing. Cloud evidence route enforces the same boundary.
+6. **Raw R2 is privacy-reduced/content-addressed.** Raw evidence object paths use `sha256(deviceId)` and include exact `batchSha`; never use raw/sanitized device ID in the R2 key.
+7. **Batch UUID is a hard transactional claim.** `evidence_batches` uses a normal `INSERT`, not `INSERT OR IGNORE`. A concurrent duplicate claim must abort the entire D1 batch transaction.
+8. **Record replay must not amplify storage.** If all records already exist and match exactly under a fresh transport batch UUID, return exact ACKs with `duplicateRecords:true` and create no new R2 object/batch row.
+9. **Rate limits are split by trust boundary.** Request-attempt limiting happens on requester context first; the device-scoped evidence bucket is consumed only after successful P-256 device-signature verification. Rate limiting is abuse resistance, not an authentication primitive.
+10. **Signed route is testable separately.** `src/evidence-route.ts` owns the actual evidence HTTP validation/auth/rate/persistence flow; `worker-v7` delegates to it and preserves older worker behavior.
+11. **Persist before ACK.** A success ACK is returned only after the applicable durable evidence state has been verified. Storage failure is never ACKed as success.
+12. **Later-phase tables are foundations only.** Atlas/witness/receiver/command/refined-history schema existence does not mean those algorithms are implemented.
+
+Locally executed evidence as of this memory update:
+
+- pure Kotlin Android evidence protocol/model matches the shared BREV golden vector and safe-integer/canonical-UUID rules;
+- current Cloud protocol/persistence harness passes persistence, exact ACK, replay dedupe, collision rejection, content-addressed raw storage and simulated concurrent batch-ID rollback;
+- current signed evidence route passes a local real-P-256 Web Crypto harness for missing/bad/valid signatures, rate-bucket ordering, persistence-before-ACK, retry/replay, revocation and malformed signed payload behavior.
+
+Observed local markers:
+
+- `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+- `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+- `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+
+Hosted CI remains blocked externally. Latest checked run at this memory update:
+
+- run `41212250461`
+- Cloud head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+- Cloud job: failure with `runner_id: 0`, `steps: []`
+- Android build/lint job: failure with `runner_id: 0`, `steps: []`
+- Android instrumentation: skipped
+
+Treat zero-step/no-runner runs as neither pass nor source failure. The current execution environment also has no Android SDK, so do not claim local full Android compile/lint/SQLite/Keystore/WorkManager/emulator proof.
+
+Phase 2 acceptance still requires actual hosted execution of Cloud integration/regression tests, Android dependency-lock/compile/lint, Android emulator instrumentation, then canonical post-merge checks and live Cloudflare verification before live-integration claims.
 
 ## Canonical GitHub layout
 
@@ -50,9 +108,11 @@ Active repository: `hellonenermy1/Brickfamilyplanning`
 - `apk-download` — Android-only source branch. The default-branch APK workflow checks out this branch and produces downloadable APK artifacts.
 - `audit-progress` — documentation-only audit/progress/project-memory branch. No runtime source should be developed here.
 
-Temporary Phase 1 documentation branch:
+Temporary/non-canonical V1 work branches currently include:
 
-- `v1-p1-contract` — created from `audit-progress` to stage Phase 1 contract artifacts. It should be integrated into `audit-progress` and removed when branch-ref deletion is available. Do not treat it as a new canonical runtime branch.
+- `v1-p1-contract` — integrated Phase 1 documentation staging ref; remove when a supported cleanup path exists.
+- `v1-p2-evidence-cloud` — Phase 2 Cloud staging branch / PR #6.
+- `v1-p2-evidence-android` — Phase 2 Android staging branch / PR #7.
 
 Archive repository: `hellonenermy1/Brickfamilyplanning-archive`
 
@@ -62,7 +122,7 @@ Archive repository: `hellonenermy1/Brickfamilyplanning-archive`
 
 ## Archive migration — current state and resume instructions
 
-User goal: keep only `main`, `apk-download`, and `audit-progress` in the active repository. Move every obsolete `phase*` branch to `Brickfamilyplanning-archive`, verify it, then delete the corresponding active-repo branch.
+User goal: keep only `main`, `apk-download`, and `audit-progress` in the active repository after temporary V1 work refs are safely integrated/removed. Move every obsolete `phase*` branch to `Brickfamilyplanning-archive`, verify it, then delete the corresponding active-repo branch.
 
 Historical branches to archive/delete:
 
@@ -92,28 +152,28 @@ Important migration facts:
 
 - GitHub private Git commit/tree object IDs cannot simply be reused across these two separate repositories. A direct archive-branch creation attempt from the source commit returned `Object does not exist`.
 - A temporary source-repo workflow was added at `.github/workflows/archive-historical-branches.yml`, named **Brick — Export Historical Branches**. It is designed to create an exact `git archive` tar.gz snapshot plus SHA-256 checksum for every obsolete branch before deletion.
-- Adding that temporary workflow moved active `main` from the clean-layout head `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad` to temporary archival-workflow head `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`.
+- Adding that temporary workflow moved active `main` from the clean-layout head `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad` to temporary archival-workflow head `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059` at Phase 1 start.
 - GitHub Actions run ID `41201328643` was attempted twice. Both attempts failed before a runner was assigned; the job had zero executed steps. No archive tarball artifact was produced.
 - Therefore **none of the 19 source branches has been deleted yet**. This was deliberate to avoid losing unique historical content.
-- The current connected GitHub tool does not expose direct Git-ref deletion. Once snapshots are verified, deletion may need a GitHub Actions cleanup workflow or another supported GitHub ref-delete path.
-- The temporary export workflow should be removed from `main` after archival/deletion is successfully completed, returning `main` to its intended Cloudflare + APK-dispatcher-only workflow inventory.
+- The connected GitHub tooling previously used did not expose direct Git-ref deletion. Once snapshots are verified, deletion may require a supported ref-delete path.
+- The temporary export workflow should be removed after archival/deletion succeeds.
 
 When Jayvian says to continue/archive/delete old branches, do this in order:
 
 1. Read this file, `PROGRESS.md`, and archive `ARCHIVE_MANIFEST.md`.
-2. Check whether GitHub Actions runner execution is working again and inspect run `41201328643` or trigger/rerun the export workflow.
+2. Check whether GitHub Actions runner execution is working again and inspect/run the export workflow.
 3. Require an actual artifact containing exact branch snapshots and SHA-256 checksums; zero-step/no-runner runs do not count.
-4. Copy/persist the exact branch snapshots or equivalent exact branch content into `Brickfamilyplanning-archive`.
-5. Verify each historical branch/snapshot against its manifest branch name and original head provenance before deleting anything.
-6. Only after verification, delete the 19 source `phase*` refs from `Brickfamilyplanning`.
-7. Verify the active repo contains only `main`, `apk-download`, and `audit-progress` (plus no temporary V1 implementation/documentation branches).
-8. Remove the temporary archive-export workflow from `main` if no longer needed.
-9. Update `PROGRESS.md`, this file, and the archive manifest with final evidence. Never claim completion before these checks pass.
+4. Persist exact branch snapshots/content in `Brickfamilyplanning-archive`.
+5. Verify each historical snapshot against branch name and original-head provenance.
+6. Only after verification, delete the 19 source `phase*` refs.
+7. Verify only canonical refs plus intentionally active temporary V1 work refs remain.
+8. Remove the temporary archive-export workflow when no longer needed.
+9. Update `PROGRESS.md`, this file and archive manifest with final evidence.
 
 ## Current canonical heads / identities at Phase 1 start
 
 - `main` clean-layout head before temporary archive workflow: `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad`
-- `main` current temporary archival-workflow head observed at Phase 1 start: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
+- `main` temporary archival-workflow head observed at Phase 1 start: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
 - `apk-download` observed at Phase 1 start: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
 - `audit-progress` pre-Phase-1 head: `da2d56f6d46eeb293d5ef5010304730dd45378d1`
 
@@ -130,9 +190,9 @@ Runtime trees observed at Phase 1 start:
 - Release state: `candidate-not-real-device-qualified`
 - Proven Phase 6 source tree before branch separation: Git tree `b5f4ea6e97e9e2afef7a01c8386829f316b4af2e`
 - Fully validated source commit for that tree: `176d94f604eb562a59260ef380ee680a564acfcc`
-- Later hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the exact same tree as the fully validated commit before repository separation.
-- PR #5 was closed and retitled as archived/superseded by the canonical branch split; do not merge it.
-- Phase 1 does not change release identity or qualification state.
+- Later hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree before repository separation.
+- PR #5 is archived/superseded and must not be merged.
+- Phase 2 staging does not change release identity or production qualification.
 
 ## Current architecture decisions
 
@@ -155,13 +215,13 @@ Runtime trees observed at Phase 1 start:
 
 ## Production prerequisites still open
 
-- Complete Phases 2–8 of the new V1 contract before final production qualification.
+- Complete and accept Phases 2–8 before final production qualification.
 - Configure stable Android signing and produce a stable-signed release APK.
 - Run the canonical Cloudflare deployment workflow for the final matching V1 commit and retain deployment-verification evidence.
 - Perform authenticated parent-browser smoke testing against the exact final deployment.
 - Complete real OPPO/ColorOS qualification including Device Owner provisioning, pairing, screen-off/background operation, reboot/swipe-away recovery, network outage/backlog drain, SOS retry/persistence, revoke, private map, battery and endurance.
-- Qualify new Atlas/particle/Witness/Ground/Shizuku features using the acceptance matrix in `V1_REQUIREMENTS.md`.
-- Production Cloudflare should use a plan that can sustain Brick’s durable Queue/history/evidence traffic; do not weaken required reliability merely to fit an inadequate quota.
+- Qualify Atlas/particle/Witness/Ground/Shizuku features using `V1_REQUIREMENTS.md` in their owner phases.
+- Production Cloudflare should use a plan that can sustain Brick's required durable traffic; do not weaken reliability to fit an inadequate quota.
 
 ## Proven APK/build evidence retained from Phase 6 audit
 
