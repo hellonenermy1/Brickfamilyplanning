@@ -2,256 +2,147 @@
 
 Date: 2026-10-31
 Phase: 2 of 9 — Evidence Platform, Protocol & Durable Data Foundation
-Current result: **SOURCE IMPLEMENTED — CI EXECUTION BLOCKED — NOT ACCEPTED**
+Current result: **SOURCE IMPLEMENTED — CORE CLOUD/PROTOCOL LOCALLY VERIFIED — HOSTED CI BLOCKED — NOT ACCEPTED**
 Production qualification change: **none**
 
-## 1. Phase 2 contract
+## Phase 2 boundary
 
-Phase 2 is limited to the common evidence/data foundation needed by later positioning and Atlas phases. It does **not** claim particle positioning, environmental learning, Signal Trust scoring, Witness Mesh, Ground Network, Shizuku location evidence or unified fusion are implemented.
+Phase 2 implements only the shared evidence/data foundation. It does not claim particle positioning, Atlas learning, Signal Trust scoring, Witness Mesh, Ground Network, Shizuku evidence, learned places/routes or unified fusion are complete.
 
-The Phase 2 exit gate remains:
+Exit gate remains: dummy evidence must be collected, durably persisted, survive restart/process loss, transmit securely, dedupe server-side, receive an exact ACK and disappear locally only after that ACK, without degrading Brick's live-location or SOS path.
 
-> dummy evidence can be collected, durably persisted, survive process loss, transmit securely, dedupe on the server, receive exact ACK and be removed locally without degrading current location/SOS operation.
+## Current staging snapshot
 
-Source existence alone is not enough to pass this gate.
+As of this report update:
 
-## 2. Working branches and PRs
+- Android branch `v1-p2-evidence-android`: `ae20681d4e4fc938da9d13f1071c28199a6af1f7` — PR #7, draft/unmerged.
+- Cloud branch `v1-p2-evidence-cloud`: `999b6573c90bab8352fe4f2bc648baf9bb8784e6` — PR #6, draft/unmerged.
 
-Android staging branch:
+Cloud runtime/protocol source through `15d48bb5da2bebbd7fcafba519f935b85544acfd` was locally re-verified. The only subsequent commit to `999b6573...` changes `.github/workflows/deploy-brick.yml`, not Phase 2 runtime/protocol source.
 
-- branch: `v1-p2-evidence-android`
-- base: `apk-download`
-- base SHA: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
-- current head after final source-review fix: `62401f69608bec2dcf13b3d897a783180b9a0e56`
-- PR: #7 — `Brick V1 Phase 2 — Evidence foundation (Android)`
-- PR state: draft / mergeable / not merged
+The branches are deliberately not promoted into canonical `apk-download` / `main` until real hosted Android/Cloud CI execution exists.
 
-Cloud staging branch:
+## Android foundation implemented
 
-- branch: `v1-p2-evidence-cloud`
-- base: `main`
-- base SHA observed by PR: `67c73bdcadcf9ed0f7e2929271f1e060c80a6421`
-- current head after shared golden-vector test: `a1c6bb1df3a47644ab59893de55da9e71bfe1d47`
-- PR: #6 — `Brick V1 Phase 2 — Evidence foundation (cloud)`
-- PR state: draft / mergeable / not merged
+The Android staging branch contains:
 
-Neither Phase 2 PR has been merged because the mandatory CI jobs have not actually executed.
+- canonical `EvidenceObservation`, `EvidenceRecord` and exact `EvidenceAck` identities;
+- stable provider/family/capability/health/quality enums;
+- mandatory independence groups for later anti-double-counting;
+- provider lifecycle interface and adaptive sampling coordinator;
+- separate encrypted `brick_evidence.db` SQLite journal;
+- Android-Keystore AES-GCM through Brick's journal cipher pattern;
+- pending/delivered/quarantined evidence states;
+- corruption quarantine so one damaged record does not permanently block later evidence;
+- exact ACK by record ID + epoch + sequence;
+- evidence transport signed with the existing device key over HTTPS;
+- evidence priority below safety, durable live-location and crash backlogs;
+- WorkManager best-effort evidence drain only after core tracking recovery;
+- evidence-journal health telemetry.
 
-## 3. Android implementation completed in source
+### Durable sequence allocation hardening
 
-Added a dedicated `com.brick.safety.evidence` foundation rather than expanding the 90-byte live-location packet.
+The current journal is database version 2 and owns evidence sequence allocation in SQLite.
 
-### Canonical evidence model
+`appendNew(epoch, observation)` atomically:
 
-`EvidenceModel.kt` defines:
+1. obtains/creates the epoch's `next_seq` row;
+2. constructs the record;
+3. encrypts and inserts it;
+4. advances `next_seq`;
+5. commits the whole operation in one transaction.
 
-- stable evidence provider IDs;
-- stable evidence-family IDs;
-- provider capability states;
-- provider health states;
-- evidence quality states;
-- sampling classes;
-- `EvidenceObservation` with record UUID, monotonic/wall time, provider, family, mandatory independence group, capability, health, quality and bounded provider payload;
-- `EvidenceRecord(epoch, sequence, observation)`;
-- exact `EvidenceAck(epoch, sequence, recordId)`.
+SharedPreferences is now only an observable cache and cannot cause sequence reuse after a lost async preference write or process restart.
 
-Provider/family IDs reserve explicit later-phase sources such as Wi-Fi environment, BLE environment, LAN, magnetic, landmark, Wi-Fi RTT, witness, Ground receiver, companion, historical route and future ranging without implementing those algorithms early.
+Dedicated instrumentation source tests the stale-preference/reopen case and expects 1 → 2 → 3 from the database-owned allocator.
 
-### Provider contract
+### Latest wire hardening
 
-`EvidenceProvider.kt` defines:
+The current Android model additionally requires:
 
-- `EvidenceProviderDescriptor`;
-- capability/health status;
-- `EvidenceSink`;
-- provider lifecycle: `start`, `applySampling`, `stop`.
+- canonical lowercase UUID record IDs;
+- sequence, monotonic elapsed time and wall time within JavaScript/TypeScript safe-integer wire range;
+- positive wall time and sequence;
+- bounded payloads and independence groups.
 
-Every provider descriptor has an independence namespace. Every emitted observation has a concrete independence group. This establishes the anti-double-counting boundary before later radio/Atlas providers exist.
+## Evidence Batch v1
 
-### Sampling coordinator
+Evidence remains separate from the existing 90-byte live-location V2 packet.
 
-`EvidenceSamplingCoordinator.kt` defines bounded sampling policy for:
+Evidence Batch v1 uses:
 
-- SOS;
-- degraded position;
-- moving;
-- stationary;
-- deep stationary.
-
-Radio sampling becomes increasingly sparse as the device becomes stable and uses bounded bursts rather than permanent max-rate scanning.
-
-### Separate encrypted evidence journal
-
-`EvidenceJournal.kt` uses its own SQLite database and Android-Keystore AES-GCM encryption through the existing journal cipher pattern.
-
-Important semantics:
-
-- append before network send;
-- unique epoch/sequence;
-- unique record UUID;
-- pending/delivered/quarantined state;
-- corruption quarantine instead of blocking all later evidence;
-- reopen-safe pending records;
-- exact ACK requires matching epoch + sequence + recordId;
-- wrong/duplicate local ACK does not delete a pending record;
-- recent delivered rows are retained temporarily while older delivered rows are cleaned up;
-- evidence-journal health state is exposed to Brick health telemetry.
-
-### Evidence dispatcher and safety priority
-
-`EvidenceDispatcher.kt` is intentionally lower priority than Brick Core.
-
-Before each evidence batch it checks for:
-
-1. pending safety events;
-2. pending durable live-location records;
-3. pending crash reports.
-
-If any exist, evidence does not send.
-
-The dispatcher rechecks core backlog before each evidence network batch so new higher-priority work can preempt between evidence batches.
-
-Evidence failure is best-effort from `RecoveryWorker`; `ServiceControl.ensureTracking()` runs first and an evidence upload failure cannot make core recovery fail.
-
-### Evidence transport
-
-`EvidenceApi.kt`:
-
-- requires HTTPS;
-- rejects API base paths/query/user-info changes;
-- sends `application/vnd.brick.evidence`;
-- signs the exact binary body with the existing device key;
-- requires protocol-1 ACK;
-- requires the same batch UUID;
-- requires exact ACK count;
-- requires exact ACK set `(epoch, sequence, recordId)` before local removal.
-
-### Android health additions
-
-`HealthEvidence.kt` now includes evidence-journal health, pending/quarantined count, oldest pending age and last evidence-journal failure age. Unsupported future providers are not yet reported individually because those providers belong to later phases.
-
-## 4. Evidence Batch v1 wire contract
-
-The Phase 2 binary protocol is deliberately separate from existing live `Protocol.VERSION = 2` and `LIVE_PACKET_BYTES = 90`.
-
-Evidence Batch v1:
-
-- magic: `BREV` / `0x42524556`;
-- protocol version: `1`;
+- magic `BREV` (`0x42524556`);
+- protocol version 1;
 - batch UUID;
-- record count;
 - maximum 24 records per batch;
-- maximum 2,048-byte provider payload per record;
+- maximum 2,048-byte provider payload;
 - maximum 64-byte independence group;
 - maximum 65,536-byte batch;
 - strict epoch/sequence ordering;
 - unique record UUIDs;
 - bounded provider/family/capability/health/quality values;
-- no trailing bytes accepted.
+- no trailing bytes.
 
-Each record contains:
+The TypeScript decoder now also rejects an epoch above Android's signed `Int` range so both platforms share the same epoch contract.
 
-- record UUID;
-- epoch;
-- evidence sequence;
-- monotonic elapsed realtime;
-- wall time;
-- provider ID;
-- family ID;
-- provider capability;
-- provider health;
-- evidence quality;
-- independence group;
-- provider-specific bounded payload.
+## Shared cross-language golden vector
 
-## 5. Shared Android/TypeScript golden vector
+Both Android test source and Cloud test source use the same fixed binary vector.
 
-A fixed byte-for-byte golden vector was added to both Android instrumentation and Cloud protocol testing.
+- Batch ID: `00112233-4455-6677-8899-aabbccddeeff`
+- Record ID: `12345678-1234-5678-9abc-def012345678`
+- Epoch: 7
+- Sequence: 42
+- Elapsed: 123456789
+- Wall: 1761930000123
+- Provider/family: dummy 255/255
+- State: supported / healthy / high
+- Independence group: `dummy:test:scene`
+- Payload: `phase2-golden`
 
-Batch UUID:
-
-`00112233-4455-6677-8899-aabbccddeeff`
-
-Record UUID:
-
-`12345678-1234-5678-9abc-def012345678`
-
-Key fields:
-
-- epoch 7;
-- sequence 42;
-- elapsed realtime 123456789;
-- wall time 1761930000123;
-- dummy provider/family 255;
-- supported/healthy/high;
-- independence group `dummy:test:scene`;
-- payload `phase2-golden`.
-
-Expected complete encoded hex:
+Expected encoded hex:
 
 `425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e`
 
-This is intended to catch cross-language wire drift that independent round-trip tests would miss.
+## Cloud foundation implemented
 
-During source review, an Android test defect was found and fixed: Kotlin data-class equality is not valid for comparing independently decoded `ByteArray` payload contents. The test now compares scalar fields individually and uses `contentEquals` for payload bytes.
-
-## 6. Cloud implementation completed in source
-
-### Strict decoder
-
-`src/evidence-protocol.ts` mirrors Android's Evidence Batch v1 limits and rejects:
-
-- bad magic;
-- unsupported version;
-- invalid batch size/count;
-- unknown provider/family/capability/health/quality values;
-- invalid ordering fields;
-- invalid independence groups;
-- oversized payloads;
-- duplicate record IDs;
-- non-increasing epoch/sequence order;
-- truncated bodies;
-- trailing bytes.
-
-### Signed evidence endpoint
-
-`src/worker-v7.ts` wraps the existing Phase 6 worker rather than replacing its location/SOS behavior.
-
-New endpoint only:
+`worker-v7` adds only:
 
 `POST /api/device/{deviceId}/evidence`
 
-It requires:
+while delegating existing fetch/queue/scheduled runtime behavior to the prior Phase 6 worker.
+
+The endpoint enforces:
 
 - non-revoked paired device;
-- separate evidence rate-limit key;
+- evidence-specific rate-limit key;
 - exact evidence content type;
 - bounded body;
-- device signature over exact body;
-- valid Evidence Batch v1.
+- device signature over the exact body;
+- safe decoded device path;
+- strict Evidence Batch v1 validation.
 
-Malformed protocol returns a client error; record/batch identity conflicts return conflict; storage failure is not ACKed as success.
+Malformed protocol returns a client error, identity conflicts return conflict, and storage failure is never acknowledged as success.
 
-All existing Worker fetch/queue/scheduled behavior is delegated to the prior Worker implementation.
+### Idempotent D1/R2 persistence
 
-### Idempotent durable cloud persistence
+Cloud evidence persistence:
 
-`src/evidence-ingest.ts`:
+- hashes the complete batch and each record payload;
+- stores raw binary evidence in R2;
+- indexes batches/records in D1;
+- dedupes by device+epoch+sequence and device+record UUID;
+- verifies retries against the original metadata/hash;
+- rejects sequence/record/batch identity collisions with altered data;
+- updates provider health by durable epoch/sequence ordering, not device wall-clock order;
+- updates per-device evidence state;
+- reads back persisted batch membership before returning exact ACKs.
 
-- hashes complete batch and each provider payload;
-- stores raw binary batch in R2;
-- indexes batches and records in D1;
-- uses `(device, epoch, sequence)` and `(device, recordId)` identity constraints;
-- validates repeated batch ID against exact original batch hash/count/length;
-- validates repeated records against all indexed metadata and payload hash;
-- rejects identity collisions with different data;
-- returns exact `(epoch, sequence, recordId)` ACKs only after persistence verification;
-- same-batch retry does not rewrite R2;
-- same records in a new retry batch remain record-idempotent.
+Raw R2 object paths/metadata now use a one-way SHA-256 device key rather than exposing/sanitizing the raw device identifier.
 
-### D1 foundations
+## Schema foundation
 
-`schema/008_v1_phase2_evidence.sql` adds:
+Migration `008_v1_phase2_evidence.sql` adds:
 
 - `evidence_batches`;
 - `evidence_records`;
@@ -259,7 +150,7 @@ All existing Worker fetch/queue/scheduled behavior is delegated to the prior Wor
 - `device_evidence_state`;
 - `evidence_provider_health`.
 
-It also creates empty structured foundations for later phases only:
+It also creates empty schema foundations for later phases only:
 
 - `atlas_models`;
 - `witness_authorizations`;
@@ -267,119 +158,92 @@ It also creates empty structured foundations for later phases only:
 - `device_commands`;
 - `refined_history_runs`.
 
-Those tables do **not** mean Atlas, Witness, commands or smoothing algorithms are implemented.
+These tables are **not** claims that later-phase algorithms exist.
 
-## 7. Safer Phase 2 provisioning
+## Provisioning/retention
 
-Initial Phase 2 setup source would have allowed a brief `worker-v7` deployment before schema 008 existed, followed by migration and redeploy. That would have been recoverable because the client retains unacknowledged evidence, but it was unnecessary.
+The Phase 2 setup path avoids exposing `worker-v7` before schema 008 exists:
 
-The setup wrapper was revised to:
-
-1. temporarily bootstrap the proven `worker-v6` through the existing resource/Access setup path;
-2. immediately restore the canonical template;
+1. bootstrap/provision through the proven worker-v6 path;
+2. restore the canonical template;
 3. apply schema 008;
-4. switch only the generated config to `worker-v7`;
-5. apply 30-day `evidence/raw/` R2 lifecycle retention;
-6. deploy `worker-v7` only after schema/retention are ready;
-7. record Phase 2 schema/protocol/retention metadata in setup state.
+4. switch generated config to worker-v7;
+5. apply 30-day `evidence/raw/` R2 retention alongside existing history lifecycle rules;
+6. deploy worker-v7;
+7. record Phase 2 protocol/schema/retention in setup state.
 
-This prevents avoidable endpoint/schema skew during setup.
+## Executed local verification
 
-## 8. Test source prepared
+Actual local execution has now proven the latest core Cloud protocol/ingest logic through `15d48bb5...`:
 
-### Android instrumentation source
+- TypeScript compilation with Cloudflare type shims;
+- exact shared golden-vector decode;
+- normal batch decode;
+- trailing-byte rejection;
+- D1/R2-style first persistence;
+- exact ACK generation;
+- same-batch retry without R2 rewrite;
+- same-record/new-batch idempotency;
+- conflict rejection;
+- provider-health update using epoch/sequence despite regressed wall clock;
+- hashed R2 `deviceKey` metadata with no raw device ID;
+- explicit rejection of epoch `0x80000000` above the Android signed-Int wire range.
 
-`Phase2DummyEvidenceProvider` and `Phase2EvidenceInstrumentedTest` cover:
+Observed local output:
 
-- protocol round trip and bounds;
-- shared golden vector;
-- encrypted local payload is not plaintext;
-- journal survives close/reopen;
-- wrong ACK does not remove record;
-- exact ACK removes record;
-- dummy provider → sink → encrypted journal;
-- simulated restart/reopen → transport → exact ACK → no resurrection;
-- evidence transport is not called while core backlog probe is true;
-- adaptive radio cadence remains bounded.
+- `LOCAL CLOUD PHASE2 HARNESS PASS`
+- `LATEST CLOUD EPOCH BOUND PASS`
 
-### Cloud test source
+A pure-Kotlin protocol harness also previously compiled the Brick evidence model/protocol and produced the identical golden bytes. The newest Android canonical-UUID/safe-integer hardening was source-reviewed afterward, but the full Android project has not executed on a hosted runner/emulator yet.
 
-`test-phase2-evidence.mjs` covers:
+Detailed local evidence is retained in `PHASE2_LOCAL_VERIFICATION.md`.
 
-- shared golden vector;
-- strict decoder;
-- bad version;
-- trailing bytes;
-- reverse/non-increasing order;
-- D1/R2 first persistence;
-- same-batch duplicate retry;
-- same-record/new-batch dedupe;
-- sequence/record collision rejection;
-- reused batch UUID with altered bytes rejection;
-- latest evidence-state update.
+## Hosted CI blocker
 
-The repository Phase 2 CI workflow is also designed to run critical existing Phase 6 regression gates so the new evidence path cannot be promoted merely because its own tests pass.
+GitHub Actions is still failing before assigning runners.
 
-## 9. CI execution blocker — important
+Run `41208953558` on Cloud head `35eea8fe...` showed:
 
-GitHub Actions is currently not providing a runner to the Phase 2 jobs.
+- Cloud job: `runner_id: 0`, empty runner name, `steps: []`, failure;
+- Android build job: `runner_id: 0`, empty runner name, `steps: []`, failure;
+- Android instrumentation job: skipped, `steps: []`.
 
-Repeated Phase 2 workflow attempts have completed as failures with:
+A later run on the newer cloud source also completed failure before useful execution. These are infrastructure/no-runner failures, not source test failures and not passes.
 
-- `runner_id: 0`;
-- empty runner name;
-- `steps: []` for both Cloud and Android jobs;
-- instrumentation skipped because Android build never started.
-
-Example latest observed run after current cloud test commit:
-
-- run ID: `41208244208`
-- Cloud job: failed with zero executed steps / no runner assignment
-- Android job: failed with zero executed steps / no runner assignment
-- instrumentation: skipped
-
-Earlier Phase 2 runs showed the same zero-step/no-runner pattern. Job log retrieval returns no useful build log because no runner job actually executed.
-
-Therefore these runs are **not evidence that Phase 2 source fails**, but equally they are **not evidence that it passes**.
-
-This exact distinction is mandatory under Brick's measured-over-guessed rule.
-
-## 10. Current exit-gate status
+## Exit-gate status
 
 | Gate | State |
 |---|---|
-| canonical evidence model/provider contract exists | IMPLEMENTED |
-| independence-group boundary exists | IMPLEMENTED |
-| adaptive sampling coordinator exists | IMPLEMENTED |
-| separate encrypted evidence journal exists | IMPLEMENTED |
-| exact local ACK semantics exist | IMPLEMENTED |
-| evidence lower priority than safety/location/crash | IMPLEMENTED |
-| separate bounded binary Evidence Batch v1 exists | IMPLEMENTED |
-| Android/Cloud golden vector encoded in tests | IMPLEMENTED |
-| signed evidence endpoint exists | IMPLEMENTED |
-| D1/R2 idempotent persistence source exists | IMPLEMENTED |
-| later-phase schema foundations exist without feature claims | IMPLEMENTED |
-| setup avoids activating v7 before schema readiness | IMPLEMENTED |
-| raw evidence R2 retention configured in setup source | IMPLEMENTED |
-| Android build/lint actually executed on current Phase 2 head | **BLOCKED — NO RUNNER** |
-| Android instrumentation actually executed | **BLOCKED — NO RUNNER** |
-| Cloud typecheck/tests/regressions actually executed on current head | **BLOCKED — NO RUNNER** |
-| dummy-provider full exit gate proven by executed tests | **NOT YET PROVEN** |
-| canonical branches updated/merged | **NO — intentionally waiting for proof** |
+| canonical evidence/provider model | IMPLEMENTED |
+| independence-group boundary | IMPLEMENTED |
+| adaptive sampling coordinator | IMPLEMENTED |
+| encrypted durable evidence journal | IMPLEMENTED |
+| DB-owned monotonic evidence sequence allocator | IMPLEMENTED |
+| exact local ACK semantics | IMPLEMENTED |
+| safety/location/crash priority over evidence | IMPLEMENTED |
+| separate bounded Evidence Batch v1 | IMPLEMENTED |
+| signed evidence transport/endpoint | IMPLEMENTED |
+| idempotent D1/R2 persistence source | IMPLEMENTED |
+| raw-evidence privacy/retention foundation | IMPLEMENTED |
+| latest core Cloud protocol/ingest local harness | PASS |
+| cross-language fixed golden vector | PASS on earlier pure-Kotlin + current Cloud core; latest Android full build pending |
+| Android full compile/lint | BLOCKED — NO HOSTED RUNNER |
+| Android instrumentation | BLOCKED — NO HOSTED RUNNER |
+| repository-wide Cloud/regression CI | BLOCKED — NO HOSTED RUNNER |
+| live Cloudflare evidence endpoint | NOT DEPLOYED/VERIFIED |
+| full dummy-provider exit gate | NOT YET PROVEN END-TO-END |
+| canonical branches merged | NO — intentionally withheld |
 | Phase 2 accepted | **NO** |
 
-## 11. Required continuation
+## Required continuation
 
-When GitHub Actions can actually assign a runner:
+Do not start Phase 3 as accepted work yet. Once GitHub actually supplies a runner:
 
-1. run/re-run the Phase 2 Evidence Foundation workflow against the current Phase 2 heads;
-2. require Cloud job steps to execute and pass;
-3. require Android compile/lint/instrumentation compilation to execute and pass;
-4. require Android emulator instrumentation to execute and pass;
-5. inspect failures if any and repair source rather than bypassing gates;
-6. only after green evidence, promote PR #7 into `apk-download` and PR #6 into `main` using expected-head protection;
-7. re-run appropriate canonical build/regression checks on merged heads;
-8. update this report, `AUDIT_STATUS.md`, `PROGRESS.md` and `PROJECT_MEMORY.md`;
-9. only then mark Phase 2 `CI_VERIFIED`/`ACCEPTED` as supported by the executed evidence.
-
-Do not start Phase 3 as if Phase 2 were accepted while this blocker remains unresolved.
+1. run the Phase 2 CI against the current paired heads;
+2. require Cloud tests/regressions to execute and pass;
+3. require Android dependency lock, compile and lint to execute and pass;
+4. require Android instrumentation to execute and pass;
+5. repair any real failures rather than weakening the gate;
+6. promote PR #7 into `apk-download` and PR #6 into `main` only after that proof;
+7. rerun canonical post-merge checks;
+8. then mark Phase 2 `CI_VERIFIED` / `ACCEPTED` only if the evidence supports it.
