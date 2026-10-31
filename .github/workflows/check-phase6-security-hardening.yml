@@ -52,3 +52,8 @@ jobs:
 
       - name: Type-check hardening changes
         run: npm run typecheck
+
+      - name: Verify backup restore is fail-closed and fresh-target only
+        run: |
+          npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-v6.mjs
+          node scripts/test-backup-restore.mjs /tmp/brick-backup-restore-v6.mjs
