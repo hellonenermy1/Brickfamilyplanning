@@ -42,12 +42,25 @@ jobs:
           fi
           grep -F '.put("exceptionSignature", signature)' app/src/main/java/com/brick/safety/reliability/CrashReporter.kt >/dev/null
           grep -F 'MAX_PENDING_DIAGNOSTICS = 500' app/src/main/java/com/brick/safety/data/CrashOutbox.kt >/dev/null
-          grep -F 'putBoolean("journalWriteHealthy", false)' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'putBoolean("journalWriteHealthy", healthy)' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
           grep -F 'fun maxSequence(epoch: Int): Long' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'fun ackBatch(items: List<Pair<Int, Long>>): Boolean' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
+          grep -F 'db.beginTransaction()' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
           grep -F 'journal.maxSequence(epoch)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
           grep -F '.put("healthSequence", healthSequence)' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'putLong("safetySequence", eventSequence).commit()' app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt >/dev/null
           grep -F 'eventSequence = eventSequence' app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt >/dev/null
+          grep -F 'sendLiveLocationPreview' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
+          grep -F 'sendLocationBatch' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
+          grep -F 'previewNewestIfBacklogged' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'journal.nextPending(LOCATION_BATCH_SIZE)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'journal.ackBatch(acked)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          if grep -F 'sendOne(baseUrl, deviceId, newest)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt; then
+            echo 'Newest-first durable location ACK regression found.' >&2
+            exit 1
+          fi
+          grep -F 'runCatching { dpm.setLocationEnabled(admin, true) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'android:name=".BrickApplication"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'versionName = "0.6.0-phase6-rc"' app/build.gradle.kts >/dev/null
