@@ -2,6 +2,7 @@ import phase6Base, { BrickDevice } from "./worker-v5b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
 import { getRetention, history, listGeofences, listTrips } from "./phase4";
 import { listHealthIncidents, reliability } from "./phase5-ops";
+import { batteryDrainTrend } from "./battery-health";
 import { recordAudit } from "./phase5c";
 export { BrickDevice };
 
@@ -51,19 +52,26 @@ function enhanceParentHtml(html: string) {
   html = html.replace(deviceNeedle, devicePatch);
 
   const selectNeedle = "async function selectDevice(id){currentDevice=id;text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadRetention()])}";
-  const selectPatch = "async function selectDevice(id){currentDevice=id;const revoked=$('#devices').selectedOptions[0]?.dataset.revoked==='1';text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');if(ws){ws.close();ws=null}if(revoked){try{renderSnapshot(await api('/parent/api/device/'+encodeURIComponent(id)+'/state'))}catch{snapshot=null;renderHealthChecks()}}else connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadRetention()]);const rb=$('#revokeDevice');if(rb){rb.disabled=revoked;rb.textContent=revoked?'Device revoked':'Revoke selected phone'}}";
+  const selectPatch = "async function selectDevice(id){currentDevice=id;const revoked=$('#devices').selectedOptions[0]?.dataset.revoked==='1';text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');if(ws){ws.close();ws=null}if(revoked){try{renderSnapshot(await api('/parent/api/device/'+encodeURIComponent(id)+'/state'))}catch{snapshot=null;renderHealthChecks()}}else connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadBatteryTrend(),loadRetention()]);const rb=$('#revokeDevice');if(rb){rb.disabled=revoked;rb.textContent=revoked?'Device revoked':'Revoke selected phone'}}";
   if (!html.includes(selectNeedle)) throw new Error("Phase 6 device-select UI patch target missing");
   html = html.replace(selectNeedle, selectPatch);
+
+  const journalNeedle = '<div class="row"><span>Local journal</span><b id="journalState">—</b></div></div>';
+  const journalPatch = '<div class="row"><span>Local journal</span><b id="journalState">—</b></div><div class="row"><span>Battery drain</span><b id="batteryTrend">Not measured</b></div></div>';
+  if (!html.includes(journalNeedle)) throw new Error("Phase 6 battery UI patch target missing");
+  html = html.replace(journalNeedle, journalPatch);
 
   const sectionNeedle = '<div class="sectionTitle" style="margin-top:16px"><h3>Pair another phone</h3></div>';
   const sectionPatch = '<div class="sectionTitle" style="margin-top:16px"><h3>Device access</h3></div><div class="card"><button id="revokeDevice" class="action danger">Revoke selected phone</button><div class="small">Revocation permanently stops future uploads from this device key. Existing history remains read-only.</div></div>'+sectionNeedle;
   if (!html.includes(sectionNeedle)) throw new Error("Phase 6 revoke UI patch target missing");
   html = html.replace(sectionNeedle, sectionPatch);
 
+  html = html.replaceAll("Promise.all([loadHealthOps(),loadPhase5C()])", "Promise.all([loadHealthOps(),loadPhase5C(),loadBatteryTrend()])");
+
   const scriptNeedle = "const today=new Date(),iso=d=>";
-  const handler = "$('#revokeDevice').onclick=async()=>{if(!currentDevice)return;const name=$('#devices').selectedOptions[0]?.textContent||'this phone';if(!confirm('Revoke '+name+'? This permanently blocks future uploads from its current device key. Existing history stays available.'))return;try{await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/revoke',{method:'POST'});showBanner('Device revoked','warn');await loadDevices()}catch(e){showBanner(e.message,'error')}};";
-  if (!html.includes(scriptNeedle)) throw new Error("Phase 6 revoke handler patch target missing");
-  return html.replace(scriptNeedle, handler + scriptNeedle);
+  const helpers = "async function loadBatteryTrend(){if(!currentDevice)return;try{const b=await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/battery-drain');const rate=b.recent?.ratePctPerHour,base=b.baseline?.ratePctPerHour;const value=b.status==='not_enough_data'?'Not enough data':(b.status==='elevated'?'ELEVATED · ':'Normal · ')+(rate==null?'—':rate.toFixed(1)+'%/h')+(base==null?'':' · baseline '+base.toFixed(1)+'%/h');text('#batteryTrend',value)}catch{text('#batteryTrend','Unavailable')}};$('#revokeDevice').onclick=async()=>{if(!currentDevice)return;const name=$('#devices').selectedOptions[0]?.textContent||'this phone';if(!confirm('Revoke '+name+'? This permanently blocks future uploads from its current device key. Existing history stays available.'))return;try{await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/revoke',{method:'POST'});showBanner('Device revoked','warn');await loadDevices()}catch(e){showBanner(e.message,'error')}};";
+  if (!html.includes(scriptNeedle)) throw new Error("Phase 6 helper patch target missing");
+  return html.replace(scriptNeedle, helpers + scriptNeedle);
 }
 
 async function archivedRead(req: Request, env: Env, deviceId: string, suffix: string): Promise<Response> {
@@ -87,6 +95,7 @@ async function archivedRead(req: Request, env: Env, deviceId: string, suffix: st
     const days = Number(u.searchParams.get("days") ?? "30");
     return noStore(await reliability(env, deviceId, Number.isFinite(days) ? days : 30));
   }
+  if (suffix === "/battery-drain" && req.method === "GET") return batteryDrainTrend(env, deviceId);
   if (suffix === "/geofences" && req.method === "GET") return noStore(await listGeofences(env, deviceId));
   if (suffix === "/trips" && req.method === "GET") return noStore(await listTrips(env, deviceId));
   if (suffix === "/history" && req.method === "GET") {
@@ -115,6 +124,8 @@ export default {
       const suffix = match[2];
       const life = await lifecycle(env, deviceId);
       if (!life) return json({ error: "device not found" }, 404);
+
+      if (suffix === "/battery-drain" && req.method === "GET") return batteryDrainTrend(env, deviceId);
 
       if (suffix === "/revoke" && req.method === "POST") {
         if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
