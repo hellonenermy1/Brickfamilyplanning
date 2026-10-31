@@ -16,7 +16,8 @@
     "@protomaps/basemaps": "5.7.2",
     "maplibre-gl": "6.16.0",
     "pbf": "5.1.2",
-    "pmtiles": "4.5.0"
+    "pmtiles": "4.5.0",
+    "qr": "0.7.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261024.1",
