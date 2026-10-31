@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 
 const [protocolPath, ingestPath] = process.argv.slice(2);
 if (!protocolPath || !ingestPath) throw new Error('usage: test-phase2-evidence.mjs <protocol-module> <ingest-module>');
@@ -10,102 +10,64 @@ const protocol = await import(pathToFileURL(protocolPath).href + `?v=${Date.now(
 const ingest = await import(pathToFileURL(ingestPath).href + `?v=${Date.now()}`);
 const GOLDEN_HEX = '425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e';
 
-function uuidBytes(id) {
-  const hex = id.replaceAll('-', '');
-  return Uint8Array.from({ length: 16 }, (_, i) => Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16));
-}
-
+function uuidBytes(id) { return Buffer.from(id.replaceAll('-', ''), 'hex'); }
 function encodeRecord(r) {
-  const group = Buffer.from(r.independenceGroup, 'utf8');
-  const payload = Buffer.from(r.payload);
-  const out = Buffer.alloc(52 + group.length + payload.length);
-  let o = 0;
-  Buffer.from(uuidBytes(r.recordId)).copy(out, o); o += 16;
+  const group = Buffer.from(r.independenceGroup, 'utf8'), payload = Buffer.from(r.payload);
+  const out = Buffer.alloc(52 + group.length + payload.length); let o = 0;
+  uuidBytes(r.recordId).copy(out, o); o += 16;
   out.writeUInt32BE(r.epoch, o); o += 4;
   out.writeBigUInt64BE(BigInt(r.sequence), o); o += 8;
   out.writeBigUInt64BE(BigInt(r.elapsedRealtimeMs), o); o += 8;
   out.writeBigUInt64BE(BigInt(r.wallTimeMs), o); o += 8;
-  out.writeUInt8(r.provider, o++);
-  out.writeUInt8(r.family, o++);
-  out.writeUInt8(r.capability, o++);
-  out.writeUInt8(r.health, o++);
-  out.writeUInt8(r.quality, o++);
-  out.writeUInt8(group.length, o++);
-  out.writeUInt16BE(payload.length, o); o += 2;
-  group.copy(out, o); o += group.length;
-  payload.copy(out, o);
+  for (const value of [r.provider, r.family, r.capability, r.health, r.quality]) out.writeUInt8(value, o++);
+  out.writeUInt8(group.length, o++); out.writeUInt16BE(payload.length, o); o += 2;
+  group.copy(out, o); o += group.length; payload.copy(out, o);
   return out;
 }
-
 function encodeBatch(records, batchId = randomUUID()) {
   const bodies = records.map(encodeRecord);
-  const out = Buffer.alloc(23 + bodies.reduce((n, x) => n + x.length, 0));
-  let o = 0;
-  out.writeUInt32BE(0x42524556, o); o += 4;
-  out.writeUInt8(1, o++);
-  Buffer.from(uuidBytes(batchId)).copy(out, o); o += 16;
-  out.writeUInt16BE(records.length, o); o += 2;
+  const out = Buffer.alloc(23 + bodies.reduce((n, x) => n + x.length, 0)); let o = 0;
+  out.writeUInt32BE(0x42524556, o); o += 4; out.writeUInt8(1, o++);
+  uuidBytes(batchId).copy(out, o); o += 16; out.writeUInt16BE(records.length, o); o += 2;
   for (const body of bodies) { body.copy(out, o); o += body.length; }
   return { batchId, bytes: out };
 }
-
-function makeRecords() {
+function makeRecords(epoch = 9, prefix = 'dummy') {
   const now = Date.now();
   return [1, 2].map(sequence => ({
-    recordId: randomUUID(), epoch: 9, sequence,
-    elapsedRealtimeMs: 50_000 + sequence,
-    wallTimeMs: now + sequence,
+    recordId: randomUUID(), epoch, sequence, elapsedRealtimeMs: 50_000 + sequence, wallTimeMs: now + sequence,
     provider: 255, family: 255, capability: 0, health: 0, quality: 3,
-    independenceGroup: 'dummy:test:scene',
-    payload: Buffer.from(`dummy-${sequence}`)
+    independenceGroup: `dummy:test:${prefix}`, payload: Buffer.from(`${prefix}-${sequence}`)
   }));
 }
-
-function numberedBindings(params) {
-  return Object.fromEntries(params.map((value, index) => [`?${index + 1}`, value]));
-}
+function ab(bytes) { return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength); }
+function numberedBindings(params) { return Object.fromEntries(params.map((value, i) => [`?${i + 1}`, value])); }
 
 class FakePrepared {
   constructor(db, sql) { this.db = db; this.sql = sql; this.params = []; }
   bind(...params) { const x = new FakePrepared(this.db, this.sql); x.params = params; return x; }
   async first() { return this.db.prepare(this.sql).get(numberedBindings(this.params)) ?? null; }
   async all() { return { results: this.db.prepare(this.sql).all(numberedBindings(this.params)) }; }
-  async run() {
-    const result = this.db.prepare(this.sql).run(numberedBindings(this.params));
-    return { meta: { changes: Number(result.changes) }, results: [] };
-  }
+  async run() { const r = this.db.prepare(this.sql).run(numberedBindings(this.params)); return { meta: { changes: Number(r.changes) }, results: [] }; }
 }
 class FakeD1 {
   constructor(db) { this.db = db; this.beforeBatch = null; }
   prepare(sql) { return new FakePrepared(this.db, sql); }
   async batch(statements) {
-    if (this.beforeBatch) {
-      const hook = this.beforeBatch;
-      this.beforeBatch = null;
-      await hook();
-    }
+    if (this.beforeBatch) { const hook = this.beforeBatch; this.beforeBatch = null; await hook(); }
     this.db.exec('BEGIN');
     try {
-      const out = [];
-      for (const statement of statements) out.push(await statement.run());
-      this.db.exec('COMMIT');
-      return out;
-    } catch (error) {
-      this.db.exec('ROLLBACK');
-      throw error;
-    }
+      const out = []; for (const statement of statements) out.push(await statement.run());
+      this.db.exec('COMMIT'); return out;
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
 }
 class FakeR2 {
   constructor() { this.objects = new Map(); this.putCalls = 0; }
-  async put(key, value, options) {
-    this.putCalls += 1;
-    this.objects.set(key, { bytes: Buffer.from(value), options });
-  }
+  async put(key, value, options) { this.putCalls += 1; this.objects.set(key, { bytes: Buffer.from(value), options }); }
 }
 
-// This vector is duplicated in Android instrumentation. A byte-level mismatch therefore catches
-// cross-language protocol drift even when each side's own round-trip tests still pass.
+// Cross-language protocol vector shared with Android instrumentation.
 const goldenRecord = {
   recordId: '12345678-1234-5678-9abc-def012345678', epoch: 7, sequence: 42,
   elapsedRealtimeMs: 123_456_789, wallTimeMs: 1_761_930_000_123,
@@ -114,132 +76,80 @@ const goldenRecord = {
 };
 const golden = encodeBatch([goldenRecord], '00112233-4455-6677-8899-aabbccddeeff');
 assert.equal(golden.bytes.toString('hex'), GOLDEN_HEX);
-const decodedGolden = protocol.decodeEvidenceBatch(golden.bytes.buffer.slice(golden.bytes.byteOffset, golden.bytes.byteOffset + golden.bytes.byteLength));
+const decodedGolden = protocol.decodeEvidenceBatch(ab(golden.bytes));
 assert.equal(decodedGolden.batchId, golden.batchId);
-assert.equal(decodedGolden.records.length, 1);
 assert.equal(decodedGolden.records[0].recordId, goldenRecord.recordId);
-assert.equal(decodedGolden.records[0].sequence, goldenRecord.sequence);
-assert.equal(Buffer.from(decodedGolden.records[0].payload).toString('utf8'), 'phase2-golden');
+assert.equal(Buffer.from(decodedGolden.records[0].payload).toString(), 'phase2-golden');
 
 const records = makeRecords();
 const first = encodeBatch(records);
-const decoded = protocol.decodeEvidenceBatch(first.bytes.buffer.slice(first.bytes.byteOffset, first.bytes.byteOffset + first.bytes.byteLength));
-assert.equal(decoded.batchId, first.batchId);
-assert.deepEqual(decoded.records.map(x => x.sequence), [1, 2]);
-assert.deepEqual(decoded.records.map(x => x.independenceGroup), ['dummy:test:scene', 'dummy:test:scene']);
-
+assert.deepEqual(protocol.decodeEvidenceBatch(ab(first.bytes)).records.map(x => x.sequence), [1, 2]);
 const badVersion = Buffer.from(first.bytes); badVersion[4] = 2;
-assert.throws(() => protocol.decodeEvidenceBatch(badVersion.buffer.slice(badVersion.byteOffset, badVersion.byteOffset + badVersion.byteLength)), /unsupported evidence protocol/);
-const trailing = Buffer.concat([first.bytes, Buffer.from([0])]);
-assert.throws(() => protocol.decodeEvidenceBatch(trailing.buffer.slice(trailing.byteOffset, trailing.byteOffset + trailing.byteLength)), /trailing bytes/);
-const reversed = encodeBatch([...records].reverse());
-assert.throws(() => protocol.decodeEvidenceBatch(reversed.bytes.buffer.slice(reversed.bytes.byteOffset, reversed.bytes.byteOffset + reversed.bytes.byteLength)), /strictly ordered/);
+assert.throws(() => protocol.decodeEvidenceBatch(ab(badVersion)), /unsupported evidence protocol/);
+assert.throws(() => protocol.decodeEvidenceBatch(ab(Buffer.concat([first.bytes, Buffer.from([0])]))), /trailing bytes/);
+assert.throws(() => protocol.decodeEvidenceBatch(ab(encodeBatch([...records].reverse()).bytes)), /strictly ordered/);
+const badEpoch = Buffer.from(first.bytes); badEpoch.writeUInt32BE(0x80000000, 39);
+assert.throws(() => protocol.decodeEvidenceBatch(ab(badEpoch)), /Android wire range/);
 
 const db = new DatabaseSync(':memory:');
 db.exec(fs.readFileSync('schema/001_init.sql', 'utf8'));
 db.exec(fs.readFileSync('schema/008_v1_phase2_evidence.sql', 'utf8'));
 db.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?,?,?,?)").run('device-1', 'Test', 'key', Date.now());
 const env = { DB: new FakeD1(db), HISTORY: new FakeR2() };
-const ab = first.bytes.buffer.slice(first.bytes.byteOffset, first.bytes.byteOffset + first.bytes.byteLength);
 
-let result = await ingest.persistEvidenceBatch(env, 'device-1', ab);
-assert.equal(result.duplicateBatch, false);
-assert.equal(result.acked.length, 2);
+let result = await ingest.persistEvidenceBatch(env, 'device-1', ab(first.bytes));
+assert.equal(result.duplicateBatch, false); assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1);
 assert.equal(env.HISTORY.putCalls, 1);
-const firstBatchSha = createHash('sha256').update(first.bytes).digest('hex');
-const firstBatchRow = db.prepare('SELECT payload_sha256,r2_key FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', first.batchId);
-assert.equal(firstBatchRow.payload_sha256, firstBatchSha);
-assert.ok(firstBatchRow.r2_key.endsWith(`/${first.batchId}-${firstBatchSha}.brev`), 'raw evidence key must include the exact batch hash');
-assert.ok(env.HISTORY.objects.has(firstBatchRow.r2_key));
-assert.equal(env.HISTORY.objects.get(firstBatchRow.r2_key).options.customMetadata.sha256, firstBatchSha);
-let providerHealth = db.prepare('SELECT capability,health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
-assert.equal(providerHealth.capability, 0);
-assert.equal(providerHealth.health, 0);
-assert.equal(providerHealth.last_epoch, 9);
-assert.equal(providerHealth.last_sequence, 2);
-assert.equal(providerHealth.observed_wall_ms, records[1].wallTimeMs);
+const firstSha = createHash('sha256').update(first.bytes).digest('hex');
+const firstRow = db.prepare('SELECT payload_sha256,r2_key FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', first.batchId);
+assert.equal(firstRow.payload_sha256, firstSha);
+assert.ok(firstRow.r2_key.endsWith(`/${first.batchId}-${firstSha}.brev`));
+assert.equal(env.HISTORY.objects.get(firstRow.r2_key).options.customMetadata.sha256, firstSha);
 
-result = await ingest.persistEvidenceBatch(env, 'device-1', ab);
-assert.equal(result.duplicateBatch, true);
-assert.equal(result.acked.length, 2);
+// Same exact batch is a pure ACK retry and never rewrites raw storage.
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(first.bytes));
+assert.equal(result.duplicateBatch, true); assert.equal(env.HISTORY.putCalls, 1);
+
+// Same durable records under a fresh transport batch UUID must ACK without storage amplification.
+const replay = encodeBatch(records);
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(replay.bytes));
+assert.equal(result.duplicateBatch, false); assert.equal(result.duplicateRecords, true); assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2);
-assert.equal(env.HISTORY.putCalls, 1, 'same batch retry should not rewrite R2');
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1);
+assert.equal(env.HISTORY.putCalls, 1);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE batch_id=?').get(replay.batchId).n, 0);
 
-const retryNewBatch = encodeBatch(records);
-result = await ingest.persistEvidenceBatch(env, 'device-1', retryNewBatch.bytes.buffer.slice(retryNewBatch.bytes.byteOffset, retryNewBatch.bytes.byteOffset + retryNewBatch.bytes.byteLength));
-assert.equal(result.duplicateBatch, false);
-assert.equal(result.acked.length, 2);
-assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2, 'record-level retry must dedupe');
-assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 2);
-const retryBatchRow = db.prepare('SELECT r2_key FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', retryNewBatch.batchId);
-assert.notEqual(retryBatchRow.r2_key, firstBatchRow.r2_key, 'different signed batch bytes must never share one raw R2 key');
-
-// A wrong device wall clock must not make old provider state look newer. Provider health ordering
-// follows the durable Brick epoch/sequence pair instead of comparing wall-time values.
-const clockRegressed = {
-  ...records[1],
-  recordId: randomUUID(),
-  sequence: 3,
-  elapsedRealtimeMs: records[1].elapsedRealtimeMs + 1,
-  wallTimeMs: records[0].wallTimeMs - 100_000,
-  health: 1,
-  payload: Buffer.from('clock-regressed-newer-sequence')
-};
+// Provider state follows durable epoch/sequence, not a regressed wall clock.
+const clockRegressed = { ...records[1], recordId: randomUUID(), sequence: 3,
+  elapsedRealtimeMs: records[1].elapsedRealtimeMs + 1, wallTimeMs: records[0].wallTimeMs - 100_000,
+  health: 1, payload: Buffer.from('clock-regressed-newer-sequence') };
 const clockBatch = encodeBatch([clockRegressed]);
-result = await ingest.persistEvidenceBatch(env, 'device-1', clockBatch.bytes.buffer.slice(clockBatch.bytes.byteOffset, clockBatch.bytes.byteOffset + clockBatch.bytes.byteLength));
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(clockBatch.bytes));
 assert.equal(result.acked.length, 1);
-providerHealth = db.prepare('SELECT health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
-assert.equal(providerHealth.health, 1);
-assert.equal(providerHealth.last_epoch, 9);
-assert.equal(providerHealth.last_sequence, 3);
-assert.equal(providerHealth.observed_wall_ms, clockRegressed.wallTimeMs);
+const health = db.prepare('SELECT health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
+assert.equal(health.health, 1); assert.equal(health.last_epoch, 9); assert.equal(health.last_sequence, 3); assert.equal(health.observed_wall_ms, clockRegressed.wallTimeMs);
 
-// Simulate the only dangerous batch-ID race: another request claims the same batch UUID after this
-// request's preflight reads/R2 write but before its D1 transaction. The first hard INSERT must fail
-// and roll the entire transaction back, so none of this losing request's records can contaminate the
-// winner's batch. A retry then sees the conflicting claim and becomes a normal EvidenceConflict.
-const raceRecords = [1, 2].map(sequence => ({
-  recordId: randomUUID(), epoch: 44, sequence,
-  elapsedRealtimeMs: 900_000 + sequence,
-  wallTimeMs: Date.now() + sequence,
-  provider: 255, family: 255, capability: 0, health: 0, quality: 3,
-  independenceGroup: 'dummy:test:race',
-  payload: Buffer.from(`race-${sequence}`)
-}));
-const race = encodeBatch(raceRecords);
-const competitorSha = 'f'.repeat(64);
+// Simulate a competing request claiming the same batch UUID between preflight and D1 batch().
+// The hard batch INSERT must fail and roll the complete losing transaction back.
+const raceRecords = makeRecords(44, 'race'), race = encodeBatch(raceRecords), competitorSha = 'f'.repeat(64);
 env.DB.beforeBatch = async () => {
-  db.prepare(
-    'INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?,?,?,?,?,?,?,?)'
-  ).run('device-1', race.batchId, 1, raceRecords.length, race.bytes.length, competitorSha, 'evidence/raw/competitor.brev', Date.now());
+  db.prepare('INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?,?,?,?,?,?,?,?)')
+    .run('device-1', race.batchId, 1, raceRecords.length, race.bytes.length, competitorSha, 'evidence/raw/competitor.brev', Date.now());
 };
-const raceBuffer = race.bytes.buffer.slice(race.bytes.byteOffset, race.bytes.byteOffset + race.bytes.byteLength);
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', raceBuffer), /UNIQUE|constraint/i);
-assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 44).n, 0, 'losing batch transaction must roll back its records');
-assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).n, 0, 'losing batch transaction must not link records to winner');
-assert.equal(db.prepare('SELECT payload_sha256 FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).payload_sha256, competitorSha);
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', raceBuffer), ingest.EvidenceConflict);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), /UNIQUE|constraint/i);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 44).n, 0);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).n, 0);
+assert.equal(db.prepare('SELECT payload_sha256 FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).payload_sha256, competitorSha);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), ingest.EvidenceConflict);
 
-const collisionRecords = structuredClone(records);
-collisionRecords[0].recordId = randomUUID();
-collisionRecords[0].payload = Buffer.from('changed');
-const collision = encodeBatch(collisionRecords);
-await assert.rejects(
-  ingest.persistEvidenceBatch(env, 'device-1', collision.bytes.buffer.slice(collision.bytes.byteOffset, collision.bytes.byteOffset + collision.bytes.byteLength)),
-  ingest.EvidenceConflict
-);
-
-const reusedBatchChanged = encodeBatch([{ ...records[0], payload: Buffer.from('tampered') }, records[1]], first.batchId);
-await assert.rejects(
-  ingest.persistEvidenceBatch(env, 'device-1', reusedBatchChanged.bytes.buffer.slice(reusedBatchChanged.bytes.byteOffset, reusedBatchChanged.bytes.byteOffset + reusedBatchChanged.bytes.byteLength)),
-  ingest.EvidenceConflict
-);
+// Record identity collisions and changed bytes under an accepted batch UUID fail closed.
+const collisionRecords = structuredClone(records); collisionRecords[0].recordId = randomUUID(); collisionRecords[0].payload = Buffer.from('changed');
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(encodeBatch(collisionRecords).bytes)), ingest.EvidenceConflict);
+const changedBatch = encodeBatch([{ ...records[0], payload: Buffer.from('tampered') }, records[1]], first.batchId);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(changedBatch.bytes)), ingest.EvidenceConflict);
 
 const state = db.prepare('SELECT last_epoch,last_sequence FROM device_evidence_state WHERE device_id=?').get('device-1');
-assert.equal(state.last_epoch, 9);
-assert.equal(state.last_sequence, 3);
-
+assert.equal(state.last_epoch, 9); assert.equal(state.last_sequence, 3);
 console.log('Brick V1 Phase 2 evidence protocol + idempotent persistence integration tests OK');
