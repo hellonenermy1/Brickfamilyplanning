@@ -15,6 +15,15 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
+    private fun noteJournalHealthy(healthy: Boolean) {
+        healthPrefs.edit()
+            .putBoolean("journalWriteHealthy", healthy)
+            .apply {
+                if (!healthy) putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
+            }
+            .apply()
+    }
+
     fun append(epoch: Int, seq: Long, payload: ByteArray): Boolean {
         return try {
             val rowId = writableDatabase.insertWithOnConflict("packets", null, ContentValues().apply {
@@ -24,18 +33,10 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
                 put("created_ms", System.currentTimeMillis())
             }, SQLiteDatabase.CONFLICT_IGNORE)
             val ok = rowId != -1L
-            healthPrefs.edit()
-                .putBoolean("journalWriteHealthy", ok)
-                .apply {
-                    if (!ok) putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
-                }
-                .apply()
+            noteJournalHealthy(ok)
             ok
         } catch (_: Throwable) {
-            healthPrefs.edit()
-                .putBoolean("journalWriteHealthy", false)
-                .putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
-                .apply()
+            noteJournalHealthy(false)
             false
         }
     }
@@ -81,8 +82,39 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
         }
     }
 
-    fun ackExact(epoch: Int, seq: Long) {
-        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf<Any>(epoch, seq))
-        writableDatabase.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
+    private fun cleanupDelivered(db: SQLiteDatabase) {
+        db.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
+    }
+
+    fun ackExact(epoch: Int, seq: Long): Boolean {
+        return ackBatch(listOf(epoch to seq))
+    }
+
+    fun ackBatch(items: List<Pair<Int, Long>>): Boolean {
+        if (items.isEmpty()) return true
+        val unique = items.distinct()
+        if (unique.size != items.size) return false
+        val db = writableDatabase
+        return try {
+            db.beginTransaction()
+            for ((epoch, seq) in items) {
+                val changed = db.update(
+                    "packets",
+                    ContentValues().apply { put("acked", 1) },
+                    "epoch=? AND seq=? AND acked=0",
+                    arrayOf(epoch.toString(), seq.toString())
+                )
+                if (changed != 1) throw IllegalStateException("exact ACK did not match one pending row")
+            }
+            cleanupDelivered(db)
+            db.setTransactionSuccessful()
+            noteJournalHealthy(true)
+            true
+        } catch (_: Throwable) {
+            noteJournalHealthy(false)
+            false
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+        }
     }
 }
