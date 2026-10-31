@@ -60,13 +60,17 @@ function makeRecords() {
   }));
 }
 
+function numberedBindings(params) {
+  return Object.fromEntries(params.map((value, index) => [`?${index + 1}`, value]));
+}
+
 class FakePrepared {
   constructor(db, sql) { this.db = db; this.sql = sql; this.params = []; }
   bind(...params) { const x = new FakePrepared(this.db, this.sql); x.params = params; return x; }
-  async first() { return this.db.prepare(this.sql).get(...this.params) ?? null; }
-  async all() { return { results: this.db.prepare(this.sql).all(...this.params) }; }
+  async first() { return this.db.prepare(this.sql).get(numberedBindings(this.params)) ?? null; }
+  async all() { return { results: this.db.prepare(this.sql).all(numberedBindings(this.params)) }; }
   async run() {
-    const result = this.db.prepare(this.sql).run(...this.params);
+    const result = this.db.prepare(this.sql).run(numberedBindings(this.params));
     return { meta: { changes: Number(result.changes) }, results: [] };
   }
 }
