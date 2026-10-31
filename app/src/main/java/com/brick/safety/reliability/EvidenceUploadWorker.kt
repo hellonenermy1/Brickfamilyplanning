@@ -16,12 +16,21 @@ class EvidenceUploadWorker(
     override fun doWork(): Result {
         return try {
             EvidenceDispatcher(applicationContext, scheduleRecovery = false).use { dispatcher ->
-                // A bounded run prevents evidence from monopolising a worker indefinitely. Returning
-                // retry while records remain lets WorkManager continue catch-up after long outages.
-                dispatcher.drainIfSafe(maxBatches = 8)
-                if (dispatcher.stats().pendingCount > 0) Result.retry() else Result.success()
+                // Bound each worker run so evidence cannot monopolise execution. If durable records
+                // remain, append exactly one successor. Fast progress gets a short delay; a zero-
+                // progress run (core backlog, network/server failure or ACK failure) backs off.
+                val sent = dispatcher.drainIfSafe(maxBatches = 8)
+                if (dispatcher.stats().pendingCount > 0) {
+                    RecoveryScheduler.scheduleEvidenceFollowUp(
+                        applicationContext,
+                        delaySeconds = if (sent > 0) 2 else 30
+                    )
+                }
             }
+            Result.success()
         } catch (_: Throwable) {
+            // Unexpected local journal/worker failure uses WorkManager's normal retry semantics.
+            // Core tracking is independent and is not failed by this worker.
             Result.retry()
         }
     }
