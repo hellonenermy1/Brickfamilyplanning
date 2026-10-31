@@ -16,6 +16,13 @@ val releaseSigningAvailable = listOf(
     releaseKeyPassword
 ).all { !it.isNullOrBlank() }
 
+dependencyLocking {
+    // Brick's release APK must resolve the same transitive dependency versions as the audited
+    // candidate. The generated app/gradle.lockfile is committed after the first lock-generation
+    // run; normal builds then consume it automatically and fail rather than silently drifting.
+    lockAllConfigurations()
+}
+
 android {
     namespace = "com.brick.safety"
     compileSdk = 36
