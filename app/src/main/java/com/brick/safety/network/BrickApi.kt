@@ -4,11 +4,18 @@ import com.brick.safety.crypto.DeviceKeys
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.UUID
 
 object BrickApi {
     data class PairResult(val deviceId: String, val apiBase: String)
     data class SafetyEnvelope(val eventId: String, val kind: String, val payload: ByteArray)
+    data class LocationUpload(val epoch: Int, val sequence: Long, val payload: ByteArray)
+
+    private const val LOCATION_V2_BYTES = 90
+    private const val LOCATION_BATCH_VERSION: Byte = 1
+    private const val MAX_LOCATION_BATCH = 50
 
     fun completePairing(baseUrl: String, token: String): PairResult {
         val url = URL(baseUrl.trimEnd('/') + "/api/pair/complete")
@@ -33,6 +40,55 @@ object BrickApi {
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Upload failed ${c.responseCode}: $text")
         return JSONObject(text).getLong("ack")
+    }
+
+    fun sendLiveLocationPreview(baseUrl: String, deviceId: String, payload: ByteArray): Boolean {
+        require(payload.size == LOCATION_V2_BYTES && payload.firstOrNull()?.toInt() == 2)
+        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/location/live")
+        val c = url.openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 5_000; c.readTimeout = 5_000; c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/octet-stream")
+        c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
+        c.outputStream.use { it.write(payload) }
+        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        if (c.responseCode !in 200..299) error("Live preview failed ${c.responseCode}: $text")
+        return JSONObject(text).optBoolean("previewed", false)
+    }
+
+    fun sendLocationBatch(baseUrl: String, deviceId: String, items: List<LocationUpload>): List<Pair<Int, Long>> {
+        require(items.isNotEmpty() && items.size <= MAX_LOCATION_BATCH)
+        items.forEachIndexed { index, item ->
+            require(item.payload.size == LOCATION_V2_BYTES && item.payload.firstOrNull()?.toInt() == 2)
+            if (index > 0) {
+                val previous = items[index - 1]
+                require(item.epoch > previous.epoch || (item.epoch == previous.epoch && item.sequence > previous.sequence))
+            }
+        }
+        val body = ByteBuffer.allocate(3 + items.size * LOCATION_V2_BYTES).order(ByteOrder.BIG_ENDIAN)
+            .put(LOCATION_BATCH_VERSION)
+            .putShort(items.size.toShort())
+            .apply { items.forEach { put(it.payload) } }
+            .array()
+        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/location/batch")
+        val c = url.openConnection() as HttpURLConnection
+        c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 15_000; c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/octet-stream")
+        c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(body))
+        c.outputStream.use { it.write(body) }
+        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        if (c.responseCode !in 200..299) error("Batch upload failed ${c.responseCode}: $text")
+        val response = JSONObject(text)
+        val acks = response.getJSONArray("acked")
+        if (acks.length() != items.size) error("Batch ACK count mismatch")
+        val expected = items.map { it.epoch to it.sequence }.toSet()
+        val actual = buildSet {
+            for (i in 0 until acks.length()) {
+                val ack = acks.getJSONObject(i)
+                add(ack.getInt("epoch") to ack.getLong("sequence"))
+            }
+        }
+        if (actual.size != items.size || actual != expected) error("Batch ACK contents mismatch")
+        return items.map { it.epoch to it.sequence }
     }
 
     fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
