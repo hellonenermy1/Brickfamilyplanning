@@ -71,9 +71,28 @@ function requestFor(body, signature, contentType = 'application/vnd.brick.eviden
   if (signature !== null) headers['X-Brick-Signature'] = signature;
   return new Request(`https://brick.invalid/api/device/${DEVICE_ID}/evidence`, { method: 'POST', headers, body });
 }
-async function sign(privateKey, bytes) {
-  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, bytes);
-  return Buffer.from(signature).toString('base64');
+
+// Android java.security.Signature("SHA256withECDSA") emits ASN.1 DER, while Web Crypto emits
+// fixed-width IEEE-P1363 r||s. Convert the locally generated raw signature to DER so every valid
+// route request exercises the same signature format produced by DeviceKeys.sign() on Android.
+function p1363ToDer(signature) {
+  const raw = Buffer.from(signature);
+  assert.equal(raw.length, 64, 'P-256 WebCrypto signature must be 64-byte P1363');
+  function integer(bytes) {
+    let x = Buffer.from(bytes);
+    while (x.length > 1 && x[0] === 0) x = x.subarray(1);
+    if ((x[0] & 0x80) !== 0) x = Buffer.concat([Buffer.from([0]), x]);
+    return Buffer.concat([Buffer.from([0x02, x.length]), x]);
+  }
+  const r = integer(raw.subarray(0, 32));
+  const s = integer(raw.subarray(32, 64));
+  const body = Buffer.concat([r, s]);
+  assert.ok(body.length < 128);
+  return Buffer.concat([Buffer.from([0x30, body.length]), body]);
+}
+async function signLikeAndroid(privateKey, bytes) {
+  const raw = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, bytes);
+  return p1363ToDer(raw).toString('base64');
 }
 
 assert.equal(route.decodeEvidenceDevicePath(DEVICE_ID), DEVICE_ID);
@@ -99,9 +118,9 @@ response = await route.handleEvidenceRequest(requestFor(batch.bytes, Buffer.allo
 assert.equal(response.status, 401); assert.deepEqual(rate.calls, [`evidence-attempt:${CLIENT_IP}`]);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 0);
 
-// A valid P-256 signed request consumes attempt + device buckets and is ACKed only after D1/R2 persistence.
+// Valid requests use Android-compatible DER ECDSA and are ACKed only after D1/R2 persistence.
 rate.reset();
-const signature = await sign(keys.privateKey, batch.bytes);
+const signature = await signLikeAndroid(keys.privateKey, batch.bytes);
 response = await route.handleEvidenceRequest(requestFor(batch.bytes, signature), env, DEVICE_ID);
 assert.equal(response.status, 200);
 const body = await response.json();
@@ -117,18 +136,18 @@ response = await route.handleEvidenceRequest(requestFor(batch.bytes, signature),
 assert.equal(response.status, 200); assert.equal((await response.json()).duplicateBatch, true); assert.equal(history.putCalls, 1);
 
 // Fresh transport batch UUID with the same durable records is record-replay deduped without storage growth.
-const replay = encodeBatch(items), replaySignature = await sign(keys.privateKey, replay.bytes);
+const replay = encodeBatch(items), replaySignature = await signLikeAndroid(keys.privateKey, replay.bytes);
 rate.reset();
 response = await route.handleEvidenceRequest(requestFor(replay.bytes, replaySignature), env, DEVICE_ID);
 assert.equal(response.status, 200); const replayBody = await response.json(); assert.equal(replayBody.duplicateRecords, true);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1); assert.equal(history.putCalls, 1);
 
-// Requester rate limiting happens before device lookup/crypto. Authenticated device limiting happens only after signature proof.
+// Requester limiting happens before device lookup/crypto. Device limiting happens only after proof.
 rate.reset(); rate.blocked.add(`evidence-attempt:${CLIENT_IP}`);
 response = await route.handleEvidenceRequest(requestFor(batch.bytes, signature), env, DEVICE_ID);
 assert.equal(response.status, 429); assert.deepEqual(rate.calls, [`evidence-attempt:${CLIENT_IP}`]);
 rate.reset(); rate.blocked.add(`evidence-device:${DEVICE_ID}`);
-const next = encodeBatch(records(22)), nextSig = await sign(keys.privateKey, next.bytes);
+const next = encodeBatch(records(22)), nextSig = await signLikeAndroid(keys.privateKey, next.bytes);
 response = await route.handleEvidenceRequest(requestFor(next.bytes, nextSig), env, DEVICE_ID);
 assert.equal(response.status, 429); assert.deepEqual(rate.calls, [`evidence-attempt:${CLIENT_IP}`, `evidence-device:${DEVICE_ID}`]);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE epoch=22').get().n, 0);
@@ -141,8 +160,8 @@ assert.equal(response.status, 401); assert.deepEqual(rate.calls, [`evidence-atte
 db.prepare('UPDATE devices SET revoked_at=NULL WHERE id=?').run(DEVICE_ID);
 rate.reset();
 const malformed = Buffer.from(next.bytes); malformed[4] = 2;
-response = await route.handleEvidenceRequest(requestFor(malformed, await sign(keys.privateKey, malformed)), env, DEVICE_ID);
+response = await route.handleEvidenceRequest(requestFor(malformed, await signLikeAndroid(keys.privateKey, malformed)), env, DEVICE_ID);
 assert.equal(response.status, 400);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE epoch=22').get().n, 0);
 
-console.log('Brick V1 Phase 2 signed evidence HTTP route integration tests OK');
+console.log('Brick V1 Phase 2 signed evidence HTTP route integration tests OK (Android DER ECDSA path)');
