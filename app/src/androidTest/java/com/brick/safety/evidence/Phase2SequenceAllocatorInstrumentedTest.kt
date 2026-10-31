@@ -7,6 +7,10 @@ import java.util.UUID
 
 @Suppress("DEPRECATION")
 class Phase2SequenceAllocatorInstrumentedTest : InstrumentationTestCase() {
+    companion object {
+        private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
+    }
+
     private lateinit var context: Context
 
     private object TestCipher : EvidenceCipher {
@@ -47,7 +51,7 @@ class Phase2SequenceAllocatorInstrumentedTest : InstrumentationTestCase() {
         assertTrue(prefs.edit().putInt("epoch", 31).putLong("evidenceSequence", 999L).commit())
 
         var journal = EvidenceJournal(context, TestCipher)
-        val first = journal.appendNew(31, observation("first"))
+        val first = journal.appendNew(TEST_DEVICE_ID, 31, observation("first"))
         assertNotNull(first)
         assertEquals(1L, first!!.sequence)
         journal.close()
@@ -55,14 +59,14 @@ class Phase2SequenceAllocatorInstrumentedTest : InstrumentationTestCase() {
         // Simulate a lost/stale cache update. The preference must not control future allocation.
         assertTrue(prefs.edit().putLong("evidenceSequence", 0L).commit())
         journal = EvidenceJournal(context, TestCipher)
-        val second = journal.appendNew(31, observation("second"))
+        val second = journal.appendNew(TEST_DEVICE_ID, 31, observation("second"))
         assertNotNull(second)
         assertEquals(2L, second!!.sequence)
         journal.close()
 
         // A separate helper instance must continue from the same durable DB-owned allocator.
         journal = EvidenceJournal(context, TestCipher)
-        val third = journal.appendNew(31, observation("third"))
+        val third = journal.appendNew(TEST_DEVICE_ID, 31, observation("third"))
         assertNotNull(third)
         assertEquals(3L, third!!.sequence)
         assertEquals(3L, journal.maxSequence(31))
