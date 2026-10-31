@@ -29,14 +29,10 @@ class EvidenceDispatcher(
     @Synchronized
     fun enqueue(observation: EvidenceObservation): Boolean {
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
-        val stored = prefs.getLong("evidenceSequence", 0L)
-        val next = maxOf(stored, journal.maxSequence(epoch)) + 1L
-        if (next <= 0L) return false
-
-        // The journal is authoritative. Persist the evidence row first; the preference is only a
-        // sequence cache and can be reconstructed from journal.maxSequence() after a crash.
-        if (!journal.append(EvidenceRecord(epoch, next, observation))) return false
-        prefs.edit().putLong("evidenceSequence", next).apply()
+        val record = journal.appendNew(epoch, observation) ?: return false
+        // Preference is only a cheap observable cache. The SQLite journal owns allocation and can
+        // recover the correct next sequence even if this async preference write never happens.
+        prefs.edit().putLong("evidenceSequence", record.sequence).apply()
         if (scheduleRecovery) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
         return true
     }
