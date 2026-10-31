@@ -117,7 +117,7 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
           events.push(await eventRecord(
             env, deviceId, next === "inside" ? "geofence_enter" : "geofence_exit", packet, lat, lon, accuracyM,
             { geofenceId: f.row.id, name: f.row.name, distanceM: Math.round(d) },
-            `${deviceId}|gf|${f.row.id}|${packet.epoch}|${packet.sequence}|${next}`
+            `${deviceId}|gf|${f.row.id}|${next}|${candidateSince}`
           ));
           f.stable = next; f.candidate = null; f.candidateSince = null; f.candidateCount = 0;
         }
@@ -138,7 +138,7 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
             events.push(await eventRecord(
               env, deviceId, "trip_ended", packet, lat, lon, accuracyM,
               { tripId: trip.id, reason: "arrived", destination: trip.destination_name, distanceM: Math.round(dist) },
-              `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|arrived`
+              `${deviceId}|trip|${trip.id}|arrived|${arrivalSince}`
             ));
             trip.arrival_candidate_since = null; trip.arrival_candidate_count = 0; trip.stationary_since = null;
           }
@@ -154,21 +154,23 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
           trip.stationary_since ??= eventTime;
           const stationarySince = trip.stationary_since;
           if (stationarySince !== null && eventTime - stationarySince >= 600_000 && (!trip.last_stop_alert_at || eventTime - trip.last_stop_alert_at >= 1_800_000)) {
+            const previousStopAlert = trip.last_stop_alert_at ?? 0;
             trip.last_stop_alert_at = eventTime;
             events.push(await eventRecord(
               env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
               { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name, stoppedMinutes: Math.floor((eventTime - stationarySince) / 60_000), distanceToDestinationM: dist === null ? null : Math.round(dist) },
-              `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`
+              `${deviceId}|trip|${trip.id}|stop|${stationarySince}|${previousStopAlert}`
             ));
           }
         } else trip.stationary_since = null;
 
         if (trip.expected_arrival_at && eventTime > trip.expected_arrival_at + 600_000 && (!trip.last_alert_at || eventTime - trip.last_alert_at > 1_800_000)) {
+          const previousAlert = trip.last_alert_at ?? 0;
           trip.last_alert_at = eventTime;
           events.push(await eventRecord(
             env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
             { tripId: trip.id, reason: "overdue", destination: trip.destination_name, distanceToDestinationM: dist === null ? null : Math.round(dist) },
-            `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|overdue`
+            `${deviceId}|trip|${trip.id}|overdue|${trip.expected_arrival_at}|${previousAlert}`
           ));
         }
       }
@@ -183,12 +185,13 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
     writes.push(env.DB.prepare(
       `INSERT INTO geofence_state(geofence_id,device_id,stable_state,candidate_state,candidate_since,candidate_count,last_distance_m,updated_at,last_epoch,last_sequence)
        VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)
-       ON CONFLICT(geofence_id) DO UPDATE SET stable_state=excluded.stable_state,candidate_state=excluded.candidate_state,candidate_since=excluded.candidate_since,candidate_count=excluded.candidate_count,last_distance_m=excluded.last_distance_m,updated_at=excluded.updated_at,last_epoch=excluded.last_epoch,last_sequence=excluded.last_sequence`
+       ON CONFLICT(geofence_id) DO UPDATE SET stable_state=excluded.stable_state,candidate_state=excluded.candidate_state,candidate_since=excluded.candidate_since,candidate_count=excluded.candidate_count,last_distance_m=excluded.last_distance_m,updated_at=excluded.updated_at,last_epoch=excluded.last_epoch,last_sequence=excluded.last_sequence
+       WHERE excluded.last_epoch>geofence_state.last_epoch OR (excluded.last_epoch=geofence_state.last_epoch AND excluded.last_sequence>geofence_state.last_sequence)`
     ).bind(f.row.id, deviceId, f.stable, f.candidate, f.candidateSince, f.candidateCount, f.lastDistanceM, serverNow, f.lastEpoch, f.lastSequence));
   }
   if (trip && tripDirty) {
     writes.push(env.DB.prepare(
-      "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active'"
+      "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9))"
     ).bind(tripState, tripEndedAt, trip.arrival_candidate_since, trip.arrival_candidate_count, trip.last_alert_at, trip.stationary_since, trip.last_stop_alert_at, trip.last_eval_epoch, trip.last_eval_sequence, trip.last_distance_to_destination_m, trip.last_location_at, trip.id));
   }
   writes.push(...events.map(e => e.statement));
