@@ -25,13 +25,8 @@ object HealthEvidence {
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
 
-        // Wall-clock corrections must never turn health evidence into a negative age that the
-        // server rejects. A backwards clock jump therefore reports age zero until time catches up.
         fun ageSince(wallMs: Long): Any = if (wallMs > 0L) (now - wallMs).coerceAtLeast(0L) else JSONObject.NULL
 
-        // Health is signed, but signatures alone do not prevent replay. Burn a durable monotonic
-        // sequence before transmission. If the disk commit fails, publish sequence 0 so the server
-        // rejects this heartbeat instead of accepting a sequence the phone cannot safely remember.
         val nextHealthSequence = prefs.getLong("healthSequence", 0L) + 1L
         val healthCounterWriteHealthy = prefs.edit().putLong("healthSequence", nextHealthSequence).commit()
         val healthSequence = if (healthCounterWriteHealthy) nextHealthSequence else 0L
@@ -50,6 +45,7 @@ object HealthEvidence {
             .put("fineLocationPermission", granted(Manifest.permission.ACCESS_FINE_LOCATION))
             .put("backgroundLocationPermission", granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
             .put("activityRecognitionPermission", granted(Manifest.permission.ACTIVITY_RECOGNITION))
+            .put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))
             .put("notificationPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
             .put("batteryOptimizationExempt", powerManager.isIgnoringBatteryOptimizations(context.packageName))
             .put("powerSaveMode", powerManager.isPowerSaveMode)
