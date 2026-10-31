@@ -1,6 +1,7 @@
 import { verifyDeviceSignature } from "./crypto";
 import type { BrickDevice } from "./device-do";
 import { decodeLivePacket, V1_BYTES, V2_BYTES, type LivePacket } from "./protocol";
+import { evaluateSafetyBatchV6 } from "./safety-batch-v6";
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 export type LocationIngestEnv = {
@@ -43,10 +44,6 @@ function order(a: LivePacket, b: LivePacket) {
   return a.epoch - b.epoch || a.sequence - b.sequence;
 }
 
-function advances(candidate: LivePacket, epoch: number, sequence: number) {
-  return candidate.epoch > epoch || (candidate.epoch === epoch && candidate.sequence > sequence);
-}
-
 async function queueLocations(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
   if (packets.length === 1) {
     await env.EVENTS.send({ type: "location", deviceId, packet: packets[0] });
@@ -68,14 +65,20 @@ async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets
   );
   const results = await env.DB.batch(statements);
   const advance = results[results.length - 1];
-  if ((advance?.meta.changes ?? 0) > 0) {
+  const liveAdvanced = (advance?.meta.changes ?? 0) > 0;
+  if (liveAdvanced) {
+    // BrickDevice itself is monotonic, so a prior live-preview packet can never be overwritten by
+    // older chronological backlog while D1 catches up.
     await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
   }
-  return results.slice(0, packets.length).map((r, i) => ({
-    epoch: packets[i].epoch,
-    sequence: packets[i].sequence,
-    duplicate: (r.meta.changes ?? 0) === 0
-  }));
+  return {
+    liveAdvanced,
+    accepted: results.slice(0, packets.length).map((r, i) => ({
+      epoch: packets[i].epoch,
+      sequence: packets[i].sequence,
+      duplicate: (r.meta.changes ?? 0) === 0
+    }))
+  };
 }
 
 export async function ingestLocationV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -93,8 +96,9 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   // Queue first. If anything later fails, retry may enqueue a duplicate, which is safer than a
   // D1 dedupe row permanently suppressing a history message that never reached the Queue.
   await queueLocations(env, deviceId, [packet]);
-  const accepted = await persistAccepted(env, deviceId, [packet]);
-  return json({ ack: packet.sequence, duplicate: accepted[0].duplicate, liveAdvanced: !accepted[0].duplicate });
+  const persisted = await persistAccepted(env, deviceId, [packet]);
+  await evaluateSafetyBatchV6(env, deviceId, [packet]);
+  return json({ ack: packet.sequence, duplicate: persisted.accepted[0].duplicate, liveAdvanced: persisted.liveAdvanced });
 }
 
 export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -128,8 +132,9 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
   }
 
   await queueLocations(env, deviceId, packets);
-  const accepted = await persistAccepted(env, deviceId, packets);
-  return json({ acked: accepted, count: accepted.length });
+  const persisted = await persistAccepted(env, deviceId, packets);
+  await evaluateSafetyBatchV6(env, deviceId, packets);
+  return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: persisted.liveAdvanced });
 }
 
 export async function previewLatestLocationV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -147,5 +152,5 @@ export async function previewLatestLocationV6(req: Request, env: LocationIngestE
     return json({ previewed: false, reason: "not_recent" });
   }
   const advanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(packet);
-  return json({ previewed: advanced !== false, epoch: packet.epoch, sequence: packet.sequence });
+  return json({ previewed: advanced, epoch: packet.epoch, sequence: packet.sequence });
 }
