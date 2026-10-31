@@ -63,7 +63,7 @@ object SafetyDispatcher {
             for (event in outbox.pending(limit)) {
                 try {
                     BrickApi.sendSafetyPayload(apiBase, deviceId, event.payload, event.eventId)
-                    outbox.ack(event.eventId)
+                    if (!outbox.ack(event.eventId)) break
                     delivered++
                 } catch (_: Exception) {
                     break
