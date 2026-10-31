@@ -106,7 +106,7 @@ class EvidenceJournal(
                 check(c.moveToFirst()) { "evidence sequence state missing" }
                 c.getLong(0)
             }
-            check(next > 0L && next < Long.MAX_VALUE) { "evidence sequence exhausted" }
+            check(next > 0L && next <= EvidenceProtocol.MAX_WIRE_INTEGER) { "evidence sequence exhausted" }
             val candidate = EvidenceRecord(epoch, next, observation)
             val encoded = EvidenceProtocol.encodeRecord(candidate)
             val rowId = db.insertOrThrow(
@@ -121,6 +121,7 @@ class EvidenceJournal(
                 }
             )
             check(rowId != -1L)
+            check(next < EvidenceProtocol.MAX_WIRE_INTEGER) { "evidence sequence exhausted" }
             db.execSQL("UPDATE evidence_sequence SET next_seq=? WHERE epoch=?", arrayOf(next + 1L, epoch))
             db.setTransactionSuccessful()
             record = candidate
@@ -154,12 +155,20 @@ class EvidenceJournal(
                 SQLiteDatabase.CONFLICT_IGNORE
             )
             check(rowId != -1L) { "duplicate evidence record" }
-            check(record.sequence < Long.MAX_VALUE) { "evidence sequence exhausted" }
+            check(record.sequence < EvidenceProtocol.MAX_WIRE_INTEGER) { "evidence sequence exhausted" }
+
+            // Avoid relying on SQLite's newer UPSERT grammar. Brick supports Android versions whose
+            // bundled SQLite revision can vary by OEM. INSERT OR IGNORE + conditional UPDATE gives
+            // the same monotonic allocator semantics using long-established SQLite syntax.
             db.execSQL(
-                "INSERT INTO evidence_sequence(epoch,next_seq) VALUES(?,?) " +
-                    "ON CONFLICT(epoch) DO UPDATE SET next_seq=MAX(next_seq,excluded.next_seq)",
+                "INSERT OR IGNORE INTO evidence_sequence(epoch,next_seq) VALUES(?,?)",
                 arrayOf(record.epoch, record.sequence + 1L)
             )
+            db.execSQL(
+                "UPDATE evidence_sequence SET next_seq=? WHERE epoch=? AND next_seq<?",
+                arrayOf(record.sequence + 1L, record.epoch, record.sequence + 1L)
+            )
+
             db.setTransactionSuccessful()
             healthy = true
         } catch (_: Throwable) {
