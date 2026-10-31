@@ -79,9 +79,9 @@ class EvidenceJournal(
      */
     fun refreshHealth(): Boolean {
         val readable = runCatching {
-            readableDatabase.rawQuery("SELECT 1 FROM evidence LIMIT 1", emptyArray()).use { cursor ->
-                // Executing the query successfully is the health signal; an empty table is healthy.
-                if (cursor.moveToFirst()) cursor.getInt(0)
+            readableDatabase.rawQuery("SELECT COUNT(*) FROM evidence", emptyArray()).use { cursor ->
+                check(cursor.moveToFirst()) { "evidence health probe returned no row" }
+                cursor.getLong(0)
             }
         }.isSuccess
         noteHealthy(readable)
