@@ -1,0 +1,30 @@
+name: Check Brick Phase 6 Android Recovery Hardening
+
+on:
+  push:
+    branches: [phase6-final-hardening, phase6-integration, phase6-final]
+  pull_request:
+    branches: [phase6-integration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Require synchronous fused-location failures to degrade, not crash the service
+        shell: bash
+        run: |
+          set -euo pipefail
+          service='app/src/main/java/com/brick/safety/location/BrickLocationService.kt'
+          grep -F 'locationSubscribed = false' "$service" >/dev/null
+          grep -F 'runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }.getOrNull() ?: return' "$service" >/dev/null
+          grep -F 'registration.addOnFailureListener { locationSubscribed = false }' "$service" >/dev/null
+          grep -F 'runCatching { fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token) }.getOrNull() ?: return' "$service" >/dev/null
+          grep -F 'if ((!locationSubscribed || stale || neverProducedFix) && locationEnabled)' "$service" >/dev/null
