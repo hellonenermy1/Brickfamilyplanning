@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { activityName, qualityName, sourceName, type LivePacket } from "./protocol";
+import { activityName, qualityName, sourceName, type LivePacket, type RouteCorridor } from "./protocol";
 
 export type DeviceHealth = {
   protocol: number;
@@ -78,6 +78,7 @@ type LatestState = {
   lat: number | null;
   lon: number | null;
   uncertaintyM: number;
+  routeCorridor: RouteCorridor | null;
   raw: { lat: number; lon: number; accuracyM: number | null; accepted: boolean; mock: boolean } | null;
   speedKph: number | null;
   speedAccuracyKph: number | null;
@@ -179,6 +180,7 @@ export class BrickDevice extends DurableObject {
       lat: packet.trustedLatE7 === null ? null : packet.trustedLatE7 / 1e7,
       lon: packet.trustedLonE7 === null ? null : packet.trustedLonE7 / 1e7,
       uncertaintyM: packet.uncertaintyCm / 100,
+      routeCorridor: packet.routeCorridor ?? null,
       raw,
       speedKph: packet.speedCms === null ? null : packet.speedCms * 0.036,
       speedAccuracyKph: packet.speedAccuracyCms === null ? null : packet.speedAccuracyCms * 0.036,
