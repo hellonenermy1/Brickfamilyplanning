@@ -5,6 +5,11 @@ const [modulePath] = process.argv.slice(2);
 if (!modulePath) throw new Error('usage: test-route-constraint.mjs <route-module>');
 const mod = await import(pathToFileURL(modulePath).href + `?v=${Date.now()}`);
 
+assert.equal(mod.angularDifference(10, 350), 20);
+assert.equal(mod.angularDifference(0, 170), 170);
+assert.equal(mod.angularDifference(0, 180), 180);
+assert.equal(mod.angularDifference(359, 1), 2);
+
 const road = [
   { a: [103.8000, 1.3000], b: [103.8100, 1.3000] },
   { a: [103.8200, 1.3100], b: [103.8200, 1.3200] }
