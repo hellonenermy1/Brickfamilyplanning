@@ -104,12 +104,12 @@ assert.equal(result.duplicateBatch, false);
 assert.equal(result.acked.length, 2);
 assert.equal(env.HISTORY.putCalls, 1);
 
-// The schema itself must reject a link whose duplicated epoch/sequence does not match the exact
-// authoritative evidence-record identity.
+// Fresh-schema defense: the composite FK itself rejects a duplicated link identity that disagrees
+// with the authoritative evidence row.
 assert.throws(
   () => db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
     .run(7, 'device-link-test', batch.batchId, records[0].recordId),
-  /FOREIGN KEY constraint failed/i
+  /FOREIGN KEY constraint failed|evidence batch link identity mismatch/i
 );
 assert.equal(
   db.prepare('SELECT epoch FROM evidence_batch_records WHERE device_id=? AND batch_id=? AND record_id=?')
@@ -117,11 +117,22 @@ assert.equal(
   8
 );
 
-// Defense in depth: simulate legacy/pre-existing corruption by bypassing FK enforcement only for
-// the deliberate mutation. Re-enable enforcement before Brick reads the state. The application
-// must still fail closed before another R2 write rather than trusting duplicated link columns.
+// Rerun/old-table defense: even with FK enforcement disabled, the idempotent Phase 2 trigger must
+// still reject the same mismatch. This is what protects a table created by an older interrupted
+// Phase 2 setup where CREATE TABLE IF NOT EXISTS cannot retrofit the newer composite FK.
 db.exec('PRAGMA foreign_keys=OFF');
 assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 0);
+assert.throws(
+  () => db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
+    .run(7, 'device-link-test', batch.batchId, records[0].recordId),
+  /evidence batch link identity mismatch/i
+);
+
+// Defense in depth: manufacture legacy corruption by explicitly removing only the test database's
+// identity triggers, then re-enable normal FK enforcement before Brick reads the state. Application
+// readback validation must still reject the corrupted durable link before another raw write.
+db.exec('DROP TRIGGER trg_evidence_batch_records_identity_insert');
+db.exec('DROP TRIGGER trg_evidence_batch_records_identity_update');
 db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
   .run(7, 'device-link-test', batch.batchId, records[0].recordId);
 db.exec('PRAGMA foreign_keys=ON');
@@ -136,8 +147,7 @@ assert.equal(env.HISTORY.putCalls, 1, 'corrupt durable link retry must fail befo
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=?').get('device-link-test').n, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=?').get('device-link-test').n, 1);
 
-// Repair the legacy corruption and prove both SQLite integrity and Brick's exact duplicate ACK path
-// return to normal without rewriting raw storage.
+// Repair the deliberately corrupted row and prove Brick returns to exact duplicate ACK behavior.
 db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
   .run(8, 'device-link-test', batch.batchId, records[0].recordId);
 assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
@@ -146,4 +156,4 @@ assert.equal(result.duplicateBatch, true);
 assert.equal(result.acked.length, 2);
 assert.equal(env.HISTORY.putCalls, 1);
 
-console.log('Brick V1 Phase 2 evidence batch-link schema + readback integrity test OK');
+console.log('Brick V1 Phase 2 evidence batch-link FK + rerun-trigger + readback integrity test OK');
