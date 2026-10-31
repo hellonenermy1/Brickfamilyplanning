@@ -1,0 +1,1 @@
+Phase 3 development started 2026-11-01 under controlled early-start rule. Runtime staging base: Android Phase 2 head 9d1d04532abc52b679075fe2e330c3d2daafab3b. Phase 2 remains NOT ACCEPTED pending Monday OPPO qualification and hosted/live gates.
