@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE3_SHA: 8f9ad52862ce296bb59983ae862aaf0f43fe0a3f
+  ANDROID_PHASE3_SHA: 48423e5ba84dd6273315581f6c101141e5eae9ac
 
 concurrency:
   group: brick-v1-phase3-${{ github.event.pull_request.number || github.ref }}
@@ -122,12 +122,15 @@ jobs:
           grep -F 'DIRECT_PROPAGATION_GAP_MS = 30_000L' app/src/main/java/com/brick/safety/location/Phase3PositioningEngine.kt >/dev/null
           grep -F 'phase3UncertaintyM' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'receivedSegments = result.segments.map' app/src/main/java/com/brick/safety/location/Phase3RouteGraphController.kt >/dev/null
+          grep -F 'SAFE_ROUTE_ID' app/src/main/java/com/brick/safety/network/RouteGraphApi.kt >/dev/null
+          grep -F 'ROUTE_LOCALITY_TOLERANCE_M' app/src/main/java/com/brick/safety/network/RouteGraphApi.kt >/dev/null
           grep -F 'RouteGraphApi.fetch' app/src/main/java/com/brick/safety/location/Phase3RouteGraphController.kt >/dev/null
           grep -F 'MotionSamplingProfile.DEGRADED' app/src/main/java/com/brick/safety/location/Phase3PositioningEngine.kt >/dev/null
           grep -F 'testParticlesGrowUncertaintyEliminateRoutesPersistAndRecover' app/src/androidTest/java/com/brick/safety/location/Phase3CoreInstrumentedTest.kt >/dev/null
           grep -F 'testSequenceEvidenceNeedsRepeatedMultiSampleSupportAndExpires' app/src/androidTest/java/com/brick/safety/location/Phase3CoreInstrumentedTest.kt >/dev/null
           grep -F 'testExtremeAccelerationRequiresCoordinateSupport' app/src/androidTest/java/com/brick/safety/location/Phase3ConsistencyInstrumentedTest.kt >/dev/null
           grep -F 'testStateRoundTripIsEncryptedAndAtomic' app/src/androidTest/java/com/brick/safety/location/Phase3StateStoreInstrumentedTest.kt >/dev/null
+          grep -F 'testOutOfAreaSegmentIsDiscarded' app/src/androidTest/java/com/brick/safety/network/Phase3RouteGraphApiInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 3 Android instrumentation
