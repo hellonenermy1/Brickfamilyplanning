@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE2_SHA: ca51b485743c2e4c39b535360feb3382a19f4043
+  ANDROID_PHASE2_SHA: 4ec37a2021bcd575cfefeadd58c968675965a8e7
 
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
@@ -179,6 +179,7 @@ jobs:
           grep -F 'acked.size != expected.size || acked.toSet() != expected.toSet()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'ORDER BY epoch,seq,id' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'fun refreshHealth()' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'SELECT COUNT(*) FROM evidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           ! grep -F 'hasQuarantinedEvidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'journal.refreshHealth()' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'testPendingRowsAreReadInWireOrderAfterRecoveryInsert' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
