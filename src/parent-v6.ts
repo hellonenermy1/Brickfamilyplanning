@@ -23,6 +23,16 @@ export function parentV6Html() {
   if (!html.includes(sectionNeedle)) throw new Error("Phase 6 revoke UI patch target missing");
   html = html.replace(sectionNeedle, sectionPatch);
 
+  const pairCardNeedle = '<div class="card"><input id="pairName" class="field" value="Child phone" maxlength="64"><button id="pairBtn" class="action secondary">Create 10-minute pairing code</button><div id="pairOut" class="small">—</div></div>';
+  const pairCardPatch = '<div class="card"><input id="pairName" class="field" value="Child phone" maxlength="64"><button id="pairBtn" class="action secondary">Create 10-minute pairing QR</button><img id="pairQr" hidden alt="One-time Brick pairing QR" width="260" height="260" style="display:block;max-width:100%;height:auto;margin:12px auto"><div id="pairOut" class="small">—</div></div>';
+  if (!html.includes(pairCardNeedle)) throw new Error("Phase 6 pairing QR card target missing");
+  html = html.replace(pairCardNeedle, pairCardPatch);
+
+  const pairHandlerNeedle = "$('#pairBtn').onclick=async()=>{try{const j=await api('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});text('#pairOut','Pairing code: '+j.token+' · expires '+new Date(j.expiresAt).toLocaleTimeString())}catch(e){text('#pairOut',e.message)}};";
+  const pairHandlerPatch = "$('#pairBtn').onclick=async()=>{const qr=$('#pairQr');try{const j=await api('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});qr.src='/parent/api/pair/qr?token='+encodeURIComponent(j.token);qr.hidden=false;text('#pairOut','Scan this one-time QR in Brick. Manual code: '+j.token+' · expires '+new Date(j.expiresAt).toLocaleTimeString())}catch(e){qr.hidden=true;qr.removeAttribute('src');text('#pairOut',e.message)}};";
+  if (!html.includes(pairHandlerNeedle)) throw new Error("Phase 6 pairing QR handler target missing");
+  html = html.replace(pairHandlerNeedle, pairHandlerPatch);
+
   html = html.replaceAll("Promise.all([loadHealthOps(),loadPhase5C()])", "Promise.all([loadHealthOps(),loadPhase5C(),loadBatteryTrend()])");
 
   const renderTailNeedle = "if(h)text('#network',h.network||'—');renderHealthChecks();renderLiveNotice()}";
