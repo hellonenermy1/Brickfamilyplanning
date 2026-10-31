@@ -1,8 +1,13 @@
 package com.brick.safety.location
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.location.Location
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
 import com.brick.safety.activity.ActivityMode
 import com.brick.safety.activity.ActivitySnapshot
@@ -38,6 +43,7 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     }
 
     private val prefs = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
+    private val phase3 = Phase3PositioningEngine(context, motion)
     @Volatile private var lastTrusted: Anchor? = loadRecentAnchor()
     @Volatile private var lastBleAnchor: BleEvidence? = null
     @Volatile private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
@@ -80,6 +86,34 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
                 if (raw.accuracy > 500f && nowElapsed - previous.elapsedMs < 5 * 60_000L) accepted = false
             }
         }
+
+        if (accepted && previous != null) {
+            val motionSnapshot = motion.phase3Snapshot()
+            val stepDelta = (motionSnapshot.totalSteps - previous.stepTotal).coerceAtLeast(0L).coerceAtMost(65_535L).toInt()
+            val candidateSpeed = if (raw.hasSpeed() && raw.speed.isFinite() && raw.speed >= 0f) raw.speed else null
+            val candidateSpeedAccuracy = if (raw.hasSpeedAccuracy() && raw.speedAccuracyMetersPerSecond.isFinite() && raw.speedAccuracyMetersPerSecond >= 0f) raw.speedAccuracyMetersPerSecond else null
+            val candidateBearing = if (raw.hasBearing() && raw.bearing.isFinite()) normalizeDegrees(raw.bearing) else null
+            val candidateBearingAccuracy = if (raw.hasBearingAccuracy() && raw.bearingAccuracyDegrees.isFinite() && raw.bearingAccuracyDegrees >= 0f) raw.bearingAccuracyDegrees else null
+            val result = PositionConsistencyGuard.evaluate(
+                previous = ConsistencyFix(previous.lat, previous.lon, previous.accuracyM, previous.elapsedMs, previous.speedMps, null, previous.bearingDeg, null),
+                candidate = ConsistencyFix(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, candidateSpeed, candidateSpeedAccuracy, candidateBearing, candidateBearingAccuracy),
+                motion = ConsistencyMotion(
+                    mode = phase3Mode(activity.mode),
+                    activityConfidence = activity.confidence,
+                    stepDelta = stepDelta,
+                    stepSensorAvailable = stepSensorEvidenceAvailable(),
+                    stationaryScore = motionSnapshot.stationaryScore,
+                    placement = motionSnapshot.placement,
+                    rotationHealthy = motionSnapshot.rotationHealthy,
+                    headingDeg = motionSnapshot.headingDeg,
+                    headingAgeMs = motionSnapshot.headingAgeMs
+                )
+            )
+            if (!result.accepted) {
+                accepted = false
+                noteConsistencyReject(result.reason)
+            }
+        }
         if (!accepted) return rejectedSample(raw, activity, mock, nowElapsed)
 
         val stepTotal = motion.snapshot().totalSteps
@@ -110,6 +144,15 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val anchor = Anchor(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, wall, speed, bearing, stepTotal, activity.mode)
         lastTrusted = anchor
         persistAnchor(anchor)
+
+        // Do not train/re-anchor Phase 3 from a very coarse Android point. Those points remain valid
+        // raw/fused observations, but trusted motion/path learning uses only precise/assisted fixes.
+        if (quality == PositionQuality.PRECISE || quality == PositionQuality.ASSISTED) {
+            runCatching {
+                phase3.onTrustedFix(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, wall, speed, bearing, activity)
+            }
+        }
+
         return PositionSample(
             raw.latitude, raw.longitude, raw.accuracy, raw.latitude, raw.longitude, raw.accuracy,
             speed, speedAcc, bearing, bearingAcc,
@@ -125,6 +168,17 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         return buildBestFallback(null, freshActivity(activityInput, now), false, now)
     }
 
+    @Synchronized
+    fun shouldRefreshPrivateMap(lat: Double, lon: Double, wallMs: Long): Boolean =
+        phase3.shouldRefreshPrivateMap(lat, lon, wallMs)
+
+    @Synchronized
+    fun mergePrivateMap(centerLat: Double, centerLon: Double, wallMs: Long, segments: Collection<LocalRouteSegment>) =
+        phase3.mergePrivateMap(centerLat, centerLon, wallMs, segments)
+
+    @Synchronized
+    fun phase3Health(): Phase3PositioningHealth = phase3.health()
+
     private fun rejectedSample(raw: Location, activity: ActivitySnapshot, mock: Boolean, now: Long): PositionSample {
         return buildBestFallback(raw, activity, mock, now) ?: PositionSample(
             raw.latitude.takeIf { it.isFinite() && it in -90.0..90.0 }, raw.longitude.takeIf { it.isFinite() && it in -180.0..180.0 }, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
@@ -134,7 +188,9 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     }
 
     private fun buildBestFallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
-        return buildFromBleAnchor(raw, activity, rawMock, now) ?: buildFromAnchor(raw, activity, rawMock, now)
+        return buildFromBleAnchor(raw, activity, rawMock, now)
+            ?: buildFromPhase3(raw, activity, rawMock, now)
+            ?: buildFromAnchor(raw, activity, rawMock, now)
     }
 
     private fun buildFromBleAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
@@ -168,6 +224,37 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         )
     }
 
+    private fun buildFromPhase3(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
+        val fallback = runCatching { phase3.fallback(activity, now) }.getOrNull() ?: return null
+        val estimate = fallback.position
+        if (estimate.expired || !estimate.lat.isFinite() || estimate.lat !in -90.0..90.0 || !estimate.lon.isFinite() || estimate.lon !in -180.0..180.0) return null
+        val wall = lastTrusted?.let { it.wallMs + (now - it.elapsedMs).coerceAtLeast(0L) } ?: System.currentTimeMillis()
+        return PositionSample(
+            raw?.latitude?.takeIf { it.isFinite() && it in -90.0..90.0 },
+            raw?.longitude?.takeIf { it.isFinite() && it in -180.0..180.0 },
+            raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
+            estimate.lat,
+            estimate.lon,
+            estimate.uncertaintyM.coerceIn(3f, 5_000f),
+            estimate.speedMps?.takeIf { it.isFinite() && it >= 0f },
+            null,
+            estimate.headingDeg?.takeIf { it.isFinite() }?.let(::normalizeDegrees),
+            null,
+            null,
+            null,
+            false,
+            rawMock,
+            activity,
+            PositionQuality.ESTIMATED,
+            PositionSource.INERTIAL,
+            gnss.snapshot(),
+            fallback.stepDelta,
+            now,
+            wall
+        )
+    }
+
+    /** Retained conservative fail-safe underneath Phase 3. */
     private fun buildFromAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
         val a = lastTrusted ?: return null
         if (now < a.elapsedMs) return null
@@ -246,6 +333,31 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         return Anchor(lat, lon, accuracy, elapsed, wall,
             prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
             prefs.getLong("anchorStepTotal", 0L), ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
+    }
+
+    private fun noteConsistencyReject(reason: FixConsistencyReason) {
+        val p = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val total = p.getLong("phase3ConsistencyRejectTotal", 0L).coerceAtLeast(0L)
+        p.edit()
+            .putLong("phase3ConsistencyRejectTotal", total + 1L)
+            .putLong("lastPhase3ConsistencyRejectWallMs", System.currentTimeMillis())
+            .putString("lastPhase3ConsistencyRejectReason", reason.name.lowercase())
+            .apply()
+    }
+
+    private fun stepSensorEvidenceAvailable(): Boolean {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) return false
+        val sm = context.getSystemService(SensorManager::class.java)
+        return sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null || sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null
+    }
+
+    private fun phase3Mode(mode: ActivityMode): Phase3Mode = when (mode) {
+        ActivityMode.STATIONARY -> Phase3Mode.STATIONARY
+        ActivityMode.WALKING -> Phase3Mode.WALKING
+        ActivityMode.RUNNING -> Phase3Mode.RUNNING
+        ActivityMode.BICYCLE -> Phase3Mode.BICYCLE
+        ActivityMode.VEHICLE -> Phase3Mode.VEHICLE
+        ActivityMode.UNKNOWN -> Phase3Mode.UNKNOWN
     }
 
     private fun freshActivity(a: ActivitySnapshot, now: Long) =
