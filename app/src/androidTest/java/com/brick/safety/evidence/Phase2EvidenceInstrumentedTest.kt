@@ -9,6 +9,7 @@ import java.util.UUID
 class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
     companion object {
         private const val GOLDEN_HEX = "425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e"
+        private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
     }
 
     private lateinit var context: Context
@@ -150,7 +151,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         assertTrue(
             prefs.edit()
                 .putInt("epoch", 17)
-                .putString("deviceId", "phase2-test-device")
+                .putString("deviceId", TEST_DEVICE_ID)
                 .putString("apiBase", "https://brick.invalid")
                 .commit()
         )
@@ -178,7 +179,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         var transportCalls = 0
         val transport = EvidenceTransport { _, deviceId, batch ->
             transportCalls += 1
-            assertEquals("phase2-test-device", deviceId)
+            assertEquals(TEST_DEVICE_ID, deviceId)
             val decoded = EvidenceProtocol.decodeBatch(batch.bytes)
             assertEquals(batch.batchId, decoded.batchId)
             assertEquals(1, decoded.records.size)
@@ -207,7 +208,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         assertTrue(
             prefs.edit()
                 .putInt("epoch", 18)
-                .putString("deviceId", "phase2-test-device")
+                .putString("deviceId", TEST_DEVICE_ID)
                 .putString("apiBase", "https://brick.invalid")
                 .commit()
         )
