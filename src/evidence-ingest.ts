@@ -16,6 +16,7 @@ type RecordRow = {
   wall_time_ms: number;
   payload_sha256: string;
 };
+type LinkedRecordRow = RecordRow & { link_epoch: number; link_sequence: number };
 
 export class EvidenceConflict extends Error {}
 
@@ -56,14 +57,19 @@ async function exactAcksForExistingBatch(env: EvidenceEnv, deviceId: string, bat
     throw new EvidenceConflict("batch id reused with different evidence payload");
   }
   const stored = await env.DB.prepare(
-    "SELECT r.record_id,r.epoch,r.sequence,r.provider,r.family,r.capability,r.health,r.quality,r.independence_group,r.elapsed_realtime_ms,r.wall_time_ms,r.payload_sha256 " +
+    "SELECT r.record_id,r.epoch,r.sequence,r.provider,r.family,r.capability,r.health,r.quality,r.independence_group,r.elapsed_realtime_ms,r.wall_time_ms,r.payload_sha256," +
+    "b.epoch AS link_epoch,b.sequence AS link_sequence " +
     "FROM evidence_batch_records b JOIN evidence_records r ON r.device_id=b.device_id AND r.record_id=b.record_id " +
-    "WHERE b.device_id=?1 AND b.batch_id=?2 ORDER BY b.epoch,b.sequence"
-  ).bind(deviceId, batch.batchId).all<RecordRow>();
+    "WHERE b.device_id=?1 AND b.batch_id=?2 ORDER BY r.epoch,r.sequence"
+  ).bind(deviceId, batch.batchId).all<LinkedRecordRow>();
   if (stored.results.length !== batch.records.length) throw new EvidenceConflict("stored batch is incomplete");
   const payloadHashes = await Promise.all(batch.records.map(r => sha256Hex(r.payload)));
   for (let i = 0; i < batch.records.length; i++) {
-    if (!sameRecord(stored.results[i], batch.records[i], payloadHashes[i])) throw new EvidenceConflict("stored evidence record does not match retry");
+    const linked = stored.results[i];
+    if (linked.link_epoch !== linked.epoch || linked.link_sequence !== linked.sequence) {
+      throw new EvidenceConflict("stored batch link does not match evidence record identity");
+    }
+    if (!sameRecord(linked, batch.records[i], payloadHashes[i])) throw new EvidenceConflict("stored evidence record does not match retry");
   }
   return exactAcks(batch);
 }
