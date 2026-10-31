@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE2_SHA: 34eb0024b41996664d743c0579464d2b814dbf38
+  ANDROID_PHASE2_SHA: ca51b485743c2e4c39b535360feb3382a19f4043
 
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
@@ -178,9 +178,12 @@ jobs:
           grep -F 'fun drainDetailed' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'acked.size != expected.size || acked.toSet() != expected.toSet()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'ORDER BY epoch,seq,id' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'fun refreshHealth()' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           ! grep -F 'hasQuarantinedEvidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'journal.refreshHealth()' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'testPendingRowsAreReadInWireOrderAfterRecoveryInsert' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
           grep -F 'testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
+          grep -F 'testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
           grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
