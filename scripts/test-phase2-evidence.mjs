@@ -76,9 +76,14 @@ class FakePrepared {
   }
 }
 class FakeD1 {
-  constructor(db) { this.db = db; }
+  constructor(db) { this.db = db; this.beforeBatch = null; }
   prepare(sql) { return new FakePrepared(this.db, sql); }
   async batch(statements) {
+    if (this.beforeBatch) {
+      const hook = this.beforeBatch;
+      this.beforeBatch = null;
+      await hook();
+    }
     this.db.exec('BEGIN');
     try {
       const out = [];
@@ -190,6 +195,33 @@ assert.equal(providerHealth.health, 1);
 assert.equal(providerHealth.last_epoch, 9);
 assert.equal(providerHealth.last_sequence, 3);
 assert.equal(providerHealth.observed_wall_ms, clockRegressed.wallTimeMs);
+
+// Simulate the only dangerous batch-ID race: another request claims the same batch UUID after this
+// request's preflight reads/R2 write but before its D1 transaction. The first hard INSERT must fail
+// and roll the entire transaction back, so none of this losing request's records can contaminate the
+// winner's batch. A retry then sees the conflicting claim and becomes a normal EvidenceConflict.
+const raceRecords = [1, 2].map(sequence => ({
+  recordId: randomUUID(), epoch: 44, sequence,
+  elapsedRealtimeMs: 900_000 + sequence,
+  wallTimeMs: Date.now() + sequence,
+  provider: 255, family: 255, capability: 0, health: 0, quality: 3,
+  independenceGroup: 'dummy:test:race',
+  payload: Buffer.from(`race-${sequence}`)
+}));
+const race = encodeBatch(raceRecords);
+const competitorSha = 'f'.repeat(64);
+env.DB.beforeBatch = async () => {
+  db.prepare(
+    'INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?,?,?,?,?,?,?,?)'
+  ).run('device-1', race.batchId, 1, raceRecords.length, race.bytes.length, competitorSha, 'evidence/raw/competitor.brev', Date.now());
+};
+const raceBuffer = race.bytes.buffer.slice(race.bytes.byteOffset, race.bytes.byteOffset + race.bytes.byteLength);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', raceBuffer), /UNIQUE|constraint/i);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 44).n, 0, 'losing batch transaction must roll back its records');
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).n, 0, 'losing batch transaction must not link records to winner');
+assert.equal(db.prepare('SELECT payload_sha256 FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).payload_sha256, competitorSha);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', raceBuffer), ingest.EvidenceConflict);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 44).n, 0);
 
 const collisionRecords = structuredClone(records);
 collisionRecords[0].recordId = randomUUID();
