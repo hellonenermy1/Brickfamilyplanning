@@ -131,6 +131,25 @@ assert.equal(result.acked.length, 1);
 const health = db.prepare('SELECT health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
 assert.equal(health.health, 1); assert.equal(health.last_epoch, 9); assert.equal(health.last_sequence, 3); assert.equal(health.observed_wall_ms, clockRegressed.wallTimeMs);
 
+// Batch links duplicate record epoch/sequence for indexing/audit. Durable retry must never trust
+// those duplicated fields over the authoritative evidence record identity. Corrupt one link only,
+// require an explicit conflict before any new raw write, repair it, then prove exact retry recovers.
+const linkIntegrityRecords = makeRecords(8, 'link-integrity'), linkIntegrity = encodeBatch(linkIntegrityRecords);
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(linkIntegrity.bytes));
+assert.equal(result.acked.length, 2);
+const rawWritesAfterLinkPersist = env.HISTORY.putCalls;
+db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
+  .run(7, 'device-1', linkIntegrity.batchId, linkIntegrityRecords[0].recordId);
+await assert.rejects(
+  ingest.persistEvidenceBatch(env, 'device-1', ab(linkIntegrity.bytes)),
+  error => error instanceof ingest.EvidenceConflict && /batch link does not match evidence record identity/i.test(error.message)
+);
+assert.equal(env.HISTORY.putCalls, rawWritesAfterLinkPersist);
+db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
+  .run(8, 'device-1', linkIntegrity.batchId, linkIntegrityRecords[0].recordId);
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(linkIntegrity.bytes));
+assert.equal(result.duplicateBatch, true); assert.equal(result.acked.length, 2);
+
 // Two identical requests racing must converge to the already durable exact ACK instead of turning
 // the losing unique-constraint claim into a false 503/storage failure.
 const identicalRaceRecords = makeRecords(40, 'identical-race'), identicalRace = encodeBatch(identicalRaceRecords);
@@ -192,4 +211,4 @@ await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(changedBatc
 
 const state = db.prepare('SELECT last_epoch,last_sequence FROM device_evidence_state WHERE device_id=?').get('device-1');
 assert.equal(state.last_epoch, 52); assert.equal(state.last_sequence, 2);
-console.log('Brick V1 Phase 2 evidence protocol + idempotent/concurrent persistence integration tests OK');
+console.log('Brick V1 Phase 2 evidence protocol + idempotent/concurrent persistence + link-integrity tests OK');
