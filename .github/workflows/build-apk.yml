@@ -115,13 +115,18 @@ jobs:
             echo 'Stable release signing secrets are not all configured; the release variant will still be built unsigned and audited.'
           fi
 
-      - name: Resolve exact Android dependency lock for this APK build
+      - name: Verify exact committed Android dependency lock
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:dependencies --write-locks
           test -s app/gradle.lockfile
-          grep -F '=releaseRuntimeClasspath' app/gradle.lockfile >/dev/null
+          grep -F 'releaseRuntimeClasspath' app/gradle.lockfile >/dev/null
+          grep -F 'debugRuntimeClasspath' app/gradle.lockfile >/dev/null
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
 
       - name: Compile, lint, and build debug + release variants
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
