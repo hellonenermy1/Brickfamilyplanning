@@ -30,14 +30,15 @@ class EvidenceDispatcher(
     private fun pairedDeviceId(): String? {
         val value = prefs.getString("deviceId", null)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val parsed = runCatching { UUID.fromString(value) }.getOrNull() ?: return null
-        return value.takeIf { parsed.toString() == value }
+        // Server pairing uses crypto.randomUUID(): canonical lowercase RFC-4122 v4 (variant 2).
+        return value.takeIf { parsed.toString() == value && parsed.version() == 4 && parsed.variant() == 2 }
     }
 
     @Synchronized
     fun enqueue(observation: EvidenceObservation): Boolean {
-        // Pairing creates a canonical UUID device identity. Refuse to persist new family-location
-        // evidence when pairing is incomplete or the stored identity has been corrupted/tampered.
-        // This also guarantees the later HTTP path segment cannot contain path-control characters.
+        // Refuse to persist new family-location evidence when pairing is incomplete or the stored
+        // identity has been corrupted/tampered. This also guarantees the later HTTP path segment
+        // matches the server's canonical Brick device-ID contract.
         if (pairedDeviceId() == null || prefs.getString("apiBase", null).isNullOrBlank()) return false
 
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
