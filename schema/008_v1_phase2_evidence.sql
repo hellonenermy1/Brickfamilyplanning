@@ -66,7 +66,10 @@ CREATE TABLE IF NOT EXISTS evidence_provider_health (
   capability INTEGER NOT NULL,
   health INTEGER NOT NULL,
   reason TEXT,
-  observed_at INTEGER NOT NULL,
+  last_epoch INTEGER NOT NULL,
+  last_sequence INTEGER NOT NULL,
+  observed_wall_ms INTEGER NOT NULL,
+  received_at INTEGER NOT NULL,
   PRIMARY KEY(device_id, provider),
   FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
 );
