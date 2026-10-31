@@ -129,6 +129,8 @@ function decodeV2(v: DataView): LivePacket {
   if (activity > 5) throw new Error("bad activity");
   if (activityConfidence > 100) throw new Error("bad activity confidence");
   if (quality < 1 || quality > 7) throw new Error("bad quality");
+  // Android-origin packets may only claim sources it can directly produce. Source 4
+  // (route_constrained) is a server-only trusted refinement applied after signature verification.
   if (source > 3) throw new Error("bad source");
   if (gnssUsedInFix > gnssTotal) throw new Error("bad GNSS satellite counts");
   if (gnssAverageCn0Tenth > 1000) throw new Error("bad GNSS C/N0");
@@ -169,5 +171,5 @@ export function qualityName(code: number): string {
 }
 
 export function sourceName(code: number): string {
-  return ["unknown", "fused", "inertial", "last_known"][code] ?? "unknown";
+  return ["unknown", "fused", "inertial", "last_known", "route_constrained"][code] ?? "unknown";
 }
