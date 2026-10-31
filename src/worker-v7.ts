@@ -20,6 +20,7 @@ type Env = {
 };
 type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
 const base = phase6 as ExportedHandler<Env>;
+const DEVICE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
@@ -81,8 +82,9 @@ async function ingestEvidence(req: Request, env: Env, deviceId: string) {
 function decodeDevicePath(raw: string): string | null {
   try {
     const decoded = decodeURIComponent(raw);
-    if (!decoded || decoded.length > 256 || decoded.includes("/")) return null;
-    return decoded;
+    // Pairing creates device IDs with crypto.randomUUID(). Restrict evidence routes to that exact
+    // canonical v4 form so arbitrary path text never reaches D1 lookups, rate keys or object names.
+    return DEVICE_ID_RE.test(decoded) ? decoded : null;
   } catch {
     return null;
   }
