@@ -1,0 +1,161 @@
+name: Brick V1 Phase 3 — Motion & Positioning CI
+
+on:
+  pull_request:
+    branches: [v1-p2-evidence-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PHASE3_SHA: 30b131969a46522cd880539a4ddbcb8b8de9c77a
+
+concurrency:
+  group: brick-v1-phase3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Phase 3 cloud + retained regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck and static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node --check scripts/test-phase3-route-graph.mjs
+          grep -F '"main": "src/worker-v8.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'ROUTE_GRAPH_RADIUS_M = 650' src/route-graph-data.ts >/dev/null
+          grep -F 'ROUTE_GRAPH_MAX_SEGMENTS = 256' src/route-graph-data.ts >/dev/null
+          grep -F 'client cannot expand the private-map extraction radius' scripts/test-phase3-route-graph.mjs >/dev/null
+          grep -F 'readBoundedBody(req, MAX_REQUEST_BYTES)' src/route-graph.ts >/dev/null
+          grep -F 'verifyDeviceSignature' src/route-graph.ts >/dev/null
+          grep -F 'route-graph-device:${deviceId}' src/route-graph.ts >/dev/null
+      - name: Phase 3 signed private route graph tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/route-graph-data.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph-data.mjs
+          npx esbuild src/route-graph.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph.mjs
+          node scripts/test-phase3-route-graph.mjs /tmp/brick-route-graph-data.mjs /tmp/brick-route-graph.mjs
+      - name: Retained Phase 2 evidence and Phase 6 route regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
+          npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+
+  android-build:
+    name: Phase 3 Android compile / lint / dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE3_SHA }}
+      - name: Verify exact Android pair
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE3_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Install compile SDK explicitly
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-36'
+      - name: Verify dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Compile app tests and lint
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+      - name: Lock Phase 3 architecture invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'class ParticlePositionEngine' app/src/main/java/com/brick/safety/location/ParticlePositionEngine.kt >/dev/null
+          grep -F 'class LearnedOdometryModel' app/src/main/java/com/brick/safety/location/LearnedOdometry.kt >/dev/null
+          grep -F 'class MagneticSequenceModel' app/src/main/java/com/brick/safety/location/SequenceEvidence.kt >/dev/null
+          grep -F 'class LandmarkSequenceModel' app/src/main/java/com/brick/safety/location/SequenceEvidence.kt >/dev/null
+          grep -F 'private val phase3 = Phase3PositioningEngine(context, motion)' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'buildFromBleAnchor(raw, activity, rawMock, now)' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'buildFromPhase3(raw, activity, rawMock, now)' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'buildFromAnchor(raw, activity, rawMock, now)' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'quality == PositionQuality.PRECISE || quality == PositionQuality.ASSISTED' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'brick_phase3_state.bin' app/src/main/java/com/brick/safety/location/Phase3StateStore.kt >/dev/null
+          grep -F 'JournalCipher.encrypt' app/src/main/java/com/brick/safety/location/Phase3StateStore.kt >/dev/null
+          grep -F 'DIRECT_PROPAGATION_GAP_MS = 30_000L' app/src/main/java/com/brick/safety/location/Phase3PositioningEngine.kt >/dev/null
+          grep -F 'PHASE3_ROUTE_GRAPH' /dev/null || true
+          grep -F 'testParticlesGrowUncertaintyEliminateRoutesPersistAndRecover' app/src/androidTest/java/com/brick/safety/location/Phase3CoreInstrumentedTest.kt >/dev/null
+
+  android-instrumentation:
+    name: Phase 3 Android instrumentation
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE3_SHA }}
+      - name: Verify exact Android pair
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE3_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Install Android SDK + emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | avdmanager create avd --force --name brick-p3 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+      - name: Boot emulator and run retained + Phase 3 instrumentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chmod 666 /dev/kvm || true
+          nohup "$ANDROID_HOME/emulator/emulator" -avd brick-p3 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p3-emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+      - name: Emulator log on failure
+        if: failure()
+        run: tail -n 300 /tmp/brick-p3-emulator.log || true
