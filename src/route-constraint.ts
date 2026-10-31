@@ -5,12 +5,19 @@ import type { LivePacket, RouteCorridorCandidate } from "./protocol";
 
 const MAP_KEY = "basemap/singapore.pmtiles";
 const DETAIL_ZOOM = 15;
-const ROUTE_SOURCE_CODE = 4;
+const ROUTE_SOURCE_CODE = 5;
 const MAX_CORRIDORS = 3;
 
 type Coord = [number, number];
 export type RouteSegment = { a: Coord; b: Coord };
-type SegmentMatch = { segment: RouteSegment; lon: number; lat: number; distanceM: number; headingDeltaDeg: number | null; score: number };
+type SegmentMatch = {
+  segment: RouteSegment;
+  lon: number;
+  lat: number;
+  distanceM: number;
+  headingDeltaDeg: number | null;
+  score: number;
+};
 
 class R2PmtilesSource implements Source {
   constructor(private readonly bucket: R2Bucket, private readonly key = MAP_KEY) {}
@@ -35,20 +42,33 @@ function archiveFor(bucket: R2Bucket) {
   return archive;
 }
 
-function clampLatitude(lat: number) { return Math.max(-85.05112878, Math.min(85.05112878, lat)); }
+function clampLatitude(lat: number) {
+  return Math.max(-85.05112878, Math.min(85.05112878, lat));
+}
+
 function tileFor(lon: number, lat: number, z: number) {
   const n = 2 ** z;
   const x = Math.floor(((lon + 180) / 360) * n);
   const r = clampLatitude(lat) * Math.PI / 180;
   const y = Math.floor((1 - Math.asinh(Math.tan(r)) / Math.PI) / 2 * n);
-  return { z, x: Math.max(0, Math.min(n - 1, x)), y: Math.max(0, Math.min(n - 1, y)) };
+  return {
+    z,
+    x: Math.max(0, Math.min(n - 1, x)),
+    y: Math.max(0, Math.min(n - 1, y))
+  };
 }
+
 function projectMeters(lon: number, lat: number, refLon: number, refLat: number) {
-  return [(lon - refLon) * 111_320 * Math.cos(refLat * Math.PI / 180), (lat - refLat) * 110_540] as const;
+  return [
+    (lon - refLon) * 111_320 * Math.cos(refLat * Math.PI / 180),
+    (lat - refLat) * 110_540
+  ] as const;
 }
+
 function isCoord(value: unknown): value is Coord {
   return Array.isArray(value) && value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number";
 }
+
 function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }): RouteSegment[] {
   const out: RouteSegment[] = [];
   const addLine = (value: unknown) => {
@@ -57,26 +77,31 @@ function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }
     for (let i = 1; i < coords.length; i++) out.push({ a: coords[i - 1], b: coords[i] });
   };
   if (geometry.type === "LineString") addLine(geometry.coordinates);
-  else if (geometry.type === "MultiLineString" && Array.isArray(geometry.coordinates)) for (const line of geometry.coordinates) addLine(line);
+  else if (geometry.type === "MultiLineString" && Array.isArray(geometry.coordinates)) {
+    for (const line of geometry.coordinates) addLine(line);
+  }
   return out;
 }
 
-function angularDifference(a: number, b: number) {
-  const d = Math.abs(((a - b + 540) % 360) - 180);
-  return Math.min(d, 180 - d);
+export function angularDifference(a: number, b: number) {
+  return Math.abs(((a - b + 540) % 360) - 180);
 }
+
 function segmentHeading(segment: RouteSegment) {
   const avgLat = (segment.a[1] + segment.b[1]) / 2;
   const [dx, dy] = projectMeters(segment.b[0], segment.b[1], segment.a[0], avgLat);
   return (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
 }
+
 function matchSegment(lon: number, lat: number, segment: RouteSegment, bearingDeg: number | null): SegmentMatch {
   const [ax, ay] = projectMeters(segment.a[0], segment.a[1], lon, lat);
   const [bx, by] = projectMeters(segment.b[0], segment.b[1], lon, lat);
-  const dx = bx - ax, dy = by - ay;
+  const dx = bx - ax;
+  const dy = by - ay;
   const denom = dx * dx + dy * dy;
   const t = denom <= 1e-9 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / denom));
-  const x = ax + t * dx, y = ay + t * dy;
+  const x = ax + t * dx;
+  const y = ay + t * dy;
   const distanceM = Math.hypot(x, y);
   const headingDeltaDeg = bearingDeg === null ? null : angularDifference(segmentHeading(segment), bearingDeg);
   // Distance dominates. Heading only ranks nearby alternatives and never eliminates a corridor.
@@ -89,6 +114,16 @@ function matchSegment(lon: number, lat: number, segment: RouteSegment, bearingDe
     headingDeltaDeg,
     score
   };
+}
+
+export function nearestRoutePoint(lon: number, lat: number, segments: RouteSegment[]) {
+  if (!segments.length) return null;
+  let best = matchSegment(lon, lat, segments[0], null);
+  for (let i = 1; i < segments.length; i++) {
+    const candidate = matchSegment(lon, lat, segments[i], null);
+    if (candidate.distanceM < best.distanceM) best = candidate;
+  }
+  return { lon: best.lon, lat: best.lat, distanceM: best.distanceM };
 }
 
 function trimCache() {
@@ -116,7 +151,10 @@ async function decodeRoadSegments(archive: PMTiles, z: number, x: number, y: num
       if (geo.geometry) out.push(...segmentsFromGeometry(geo.geometry));
     }
     return out;
-  })().catch(error => { roadCache.delete(key); throw error; });
+  })().catch(error => {
+    roadCache.delete(key);
+    throw error;
+  });
   roadCache.set(key, pending);
   trimCache();
   return pending;
@@ -126,11 +164,15 @@ async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
   const archive = archiveFor(bucket);
   const header = await archive.getHeader();
   const z = Math.min(DETAIL_ZOOM, header.maxZoom);
-  const center = tileFor(lon, lat, z), n = 2 ** z;
+  const center = tileFor(lon, lat, z);
+  const n = 2 ** z;
   const jobs: Promise<RouteSegment[]>[] = [];
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-    const x = center.x + dx, y = center.y + dy;
-    if (x >= 0 && y >= 0 && x < n && y < n) jobs.push(decodeRoadSegments(archive, z, x, y));
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = center.x + dx;
+      const y = center.y + dy;
+      if (x >= 0 && y >= 0 && x < n && y < n) jobs.push(decodeRoadSegments(archive, z, x, y));
+    }
   }
   return (await Promise.all(jobs)).flat();
 }
@@ -152,13 +194,14 @@ function distinctMatches(matches: SegmentMatch[], max: number) {
 }
 
 export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucket): Promise<LivePacket> {
-  // Source 2 is the child's short inertial estimate. Fresh fused or last-known fixes are never
-  // route-processed. Crucially, Brick does NOT move the estimate onto one chosen road: it preserves
-  // the inertial center and attaches several plausible private-map corridors as uncertainty evidence.
+  // Source 2 is the child's short inertial estimate. Fresh fused or last-known fixes are never route-processed.
+  // Source 5 means a server route-constrained estimate. The inertial center is preserved; nearby plausible
+  // private-map corridors are attached as uncertainty evidence rather than snapping to one invented road.
   if (packet.version !== 2 || packet.source !== 2 || packet.quality !== 4) return packet;
   if (packet.trustedLatE7 === null || packet.trustedLonE7 === null) return packet;
   if (![2, 3, 4, 5].includes(packet.activity)) return packet;
-  const lat = packet.trustedLatE7 / 1e7, lon = packet.trustedLonE7 / 1e7;
+  const lat = packet.trustedLatE7 / 1e7;
+  const lon = packet.trustedLonE7 / 1e7;
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return packet;
 
   try {
@@ -168,7 +211,8 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
     const uncertaintyM = packet.uncertaintyCm / 100;
     const thresholdM = Math.min(maxByMode, Math.max(12, uncertaintyM * 0.4));
     const matches = distinctMatches(
-      segments.map(segment => matchSegment(lon, lat, segment, bearingDeg))
+      segments
+        .map(segment => matchSegment(lon, lat, segment, bearingDeg))
         .filter(match => match.distanceM <= thresholdM)
         .sort((a, b) => a.score - b.score),
       MAX_CORRIDORS
@@ -182,7 +226,7 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
       headingDeltaDeg: match.headingDeltaDeg === null ? null : Math.round(match.headingDeltaDeg * 10) / 10,
       score: Math.round(match.score * 10) / 10
     }));
-    const radiusM = Math.max(uncertaintyM, Math.max(...matches.map(m => m.distanceM)) + 12);
+    const radiusM = Math.max(uncertaintyM, Math.max(...matches.map(match => match.distanceM)) + 12);
     return {
       ...packet,
       uncertaintyCm: Math.max(packet.uncertaintyCm, Math.round(radiusM * 100)),
