@@ -187,9 +187,12 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val lon = Double.fromBits(prefs.getLong("anchorLonBits", 0L))
         val accuracy = prefs.getFloat("anchorAccuracyM", 100f)
         if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || !accuracy.isFinite() || accuracy < 0f) return null
+        // MotionEngine's step detector counter is process-local. A restored anchor therefore starts
+        // at the new process' zero baseline; reusing the previous process' saved count would suppress
+        // inertial walking/running updates until the new counter happened to catch up.
         return Anchor(lat, lon, accuracy, elapsed, wall,
             prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
-            prefs.getLong("anchorStepTotal", 0L), ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
+            0L, ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
     }
 
     private fun freshActivity(a: ActivitySnapshot, now: Long) =
