@@ -54,7 +54,7 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
 
     fun testWrongOrMissingAckNeverDeletesPendingEvidence() {
         var journal = EvidenceJournal(context, TestCipher)
-        assertNotNull(journal.appendNew(71, observation("ack-boundary")))
+        assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("ack-boundary")))
 
         var dispatcher = EvidenceDispatcher(
             context = context,
@@ -89,7 +89,7 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
 
     fun testTransportAndCoreBacklogHaveDifferentDrainReasons() {
         var journal = EvidenceJournal(context, TestCipher)
-        assertNotNull(journal.appendNew(71, observation("transport-failure")))
+        assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("transport-failure")))
         var dispatcher = EvidenceDispatcher(
             context = context,
             journal = journal,
