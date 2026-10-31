@@ -81,7 +81,10 @@ jobs:
           grep -F 'evidence_provider_health' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'decodeEvidenceBatch' src/evidence-protocol.ts >/dev/null
           grep -F 'persistEvidenceBatch' src/evidence-ingest.ts >/dev/null
-          grep -F '/evidence' src/worker-v7.ts >/dev/null
+          grep -F 'stored batch link does not match evidence record identity' src/evidence-ingest.ts >/dev/null
+          grep -F 'readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)' src/evidence-route.ts >/dev/null
+          ! grep -F 'await req.arrayBuffer()' src/evidence-route.ts >/dev/null
+          grep -F 'handleEvidenceRequest(req, env, deviceId)' src/worker-v7.ts >/dev/null
           grep -F 'verifyAccessRequest' src/access-auth.ts >/dev/null
           grep -F 'readBoundedBody(req, MAX_BLE_ANCHOR_BODY_BYTES)' src/ble-anchors.ts >/dev/null
           if grep -E 'D1MapBucket|withD1ObjectStores|D1QueueProducer|BRICK_PARENT_PASSWORD' src/worker-v5b.ts wrangler.template.jsonc scripts/setup.mjs scripts/setup-v1-phase2.mjs; then
@@ -96,6 +99,8 @@ jobs:
           node --check scripts/setup.mjs
           node --check scripts/setup-v1-phase2.mjs
           node --check scripts/test-phase2-evidence.mjs
+          node --check scripts/test-phase2-evidence-link-integrity.mjs
+          node --check scripts/test-phase2-evidence-route.mjs
           node --check scripts/install-private-map.mjs
           node --check scripts/verify-cloudflare-deployment.mjs
           npm run typecheck
@@ -104,6 +109,10 @@ jobs:
           npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
           npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
           node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
+
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
 
           npm run build:parent-assets
           node scripts/audit-privacy.mjs
