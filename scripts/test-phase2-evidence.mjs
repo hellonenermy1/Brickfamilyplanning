@@ -143,6 +143,12 @@ assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1);
 assert.equal(env.HISTORY.putCalls, 1);
+let providerHealth = db.prepare('SELECT capability,health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
+assert.equal(providerHealth.capability, 0);
+assert.equal(providerHealth.health, 0);
+assert.equal(providerHealth.last_epoch, 9);
+assert.equal(providerHealth.last_sequence, 2);
+assert.equal(providerHealth.observed_wall_ms, records[1].wallTimeMs);
 
 result = await ingest.persistEvidenceBatch(env, 'device-1', ab);
 assert.equal(result.duplicateBatch, true);
@@ -157,6 +163,26 @@ assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2, 'record-level retry must dedupe');
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 2);
 
+// A wrong device wall clock must not make old provider state look newer. Provider health ordering
+// follows the durable Brick epoch/sequence pair instead of comparing wall-time values.
+const clockRegressed = {
+  ...records[1],
+  recordId: randomUUID(),
+  sequence: 3,
+  elapsedRealtimeMs: records[1].elapsedRealtimeMs + 1,
+  wallTimeMs: records[0].wallTimeMs - 100_000,
+  health: 1,
+  payload: Buffer.from('clock-regressed-newer-sequence')
+};
+const clockBatch = encodeBatch([clockRegressed]);
+result = await ingest.persistEvidenceBatch(env, 'device-1', clockBatch.bytes.buffer.slice(clockBatch.bytes.byteOffset, clockBatch.bytes.byteOffset + clockBatch.bytes.byteLength));
+assert.equal(result.acked.length, 1);
+providerHealth = db.prepare('SELECT health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
+assert.equal(providerHealth.health, 1);
+assert.equal(providerHealth.last_epoch, 9);
+assert.equal(providerHealth.last_sequence, 3);
+assert.equal(providerHealth.observed_wall_ms, clockRegressed.wallTimeMs);
+
 const collisionRecords = structuredClone(records);
 collisionRecords[0].recordId = randomUUID();
 collisionRecords[0].payload = Buffer.from('changed');
@@ -168,12 +194,12 @@ await assert.rejects(
 
 const reusedBatchChanged = encodeBatch([{ ...records[0], payload: Buffer.from('tampered') }, records[1]], first.batchId);
 await assert.rejects(
-  ingest.persistEvidenceBatch(env, 'device-1', reusedBatchChanged.bytes.buffer.slice(reusedBatchChanged.bytes.byteOffset, reusedBatchChanged.bytes.byteLength)),
+  ingest.persistEvidenceBatch(env, 'device-1', reusedBatchChanged.bytes.buffer.slice(reusedBatchChanged.bytes.byteOffset, reusedBatchChanged.bytes.byteOffset + reusedBatchChanged.bytes.byteLength)),
   ingest.EvidenceConflict
 );
 
 const state = db.prepare('SELECT last_epoch,last_sequence FROM device_evidence_state WHERE device_id=?').get('device-1');
 assert.equal(state.last_epoch, 9);
-assert.equal(state.last_sequence, 2);
+assert.equal(state.last_sequence, 3);
 
 console.log('Brick V1 Phase 2 evidence protocol + idempotent persistence integration tests OK');
