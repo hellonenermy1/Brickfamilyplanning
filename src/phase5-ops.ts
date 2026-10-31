@@ -85,8 +85,10 @@ function incidentDetail(h: DeviceHealth, classification: HealthClassification) {
 export async function recordHealthObservation(env: OpsEnv, deviceId: string, h: DeviceHealth, now: number) {
   const classification = classifyHealth(h);
   const detail = incidentDetail(h, classification);
+  // Backend Queue/DLQ incidents are server-side. A healthy child heartbeat must never close one;
+  // only successful backend reprocessing is allowed to mark backend_processing_failed recovered.
   const open = await env.DB.prepare(
-    "SELECT id,kind,severity,started_at,last_seen_at,ended_at,alerted_at,auto_recovered,detail_json FROM health_incidents WHERE device_id=?1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1"
+    "SELECT id,kind,severity,started_at,last_seen_at,ended_at,alerted_at,auto_recovered,detail_json FROM health_incidents WHERE device_id=?1 AND ended_at IS NULL AND kind<>'backend_processing_failed' ORDER BY started_at DESC LIMIT 1"
   ).bind(deviceId).first<Incident>();
 
   const statements = [
@@ -204,8 +206,10 @@ export async function reliability(env: OpsEnv, deviceId: string, days = 30) {
 }
 
 export async function openOfflineIncident(env: OpsEnv, deviceId: string, startedAt: number, now: number) {
+  // Device connectivity state and backend Queue processing state can fail independently. Never
+  // auto-close or replace the server-side backend incident when the phone itself goes offline.
   const open = await env.DB.prepare(
-    "SELECT id,kind FROM health_incidents WHERE device_id=?1 AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1"
+    "SELECT id,kind FROM health_incidents WHERE device_id=?1 AND ended_at IS NULL AND kind<>'backend_processing_failed' ORDER BY started_at DESC LIMIT 1"
   ).bind(deviceId).first<{ id: string; kind: string }>();
   if (open?.kind === "device_offline") {
     await env.DB.prepare("UPDATE health_incidents SET last_seen_at=?1 WHERE id=?2").bind(now, open.id).run();
