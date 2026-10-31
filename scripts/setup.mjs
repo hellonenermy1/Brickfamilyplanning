@@ -8,6 +8,7 @@ const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
 const DLQ = 'brick-family-v1-dlq';
 const ACCESS_APP_NAME = 'Brick Parent Dashboard';
+const CURRENT_APP_VERSION = '0.6.0-phase6-rc';
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
 const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
@@ -264,8 +265,8 @@ const state = {
     DLQ
   },
   access: { mode: 'cloudflare-access-rs256', appId: access.appId, aud: access.aud, teamDomain, destination: access.destination },
-  currentRelease: '0.6.0-phase6-rc',
-  releaseState: 'phase6_candidate',
+  currentRelease: CURRENT_APP_VERSION,
+  releaseState: 'candidate-not-real-device-qualified',
   configuredAt: new Date().toISOString()
 };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
