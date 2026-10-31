@@ -1,0 +1,54 @@
+name: Check Brick Phase 6 Security Hardening
+
+on:
+  push:
+    branches: [phase6-final-hardening, phase6-integration, phase6-final]
+  pull_request:
+    branches: [phase6-integration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Require same-origin parent WebSocket upgrades
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'function sameOriginWebSocket(req: Request)' src/worker-v5b.ts >/dev/null
+          grep -F 'req.headers.get("Upgrade")?.toLowerCase() !== "websocket"' src/worker-v5b.ts >/dev/null
+          grep -F 'const origin = req.headers.get("Origin")' src/worker-v5b.ts >/dev/null
+          grep -F 'u.pathname.endsWith("/ws") && !sameOriginWebSocket(req)' src/worker-v5b.ts >/dev/null
+          grep -F 'same-origin WebSocket upgrade required' src/worker-v5b.ts >/dev/null
+
+      - name: Require edge-IP rate limiting before public pairing validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'req.headers.get("CF-Connecting-IP")' src/worker-v5b.ts >/dev/null
+          grep -F 'pair-ip:${ip}' src/worker-v5b.ts >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('src/worker-v5b.ts').read_text()
+          route = 'if (req.method === "POST" && u.pathname === "/api/pair/complete")'
+          start = text.index(route)
+          block = text[start:text.index('\n    }', start) + 6]
+          assert block.index('pairingRateDenied') < block.index('validatePairingPublicKey'), block
+          print('Pairing edge limiter executes before public-key/token validation')
+          PY
+
+      - name: Type-check hardening changes
+        run: npm run typecheck
