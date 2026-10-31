@@ -64,11 +64,25 @@ async function ingestEvidence(req: Request, env: Env, deviceId: string) {
   }
 }
 
+function decodeDevicePath(raw: string): string | null {
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (!decoded || decoded.length > 256 || decoded.includes("/")) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
     const match = u.pathname.match(/^\/api\/device\/([^/]+)\/evidence$/);
-    if (req.method === "POST" && match) return ingestEvidence(req, env, decodeURIComponent(match[1]));
+    if (req.method === "POST" && match) {
+      const deviceId = decodeDevicePath(match[1]);
+      if (!deviceId) return json({ error: "invalid device path" }, 400);
+      return ingestEvidence(req, env, deviceId);
+    }
     return base.fetch!(req, env, ctx);
   },
   async queue(batch: MessageBatch<unknown>, env: Env, ctx: ExecutionContext) {
