@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">Brick</string>
+    <string name="brand_title">BRICK</string>
+    <string name="status_setup_required">● Setup required</string>
+    <string name="scan_pairing_qr">SCAN PAIRING QR</string>
+    <string name="server_url_hint">https://brick.example.com</string>
+    <string name="pairing_code_hint">Pairing code</string>
+    <string name="pair_manually">PAIR MANUALLY</string>
+    <string name="fix">FIX</string>
+    <string name="im_safe">I\'M SAFE</string>
+    <string name="sos">SOS</string>
     <string name="channel_name">Brick safety tracking</string>
     <string name="channel_description">Shows when Brick is actively sharing safety location.</string>
 </resources>
