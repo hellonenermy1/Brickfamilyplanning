@@ -1,124 +1,57 @@
-# Brick V1 — Phase 5B Private Map + Local Place Context
+# Brick — Cloudflare 1-Click Setup
 
-Phase 5B builds on the frozen Phase 5A parent/operations layer. It removes the parent map's live third-party map dependency and gives Brick a Singapore-focused, OSM-derived place/street lookup path that stays inside the Brick deployment.
+This is the canonical **Cloudflare deployment branch** for Brick.
 
-## GitHub Codespaces setup
+Use GitHub Actions. Do not manually copy old Phase 5/Phase 6 setup files from archived branches.
 
-This branch includes `.devcontainer/devcontainer.json`, so GitHub Codespaces can prepare the Brick Cloudflare environment automatically with Node.js 24, Docker-in-Docker, npm dependencies, the self-hosted parent map assets, and port 8787 forwarding for Wrangler development.
+## Deploy Brick
 
-Create the Codespace from the **`phase5b-private-map-places`** branch. GitHub may recommend the Codespaces secret `CLOUDFLARE_API_TOKEN`. If you set it, the setup script will read it from the environment. If you do not set it, `npm run setup` will prompt for the token securely in the terminal instead.
+1. Open **Actions**.
+2. Select **Deploy Brick Phase 6 Candidate**.
+3. Click **Run workflow**.
+4. Keep the branch as `main`.
+5. Enter the Cloudflare Account ID.
+6. Leave **Install/update the private Singapore map** enabled unless you intentionally want to skip the map.
+7. Run the workflow.
 
-After the Codespace finishes building, run:
+Required GitHub Actions secret:
 
-```bash
-npm run codespaces:check
-npm run setup
-npm run map:install
-```
+- `CLOUDFLARE_API_TOKEN`
 
-`codespaces:check` validates Node, npm, the Docker daemon, Wrangler, the required Brick setup files, and whether the optional Cloudflare token secret is present. It does not create or modify Cloudflare resources.
+Cloudflare Zero Trust must already be onboarded and R2 must be available for the account. For real production use, Brick should use Workers Paid because the durable Queue/history design can exceed Free-tier Queue limits during high-rate movement.
 
-The Cloudflare token must never be pasted into a source file, `.env` file that is committed, `devcontainer.json`, or GitHub issue/chat. GitHub Codespaces secrets are exposed as environment variables only inside authorized Codespaces.
+The deployment workflow validates the selected source, provisions/reconciles D1, R2, Queues/DLQ and Cloudflare Access, applies the schema, optionally installs the private Singapore map, deploys the Worker, and runs post-deployment verification. A successful deployment uploads non-secret deployment evidence as a workflow artifact.
 
-## What Phase 5B adds
+## APK download
 
-- MapLibre GL JS is bundled and served from Brick's own `/parent-assets` path.
-- The MapLibre worker and CSS are served same-origin; the parent dashboard no longer loads MapLibre from UNPKG.
-- A private R2 bucket, `brick-family-v1-maps`, stores the Singapore PMTiles archive.
-- The browser reads map ranges only through the authenticated Brick Worker route `/parent/map/basemap.pmtiles`.
-- The map fails closed if the private archive is missing. There is no silent Google, demo-tile, Nominatim, or other live map fallback.
-- Saved Brick places/geofences remain the highest-priority human-readable place labels.
-- Outside saved places, Brick directly reads nearby vector tiles from its own PMTiles archive and derives local POI/building/road/locality context without sending the child's coordinate to a geocoding provider.
-- Decoded local tiles are cached in the parent browser to avoid repeatedly downloading the same PMTiles ranges as the child moves.
-- Phase 5A Health, History, Trips, SOS, I'm Safe, places/geofences, retention, reliability, and realtime APIs remain underneath the thin Phase 5B wrapper unchanged.
+The Android source is kept separately on branch **`apk-download`**.
 
-## Privacy boundary
+From Actions, run **Brick — Build / Download APK**. That workflow always checks out `apk-download` and uploads:
 
-Normal parent viewing uses same-origin Brick resources only:
+- `Brick-APK-debug` — installable debug APK for functional testing.
+- `Brick-APK-release-candidate` — release variant; may be unsigned if production signing secrets are missing.
+- `Brick-APK-production-signed` — only appears when all stable signing secrets are configured.
+- `Brick-APK-evidence` — hashes, signing evidence and merged APK metadata.
 
-```text
-Parent browser
-  ├─ /parent-assets/brick-map.mjs
-  ├─ /parent-assets/maplibre-gl.css
-  ├─ /parent-assets/maplibre-gl-worker.mjs
-  └─ /parent/map/basemap.pmtiles
-          ↓
-      authenticated Brick Worker
-          ↓
-      private Cloudflare R2 bucket
-```
+Production signing secrets, when used:
 
-The one-time map installer downloads OSM-derived Protomaps map data to build the private Singapore archive. That download is provisioning, not live child-location lookup. Once installed, viewing a child's location does not send the viewed coordinate to Protomaps, Google Maps, Nominatim, or another map/geocoding service.
+- `BRICK_ANDROID_KEYSTORE_B64`
+- `BRICK_ANDROID_KEYSTORE_PASSWORD`
+- `BRICK_ANDROID_KEY_ALIAS`
+- `BRICK_ANDROID_KEY_PASSWORD`
 
-The current basemap intentionally omits MapLibre symbol layers until Brick also self-hosts the required font glyph and sprite assets. Roads, buildings, landuse and other geometry still render; human-readable current-place context comes from the local PMTiles resolver. This is preferable to quietly fetching label assets from a third party.
+Do not treat an unsigned release candidate as a production APK.
 
-## Deploy Phase 5B
+## Audit and progress
 
-Run:
+All Brick audit records, project rules and ongoing progress are kept on branch **`audit-progress`**.
 
-```bash
-npm run setup
-```
+That branch contains the standing project memory and progress log. Brick work should be logged there automatically as it is completed.
 
-The setup script creates/reuses Brick's existing D1, history R2 bucket, queues, Durable Object and Access configuration, creates the private map R2 bucket, builds the same-origin browser assets, applies existing schemas, and deploys the Worker.
+## Canonical branch layout
 
-`setup` does **not** automatically download a regional map archive. Install the Singapore map once after setup:
+- `main` — Cloudflare 1-click setup and deployment runtime.
+- `apk-download` — Android app source used by the APK build/download workflow.
+- `audit-progress` — audits, acceptance state, project memory and chronological progress.
 
-```bash
-npm run map:install
-```
-
-The installer:
-
-1. finds a recent Protomaps OSM-derived daily PMTiles build unless `BRICK_MAP_SOURCE` is supplied;
-2. extracts the Singapore bounding box (`103.55,1.12,104.12,1.50`) through zoom 15;
-3. runs `pmtiles verify` on the extracted archive;
-4. uploads it to `brick-family-v1-maps/basemap/singapore.pmtiles`;
-5. writes installation metadata alongside the map archive.
-
-You need either the `pmtiles` CLI or Docker for the extraction step. The Codespaces dev container includes Docker-in-Docker, so the installer can use the Docker fallback without anything installed on your own computer.
-
-### Large archive handling
-
-Brick uses Wrangler for normal map uploads. If the extracted archive exceeds the safe Wrangler threshold, the installer stops before a doomed upload. Configure `rclone` for the R2 bucket and set, for example:
-
-```bash
-export BRICK_R2_RCLONE_REMOTE='r2:brick-family-v1-maps'
-npm run map:install
-```
-
-The installer will then use multipart-capable rclone for the PMTiles archive while retaining Wrangler for the small metadata object.
-
-## Optional map overrides
-
-```bash
-BRICK_MAP_SOURCE='https://example.com/custom.pmtiles' npm run map:install
-BRICK_MAP_BBOX='103.55,1.12,104.12,1.50' npm run map:install
-BRICK_MAP_MAXZOOM='15' npm run map:install
-```
-
-Do not lower map detail just to make an upload succeed unless that tradeoff is intentional; use the multipart path for a genuinely large archive.
-
-## CI / regression gates
-
-Phase 5B CI verifies:
-
-- setup and map-installer syntax;
-- strict TypeScript for the browser map module;
-- self-hosted MapLibre/PMTiles asset build;
-- the private PMTiles route is present in the bundled browser code;
-- no UNPKG MapLibre, MapLibre demo tiles, Nominatim, or Google Maps endpoint appears in the live parent map bundle/HTML;
-- Worker TypeScript;
-- rendered parent dashboard JavaScript syntax;
-- Phase 5 health classification regressions;
-- Phase 4 history codec round trips;
-- all current D1 schemas on a fresh SQLite database.
-
-## What Phase 5B does not claim
-
-- The private map archive is not automatically refreshed yet.
-- The current map does not yet self-host full font glyph/sprite assets for rich road/POI labels.
-- Local PMTiles place context is useful context, not a guaranteed postal-address oracle; OSM data completeness varies.
-- Phase 6 OPPO endurance, battery and real-world reliability acceptance is still required before Brick is called production-reliable.
-
-The core rule remains: prevent failures where Android legitimately allows it, detect failures immediately, extract the most useful evidence available, and never present an estimate as a measurement.
+Current release truth remains `0.6.0-phase6-rc`, `versionCode 6`, and `candidate-not-real-device-qualified` until stable signing, live Phase 6 Cloudflare deployment, authenticated browser smoke testing, and real OPPO/ColorOS qualification are complete.
