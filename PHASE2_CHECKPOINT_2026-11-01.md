@@ -4,11 +4,11 @@ User request: continue Phase 2 from the existing work without restarting.
 
 ## Exact staging pair at checkpoint
 
-- Cloud `v1-p2-evidence-cloud`: `44feae338eb67e1ef3713d71afc7d9d36c1baaf3`
+- Cloud `v1-p2-evidence-cloud`: `1d880b703dd5d0c5f581926426a0db29e6c67b8b`
 - Android `v1-p2-evidence-android`: `9d1d04532abc52b679075fe2e330c3d2daafab3b`
 - Cloud PR #6: draft/unmerged
 - Android PR #7: draft/unmerged
-- Latest checked hosted Phase 2 run: `41220977777`
+- Latest checked hosted Phase 2 run: `41221221445`
 
 Phase 2 remains **NOT ACCEPTED**. No Phase 2 source was merged into canonical `main` or `apk-download`. Phase 3 was not started as accepted work.
 
@@ -42,9 +42,10 @@ Phase 2 remains **NOT ACCEPTED**. No Phase 2 source was merged into canonical `m
    This prevents a correct worker from failing verification because path validation happened before auth.
 4. D1 evidence identity was strengthened structurally:
    - `evidence_records` has an exact `(device_id, record_id, epoch, sequence)` unique key;
-   - `evidence_batch_records` has a composite foreign key to that full identity.
-5. The dedicated link-integrity harness now enables SQLite foreign keys to match D1 behavior, proves mismatched link writes are rejected at the schema boundary, then deliberately injects legacy corruption with FK enforcement temporarily disabled and proves Brick's application-level retry validation still detects it before another raw R2 write.
-6. Application-level batch-link readback validation remains in place as defense in depth even with the stronger database constraint.
+   - fresh `evidence_batch_records` tables have a composite foreign key to that full identity.
+5. Migration reruns are also protected. Because `CREATE TABLE IF NOT EXISTS` cannot retrofit a stronger FK onto an evidence table created by an earlier interrupted Phase 2 setup, schema 008 now installs idempotent `BEFORE INSERT` and `BEFORE UPDATE` identity triggers. An already-created older Phase 2 table therefore receives the same exact-link rule on rerun instead of silently remaining weaker.
+6. The link-integrity harness enables SQLite foreign keys to mirror D1, proves a fresh-schema mismatch is rejected, proves the rerun-safe trigger still rejects the mismatch with FK enforcement disabled, then deliberately removes only the test triggers to manufacture legacy corruption and confirms Brick's application-level retry validation still detects it before another raw R2 write.
+7. Application-level batch-link readback validation remains in place as defense in depth even with the stronger database constraints/triggers.
 
 ## Reliability decisions preserved
 
@@ -54,11 +55,12 @@ Phase 2 remains **NOT ACCEPTED**. No Phase 2 source was merged into canonical `m
 - Permanent evidence conflicts cannot block later evidence indefinitely.
 - Re-pairing cannot upload old pending evidence under the new device identity.
 - No malformed server ACK may authorize local evidence deletion.
+- Setup reruns must not silently produce a weaker evidence schema than a fresh install.
 - Live-location V2 remains unchanged; Phase 2 evidence remains a separate BREV v1 stream.
 
 ## Verification truth
 
-Latest checked hosted run `41220977777` again did not provide source execution:
+Latest checked hosted run `41221221445` again did not provide source execution:
 
 - Cloud protocol/persistence/regression: failed before source steps;
 - Android compile/lint/dependency-lock: failed before source steps;
@@ -66,7 +68,7 @@ Latest checked hosted run `41220977777` again did not provide source execution:
 
 This continues the existing hosted-runner infrastructure blocker. It is neither a source pass nor evidence of a source defect.
 
-Earlier local Cloud/protocol/signed-route and targeted race/signature checks remain valid only for the exact invariants and earlier heads that actually executed. The exact checkpoint above includes newer quarantine-retention, strict-ACK, workflow/deploy-gate and composite-FK changes that still require real execution.
+Earlier local Cloud/protocol/signed-route and targeted race/signature checks remain valid only for the exact invariants and earlier heads that actually executed. The exact checkpoint above includes newer quarantine-retention, strict-ACK, workflow/deploy-gate, composite-FK and rerun-safe trigger changes that still require real execution.
 
 ## Required continuation
 
