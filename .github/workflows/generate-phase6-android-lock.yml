@@ -28,16 +28,19 @@ jobs:
       - name: Resolve and write Brick Android dependency locks
         run: gradle --no-daemon :app:dependencies --write-locks
       - name: Require generated app lock state
+        id: validate-lock
         shell: bash
         run: |
           set -euo pipefail
           test -s app/gradle.lockfile
-          grep -F '=releaseRuntimeClasspath' app/gradle.lockfile >/dev/null
+          grep -F 'releaseRuntimeClasspath' app/gradle.lockfile >/dev/null
+          grep -F 'debugRuntimeClasspath' app/gradle.lockfile >/dev/null
           sha256sum app/gradle.lockfile
       - name: Upload candidate Gradle lockfile
+        if: ${{ always() && hashFiles('app/gradle.lockfile') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: brick-phase6-android-gradle-lock
+          name: brick-phase6-android-gradle-lock-${{ github.sha }}
           path: app/gradle.lockfile
           if-no-files-found: error
           retention-days: 30
