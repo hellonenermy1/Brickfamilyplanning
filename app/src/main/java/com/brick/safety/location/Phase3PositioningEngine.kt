@@ -23,25 +23,10 @@ data class Phase3PositioningHealth(
     val stateHealthy: Boolean
 )
 
-/**
- * Android coordinator around the pure Phase 3 motion/route/particle models.
- * Trusted fused fixes train/re-anchor it; degraded periods only produce an uncertainty-bounded estimate.
- */
-class Phase3PositioningEngine(
-    context: Context,
-    private val motion: MotionEngine
-) {
+class Phase3PositioningEngine(context: Context, private val motion: MotionEngine) {
     private data class TrustedFix(
-        val lat: Double,
-        val lon: Double,
-        val accuracyM: Float,
-        val elapsedMs: Long,
-        val wallMs: Long,
-        val speedMps: Float?,
-        val bearingDeg: Float?,
-        val stepTotal: Long,
-        val mode: Phase3Mode,
-        val placement: MotionPlacement
+        val lat: Double, val lon: Double, val accuracyM: Float, val elapsedMs: Long, val wallMs: Long,
+        val speedMps: Float?, val bearingDeg: Float?, val stepTotal: Long, val mode: Phase3Mode, val placement: MotionPlacement
     )
 
     companion object {
@@ -71,14 +56,8 @@ class Phase3PositioningEngine(
 
     @Synchronized
     fun onTrustedFix(
-        lat: Double,
-        lon: Double,
-        accuracyM: Float,
-        elapsedMs: Long,
-        wallMs: Long,
-        speedMps: Float?,
-        bearingDeg: Float?,
-        activity: ActivitySnapshot
+        lat: Double, lon: Double, accuracyM: Float, elapsedMs: Long, wallMs: Long,
+        speedMps: Float?, bearingDeg: Float?, activity: ActivitySnapshot
     ) {
         if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 ||
             !accuracyM.isFinite() || accuracyM < 0f || elapsedMs < 0L || wallMs <= 0L) return
@@ -112,6 +91,7 @@ class Phase3PositioningEngine(
         lastMotionStepTotal = snapshot.totalSteps
         lastTrusted = current
         persist(force = learnedSomething || elapsedMs - lastSaveElapsedMs >= SAVE_INTERVAL_MS)
+        Phase3RouteGraphController.maybeRefresh(appContext, this, lat, lon, wallMs)
     }
 
     @Synchronized
