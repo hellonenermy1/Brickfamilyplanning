@@ -3,160 +3,144 @@
 Date: 2026-10-31
 Purpose: record checks that actually executed outside GitHub Actions while hosted runners were unavailable.
 
-This file does **not** upgrade Phase 2 to `CI_VERIFIED` or `ACCEPTED`. It records executed evidence only.
+This file does **not** upgrade Phase 2 to `CI_VERIFIED` or `ACCEPTED`.
 
-## Cloud protocol / persistence harness
+## Environment
 
-Core Cloud protocol/ingest source verified locally through runtime/protocol commit:
+- Node.js 22.16.0
+- TypeScript 5.8.3
+- Kotlin/JVM 1.9.0 available
+- Android SDK unavailable in this execution environment
+- Node `node:sqlite` used as a D1-style transactional harness
+- in-memory R2-style object harness
+- Node Web Crypto used for real P-256 signing/verification tests
 
-`15d48bb5da2bebbd7fcafba519f935b85544acfd`
+## Cross-language BREV v1 protocol
 
-Relevant verified source:
+The Android pure Kotlin evidence model/protocol and TypeScript evidence protocol have been locally compiled/executed against the shared fixed golden vector.
 
-- `src/evidence-protocol.ts` with BREV v1 bounds, JavaScript safe-u64 checks and Android signed-Int epoch bound;
-- `src/evidence-ingest.ts` blob `90db92db13bed85fa25402f45804eef3b31c53dd`;
-- `schema/001_init.sql` blob `15e22a391ba1286e529136ef8b06f4a9ab5ab0de`;
-- `schema/008_v1_phase2_evidence.sql` blob `74e5765e689b7d4f523a782d43e6794163a0e6ba`.
-
-Environment:
-
-- Node.js 22.16.0;
-- TypeScript compiler 5.8.3;
-- Node `node:sqlite` in-memory D1-style harness;
-- in-memory R2-style object harness.
-
-Executed checks:
-
-- TypeScript compilation of evidence protocol/ingest source with Cloudflare interface shims;
-- shared BREV v1 golden-vector exact bytes;
-- normal batch decode;
-- trailing-byte rejection;
-- D1/R2-style first persistence;
-- exact ACK result;
-- same-batch retry returns duplicate and does not rewrite R2;
-- same-record/new-batch retry remains one logical record;
-- conflicting sequence/record identity rejects as `EvidenceConflict`;
-- provider-health update follows durable epoch/sequence even if device wall clock regresses;
-- raw R2 object metadata contains a 64-character hashed `deviceKey` and not raw `deviceId`;
-- epoch `0x80000000` is rejected because it exceeds Android's signed-Int epoch contract.
-
-Observed:
-
-`LOCAL CLOUD PHASE2 HARNESS PASS`
-
-`LATEST CLOUD EPOCH BOUND PASS`
-
-## Current worker-v7 endpoint hardening harness
-
-Cloud staging later advanced to:
-
-`da250b09f1b5911ec1fb808a819b24c8c5f43656`
-
-with one runtime change in `src/worker-v7.ts`: separate request-attempt and authenticated-device rate limiting.
-
-The current worker-v7 logic was reconstructed from the staged file and locally checked with Cloudflare interface stubs plus Node's Fetch API.
-
-Executed checks:
-
-- TypeScript type-check of the current worker-v7 logic;
-- unsigned evidence request with `CF-Connecting-IP: 1.2.3.4` returns 401 and consumes only `evidence-attempt:1.2.3.4`;
-- valid signed request consumes `evidence-attempt:1.2.3.4` first and then `evidence-device:child-1`;
-- unsigned traffic therefore cannot consume the authenticated child's device-scoped evidence bucket merely by knowing a device identifier.
-
-Observed:
-
-`LATEST CLOUD WORKER V7 TYPECHECK PASS`
-
-`LATEST CLOUD WORKER V7 RATE-LIMIT HARNESS PASS`
-
-This verifies the logic added by the latest current cloud runtime commit, but it is still not a deployed Cloudflare-platform test.
-
-## Current Kotlin evidence protocol/model harness
-
-The current Android evidence model/protocol was reconstructed from staged source and compiled locally after canonical-UUID and wire-safe-integer hardening.
-
-Executed checks:
-
-- Kotlin compile of current `EvidenceModel.kt` and `EvidenceProtocol.kt` logic;
-- exact shared golden-vector bytes;
-- decode payload-content check;
-- sequence above JavaScript `Number.MAX_SAFE_INTEGER` rejected;
-- non-canonical uppercase UUID rejected.
-
-Observed:
-
-`LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
-
-This materially verifies current Android/Cloud wire parity but does **not** prove Android framework integrations such as SQLiteOpenHelper, Keystore or WorkManager.
-
-## Shared golden vector
-
-Batch UUID:
+Golden batch UUID:
 
 `00112233-4455-6677-8899-aabbccddeeff`
 
-Record UUID:
+Golden record UUID:
 
 `12345678-1234-5678-9abc-def012345678`
 
-Expected encoded batch:
+Expected encoded bytes:
 
 `425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e`
 
-The locally executed current Kotlin protocol and current verified TypeScript protocol produced this exact value.
+Observed current local result:
+
+`LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+
+Checks include golden bytes, decode payload content, canonical UUID validation and JavaScript-safe integer bounds. This does not prove Android framework integrations.
+
+## Current Cloud protocol / persistence harness
+
+Current staged Cloud persistence behavior was locally executed using TypeScript/Node + SQLite/R2-style fakes.
+
+Executed checks:
+
+- BREV golden vector and normal decode;
+- bad version / trailing bytes / reverse ordering rejection;
+- Android signed-Int epoch boundary rejection;
+- first persistence into D1/R2-style stores;
+- exact ACK after durable writes;
+- exact same-batch retry without another R2 write;
+- same durable records under a fresh batch UUID ACK without new `evidence_batches` row or raw object (`duplicateRecords:true`);
+- record identity collision rejection;
+- accepted batch UUID reused with changed bytes rejection;
+- provider-health advancement by epoch/sequence despite regressed device wall clock;
+- one-way hashed device key in raw evidence storage;
+- content-addressed R2 key containing exact `batchSha`;
+- simulated concurrent competing claim of the same batch UUID between preflight and D1 `batch()`;
+- hard D1 batch insert failure rolls back the losing transaction, leaving zero loser evidence records and zero loser batch links;
+- retry after the competing claim becomes `EvidenceConflict`.
+
+Observed current local result:
+
+`LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+
+This validates the current Phase 2 persistence/idempotency/concurrency design in the local transactional harness. It is not live Cloudflare D1/R2 proof.
+
+## Current signed HTTP evidence-route harness
+
+The actual Phase 2 route logic was extracted to `src/evidence-route.ts`, with `worker-v7` delegating the evidence endpoint to that handler. A local route harness used a real generated Web Crypto P-256 keypair and the same device signature verification implementation.
+
+Executed checks:
+
+- canonical v4 Brick device path accepted;
+- non-v4 UUID rejected;
+- path-control/decode-slash input rejected;
+- malformed URL encoding rejected;
+- missing signature returns 401;
+- bad signature returns 401;
+- missing/bad signature consumes only requester attempt-rate key;
+- valid signed request consumes requester key then authenticated device key;
+- valid signed request persists D1/R2-style state before 200/exact ACK;
+- exact signed retry returns duplicate ACK without another raw write;
+- fresh batch UUID containing already-durable records returns exact ACK without storage growth;
+- requester rate-limit rejection happens before device signature path;
+- authenticated device rate-limit rejection happens only after valid signature and before persistence;
+- revoked device returns 401 without persistence;
+- correctly signed malformed BREV payload returns 400 without persistence.
+
+Observed current local result:
+
+`LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+
+The current route TypeScript also compiled successfully in the local harness.
 
 ## Android source tests prepared but not executed
 
 Current Android staging includes instrumentation source for:
 
 - encrypted journal persistence across close/reopen;
-- wrong ACK rejection and exact ACK deletion;
-- dummy-provider → sink → encrypted journal → reopen → transport → ACK flow;
+- wrong ACK rejection / exact ACK deletion;
+- dummy provider → sink → encrypted journal → reopen → transport → ACK;
 - refusal to drain evidence while core backlog exists;
-- bounded adaptive radio sampling;
-- DB-owned evidence sequence allocation surviving stale SharedPreferences and helper reopen;
+- bounded adaptive sampling;
+- DB-owned sequence allocator surviving stale SharedPreferences and reopen;
 - no evidence retention before pairing;
-- canonical UUID/wire-safe integer validation cases.
+- canonical v4 device-ID requirement and corrupt/non-v4 rejection;
+- shared BREV golden vector.
 
-The source also contains dedicated evidence WorkManager catch-up logic designed to avoid both continuous-enqueue starvation and exponential-backoff slowdown during a normal large backlog.
+Current Android source also contains a dedicated network-constrained evidence WorkManager chain using `KEEP` for first scheduling and `APPEND_OR_REPLACE` for bounded follow-up catch-up, while Brick Core recovery stays first.
 
-These remain **test/source evidence**, not executed Android proof, until Android runner/emulator execution occurs.
+These are **source/test definitions**, not executed Android proof, because the current environment has no Android SDK and hosted Actions has not assigned a runner.
 
 ## Hosted Actions evidence
 
-Latest checked run for the current Cloud runtime head:
+Latest checked run:
 
-`41210685918`
-
-Head:
-
-`da250b09f1b5911ec1fb808a819b24c8c5f43656`
+- run: `41211811795`
+- Cloud head: `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
 
 Observed jobs:
 
-- Cloud protocol/persistence/regression: failure with no executed steps/logs;
-- Android compile/lint/dependency-lock: failure with no executed steps/logs;
+- Android compile/lint/dependency-lock: failure with `runner_id: 0` and `steps: []`;
+- Cloud protocol/persistence/regression: failure with `runner_id: 0` and `steps: []`;
 - Android instrumentation: skipped.
 
-The immediately preceding run `41210379525` showed the same zero-step behavior, and an explicit failed-job rerun also returned empty step lists.
-
-This is consistent with hosted runner assignment/infrastructure failure. It is neither a pass nor evidence that source tests failed.
+No source step executed. This is a hosted runner/infrastructure failure. It is neither a source pass nor a source failure.
 
 ## What remains unverified
 
 Local checks do **not** prove:
 
-- current full Android project compile against Android SDK;
+- full Android project compilation against the Android SDK;
 - Android lint;
-- instrumentation runner/emulator execution;
-- real Android SQLite helper/upgrade behavior;
+- Android instrumentation/emulator execution;
+- real Android SQLiteOpenHelper/upgrade behavior;
 - Android Keystore AES-GCM behavior;
-- WorkManager evidence scheduling/catch-up behavior;
-- actual signed device HTTP evidence upload against a deployed Worker;
+- WorkManager execution on Android;
+- the full Android dummy-provider path to a deployed Worker;
 - live Cloudflare D1/R2 behavior;
-- complete retained Phase 6 regression suite on merged Phase 2 source;
-- physical OPPO behavior.
+- retained Phase 6 cloud regressions on the final Phase 2 head;
+- physical OPPO/ColorOS behavior.
 
-Therefore Phase 2 remains:
+Therefore the correct Phase 2 evidence state is:
 
-**SOURCE IMPLEMENTED + HARDENED / CURRENT CLOUD ENDPOINT + CLOUD CORE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED**.
+**SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + REAL SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED**.
