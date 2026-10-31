@@ -141,8 +141,6 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val anchor = lastBleAnchor ?: return null
         val age = now - anchor.seenElapsedMs
         if (age !in 0..BLE_ANCHOR_MAX_AGE_MS) return null
-        // A stationary/walking/unknown device can plausibly be present at a trusted indoor place.
-        // Bicycle/vehicle/running motion is deliberately not overridden by a transient drive-by beacon.
         if (activity.mode == ActivityMode.VEHICLE || activity.mode == ActivityMode.BICYCLE || activity.mode == ActivityMode.RUNNING) return null
         val wall = anchor.seenWallMs + age
         return PositionSample(
@@ -247,7 +245,7 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || !accuracy.isFinite() || accuracy < 0f) return null
         return Anchor(lat, lon, accuracy, elapsed, wall,
             prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
-            0L, ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
+            prefs.getLong("anchorStepTotal", 0L), ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
     }
 
     private fun freshActivity(a: ActivitySnapshot, now: Long) =
