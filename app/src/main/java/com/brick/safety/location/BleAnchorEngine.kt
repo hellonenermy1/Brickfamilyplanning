@@ -1,6 +1,7 @@
 package com.brick.safety.location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -65,6 +66,7 @@ class BleAnchorEngine(
     fun permissionGranted(): Boolean = Build.VERSION.SDK_INT < 31 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
 
+    @SuppressLint("MissingPermission")
     fun scanOnce() {
         val current = configs
         if (current.isEmpty() || !permissionGranted() || !scanning.compareAndSet(false, true)) return
@@ -105,6 +107,7 @@ class BleAnchorEngine(
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun stop() {
         handler.removeCallbacksAndMessages(null)
         if (!scanning.compareAndSet(true, false)) return
