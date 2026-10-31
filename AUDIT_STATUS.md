@@ -62,7 +62,7 @@ Phase 2 staging:
 Current audit snapshot:
 
 - Android: `389bc8744341aebcc42f74f79403fd2b3d5d5873`
-- Cloud: `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
+- Cloud: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
 
 These refs may advance while Phase 2 is repaired. Acceptance is tied to executed verification of the final paired heads, not to a stale SHA snapshot.
 
@@ -96,7 +96,7 @@ Implemented staging source includes:
 - schema/retention-before-worker-v7 setup ordering;
 - Android instrumentation source for restart/ACK/priority/sequence/pairing behavior;
 - Cloud protocol/persistence and signed HTTP route integration test source;
-- CI static gates that lock the current concurrency/replay/identity/rate-limit invariants.
+- CI static gates that lock the current concurrency/replay/identity/rate-limit invariants, including Android v4/variant-2 pairing checks.
 
 ### Executed local evidence
 
@@ -138,8 +138,8 @@ The current Android pure Kotlin evidence model/protocol also matched the shared 
 
 Latest checked hosted run:
 
-- run `41211811795`
-- Cloud head `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
+- run `41212250461`
+- Cloud head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
 
 Observed:
 
