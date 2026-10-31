@@ -2,7 +2,7 @@ import core, { BrickDevice } from "./index";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
-import { reserveHealthReplay, validateSafetyReplayWindow } from "./device-json-security";
+import { reserveHealthReplay, validatePairingPublicKey, validateSafetyReplayWindow } from "./device-json-security";
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
 export { BrickDevice };
 
@@ -55,10 +55,6 @@ function parentHtmlResponse() {
 function coreEnv(env: RuntimeEnv): CoreEnv { return env; }
 function mapEnv(env: RuntimeEnv) { return { MAPS: env.MAPS }; }
 
-// index.ts is retained as the internal Phase 1-5 router and historically gates parent routes on
-// Cf-Access-Jwt-Assertion. Only this outer Phase 6 wrapper is externally reachable for /parent*.
-// We synthesize the header only AFTER cryptographically verifying the real Access JWT above, so
-// the legacy core can never turn header presence into an external trust decision.
 function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>): Request<unknown, IncomingRequestCfProperties> {
   const headers = new Headers(req.headers);
   headers.set("Cf-Access-Jwt-Assertion", "phase6-outer-wrapper-verified");
@@ -142,6 +138,11 @@ export default {
       const denied = await requireParent(req, env); if (denied) return denied;
       const limit = Number(u.searchParams.get("limit") ?? "100");
       return listAudit(env, Number.isFinite(limit) ? limit : 100);
+    }
+
+    if (req.method === "POST" && u.pathname === "/api/pair/complete") {
+      const denied = await validatePairingPublicKey(req);
+      if (denied) return denied;
     }
 
     let m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/crashes$/);
