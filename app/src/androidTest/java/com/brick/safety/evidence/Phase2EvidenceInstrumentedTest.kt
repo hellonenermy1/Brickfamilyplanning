@@ -1,8 +1,8 @@
 package com.brick.safety.evidence
 
 import android.content.Context
-import android.test.InstrumentationTestCase
 import android.os.SystemClock
+import android.test.InstrumentationTestCase
 import java.util.UUID
 
 @Suppress("DEPRECATION")
@@ -10,7 +10,9 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
     private lateinit var context: Context
 
     private class TestCipher : EvidenceCipher {
-        override fun encrypt(plain: ByteArray): ByteArray = byteArrayOf(0x42.toByte()) + plain.map { (it.toInt() xor 0x5a).toByte() }
+        override fun encrypt(plain: ByteArray): ByteArray =
+            byteArrayOf(0x42.toByte()) + plain.map { (it.toInt() xor 0x5a).toByte() }
+
         override fun decrypt(blob: ByteArray): ByteArray {
             require(blob.isNotEmpty() && blob[0] == 0x42.toByte())
             return blob.copyOfRange(1, blob.size).map { (it.toInt() xor 0x5a).toByte() }.toByteArray()
@@ -21,11 +23,17 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         super.setUp()
         context = instrumentation.targetContext.applicationContext
         context.deleteDatabase(EvidenceJournal.DATABASE_NAME)
+        context.deleteDatabase("brick_journal.db")
+        context.deleteDatabase("brick_safety.db")
+        context.deleteDatabase("brick_crash.db")
         context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     override fun tearDown() {
         context.deleteDatabase(EvidenceJournal.DATABASE_NAME)
+        context.deleteDatabase("brick_journal.db")
+        context.deleteDatabase("brick_safety.db")
+        context.deleteDatabase("brick_crash.db")
         super.tearDown()
     }
 
@@ -95,6 +103,90 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
 
         journal = EvidenceJournal(context, cipher)
         assertTrue(journal.nextPending().isEmpty())
+        journal.close()
+    }
+
+    fun testDummyProviderSurvivesReopenThenDrainsWithExactAck() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        assertTrue(
+            prefs.edit()
+                .putInt("epoch", 17)
+                .putString("deviceId", "phase2-test-device")
+                .putString("apiBase", "https://brick.invalid")
+                .commit()
+        )
+
+        val cipher = TestCipher()
+        var journal = EvidenceJournal(context, cipher)
+        val enqueueDispatcher = EvidenceDispatcher(
+            context = context,
+            journal = journal,
+            transport = EvidenceTransport { _, _, _ -> error("network must not be used during enqueue") },
+            coreBacklogProbe = { false },
+            scheduleRecovery = false
+        )
+        val provider = Phase2DummyEvidenceProvider()
+        provider.start(EvidenceSink(enqueueDispatcher::enqueue))
+        provider.applySampling(EvidenceSamplingCoordinator.decision(EvidenceSamplingClass.EVENT_SENSOR, BrickEvidenceState.MOVING))
+        assertTrue(provider.emitOnce("persist-before-network"))
+        assertEquals(1, journal.stats().pendingCount)
+        provider.stop()
+
+        // Simulate process death/restart by closing the DB helper and creating a fresh dispatcher.
+        journal.close()
+        journal = EvidenceJournal(context, cipher)
+        assertEquals(1, journal.stats().pendingCount)
+
+        var transportCalls = 0
+        val transport = EvidenceTransport { _, deviceId, batch ->
+            transportCalls += 1
+            assertEquals("phase2-test-device", deviceId)
+            val decoded = EvidenceProtocol.decodeBatch(batch.bytes)
+            assertEquals(batch.batchId, decoded.batchId)
+            assertEquals(1, decoded.records.size)
+            assertEquals("persist-before-network", decoded.records.single().observation.payload.toString(Charsets.UTF_8))
+            decoded.records.map { EvidenceAck(it.epoch, it.sequence, it.observation.recordId) }
+        }
+        val drainDispatcher = EvidenceDispatcher(
+            context = context,
+            journal = journal,
+            transport = transport,
+            coreBacklogProbe = { false },
+            scheduleRecovery = false
+        )
+        assertEquals(1, drainDispatcher.drainIfSafe(maxBatches = 1))
+        assertEquals(1, transportCalls)
+        assertEquals(0, journal.stats().pendingCount)
+        journal.close()
+
+        // Reopening after ACK must not resurrect a delivered record.
+        journal = EvidenceJournal(context, cipher)
+        assertTrue(journal.nextPending().isEmpty())
+        journal.close()
+    }
+
+    fun testEvidenceNeverDrainsWhileCoreBacklogIsPresent() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        assertTrue(
+            prefs.edit()
+                .putInt("epoch", 18)
+                .putString("deviceId", "phase2-test-device")
+                .putString("apiBase", "https://brick.invalid")
+                .commit()
+        )
+        val journal = EvidenceJournal(context, TestCipher())
+        assertTrue(journal.append(record(21).copy(epoch = 18)))
+        var transportCalls = 0
+        val dispatcher = EvidenceDispatcher(
+            context = context,
+            journal = journal,
+            transport = EvidenceTransport { _, _, _ -> transportCalls += 1; emptyList() },
+            coreBacklogProbe = { true },
+            scheduleRecovery = false
+        )
+        assertEquals(0, dispatcher.drainIfSafe())
+        assertEquals(0, transportCalls)
+        assertEquals(1, journal.stats().pendingCount)
         journal.close()
     }
 
