@@ -1,6 +1,7 @@
 package com.brick.safety.network
 
 import com.brick.safety.crypto.DeviceKeys
+import com.brick.safety.location.GeoMath
 import com.brick.safety.location.LocalRouteSegment
 import com.brick.safety.location.RouteSegmentSource
 import org.json.JSONObject
@@ -21,7 +22,9 @@ object RouteGraphApi {
 
     private const val MAX_RESPONSE_BYTES = 128 * 1024
     private const val MAX_SEGMENTS = 256
+    private const val ROUTE_LOCALITY_TOLERANCE_M = 35.0
     private const val MOVING_MODE_MASK = (1 shl 2) or (1 shl 3) or (1 shl 4) or (1 shl 5)
+    private val SAFE_ROUTE_ID = Regex("[A-Za-z0-9._:/-]{3,120}")
 
     fun fetch(baseUrl: String, deviceId: String, lat: Double, lon: Double): Result {
         require(validDeviceId(deviceId)) { "Invalid Brick device identity" }
@@ -65,10 +68,12 @@ object RouteGraphApi {
         for (i in 0 until array.length()) {
             val item = array.getJSONObject(i)
             val id = item.getString("id")
-            if (id.length !in 3..120) continue
+            if (!SAFE_ROUTE_ID.matches(id)) continue
             val aLat = item.getDouble("aLat"); val aLon = item.getDouble("aLon")
             val bLat = item.getDouble("bLat"); val bLon = item.getDouble("bLon")
             if (!validCoordinate(aLat, aLon) || !validCoordinate(bLat, bLon)) continue
+            val nearest = GeoMath.nearestOnSegment(centerLat, centerLon, aLat, aLon, bLat, bLon)
+            if (!nearest.distanceM.isFinite() || nearest.distanceM > radiusM + ROUTE_LOCALITY_TOLERANCE_M) continue
             val rawMask = item.getInt("allowedModeMask")
             if (rawMask <= 0 || rawMask and MOVING_MODE_MASK == 0 || rawMask and MOVING_MODE_MASK.inv() != 0) continue
             segments += LocalRouteSegment(
