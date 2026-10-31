@@ -2,6 +2,28 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — Persist complete current Brick state into project memory
+
+### User request
+
+Remember everything needed in project memory so future Brick work can continue without rediscovery or repeating context.
+
+### Changes completed
+
+- Expanded `PROJECT_MEMORY.md` with a standing **resume from project memory** rule.
+- Recorded both active and archive repository roles.
+- Recorded that `Brickfamilyplanning-archive` currently contains all 19 historical branch names plus `ARCHIVE_MANIFEST.md`, but the branch refs are placeholders and do not yet contain original branch contents.
+- Recorded the exact migration blocker: private Git objects cannot be reused across repos; export workflow run `41201328643` failed twice before runner assignment with zero executed steps and produced no artifact.
+- Recorded the temporary export workflow path `.github/workflows/archive-historical-branches.yml` and the temporary `main` head `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`.
+- Recorded the exact ordered resume procedure: obtain real snapshots/checksums, persist them to archive, verify against manifest, only then delete source refs, verify only three canonical branches remain, and remove the temporary export workflow.
+- Recorded proven APK/build hashes, release truth, production blockers and the archived PR #5 state.
+
+### Result
+
+Future Brick work should begin by reading `PROJECT_MEMORY.md` and `PROGRESS.md`. The archive cleanup should resume from the existing workflow/manifest state instead of rediscovering branches or assuming migration/deletion already happened.
+
+---
+
 ## 2026-10-31 — Move historical branches to Brickfamilyplanning-archive
 
 ### User request
