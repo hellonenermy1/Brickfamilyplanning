@@ -119,7 +119,7 @@ jobs:
       - name: Compile app and Phase 2 instrumentation tests
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
 
-      - name: Verify evidence code did not replace the live V2 protocol
+      - name: Verify evidence code did not replace Brick Core or weaken priority
         shell: bash
         run: |
           set -euo pipefail
@@ -129,8 +129,17 @@ jobs:
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
-          grep -F 'EvidenceDispatcher(applicationContext).use' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
-          grep -F 'dispatcher.drainIfSafe(maxBatches = 2)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'scheduleEvidenceSoon(appContext, 5)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'NetworkType.CONNECTED' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'dispatcher.drainIfSafe(maxBatches = 8)' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'scheduleEvidenceFollowUp' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'ServiceControl.ensureTracking(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'RecoveryScheduler.scheduleEvidenceSoon(applicationContext, 1)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'Phase2PairingGuardInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'Phase2SequenceAllocatorInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2SequenceAllocatorInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Android evidence journal / protocol instrumentation
