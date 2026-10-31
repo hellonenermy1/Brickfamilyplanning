@@ -3,6 +3,7 @@ import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./acce
 import { getRetention, history, listGeofences, listTrips } from "./phase4";
 import { listHealthIncidents, reliability } from "./phase5-ops";
 import { batteryDrainTrend } from "./battery-health";
+import { snapshotD1ToR2 } from "./backup-v6";
 import { recordAudit } from "./phase5c";
 export { BrickDevice };
 
@@ -147,6 +148,7 @@ export default {
     if (base.queue) return base.queue(batch, env, ctx);
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    if (base.scheduled) return base.scheduled(controller, env, ctx);
+    if (base.scheduled) await base.scheduled(controller, env, ctx);
+    if (controller.cron === "17 3 * * *") ctx.waitUntil(snapshotD1ToR2(env));
   }
 } satisfies ExportedHandler<Env>;
