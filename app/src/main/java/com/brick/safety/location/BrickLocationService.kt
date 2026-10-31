@@ -42,6 +42,7 @@ class BrickLocationService : Service() {
         private const val LOCATION_STALE_MS = 45_000L
         private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
+        private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
         private const val LOCATION_V2_BYTES = 90
         private const val LOCATION_BATCH_SIZE = 50
     }
@@ -187,11 +188,16 @@ class BrickLocationService : Service() {
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
             val now = SystemClock.elapsedRealtime()
+            val activity = activityEngine.snapshot()
             val threshold = if (isSosActive()) 2_000L else max(8_000L, trackingIntervalMs * 2 + 2_000L)
             if (lastLocationElapsed == 0L || now - lastLocationElapsed < threshold) return@scheduleWithFixedDelay
-            val minFallbackGap = if (isSosActive()) 1_000L else 5_000L
+            val minFallbackGap = when {
+                isSosActive() -> 1_000L
+                activity.mode == ActivityMode.STATIONARY -> max(60_000L, trackingIntervalMs)
+                else -> 5_000L
+            }
             if (now - lastFallbackElapsed < minFallbackGap) return@scheduleWithFixedDelay
-            val sample = positionEngine.fallback(activityEngine.snapshot()) ?: return@scheduleWithFixedDelay
+            val sample = positionEngine.fallback(activity) ?: return@scheduleWithFixedDelay
             lastFallbackElapsed = now
             recordSample(sample)
         }, 2, 1, TimeUnit.SECONDS)
@@ -369,12 +375,16 @@ class BrickLocationService : Service() {
 
     private fun desiredIntervalMs(): Long {
         if (isSosActive()) return 1_000L
-        return when (activityEngine.snapshot().mode) {
+        val activity = activityEngine.snapshot()
+        return when (activity.mode) {
             ActivityMode.VEHICLE -> 3_000L
             ActivityMode.RUNNING -> 3_000L
             ActivityMode.BICYCLE -> 4_000L
             ActivityMode.WALKING -> 5_000L
-            ActivityMode.STATIONARY -> 60_000L
+            ActivityMode.STATIONARY -> {
+                val now = SystemClock.elapsedRealtime()
+                if (activity.modeSinceElapsedMs > 0L && activity.modeSinceElapsedMs <= now && now - activity.modeSinceElapsedMs >= DEEP_STATIONARY_AFTER_MS) 120_000L else 60_000L
+            }
             ActivityMode.UNKNOWN -> 8_000L
         }
     }
