@@ -6,12 +6,41 @@ Last updated: 2026-10-31
 
 1. **Reliability over feature count.** Brick should behave like an appliance: configure once, then ordinary network loss, process death, server restart, temporary GPS degradation and similar recoverable failures should recover automatically.
 2. **Measured beats guessed.** Never invent exact location, confidence, deployment state, delivery state, APK signature state or test results.
-3. **Durable before fast.** Safety/location evidence must be persisted locally before transmission and retained until exact server acknowledgement.
+3. **Durable before fast.** Safety/location/evidence that requires durable delivery must be persisted locally before transmission and retained until exact server acknowledgement.
 4. **No fake release claims.** A candidate remains unqualified until the required live cloud, browser and physical-device evidence exists.
 5. **No unnecessary redesign.** Preserve proven architecture and prior decisions unless a concrete defect or requirement justifies a change.
 6. **Automatic project logging.** Every Brick request from Jayvian must be logged in `PROGRESS.md` as part of the work, without waiting for Jayvian to ask. Material permanent decisions must also update this file.
 7. **Separate evidence from assumption.** Progress entries must say what was actually changed/tested and what remains unverified.
 8. **Resume from project memory.** When Jayvian asks to continue Brick work, read this file and `PROGRESS.md` first and continue from the recorded state instead of rediscovering or resetting prior work.
+9. **New V1 contract is `Yes.docx`.** The expanded `Yes.docx` project file version 1 is the current Brick V1 requirements contract. It includes the original reliability/safety/history architecture plus 23A–23O Evidence Engine/Atlas/Witness/particle/Shizuku additions. Do not fall back to the older pre-expansion plan unless the user explicitly changes the contract.
+10. **Nine-phase program is fixed.** Use `V1_PHASES.md`; do not silently create a tenth implementation phase. New discoveries belong in the appropriate existing phase unless the V1 contract is deliberately revised.
+11. **Requirement-led implementation.** Use `V1_REQUIREMENTS.md` and `PHASE1_SOURCE_COVERAGE.md` before marking any feature complete. A requirement is not done just because code exists.
+12. **Architecture invariants are frozen.** `V1_ARCHITECTURE_FREEZE.md` is the cross-phase design boundary. If implementation evidence shows an invariant must change, record the evidence and explicit contract decision before changing architecture.
+
+## New Brick V1 nine-phase program
+
+Phase 1 is accepted as a documentation/contract phase. The program is:
+
+1. Contract, Baseline & Architecture Freeze — **ACCEPTED 2026-10-31**
+2. Evidence Platform, Protocol & Durable Data Foundation
+3. Motion Intelligence, Learned Odometry & Particle Positioning
+4. Environmental Fingerprint Atlas & Signal Trust Engine
+5. Unified Fusion, Learned Places, Routes, Witness Mesh & Ground Network
+6. Device Owner, Parent Location Control & Optional Shizuku Enhancement
+7. Cloud Intelligence, History, Parent Dashboard & Child UX Integration
+8. Reliability, Security, Privacy & Operational Hardening
+9. Real OPPO Qualification, Production Release & Acceptance
+
+Phase 1 artifacts:
+
+- `PHASE1_BASELINE.md`
+- `V1_ARCHITECTURE_FREEZE.md`
+- `V1_PHASES.md`
+- `V1_REQUIREMENTS.md`
+- `PHASE1_SOURCE_COVERAGE.md`
+- `PHASE1_REPORT.md`
+
+Important Phase 1 truth: the current Phase 6 candidate is a strong foundation but is **not** the completed new V1 contract. Major Evidence Engine/Atlas/particle/Witness/Ground/Shizuku functionality remains for Phases 2–6, and production acceptance remains Phase 9.
 
 ## Canonical GitHub layout
 
@@ -20,6 +49,10 @@ Active repository: `hellonenermy1/Brickfamilyplanning`
 - `main` — canonical Cloudflare deployment branch. It contains the Phase 6 Worker/backend, setup scripts, schemas, private-map web assets and the manual GitHub Actions dispatchers.
 - `apk-download` — Android-only source branch. The default-branch APK workflow checks out this branch and produces downloadable APK artifacts.
 - `audit-progress` — documentation-only audit/progress/project-memory branch. No runtime source should be developed here.
+
+Temporary Phase 1 documentation branch:
+
+- `v1-p1-contract` — created from `audit-progress` to stage Phase 1 contract artifacts. It should be integrated into `audit-progress` and removed when branch-ref deletion is available. Do not treat it as a new canonical runtime branch.
 
 Archive repository: `hellonenermy1/Brickfamilyplanning-archive`
 
@@ -73,16 +106,21 @@ When Jayvian says to continue/archive/delete old branches, do this in order:
 4. Copy/persist the exact branch snapshots or equivalent exact branch content into `Brickfamilyplanning-archive`.
 5. Verify each historical branch/snapshot against its manifest branch name and original head provenance before deleting anything.
 6. Only after verification, delete the 19 source `phase*` refs from `Brickfamilyplanning`.
-7. Verify the active repo contains only `main`, `apk-download`, and `audit-progress`.
+7. Verify the active repo contains only `main`, `apk-download`, and `audit-progress` (plus no temporary V1 implementation/documentation branches).
 8. Remove the temporary archive-export workflow from `main` if no longer needed.
 9. Update `PROGRESS.md`, this file, and the archive manifest with final evidence. Never claim completion before these checks pass.
 
-## Current canonical heads / identities
+## Current canonical heads / identities at Phase 1 start
 
 - `main` clean-layout head before temporary archive workflow: `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad`
-- `main` current temporary archival-workflow head: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
-- `apk-download`: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
-- `audit-progress`: documentation-only; its head advances whenever project memory/progress is logged.
+- `main` current temporary archival-workflow head observed at Phase 1 start: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
+- `apk-download` observed at Phase 1 start: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
+- `audit-progress` pre-Phase-1 head: `da2d56f6d46eeb293d5ef5010304730dd45378d1`
+
+Runtime trees observed at Phase 1 start:
+
+- `main`: `33cdcddcfab9cd3e0325b2cd9312511b65c5b7f3`
+- `apk-download`: `034d0cdfe494f3f74ddfa5d44e1d1e974fd92f42`
 
 ## Current release truth
 
@@ -94,15 +132,22 @@ When Jayvian says to continue/archive/delete old branches, do this in order:
 - Fully validated source commit for that tree: `176d94f604eb562a59260ef380ee680a564acfcc`
 - Later hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the exact same tree as the fully validated commit before repository separation.
 - PR #5 was closed and retitled as archived/superseded by the canonical branch split; do not merge it.
+- Phase 1 does not change release identity or qualification state.
 
 ## Current architecture decisions
 
-- Android Fused Location Provider remains the primary position source; Brick adds validity, plausibility and confidence logic rather than replacing Android fusion.
+- Android Fused Location Provider remains the primary position source; Brick adds validity, plausibility and confidence/fusion logic rather than replacing Android fusion.
+- New degraded-position sources produce evidence/constraints and feed one central hypothesis engine; no weak provider independently creates precise truth.
 - Transport mode is honest (`Vehicle`, not fake car/bus/train classification).
-- Location states distinguish precise/assisted/anchored/estimated/coarse/last-known/unknown.
+- Location states remain precise/assisted/anchored/estimated/coarse/last-known/unknown.
+- Raw observations, original realtime estimates and future refined/backward-smoothed estimates must remain distinct.
+- Evidence independence groups prevent correlated clues from being double-counted.
+- Environmental Atlas learns only from trusted labelled position periods and must automatically decay/relearn changed signals.
+- Witness/Ground Network uses rotating privacy-preserving identifiers; RSSI is never exact ranging; no public crowdsourced tracking network in V1.
 - SOS has highest transmission/retry priority and persists until handled/cancelled according to the implemented contract.
 - Child UI stays intentionally minimal: safety state, `I’M SAFE`, `SOS`, and actionable repair guidance only.
-- Device Owner is the preferred managed mode for preventing accidental disabling of safety-critical controls where Android/ColorOS supports it.
+- Device Owner remains the primary managed mode; parent Location control will be desired-vs-actual and phone-confirmed in Phase 6.
+- Shizuku is optional enhancement only; Brick Core must never depend on it and no generic remote shell endpoint is allowed.
 - Cloud backend uses Cloudflare Worker + Durable Object + D1 + R2 + Queues/DLQ + Cloudflare Access.
 - Parent map is same-origin/private MapLibre + PMTiles; no live third-party child-location lookup fallback.
 - Device identity uses Android Keystore-backed asymmetric signing; no hard-coded API secret in the APK.
@@ -110,11 +155,13 @@ When Jayvian says to continue/archive/delete old branches, do this in order:
 
 ## Production prerequisites still open
 
+- Complete Phases 2–8 of the new V1 contract before final production qualification.
 - Configure stable Android signing and produce a stable-signed release APK.
-- Run the canonical `main` Cloudflare deployment workflow and retain its Phase 6 deployment-verification evidence.
-- Perform authenticated parent-browser smoke testing against the live Phase 6 deployment.
+- Run the canonical Cloudflare deployment workflow for the final matching V1 commit and retain deployment-verification evidence.
+- Perform authenticated parent-browser smoke testing against the exact final deployment.
 - Complete real OPPO/ColorOS qualification including Device Owner provisioning, pairing, screen-off/background operation, reboot/swipe-away recovery, network outage/backlog drain, SOS retry/persistence, revoke, private map, battery and endurance.
-- Production Cloudflare should use a plan that can sustain Brick’s durable Queue/history traffic; do not weaken sampling/history merely to fit an inadequate quota.
+- Qualify new Atlas/particle/Witness/Ground/Shizuku features using the acceptance matrix in `V1_REQUIREMENTS.md`.
+- Production Cloudflare should use a plan that can sustain Brick’s durable Queue/history/evidence traffic; do not weaken required reliability merely to fit an inadequate quota.
 
 ## Proven APK/build evidence retained from Phase 6 audit
 
@@ -136,5 +183,7 @@ Each Brick task should add a `PROGRESS.md` entry containing:
 - exact result,
 - blockers/risks,
 - next action if any.
+
+For each implementation phase, also record requirement IDs affected and the highest evidence state reached (`IMPLEMENTED`, `CI_VERIFIED`, `INTEGRATION_VERIFIED`, `DEVICE_VERIFIED`, `ACCEPTED` or `VERIFIED_UNSUPPORTED`).
 
 If a task changes a permanent rule, architecture decision, canonical branch, release truth, archive state or production prerequisite, update this file in the same task.
