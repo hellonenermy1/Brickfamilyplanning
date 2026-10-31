@@ -19,6 +19,7 @@ object ManagedPolicy {
      * Returns true only when Brick is Device Owner; individual failures remain observable through
      * the actual permission/location health evidence rather than being mistaken for success.
      */
+    @Suppress("DEPRECATION")
     fun apply(context: Context): Boolean {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
         if (!runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)) return false
@@ -42,6 +43,18 @@ object ManagedPolicy {
                     DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
                 )
             }
+        }
+
+        // Brick signs replay-protected health/safety requests and timestamps location history. A
+        // manually wrong wall clock can therefore make otherwise valid signed traffic look stale or
+        // future-dated to the server. Device Owner mode can remove that avoidable failure mode by
+        // requiring network-provided time. Each operation stays isolated so an OEM policy failure
+        // cannot prevent the foreground tracker itself from running.
+        if (Build.VERSION.SDK_INT >= 30) {
+            runCatching { dpm.setAutoTimeEnabled(admin, true) }
+            runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }
+        } else {
+            runCatching { dpm.setAutoTimeRequired(admin, true) }
         }
 
         if (Build.VERSION.SDK_INT >= 30) {
