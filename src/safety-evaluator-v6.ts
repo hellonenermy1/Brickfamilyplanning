@@ -43,13 +43,13 @@ async function deterministicId(key: string) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   return "srv_" + Array.from(digest.slice(0, 16), b => b.toString(16).padStart(2, "0")).join("");
 }
-async function eventRecord(env: SafetyEvalEnv, deviceId: string, kind: string, lat: number | null, lon: number | null, accuracyM: number | null, detail: Record<string, unknown>, dedupeKey: string): Promise<EventRecord> {
-  const now = Date.now(), id = await deterministicId(dedupeKey);
+async function eventRecord(env: SafetyEvalEnv, deviceId: string, kind: string, lat: number | null, lon: number | null, accuracyM: number | null, detail: Record<string, unknown>, dedupeKey: string, deviceCreatedAt: number): Promise<EventRecord> {
+  const serverCreatedAt = Date.now(), id = await deterministicId(dedupeKey);
   return {
-    event: { id, kind, deviceCreatedAt: now, serverCreatedAt: now, latitude: lat, longitude: lon, accuracyM, detail },
+    event: { id, kind, deviceCreatedAt, serverCreatedAt, latitude: lat, longitude: lon, accuracyM, detail },
     statement: env.DB.prepare(
-      "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?4,?5,?6,?7,?8)"
-    ).bind(id, deviceId, kind, now, lat, lon, accuracyM, JSON.stringify(detail))
+      "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)"
+    ).bind(id, deviceId, kind, deviceCreatedAt, serverCreatedAt, lat, lon, accuracyM, JSON.stringify(detail))
   };
 }
 
@@ -59,21 +59,22 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
   const accuracyM = packet.uncertaintyCm / 100;
   if (!Number.isFinite(accuracyM) || accuracyM > 250) return generated;
 
-  const [fences, trip] = await Promise.all([
+  const [fences, tripRow] = await Promise.all([
     env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE device_id=?1 AND enabled=1")
       .bind(deviceId).all<Geofence>(),
     env.DB.prepare(
       "SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at,stationary_since,last_stop_alert_at,last_eval_epoch,last_eval_sequence,last_distance_to_destination_m,last_location_at FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1"
     ).bind(deviceId).first<Trip>()
   ]);
-  if (!fences.results.length && !trip) return generated;
+  if (!fences.results.length && !tripRow) return generated;
 
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
-  if (!(await stub.claimSafetyEvaluation(packet.epoch, packet.sequence))) return generated;
+  if (!(await stub.canEvaluateSafety(packet.epoch, packet.sequence))) return generated;
 
   const lat = packet.trustedLatE7 / 1e7;
   const lon = packet.trustedLonE7 / 1e7;
   const now = Date.now();
+  const deviceCreatedAt = Number.isSafeInteger(packet.wallTimeMs) && packet.wallTimeMs > 0 ? packet.wallTimeMs : now;
 
   for (const g of fences.results) {
     const d = distanceM(lat, lon, g.latitude, g.longitude);
@@ -110,7 +111,8 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
       const record = await eventRecord(
         env, deviceId, desired === "inside" ? "geofence_enter" : "geofence_exit", lat, lon, accuracyM,
         { geofenceId: g.id, name: g.name, distanceM: Math.round(d) },
-        `${deviceId}|gf|${g.id}|${packet.epoch}|${packet.sequence}|${desired}`
+        `${deviceId}|gf|${g.id}|${packet.epoch}|${packet.sequence}|${desired}`,
+        deviceCreatedAt
       );
       await env.DB.batch([
         env.DB.prepare("UPDATE geofence_state SET stable_state=?1,candidate_state=NULL,candidate_since=NULL,candidate_count=0,last_distance_m=?2,updated_at=?3,last_epoch=?4,last_sequence=?5 WHERE geofence_id=?6")
@@ -125,7 +127,12 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
     }
   }
 
-  if (!trip) return generated;
+  let trip = tripRow;
+  if (trip && orderAtLeast(trip.last_eval_epoch, trip.last_eval_sequence, packet.epoch, packet.sequence)) trip = null;
+  if (!trip) {
+    await stub.commitSafetyEvaluation(packet.epoch, packet.sequence);
+    return generated;
+  }
 
   let dist: number | null = null;
   let arrivalSince = trip.arrival_candidate_since;
@@ -148,7 +155,8 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
         events.push(await eventRecord(
           env, deviceId, "trip_ended", lat, lon, accuracyM,
           { tripId: trip.id, reason: "arrived", destination: trip.destination_name, distanceM: Math.round(dist) },
-          `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|arrived`
+          `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|arrived`,
+          deviceCreatedAt
         ));
       }
     } else {
@@ -166,7 +174,8 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
         events.push(await eventRecord(
           env, deviceId, "trip_alert", lat, lon, accuracyM,
           { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name, stoppedMinutes: Math.floor((now - stationarySince) / 60_000), distanceToDestinationM: dist === null ? null : Math.round(dist) },
-          `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`
+          `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`,
+          deviceCreatedAt
         ));
       }
     } else stationarySince = null;
@@ -176,7 +185,8 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
       events.push(await eventRecord(
         env, deviceId, "trip_alert", lat, lon, accuracyM,
         { tripId: trip.id, reason: "overdue", destination: trip.destination_name, distanceToDestinationM: dist === null ? null : Math.round(dist) },
-        `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|overdue`
+        `${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|overdue`,
+        deviceCreatedAt
       ));
     }
   }
@@ -195,5 +205,6 @@ export async function evaluateSafetyV6(env: SafetyEvalEnv, deviceId: string, pac
     generated.push(...events.map(x => x.event));
   }
 
+  await stub.commitSafetyEvaluation(packet.epoch, packet.sequence);
   return generated;
 }
