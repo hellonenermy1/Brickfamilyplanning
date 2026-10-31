@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE2_SHA: 82ac7f6b0279ac6a3740bc788515bd65af0478f4
+  ANDROID_PHASE2_SHA: c077a4a5bc7805dda81a55db52c33f73f0050626
 
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
@@ -55,10 +55,6 @@ jobs:
           grep -F 'witness_authorizations' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
-
-          # Phase 2 concurrency/replay/privacy/body-bound invariants. These complement the executable
-          # harnesses below and deliberately fail if a later refactor removes the hard D1 claims,
-          # content-addressed storage, bounded stream reader, canonical IDs or split rate buckets.
           grep -F '"INSERT INTO evidence_batches(' src/evidence-ingest.ts >/dev/null
           ! grep -F 'INSERT OR IGNORE INTO evidence_batches' src/evidence-ingest.ts >/dev/null
           grep -F '"INSERT INTO evidence_records(' src/evidence-ingest.ts >/dev/null
@@ -69,6 +65,7 @@ jobs:
           grep -F 'raced: true' src/evidence-ingest.ts >/dev/null
           grep -F 'readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)' src/evidence-route.ts >/dev/null
           ! grep -F 'await req.arrayBuffer()' src/evidence-route.ts >/dev/null
+          grep -F 'error instanceof EvidenceConflict' src/evidence-route.ts >/dev/null
           grep -F 'evidence-attempt:' src/evidence-route.ts >/dev/null
           grep -F 'evidence-device:${deviceId}' src/evidence-route.ts >/dev/null
           grep -F 'DEVICE_ID_RE' src/evidence-route.ts >/dev/null
@@ -76,6 +73,7 @@ jobs:
           grep -F 'p1363ToDer' scripts/test-phase2-evidence-route.mjs >/dev/null
           grep -F 'signLikeAndroid' scripts/test-phase2-evidence-route.mjs >/dev/null
           grep -F 'Buffer.alloc(65_537' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'response.status, 409' scripts/test-phase2-evidence-route.mjs >/dev/null
           grep -F 'identical requests racing' scripts/test-phase2-evidence.mjs >/dev/null
           grep -F 'mixed-race' scripts/test-phase2-evidence.mjs >/dev/null
 
@@ -174,13 +172,19 @@ jobs:
           grep -F 'EvidenceApi.normalizeBase(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'fun normalizeBase(baseUrl: String)' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
           grep -F 'MAX_RESPONSE_BYTES = 65_536' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'class EvidenceUploadConflict' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
           grep -F 'journal.appendNew(deviceId, epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'journal.ensureDeviceOwner(deviceId)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'quarantineConflictBatch' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'fun quarantineConflictBatch' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'EvidenceDrainStop.JOURNAL_FAILURE' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'DATABASE_VERSION = 3' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'CREATE TABLE evidence_owner' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'fun ensureDeviceOwner(deviceId: String)' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'evidenceIdentityQuarantinedRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'evidenceUploadFailureStreak' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
@@ -197,12 +201,14 @@ jobs:
           grep -F 'testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
           grep -F 'testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'testCorruptApiOriginCannotCreateUnsendableEvidenceBacklog' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testServerConflictIsolatesOnlyConflictingRecordAndDoesNotBlockLaterEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
+          grep -F 'CORE_BACKLOG_DELAY_SECONDS = 60L' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'testCoreBacklogDeferralDoesNotAggressivelyPoll' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
           grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'NetworkType.CONNECTED' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'dispatcher.drainDetailed(maxBatches = 8)' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
-          grep -F 'evidenceUploadFailureStreak' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'MAX_FAILURE_DELAY_SECONDS = 15 * 60L' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'scheduleEvidenceFollowUp' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'ServiceControl.ensureTracking(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null

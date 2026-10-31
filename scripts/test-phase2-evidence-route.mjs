@@ -156,6 +156,20 @@ response = await route.handleEvidenceRequest(requestFor(replay.bytes, replaySign
 assert.equal(response.status, 200); const replayBody = await response.json(); assert.equal(replayBody.duplicateRecords, true);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1); assert.equal(history.putCalls, 1);
 
+// A signed request that reuses a durable record identity with changed content is a permanent evidence
+// identity conflict: the route must return 409 (the Android conflict-isolation contract), not 503,
+// and it must not create another record/batch/raw object.
+const changedItems = items.map((item, index) => index === 0 ? { ...item, payload: Buffer.from('changed-durable-content') } : item);
+const conflictBatch = encodeBatch(changedItems), conflictSignature = await signLikeAndroid(keys.privateKey, conflictBatch.bytes);
+rate.reset();
+response = await route.handleEvidenceRequest(requestFor(conflictBatch.bytes, conflictSignature), env, DEVICE_ID);
+assert.equal(response.status, 409);
+assert.match((await response.json()).error, /collision|conflict|different/i);
+assert.deepEqual(rate.calls, [`evidence-attempt:${CLIENT_IP}`, `evidence-device:${DEVICE_ID}`]);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1);
+assert.equal(history.putCalls, 1);
+
 // Requester limiting happens before device lookup/crypto. Device limiting happens only after proof.
 rate.reset(); rate.blocked.add(`evidence-attempt:${CLIENT_IP}`);
 response = await route.handleEvidenceRequest(requestFor(batch.bytes, signature), env, DEVICE_ID);
@@ -178,4 +192,4 @@ response = await route.handleEvidenceRequest(requestFor(malformed, await signLik
 assert.equal(response.status, 400);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE epoch=22').get().n, 0);
 
-console.log('Brick V1 Phase 2 signed evidence HTTP route integration tests OK (Android DER ECDSA + bounded stream path)');
+console.log('Brick V1 Phase 2 signed evidence HTTP route integration tests OK (Android DER ECDSA + bounded stream + 409 conflict contract)');
