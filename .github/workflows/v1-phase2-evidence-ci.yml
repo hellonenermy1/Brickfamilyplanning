@@ -161,6 +161,10 @@ jobs:
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'scheduleEvidenceSoon(appContext, 5)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'ORDER BY epoch,seq,id' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          ! grep -F 'hasQuarantinedEvidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'testPendingRowsAreReadInWireOrderAfterRecoveryInsert' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
+          grep -F 'testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
           grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
