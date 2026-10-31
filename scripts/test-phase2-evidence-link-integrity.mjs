@@ -89,6 +89,10 @@ const records = [1, 2].map(sequence => ({
 const batch = encodeBatch(records);
 
 const db = new DatabaseSync(':memory:');
+// Cloudflare D1 enforces foreign keys. Keep this harness aligned with the production constraint
+// instead of relying on Node SQLite's connection default.
+db.exec('PRAGMA foreign_keys=ON');
+assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
 db.exec(fs.readFileSync('schema/001_init.sql', 'utf8'));
 db.exec(fs.readFileSync('schema/008_v1_phase2_evidence.sql', 'utf8'));
 db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?,?,?,?)')
@@ -100,9 +104,29 @@ assert.equal(result.duplicateBatch, false);
 assert.equal(result.acked.length, 2);
 assert.equal(env.HISTORY.putCalls, 1);
 
-// Corrupt only the duplicated link identity. The authoritative evidence record remains intact.
+// The schema itself must reject a link whose duplicated epoch/sequence does not match the exact
+// authoritative evidence-record identity.
+assert.throws(
+  () => db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
+    .run(7, 'device-link-test', batch.batchId, records[0].recordId),
+  /FOREIGN KEY constraint failed/i
+);
+assert.equal(
+  db.prepare('SELECT epoch FROM evidence_batch_records WHERE device_id=? AND batch_id=? AND record_id=?')
+    .get('device-link-test', batch.batchId, records[0].recordId).epoch,
+  8
+);
+
+// Defense in depth: simulate legacy/pre-existing corruption by bypassing FK enforcement only for
+// the deliberate mutation. Re-enable enforcement before Brick reads the state. The application
+// must still fail closed before another R2 write rather than trusting duplicated link columns.
+db.exec('PRAGMA foreign_keys=OFF');
+assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 0);
 db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
   .run(7, 'device-link-test', batch.batchId, records[0].recordId);
+db.exec('PRAGMA foreign_keys=ON');
+assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 1, 'deliberate corruption should be visible to FK check');
 
 await assert.rejects(
   ingest.persistEvidenceBatch(env, 'device-link-test', ab(batch.bytes)),
@@ -112,12 +136,14 @@ assert.equal(env.HISTORY.putCalls, 1, 'corrupt durable link retry must fail befo
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=?').get('device-link-test').n, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=?').get('device-link-test').n, 1);
 
-// Repair the link and prove the original exact retry becomes a normal duplicate ACK again.
+// Repair the legacy corruption and prove both SQLite integrity and Brick's exact duplicate ACK path
+// return to normal without rewriting raw storage.
 db.prepare('UPDATE evidence_batch_records SET epoch=? WHERE device_id=? AND batch_id=? AND record_id=?')
   .run(8, 'device-link-test', batch.batchId, records[0].recordId);
+assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
 result = await ingest.persistEvidenceBatch(env, 'device-link-test', ab(batch.bytes));
 assert.equal(result.duplicateBatch, true);
 assert.equal(result.acked.length, 2);
 assert.equal(env.HISTORY.putCalls, 1);
 
-console.log('Brick V1 Phase 2 evidence batch-link integrity corruption test OK');
+console.log('Brick V1 Phase 2 evidence batch-link schema + readback integrity test OK');
