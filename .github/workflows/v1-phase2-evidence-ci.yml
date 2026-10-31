@@ -3,13 +3,22 @@ name: Brick V1 Phase 2 — Evidence Foundation CI
 on:
   push:
     branches: [v1-p2-evidence-cloud]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'schema/**'
+      - 'scripts/**'
+      - 'wrangler.template.jsonc'
+      - 'package.json'
+      - '.github/workflows/v1-phase2-evidence-ci.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: brick-v1-phase2-evidence
+  group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
