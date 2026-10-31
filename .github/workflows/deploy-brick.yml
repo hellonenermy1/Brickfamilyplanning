@@ -37,7 +37,7 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Preflight credentials
+      - name: Preflight credentials and selected source
         shell: bash
         run: |
           set -euo pipefail
@@ -49,6 +49,12 @@ jobs:
             echo 'Missing workflow input: cloudflare_account_id' >&2
             exit 1
           fi
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$checked_out" != "$GITHUB_SHA" ]; then
+            echo "Checked-out SHA $checked_out does not match workflow SHA $GITHUB_SHA" >&2
+            exit 1
+          fi
+          echo "Deploy candidate source SHA: $checked_out"
           echo 'Cloudflare scoped token and Account ID are present (secret values not printed).'
 
       - name: Install locked dependencies
@@ -69,6 +75,7 @@ jobs:
           grep -F '/r2/buckets' scripts/setup.mjs >/dev/null
           grep -F '/queues' scripts/setup.mjs >/dev/null
           grep -F 'verifyAccessRequest' src/access-auth.ts >/dev/null
+          grep -F 'readBoundedBody(req, MAX_BLE_ANCHOR_BODY_BYTES)' src/ble-anchors.ts >/dev/null
           if grep -E 'D1MapBucket|withD1ObjectStores|D1QueueProducer|BRICK_PARENT_PASSWORD' src/worker-v5b.ts wrangler.template.jsonc scripts/setup.mjs; then
             echo 'Temporary cardless Phase 5 compatibility/auth path leaked into the Phase 6 deployment.' >&2
             exit 1
@@ -80,6 +87,7 @@ jobs:
           set -euo pipefail
           node --check scripts/setup.mjs
           node --check scripts/install-private-map.mjs
+          node --check scripts/verify-cloudflare-deployment.mjs
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           npm run build:parent-assets
@@ -88,6 +96,9 @@ jobs:
 
           npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
           node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
+
+          npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-json-security.mjs
+          node scripts/test-public-pairing-limits.mjs /tmp/brick-device-json-security.mjs
 
           npx esbuild src/phase5c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5c.mjs
           node scripts/test-phase5c.mjs file:///tmp/brick-phase5c.mjs
@@ -102,10 +113,12 @@ jobs:
           # In particular, never deploy a build that can ACK and discard a failed DLQ history item.
           npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
           npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
+          npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-v6.mjs
           npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
           npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-store.mjs
           npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-v6.mjs
           node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
+          node scripts/test-backup-restore.mjs /tmp/brick-backup-restore-v6.mjs
           node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
           node scripts/test-route-history.mjs /tmp/brick-history-store.mjs
           node scripts/test-dlq-recovery.mjs /tmp/brick-queue-v6.mjs
@@ -117,6 +130,22 @@ jobs:
         if: ${{ inputs.install_map }}
         run: npm run map:install
 
+      - name: Strict final deploy tagged with exact Git SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-git-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.jsonc --tag "$tag" --message "Brick Phase 6 source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.jsonc > worker-deployments.json
+          test -s worker-deployments.json
+          grep -F "$GITHUB_SHA" worker-deployments.json >/dev/null
+          echo "Verified active deployment evidence contains source SHA $GITHUB_SHA"
+
+      - name: Verify deployed Cloudflare resources and public attack surface
+        env:
+          BRICK_REQUIRE_PRIVATE_MAP: ${{ inputs.install_map }}
+        run: node scripts/verify-cloudflare-deployment.mjs
+
       - name: Show deployment result
         if: always()
         shell: bash
@@ -126,8 +155,9 @@ jobs:
           const fs = require('fs');
           const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
           console.log('Brick Phase 6 deployment state');
-          console.log('Release state:       ' + s.releaseState);
-          console.log('Parent dashboard:    https://' + s.workerHost + '/parent');
+          console.log('Source Git SHA:       ' + (s.sourceGitSha || 'NOT VERIFIED'));
+          console.log('Release state:        ' + s.releaseState);
+          console.log('Parent dashboard:     https://' + s.workerHost + '/parent');
           console.log('Child API base:       https://' + s.workerHost);
           console.log('Main D1:              ' + s.resources.D1_NAME);
           console.log('History R2:           ' + s.resources.HISTORY_BUCKET);
@@ -136,6 +166,7 @@ jobs:
           console.log('Dead Letter Queue:    ' + s.resources.DLQ);
           console.log('Access destination:   ' + s.access.destination);
           console.log('Private map installed:' + Boolean(s.privateMap?.installed));
+          console.log('Deployment verified:  ' + Boolean(s.deploymentVerification?.ok));
           console.log('Current app release:  ' + s.currentRelease);
           NODE
           else
@@ -146,6 +177,10 @@ jobs:
         if: ${{ always() && hashFiles('setup-state.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: brick-phase6-deployment-state
-          path: setup-state.json
-          retention-days: 14
+          name: brick-phase6-deployment-evidence-${{ github.sha }}
+          path: |
+            setup-state.json
+            deployment-verification.json
+            worker-deployments.json
+          if-no-files-found: warn
+          retention-days: 30
