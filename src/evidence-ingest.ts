@@ -97,8 +97,12 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
 
   const now = Date.now();
   const statements: D1PreparedStatement[] = [
+    // This is intentionally a hard INSERT, not INSERT OR IGNORE. D1 batch() is transactional:
+    // a concurrent request that claims the same (device,batchId) first makes this statement fail,
+    // rolling back every later record/link/state write in this transaction. That prevents a losing
+    // conflicting request from contaminating the accepted batch before the post-write verification.
     env.DB.prepare(
-      "INSERT OR IGNORE INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?1,?2,1,?3,?4,?5,?6,?7)"
+      "INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?1,?2,1,?3,?4,?5,?6,?7)"
     ).bind(deviceId, batch.batchId, batch.records.length, buffer.byteLength, batchSha, r2Key, now)
   ];
 
