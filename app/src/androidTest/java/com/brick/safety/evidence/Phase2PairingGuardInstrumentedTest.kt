@@ -106,6 +106,31 @@ class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
         assertInvalidDeviceIdRejected("12345678-1234-5678-9abc-def012345678")
     }
 
+    private fun assertInvalidApiBaseRejected(value: String) {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        assertTrue(
+            prefs.edit()
+                .clear()
+                .putString("deviceId", TEST_DEVICE_ID)
+                .putString("apiBase", value)
+                .commit()
+        )
+        val journal = EvidenceJournal(context, TestCipher)
+        val dispatcher = dispatcher(journal, failIfTransportRuns = true)
+        assertFalse(dispatcher.enqueue(observation()))
+        assertEquals(0, dispatcher.stats().pendingCount)
+        assertEquals(EvidenceDrainStop.IDENTITY_UNAVAILABLE, dispatcher.drainDetailed().stop)
+        dispatcher.close()
+    }
+
+    fun testCorruptApiOriginCannotCreateUnsendableEvidenceBacklog() {
+        assertInvalidApiBaseRejected("http://brick.invalid")
+        assertInvalidApiBaseRejected("https://user@brick.invalid")
+        assertInvalidApiBaseRejected("https://brick.invalid/path")
+        assertInvalidApiBaseRejected("https://brick.invalid/?q=1")
+        assertInvalidApiBaseRejected("not-a-url")
+    }
+
     fun testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload() {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         assertTrue(

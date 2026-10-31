@@ -46,13 +46,18 @@ class EvidenceDispatcher(
         return value.takeIf { parsed.toString() == value && parsed.version() == 4 && parsed.variant() == 2 }
     }
 
+    private fun pairedApiBase(): String? {
+        val value = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() } ?: return null
+        return runCatching { EvidenceApi.normalizeBase(value) }.getOrNull()
+    }
+
     @Synchronized
     fun enqueue(observation: EvidenceObservation): Boolean {
-        // Refuse to persist new family-location evidence when pairing is incomplete or the stored
-        // identity has been corrupted/tampered. This also guarantees the later HTTP path segment
-        // matches the server's canonical Brick device-ID contract.
+        // Refuse to persist new family-location evidence when pairing is incomplete or stored
+        // identity/origin state is corrupt. Otherwise Brick could create an unsendable durable
+        // evidence backlog even though the transport would later reject the same API origin.
         val deviceId = pairedDeviceId() ?: return false
-        if (prefs.getString("apiBase", null).isNullOrBlank()) return false
+        if (pairedApiBase() == null) return false
 
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
         val record = journal.appendNew(deviceId, epoch, observation) ?: return false
@@ -89,8 +94,7 @@ class EvidenceDispatcher(
      */
     fun drainDetailed(maxBatches: Int = 2): EvidenceDrainResult {
         val deviceId = pairedDeviceId() ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
-        val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() }
-            ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
+        val baseUrl = pairedApiBase() ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
 
         // Bind the encrypted journal to the same paired child identity used by this upload. If the
         // pairing changed, old unsent evidence is preserved as quarantine history rather than being
