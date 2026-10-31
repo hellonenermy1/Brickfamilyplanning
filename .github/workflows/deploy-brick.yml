@@ -1,4 +1,4 @@
-name: Deploy Brick Phase 5C
+name: Deploy Brick Phase 6 Candidate
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: brick-phase5c-production
+  group: brick-phase6-production
   cancel-in-progress: false
 
 jobs:
@@ -26,16 +26,16 @@ jobs:
     timeout-minutes: 120
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      BRICK_PARENT_PASSWORD: ${{ secrets.BRICK_PARENT_PASSWORD }}
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
     steps:
-      - name: Checkout selected branch
+      - name: Checkout selected Phase 6 ref
         uses: actions/checkout@v5
 
       - name: Set up Node.js 24
         uses: actions/setup-node@v5
         with:
           node-version: '24'
+          cache: npm
 
       - name: Preflight credentials
         shell: bash
@@ -45,35 +45,49 @@ jobs:
             echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2
             exit 1
           fi
-          if [ -z "${BRICK_PARENT_PASSWORD:-}" ]; then
-            echo 'Missing GitHub Actions secret: BRICK_PARENT_PASSWORD' >&2
-            exit 1
-          fi
-          if [ "${#BRICK_PARENT_PASSWORD}" -lt 16 ]; then
-            echo 'BRICK_PARENT_PASSWORD must be at least 16 characters.' >&2
-            exit 1
-          fi
           if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
             echo 'Missing workflow input: cloudflare_account_id' >&2
             exit 1
           fi
-          echo 'Cloudflare token, parent password, and Account ID are present (secret values not printed).'
+          echo 'Cloudflare scoped token and Account ID are present (secret values not printed).'
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate deployment source
+      - name: Enforce exact Phase 6 architecture before deployment
         shell: bash
         run: |
           set -euo pipefail
+          grep -F '"r2_buckets"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "HISTORY"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "MAPS"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "EVENTS"' wrangler.template.jsonc >/dev/null
+          grep -F '"dead_letter_queue": "brick-family-v1-dlq"' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__"' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_AUD": "__CF_ACCESS_AUD__"' wrangler.template.jsonc >/dev/null
+          grep -F '/access/apps' scripts/setup.mjs >/dev/null
+          grep -F '/r2/buckets' scripts/setup.mjs >/dev/null
+          grep -F '/queues' scripts/setup.mjs >/dev/null
+          grep -F 'verifyAccessRequest' src/access-auth.ts >/dev/null
+          if grep -E 'D1MapBucket|withD1ObjectStores|D1QueueProducer|BRICK_PARENT_PASSWORD' src/worker-v5b.ts wrangler.template.jsonc scripts/setup.mjs; then
+            echo 'Temporary cardless Phase 5 compatibility/auth path leaked into the Phase 6 deployment.' >&2
+            exit 1
+          fi
+
+      - name: Run release-candidate validation gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/setup.mjs
+          node --check scripts/install-private-map.mjs
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           npm run build:parent-assets
           node scripts/audit-privacy.mjs
           node scripts/check-parent-module.mjs
 
-          npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
-          node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
+          npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
+          node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
 
           npx esbuild src/phase5c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5c.mjs
           node scripts/test-phase5c.mjs file:///tmp/brick-phase5c.mjs
@@ -84,19 +98,7 @@ jobs:
           npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
 
-          npx esbuild src/d1-r2-compat.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-d1-compat.mjs
-          node scripts/test-d1-budget.mjs file:///tmp/brick-d1-compat.mjs
-
-          if grep -F '/access/' scripts/setup.mjs; then
-            echo 'Cloudflare Access dependency found in no-card setup.' >&2
-            exit 1
-          fi
-          if grep -E 'R2_BUCKET|r2_buckets|queues|dead_letter|brick-family-v1-history' wrangler.template.jsonc scripts/setup.mjs; then
-            echo 'Billing-gated R2/Queue dependency found in no-card deployment.' >&2
-            exit 1
-          fi
-
-      - name: Provision and deploy Brick
+      - name: Provision and deploy Phase 6 cloud candidate
         run: npm run setup
 
       - name: Install private Singapore map
@@ -111,21 +113,27 @@ jobs:
             node - <<'NODE'
           const fs = require('fs');
           const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
-          console.log('Brick deployment state');
-          console.log('Parent dashboard: https://' + s.workerHost + '/parent');
-          console.log('Child API base:    https://' + s.workerHost);
-          console.log('Main D1:           ' + s.resources.D1_NAME);
-          console.log('Private map D1:    ' + s.resources.MAP_D1_NAME);
-          console.log('Parent auth:       Brick secure session (no Zero Trust required)');
+          console.log('Brick Phase 6 deployment state');
+          console.log('Release state:       ' + s.releaseState);
+          console.log('Parent dashboard:    https://' + s.workerHost + '/parent');
+          console.log('Child API base:       https://' + s.workerHost);
+          console.log('Main D1:              ' + s.resources.D1_NAME);
+          console.log('History R2:           ' + s.resources.HISTORY_BUCKET);
+          console.log('Private map R2:       ' + s.resources.MAPS_BUCKET);
+          console.log('Event Queue:          ' + s.resources.EVENT_QUEUE);
+          console.log('Dead Letter Queue:    ' + s.resources.DLQ);
+          console.log('Access destination:   ' + s.access.destination);
+          console.log('Private map installed:' + Boolean(s.privateMap?.installed));
+          console.log('Current app release:  ' + s.currentRelease);
           NODE
           else
             echo 'setup-state.json was not created; inspect the failed step above.'
           fi
 
-      - name: Upload non-secret deployment state
+      - name: Upload non-secret deployment evidence
         if: ${{ always() && hashFiles('setup-state.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: brick-phase5c-deployment-state
+          name: brick-phase6-deployment-state
           path: setup-state.json
-          retention-days: 7
+          retention-days: 14
