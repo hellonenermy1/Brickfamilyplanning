@@ -2,7 +2,7 @@ name: Build Brick Child Phase 6
 
 on:
   push:
-    branches: [phase6-child-final-audit, phase6-integration, phase6-final]
+    branches: [phase6-child-final-audit, phase6-final-hardening, phase6-integration, phase6-final]
   pull_request:
     branches: [phase6-integration]
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
         with:
@@ -78,6 +78,8 @@ jobs:
           fi
           grep -F 'runCatching { dpm.setLocationEnabled(admin, true) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'runCatching { dpm.setAutoTimeEnabled(admin, true) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'Manifest.permission.BLUETOOTH_SCAN' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'android.permission.BLUETOOTH_SCAN' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'android:name=".BrickApplication"' app/src/main/AndroidManifest.xml >/dev/null
@@ -88,9 +90,6 @@ jobs:
           grep -F 'android:id="@+id/fixButton"' app/src/main/res/layout/activity_main.xml >/dev/null
           grep -F 'ACTIVITY_STALE_MS = 2 * 60_000L' app/src/main/java/com/brick/safety/activity/ActivityEngine.kt >/dev/null
           grep -F 'GNSS_STALE_MS = 30_000L' app/src/main/java/com/brick/safety/location/GnssQualityMonitor.kt >/dev/null
-
-      - name: Compile, lint, and build debug APK
-        run: gradle --no-daemon :app:assembleDebug :app:lintDebug --stacktrace
 
       - name: Prepare optional stable release signing
         id: signing
@@ -113,14 +112,20 @@ jobs:
             echo "BRICK_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo 'Stable release signing secrets are not all configured; debug APK will still be built and audited.'
+            echo 'Stable release signing secrets are not all configured; the release variant will still be built unsigned and audited.'
           fi
 
-      - name: Build stable-signed release APK
-        if: steps.signing.outputs.available == 'true'
-        run: gradle --no-daemon :app:assembleRelease :app:lintRelease --stacktrace
+      - name: Compile, lint, and build debug + release variants
+        run: gradle --no-daemon :app:assembleDebug :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
 
-      - name: Verify APK signatures and record provenance
+      - name: Record release dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p phase6-apk-evidence
+          gradle --no-daemon :app:dependencies --configuration releaseRuntimeClasspath > phase6-apk-evidence/release-runtime-dependencies.txt
+
+      - name: Verify APK contents, signatures, and provenance
         shell: bash
         env:
           RELEASE_AVAILABLE: ${{ steps.signing.outputs.available }}
@@ -128,10 +133,22 @@ jobs:
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
           apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          apkanalyzer_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort | tail -n1)"
           test -x "$apksigner_bin"
+          test -x "$apkanalyzer_bin"
           mkdir -p phase6-apk-evidence
+
           debug_apk='app/build/outputs/apk/debug/app-debug.apk'
+          release_apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -f "$debug_apk"
+          test -n "$release_apk"
+          test -f "$release_apk"
+
           "$apksigner_bin" verify --verbose --print-certs "$debug_apk" > phase6-apk-evidence/debug-signing.txt
+          "$apkanalyzer_bin" apk summary "$debug_apk" > phase6-apk-evidence/debug-summary.txt
+          "$apkanalyzer_bin" manifest permissions "$debug_apk" > phase6-apk-evidence/debug-permissions.txt
+          "$apkanalyzer_bin" manifest print "$debug_apk" > phase6-apk-evidence/debug-manifest.xml
+
           {
             echo "source_git_sha=$source_sha"
             echo "github_event_sha=$GITHUB_SHA"
@@ -140,18 +157,28 @@ jobs:
             echo "build_type=debug"
             sha256sum "$debug_apk"
           } > phase6-apk-evidence/debug-provenance.txt
+
+          "$apkanalyzer_bin" apk summary "$release_apk" > phase6-apk-evidence/release-summary.txt
+          "$apkanalyzer_bin" manifest permissions "$release_apk" > phase6-apk-evidence/release-permissions.txt
+          "$apkanalyzer_bin" manifest print "$release_apk" > phase6-apk-evidence/release-manifest.xml
+          {
+            echo "source_git_sha=$source_sha"
+            echo "github_event_sha=$GITHUB_SHA"
+            echo "version_name=0.6.0-phase6-rc"
+            echo "version_code=6"
+            echo "build_type=release"
+            echo "stable_signing_available=$RELEASE_AVAILABLE"
+            sha256sum "$release_apk"
+          } > phase6-apk-evidence/release-provenance.txt
+
           if [[ "$RELEASE_AVAILABLE" == 'true' ]]; then
-            release_apk='app/build/outputs/apk/release/app-release.apk'
-            test -f "$release_apk"
             "$apksigner_bin" verify --verbose --print-certs "$release_apk" > phase6-apk-evidence/release-signing.txt
-            {
-              echo "source_git_sha=$source_sha"
-              echo "github_event_sha=$GITHUB_SHA"
-              echo "version_name=0.6.0-phase6-rc"
-              echo "version_code=6"
-              echo "build_type=release"
-              sha256sum "$release_apk"
-            } > phase6-apk-evidence/release-provenance.txt
+          else
+            echo 'UNSIGNED RELEASE CANDIDATE — stable production signing secrets were not configured.' > phase6-apk-evidence/release-signing.txt
+            if "$apksigner_bin" verify "$release_apk" >/dev/null 2>&1; then
+              echo 'Release unexpectedly verifies as signed while stable signing was unavailable.' >&2
+              exit 1
+            fi
           fi
 
       - name: Upload Phase 6 debug APK
@@ -162,16 +189,24 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Upload Phase 6 release-candidate APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: brick-child-phase6-release-candidate-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload stable-signed Phase 6 release APK
         if: steps.signing.outputs.available == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: brick-child-phase6-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload APK provenance and signing evidence
+      - name: Upload APK provenance and inspection evidence
         uses: actions/upload-artifact@v7
         with:
           name: brick-child-phase6-apk-evidence
