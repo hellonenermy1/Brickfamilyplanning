@@ -1,3 +1,4 @@
+import { readBoundedBody } from "./bounded-body";
 import { verifyDeviceSignature } from "./crypto";
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -54,8 +55,9 @@ export async function ingestCrashReport(req: Request, env: Phase5CEnv, deviceId:
   if (!device) return json({ error: "device unauthorized" }, 401);
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return json({ error: "missing or invalid signature" }, 401);
-  const body = await req.arrayBuffer();
-  if (!body.byteLength || body.byteLength > 4096) return json({ error: "invalid payload size" }, 400);
+  const bounded = await readBoundedBody(req, 4096);
+  if (!bounded.ok || !bounded.body.byteLength) return json({ error: "invalid payload size" }, 400);
+  const body = bounded.body;
   if (!(await verifyDeviceSignature(device.public_key_spki_b64, body, signature))) return json({ error: "bad signature" }, 401);
 
   let decoded: unknown;
