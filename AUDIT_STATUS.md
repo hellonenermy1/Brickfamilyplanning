@@ -10,7 +10,7 @@ Brick remains a **release candidate**, not production-qualified.
 - Version code: `6`
 - Package: `com.brick.safety`
 - Qualification: `candidate-not-real-device-qualified`
-- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED + HARDENED / CORE CLOUD+PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
+- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + REAL SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
 
 No Phase 2 source has been promoted to canonical `main` or `apk-download`.
 
@@ -44,9 +44,7 @@ Git tree:
 
 `b5f4ea6e97e9e2afef7a01c8386829f316b4af2e`
 
-The later pre-cleanup hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree.
-
-All eight normal Phase 6 CI workflows previously passed on that retained baseline. That proves the old candidate foundation, not the new V1 Phase 2 additions.
+The later pre-cleanup hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree. All eight normal Phase 6 CI workflows previously passed on that retained baseline. That proves the old candidate foundation, not the new Phase 2 additions.
 
 ## Repository organization
 
@@ -61,12 +59,12 @@ Phase 2 staging:
 - `v1-p2-evidence-cloud` — PR #6, draft/unmerged
 - `v1-p2-evidence-android` — PR #7, draft/unmerged
 
-Snapshot recorded by the current Phase 2 report:
+Current audit snapshot:
 
-- Android: `a795a91b10398a00ac64014cbd8d71b8caaaa627`
-- Cloud: `08d00d77d4b731d5e3d8029fa1ee7cd5c0dfb36f`
+- Android: `389bc8744341aebcc42f74f79403fd2b3d5d5873`
+- Cloud: `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
 
-These branches may move while Phase 2 defects are repaired. Acceptance is tied to executed verification of the final paired heads, not merely these SHA strings.
+These refs may advance while Phase 2 is repaired. Acceptance is tied to executed verification of the final paired heads, not to a stale SHA snapshot.
 
 ## Phase 1 — ACCEPTED
 
@@ -78,76 +76,78 @@ Implemented staging source includes:
 
 - canonical evidence/provider/family/capability/health/quality model;
 - mandatory independence groups;
-- adaptive bounded sampling coordinator;
+- adaptive bounded sampling;
 - separate encrypted Android evidence journal;
-- DB-owned transactional evidence sequence allocator;
-- OEM-compatible journal sequence-update SQL;
-- no evidence persistence before pairing;
-- exact ACK semantics;
+- DB-owned transactional evidence sequence allocation;
+- exact local ACK semantics and corruption quarantine;
+- canonical paired v4 device-ID boundary on Android and Cloud evidence path;
 - safety/live-location/crash priority over evidence;
-- dedicated network-constrained evidence backlog worker;
-- non-postponing initial work plus bounded successor work for large backlog catch-up;
-- separate bounded binary Evidence Batch v1;
-- canonical UUID and wire-safe integer rules;
-- shared Android/TypeScript golden vector;
-- signed evidence endpoint and safe path parsing;
-- D1/R2 idempotent persistence + collision detection;
+- dedicated network-constrained evidence worker using non-postponing initial work and bounded follow-up work;
+- separate bounded binary BREV v1 protocol;
+- canonical UUID / wire-safe integer rules and shared Android/TypeScript golden vector;
+- actual signed evidence route isolated in `src/evidence-route.ts` and delegated from worker-v7;
+- requester-attempt and authenticated-device rate-limit buckets separated so unsigned traffic cannot consume the child's device bucket;
+- content-addressed raw R2 objects using hashed device identity plus exact batch hash;
+- hard transactional D1 batch-ID claim to prevent concurrent batch-ID contamination;
+- record-level replay dedupe so already-durable records under a fresh transport batch UUID ACK without new durable storage;
+- exact batch/record collision detection;
 - provider-health ordering by epoch/sequence rather than wall clock;
-- hashed device identity in raw R2 paths/metadata;
-- schema foundations for evidence and later-phase metadata without claiming later algorithms;
-- setup ordering that applies schema/retention before worker-v7 activation;
+- evidence and later-phase schema foundations without claiming later algorithms;
+- schema/retention-before-worker-v7 setup ordering;
 - Android instrumentation source for restart/ACK/priority/sequence/pairing behavior;
-- Cloud protocol/idempotency integration tests;
-- CI static gates updated to the current dedicated-worker architecture.
+- Cloud protocol/persistence and signed HTTP route integration test source;
+- CI static gates that lock the current concurrency/replay/identity/rate-limit invariants.
 
 ### Executed local evidence
 
-Cloud core protocol/ingest logic passed a local TypeScript + in-memory SQLite/R2-style harness covering:
+Current Cloud protocol/persistence behavior passed a local TypeScript + SQLite/R2-style harness covering:
 
-- fixed golden vector;
-- strict decode;
-- persistence + exact ACK;
-- duplicate/retry idempotency;
-- collision rejection;
+- fixed golden vector and strict decode;
+- first durable persistence + exact ACK;
+- exact batch retry without raw rewrite;
+- same-record/new-batch replay without storage growth;
+- record/batch collision rejection;
 - provider-health ordering despite wall-clock regression;
-- hashed R2 device metadata;
-- Android epoch-bound rejection.
+- hashed/content-addressed raw R2 metadata/key;
+- Android epoch-bound rejection;
+- simulated concurrent competing batch-ID claim with full losing-transaction rollback.
 
 Observed:
 
-- `LOCAL CLOUD PHASE2 HARNESS PASS`
-- `LATEST CLOUD EPOCH BOUND PASS`
+`LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
 
-The latest Android pure Kotlin `EvidenceModel` + `EvidenceProtocol` were also compiled locally and passed:
+The actual signed route logic also passed a local P-256 Web Crypto integration harness covering:
 
-- identical golden bytes;
-- payload decode;
-- unsafe sequence rejection;
-- non-canonical UUID rejection.
+- canonical-v4 route parsing;
+- missing/bad signature rejection;
+- requester-only rate consumption for unauthenticated requests;
+- authenticated device bucket only after signature proof;
+- durable persistence before exact ACK;
+- exact/rebuilt-batch replay behavior;
+- rate-limit failure ordering;
+- revoked-device rejection;
+- signed malformed-protocol rejection.
 
 Observed:
 
-`LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+`LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
-These are real local checks, but not full Android app/Cloudflare-platform verification.
+The current Android pure Kotlin evidence model/protocol also matched the shared golden bytes and safe-integer/canonical-UUID rules locally. This is not a full Android app/framework pass.
 
 ### Hosted CI blocker
 
-GitHub Actions still fails before useful runner execution.
+Latest checked hosted run:
 
-Latest checked run:
+- run `41211811795`
+- Cloud head `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
 
-`41210379525`
+Observed:
 
-Initial attempt and an explicit failed-job rerun both produced:
-
-- Android compile/lint/dependency-lock job: failure with zero steps;
-- Cloud protocol/persistence/regression job: failure with zero steps;
+- Android compile/lint/dependency-lock: failure with `runner_id: 0`, `steps: []`;
+- Cloud protocol/persistence/regression: failure with `runner_id: 0`, `steps: []`;
 - Android instrumentation: skipped.
 
-`fetch_workflow_job_steps` on the rerun Cloud job returned an empty step list. Therefore no source test actually ran.
-
-This is **not a source pass and not evidence of source failure**. It does not satisfy `CI_VERIFIED`.
+No runner executed source steps. This is **not a source pass and not evidence of source failure**. It does not satisfy `CI_VERIFIED`.
 
 ### Merge / acceptance rule
 
@@ -155,28 +155,29 @@ PR #6 and PR #7 remain draft/unmerged deliberately.
 
 Phase 2 is accepted only after actual execution proves:
 
-1. Cloud typecheck/protocol/idempotency/retained regression gates pass;
-2. Android dependency lock, compile and lint pass;
+1. Cloud typecheck, protocol/persistence harness, signed-route harness and retained Phase 6 regressions pass;
+2. Android dependency lock, full compile and lint pass;
 3. Android emulator instrumentation passes;
 4. dummy evidence persists across restart, transmits, receives exact ACK and is removed without starving safety/live-location work;
-5. canonical post-merge checks pass.
+5. canonical post-merge checks pass;
+6. live Cloudflare deployment verifies the evidence route/schema/retention before any live-integration claim.
 
 ## Phases 3–9
 
-All remain **NOT ACCEPTED**. Phase 3 must not be treated as accepted continuation while the Phase 2 gate is open.
+All remain **NOT ACCEPTED**. Phase 3 must not be treated as unlocked accepted work while the Phase 2 gate is open.
 
 ## Remaining production blockers
 
-1. Close Phase 2 verification and complete later V1 phases.
+1. Close Phase 2 hosted/integration verification and complete later V1 phases.
 2. Stable Android production signing.
 3. Exact final live Cloudflare deployment with retained verifier evidence.
-4. Authenticated Cloudflare Access parent-browser smoke test.
+4. Authenticated parent-browser smoke test.
 5. Physical Reno10/Reno14 ColorOS qualification.
 6. Full endurance/failure suite including 72h and 7-day untouched tests.
 7. Later Atlas/Witness/Ground/Shizuku/Location-control capability tests.
 8. Zero-manual-intervention proof after recoverable failures.
 9. Measured battery/storage/network/CPU/memory/wakeup/scan/cloud usage.
-10. Final backup **and restore** drill.
+10. Final backup and restore drill.
 
 ## Audit principle
 
