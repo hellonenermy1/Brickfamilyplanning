@@ -15,7 +15,12 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
-    private fun noteJournalHealthy(healthy: Boolean) {
+    private fun hasQuarantinedEvidence(): Boolean = runCatching {
+        readableDatabase.rawQuery("SELECT 1 FROM packets WHERE acked=2 LIMIT 1", emptyArray()).use { it.moveToFirst() }
+    }.getOrDefault(true)
+
+    private fun noteJournalHealthy(operationHealthy: Boolean) {
+        val healthy = operationHealthy && !hasQuarantinedEvidence()
         healthPrefs.edit()
             .putBoolean("journalWriteHealthy", healthy)
             .apply {
