@@ -1,10 +1,10 @@
-name: Check Brick Cloudflare Phase 5C Hardening
+name: Check Brick Cloudflare Phase 6
 
 on:
   push:
-    branches: [phase5c-hardening-audit]
+    branches: [phase6-cloud-final-audit, phase6-integration, phase6-final]
   pull_request:
-    branches: [main]
+    branches: [phase6-integration]
   workflow_dispatch:
 
 permissions:
@@ -13,36 +13,65 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
+          cache: npm
+
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Validate Codespaces configuration
-        run: |
-          node -e "JSON.parse(require('fs').readFileSync('.devcontainer/devcontainer.json','utf8')); console.log('devcontainer JSON OK')"
-          node --check scripts/codespaces-check.mjs
-      - name: Syntax-check setup, map installer, and audits
+
+      - name: Reject high-severity runtime dependency vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Syntax-check operational scripts
         run: |
           node --check scripts/setup.mjs
           node --check scripts/install-private-map.mjs
           node --check scripts/audit-privacy.mjs
           node --check scripts/test-phase5c.mjs
-      - name: Guard cardless Cloudflare configuration
+          node --check scripts/test-phase6-access.mjs
+          node --check scripts/codespaces-check.mjs
+          node -e "JSON.parse(require('fs').readFileSync('.devcontainer/devcontainer.json','utf8')); console.log('devcontainer JSON OK')"
+
+      - name: Enforce Phase 6 Cloudflare architecture
+        shell: bash
         run: |
-          if grep -F '"base_path"' wrangler.template.jsonc; then
-            echo 'Non-root assets.base_path is not allowed in the no-card deployment.' >&2
+          set -euo pipefail
+          grep -F '"r2_buckets"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "HISTORY"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "MAPS"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "EVENTS"' wrangler.template.jsonc >/dev/null
+          grep -F '"dead_letter_queue": "brick-family-v1-dlq"' wrangler.template.jsonc >/dev/null
+          grep -F '"max_concurrency": 1' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__"' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_AUD": "__CF_ACCESS_AUD__"' wrangler.template.jsonc >/dev/null
+          grep -F '/access/apps' scripts/setup.mjs >/dev/null
+          grep -F '/r2/buckets' scripts/setup.mjs >/dev/null
+          grep -F '/queues' scripts/setup.mjs >/dev/null
+          grep -F 'brick-family-v1-dlq' scripts/setup.mjs >/dev/null
+          grep -F 'verifyAccessRequest' src/access-auth.ts >/dev/null
+          grep -F 'header.alg !== "RS256"' src/access-auth.ts >/dev/null
+          grep -F 'reserveHealthReplay' src/worker-v5b.ts >/dev/null
+          grep -F 'validateSafetyReplayWindow' src/worker-v5b.ts >/dev/null
+          grep -F 'device_replay_state' schema/007_phase5c_hardening.sql >/dev/null
+          grep -F 'SEGMENT_MS = 15 * 60 * 1000' src/history-store.ts >/dev/null
+          grep -F 'segmentMinutes: "15"' src/history-store.ts >/dev/null
+          grep -F 'history/raw/' src/history-store.ts >/dev/null
+          grep -F 'history/trusted/' src/history-store.ts >/dev/null
+          grep -F "script-src 'self' 'nonce-" src/worker-v5b.ts >/dev/null
+          grep -F "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';" src/parent-v5b.ts >/dev/null
+          if grep -E 'D1MapBucket|withD1ObjectStores|MAP_DB|D1QueueProducer' src/worker-v5b.ts wrangler.template.jsonc; then
+            echo 'Temporary D1 R2/Queue compatibility layer leaked into Phase 6 production runtime.' >&2
             exit 1
           fi
-          if grep -F '/access/' scripts/setup.mjs; then
-            echo 'Cloudflare Access dependency reintroduced into cardless setup.' >&2
-            exit 1
-          fi
-          if grep -E 'R2_BUCKET|r2_buckets|queues|dead_letter|brick-family-v1-history' wrangler.template.jsonc scripts/setup.mjs; then
-            echo 'Billing-gated R2/Queue dependency reintroduced into cardless runtime.' >&2
+          if grep -F 'BRICK_PARENT_PASSWORD' src/worker-v5b.ts wrangler.template.jsonc scripts/setup.mjs; then
+            echo 'Custom password session must not replace Cloudflare Access in Phase 6.' >&2
             exit 1
           fi
           node - <<'NODE'
@@ -57,79 +86,86 @@ jobs:
           }
           console.log('Cron syntax shape OK:', crons.join(', '));
           NODE
-      - name: Type-check private map browser module
-        run: npx tsc -p tsconfig.web.json --noEmit
-      - name: Build self-hosted parent assets
-        run: npm run build:parent-assets
-      - name: Verify private map browser assets
+
+      - name: Reject browser injection primitives
+        shell: bash
         run: |
+          set -euo pipefail
+          if grep -RniE '\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(|\beval\s*\(|new[[:space:]]+Function\s*\(' src/parent-v5.ts src/parent-v5b.ts web; then
+            echo 'Unsafe browser DOM/code execution primitive found.' >&2
+            exit 1
+          fi
+
+      - name: Type-check Worker and browser modules
+        run: |
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+
+      - name: Build same-origin parent assets
+        run: npm run build:parent-assets
+
+      - name: Verify private map browser assets and endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
           test -s public/brick-map.mjs
           test -s public/maplibre-gl.css
           test -s public/maplibre-gl-worker.mjs
           grep -F '/parent/map/basemap.pmtiles' public/brick-map.mjs >/dev/null
-          grep -F '/maplibre-gl-worker.mjs?v=6.16.0' public/brick-map.mjs >/dev/null
-          if grep -F '/parent-assets/' public/brick-map.mjs; then
-            echo 'Old non-root parent-assets path found in browser bundle.' >&2
+          if grep -E 'unpkg\.com|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com|api\.mapbox\.com' public/brick-map.mjs; then
+            echo 'External live map/geocoder endpoint found in browser bundle.' >&2
             exit 1
           fi
-          if grep -E 'unpkg\.com/maplibre-gl|demotiles\.maplibre\.org|nominatim\.openstreetmap\.org|maps\.googleapis\.com|maps\.google\.com' public/brick-map.mjs; then
-            echo 'External live map endpoint found in self-hosted bundle.' >&2
-            exit 1
-          fi
+
       - name: Audit privacy and external trackers
         run: node scripts/audit-privacy.mjs
-      - name: Type-check Worker
-        run: npm run typecheck
-      - name: Validate cardless parent authentication
+
+      - name: Cryptographically test Cloudflare Access JWT validation
         run: |
-          npx esbuild src/parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-auth.mjs
-          node scripts/test-parent-auth.mjs file:///tmp/brick-parent-auth.mjs
+          npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
+          node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
+
       - name: Validate Phase 5C crash privacy contract
         run: |
           npx esbuild src/phase5c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5c.mjs
           node scripts/test-phase5c.mjs file:///tmp/brick-phase5c.mjs
-      - name: Render and parse Phase 5C parent dashboard
+
+      - name: Render and parse parent dashboard module
         run: node scripts/check-parent-module.mjs
-      - name: Validate Phase 5 health classification
+
+      - name: Validate health classification
         run: |
           npx esbuild src/phase5-ops.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-ops.mjs
           node scripts/test-phase5-ops.mjs /tmp/brick-phase5-ops.mjs
-      - name: Validate history delta and gzip codec
+
+      - name: Validate history delta/gzip codec
         run: |
           npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
-      - name: Validate main D1 schemas and BLOB append semantics
+
+      - name: Validate D1 schemas and privacy columns
         run: |
           python - <<'PY'
           import sqlite3, pathlib
           db = sqlite3.connect(':memory:')
-          for name in ['001_init.sql','002_phase2_health.sql','003_phase4_safety.sql','004_phase5_operations.sql','005_d1_blob_storage.sql','007_phase5c_hardening.sql']:
+          for name in ['001_init.sql','002_phase2_health.sql','003_phase4_safety.sql','004_phase5_operations.sql','007_phase5c_hardening.sql']:
               db.executescript(pathlib.Path('schema', name).read_text())
               print('OK', name)
-          db.execute("INSERT INTO history_hours(device_id,hour_start,raw_blob,trusted_blob,point_count,raw_expires_at,trusted_expires_at,updated_at) VALUES('d',1,?, ?,1,9,9,1)",(b'abc',b'123'))
-          db.execute("UPDATE history_hours SET raw_blob=CAST(COALESCE(raw_blob,X'') || ? AS BLOB), trusted_blob=CAST(trusted_blob || ? AS BLOB), point_count=point_count+1 WHERE device_id='d' AND hour_start=1",(b'def',b'456'))
-          row=db.execute("SELECT raw_blob,trusted_blob,point_count FROM history_hours").fetchone()
-          assert row==(b'abcdef',b'123456',2), row
-          crash_cols=[r[1] for r in db.execute('PRAGMA table_info(crash_reports)').fetchall()]
-          assert 'latitude' not in crash_cols and 'longitude' not in crash_cols and 'stack_trace' not in crash_cols
-          print('OK D1 BLOB append + privacy-safe crash schema')
+          cols=[r[1] for r in db.execute('PRAGMA table_info(crash_reports)').fetchall()]
+          assert 'latitude' not in cols and 'longitude' not in cols and 'stack_trace' not in cols
+          replay=[r[1] for r in db.execute('PRAGMA table_info(device_replay_state)').fetchall()]
+          assert replay == ['device_id','last_health_sequence','updated_at'], replay
+          print('OK privacy-safe crash schema + replay state')
           db.close()
           PY
-      - name: Validate separate map D1 schema
+
+      - name: Validate Phase 6 release truthfulness
+        shell: bash
         run: |
-          python - <<'PY'
-          import sqlite3, pathlib
-          db=sqlite3.connect(':memory:')
-          db.executescript(pathlib.Path('schema/006_d1_map_storage.sql').read_text())
-          db.execute("INSERT INTO map_chunks(chunk_index,body,byte_length,sha256_hex) VALUES(0,?,?,?)",(b'abc',3,'x'))
-          db.execute("INSERT INTO map_manifest(id,total_bytes,chunk_bytes,chunk_count,sha256_hex,metadata_json,installed_at) VALUES(1,3,32768,1,'x','{}',1)")
-          assert db.execute('SELECT total_bytes FROM map_manifest WHERE id=1').fetchone()[0]==3
-          print('OK 006_d1_map_storage.sql')
-          db.close()
-          PY
-      - name: Validate truthful map deployment state update
-        run: |
-          grep -F 'installed:true' scripts/install-private-map.mjs >/dev/null
-          grep -F 'sha256:mapHash' scripts/install-private-map.mjs >/dev/null
-          grep -F "CURRENT_APP_VERSION='0.5.1-phase5c'" scripts/setup.mjs >/dev/null
-          grep -F '"CURRENT_APP_VERSION": "0.5.1-phase5c"' wrangler.template.jsonc >/dev/null
+          set -euo pipefail
+          grep -F "const CURRENT_APP_VERSION = '0.6.0-phase6-rc'" scripts/setup.mjs >/dev/null
+          grep -F '"CURRENT_APP_VERSION": "0.6.0-phase6-rc"' wrangler.template.jsonc >/dev/null
+          grep -F "releaseState: 'candidate-not-real-device-qualified'" scripts/setup.mjs >/dev/null
+          grep -F 'Private Singapore basemap installed' scripts/install-private-map.mjs >/dev/null
+          grep -F 'Strict-Transport-Security' src/worker-v5b.ts >/dev/null
+          grep -F "script-src 'self' 'nonce-" src/worker-v5b.ts >/dev/null

@@ -24,3 +24,23 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_time
   ON audit_log(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS device_replay_state (
+  device_id TEXT PRIMARY KEY,
+  last_health_sequence INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ble_anchors (
+  geofence_id TEXT PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  beacon_uuid TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(geofence_id) REFERENCES geofences(id) ON DELETE CASCADE,
+  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ble_anchors_device_uuid
+  ON ble_anchors(device_id, beacon_uuid);
