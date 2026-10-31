@@ -68,8 +68,23 @@ function sameOriginMutation(req: Request) {
   return origin !== null && origin === new URL(req.url).origin;
 }
 
-function csrfDenied() {
-  return Response.json({ error: "same-origin request required" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+function sameOriginWebSocket(req: Request) {
+  if (req.method !== "GET") return false;
+  if (req.headers.get("Upgrade")?.toLowerCase() !== "websocket") return false;
+  const origin = req.headers.get("Origin");
+  return origin !== null && origin === new URL(req.url).origin;
+}
+
+function csrfDenied(message = "same-origin request required") {
+  return Response.json({ error: message }, { status: 403, headers: { "Cache-Control": "no-store" } });
+}
+
+async function pairingRateDenied(req: Request, env: RuntimeEnv): Promise<Response | null> {
+  // CF-Connecting-IP is supplied by Cloudflare at the edge. Rate limiting only by the attacker-
+  // controlled pairing token lets a scanner rotate random tokens and bypass the namespace limit.
+  const ip = (req.headers.get("CF-Connecting-IP") ?? "unknown").slice(0, 128);
+  const result = await env.PAIR_RATE.limit({ key: `pair-ip:${ip}` });
+  return result.success ? null : Response.json({ error: "rate limited" }, { status: 429, headers: { "Cache-Control": "no-store" } });
 }
 
 async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
@@ -142,6 +157,8 @@ export default {
     }
 
     if (req.method === "POST" && u.pathname === "/api/pair/complete") {
+      const rateDenied = await pairingRateDenied(req, env);
+      if (rateDenied) return rateDenied;
       const denied = await validatePairingPublicKey(req);
       if (denied) return denied;
     }
@@ -195,6 +212,7 @@ export default {
 
     if (u.pathname.startsWith("/parent/")) {
       const denied = await requireParent(req, env); if (denied) return denied;
+      if (u.pathname.endsWith("/ws") && !sameOriginWebSocket(req)) return csrfDenied("same-origin WebSocket upgrade required");
       if (!sameOriginMutation(req)) return csrfDenied();
       const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
       if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
