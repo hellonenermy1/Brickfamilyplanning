@@ -18,8 +18,24 @@ object BrickApi {
     private const val MAX_LOCATION_DRAIN_GROUP = 50
     private const val MAX_LOCATION_HTTP_BATCH = 20
 
+    private fun secureBase(baseUrl: String): String {
+        val value = baseUrl.trim().trimEnd('/')
+        val url = URL(value)
+        require(url.protocol.equals("https", ignoreCase = true)) { "Brick API requires HTTPS" }
+        require(url.host.isNotBlank()) { "Brick API host is required" }
+        require(url.userInfo == null) { "Brick API URL must not contain user info" }
+        require(url.query == null && url.ref == null) { "Brick API base must not contain query or fragment" }
+        require(url.path.isNullOrEmpty() || url.path == "/") { "Brick API base must not contain a path" }
+        return "https://${url.authority}"
+    }
+
+    private fun endpoint(baseUrl: String, path: String): URL {
+        require(path.startsWith('/'))
+        return URL(secureBase(baseUrl) + path)
+    }
+
     fun completePairing(baseUrl: String, token: String): PairResult {
-        val url = URL(baseUrl.trimEnd('/') + "/api/pair/complete")
+        val url = endpoint(baseUrl, "/api/pair/complete")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 10_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
@@ -28,11 +44,12 @@ object BrickApi {
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Pairing failed: $text")
         val j = JSONObject(text)
-        return PairResult(j.getString("deviceId"), j.getString("apiBase"))
+        val apiBase = secureBase(j.getString("apiBase"))
+        return PairResult(j.getString("deviceId"), apiBase)
     }
 
     fun sendLocation(baseUrl: String, deviceId: String, payload: ByteArray): Long {
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/location")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/location")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
@@ -45,7 +62,7 @@ object BrickApi {
 
     fun sendLiveLocationPreview(baseUrl: String, deviceId: String, payload: ByteArray): Boolean {
         require(payload.size == LOCATION_V2_BYTES && payload.firstOrNull()?.toInt() == 2)
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/location/live")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/location/live")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 5_000; c.readTimeout = 5_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
@@ -63,7 +80,7 @@ object BrickApi {
             .putShort(items.size.toShort())
             .apply { items.forEach { put(it.payload) } }
             .array()
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/location/batch")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/location/batch")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 15_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
@@ -102,7 +119,7 @@ object BrickApi {
 
     fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/health")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/health")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
@@ -138,7 +155,7 @@ object BrickApi {
     }
 
     fun sendSafetyPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedEventId: String): String {
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/event")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/event")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
@@ -153,7 +170,7 @@ object BrickApi {
     }
 
     fun sendCrashPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedReportId: String): String {
-        val url = URL(baseUrl.trimEnd('/') + "/api/device/$deviceId/crash")
+        val url = endpoint(baseUrl, "/api/device/$deviceId/crash")
         val c = url.openConnection() as HttpURLConnection
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
