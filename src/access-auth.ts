@@ -117,6 +117,7 @@ export async function verifyAccessRequest(req: Request, env: AccessAuthEnv, nowM
   const signature = decodeBase64Url(parts[2]);
   if (!header || !payload || !signature) return null;
   if (header.alg !== "RS256" || typeof header.kid !== "string" || header.kid.length > 256) return null;
+  if (header.typ !== undefined && header.typ !== "JWT") return null;
   if (payload.type !== "app") return null;
   if (!audienceMatches(payload.aud, expectedAud)) return null;
   if (payload.iss !== teamDomain) return null;
@@ -124,8 +125,9 @@ export async function verifyAccessRequest(req: Request, env: AccessAuthEnv, nowM
   const now = Math.floor(nowMs / 1000);
   if (!finiteInteger(payload.exp) || payload.exp <= now - CLOCK_SKEW_SECONDS) return null;
   if (!finiteInteger(payload.iat) || payload.iat > now + CLOCK_SKEW_SECONDS) return null;
+  if (payload.nbf !== undefined && !finiteInteger(payload.nbf)) return null;
   if (finiteInteger(payload.nbf) && payload.nbf > now + CLOCK_SKEW_SECONDS) return null;
-  if (payload.exp - payload.iat > 48 * 60 * 60) return null;
+  if (payload.exp <= payload.iat || payload.exp - payload.iat > 48 * 60 * 60) return null;
 
   let keys: AccessJwk[];
   try { keys = await loadKeys(teamDomain); } catch { return null; }
