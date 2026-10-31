@@ -27,11 +27,18 @@ object HealthEvidence {
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
         val lastEvidenceJournalFailure = prefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
         val bleAnchorConfigCount = prefs.getInt("bleAnchorConfigCount", 0).coerceIn(0, 8)
-        val evidenceStats = runCatching {
+        val evidenceSnapshot = runCatching {
             EvidenceJournal(context).let { journal ->
-                try { journal.stats() } finally { journal.close() }
+                try {
+                    val stats = journal.stats()
+                    stats to journal.refreshHealth()
+                } finally {
+                    journal.close()
+                }
             }
         }.getOrNull()
+        val evidenceStats = evidenceSnapshot?.first
+        val evidenceJournalHealthy = evidenceSnapshot?.second == true
 
         fun ageSince(wallMs: Long): Any = if (wallMs > 0L) (now - wallMs).coerceAtLeast(0L) else JSONObject.NULL
 
@@ -71,7 +78,7 @@ object HealthEvidence {
             .put("lastJournalWriteFailureAgeMs", ageSince(lastJournalFailure))
             .put("safetyOutboxWriteHealthy", prefs.getBoolean("safetyOutboxWriteHealthy", true))
             .put("lastSafetyOutboxWriteFailureAgeMs", ageSince(lastSafetyOutboxFailure))
-            .put("evidenceJournalHealthy", evidenceStats != null && prefs.getBoolean("evidenceJournalHealthy", true))
+            .put("evidenceJournalHealthy", evidenceJournalHealthy)
             .put("lastEvidenceJournalFailureAgeMs", ageSince(lastEvidenceJournalFailure))
             .put("evidencePendingRecords", evidenceStats?.pendingCount ?: -1)
             .put("evidenceQuarantinedRecords", evidenceStats?.quarantinedCount ?: -1)
