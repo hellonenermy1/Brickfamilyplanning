@@ -90,6 +90,7 @@ class ParticlePositionEngine(private val particleCount: Int = 96) {
         val land = landmarkSupport.associate { it.segmentId to it.strength.coerceIn(0.0, 1.0) }
         val routeWeight = mutableMapOf<String, Double>()
         var constrainedCount = 0
+        val routeConstraintsEnabled = mode != Phase3Mode.STATIONARY
 
         for ((index, particle) in particles.withIndex()) {
             val distanceNoise = deterministicNoise(index, tick * 31 + 7)
@@ -112,7 +113,7 @@ class ParticlePositionEngine(private val particleCount: Int = 96) {
             particle.headingDeg = heading
 
             val searchRadius = (20.0 + uncertaintyM * 0.38 + delta.distanceSigmaM).coerceIn(20.0, 180.0)
-            val matches = graph.nearest(particle.lat, particle.lon, mode, particle.headingDeg, searchRadius, 5)
+            val matches = if (routeConstraintsEnabled) graph.nearest(particle.lat, particle.lon, mode, particle.headingDeg, searchRadius, 5) else emptyList()
             if (matches.isNotEmpty()) {
                 val best = matches.first()
                 val scale = if (best.segment.source == RouteSegmentSource.PRIVATE_MAP) 28.0 else 22.0
@@ -134,15 +135,15 @@ class ParticlePositionEngine(private val particleCount: Int = 96) {
                     constrainedCount += 1
                 }
                 routeWeight[best.segment.id] = (routeWeight[best.segment.id] ?: 0.0) + particle.weight
-            } else if (graph.hasStrongCoverage(particle.lat, particle.lon, searchRadius * 0.8)) {
+            } else if (routeConstraintsEnabled && graph.hasStrongCoverage(particle.lat, particle.lon, searchRadius * 0.8)) {
                 particle.weight *= 0.18
             }
         }
 
         normalizeWeights()
         if (effectiveSampleSize() < particles.size * 0.45) systematicResample()
-        routeCandidates = routeWeight.entries.sortedByDescending { it.value }.take(3).map { it.key }
-        routeConstrained = constrainedCount >= max(4, particles.size / 8)
+        routeCandidates = if (routeConstraintsEnabled) routeWeight.entries.sortedByDescending { it.value }.take(3).map { it.key } else emptyList()
+        routeConstrained = routeConstraintsEnabled && constrainedCount >= max(4, particles.size / 8)
         uncertaintyM = max(
             uncertaintyM + delta.uncertaintyGrowthM.toFloat(),
             spatialRadius90().toFloat() + (delta.distanceSigmaM * 0.45).toFloat()
