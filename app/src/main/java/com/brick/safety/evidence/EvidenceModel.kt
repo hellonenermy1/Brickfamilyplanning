@@ -83,6 +83,11 @@ enum class EvidenceSamplingClass {
     EXTERNAL_OBSERVATION
 }
 
+private fun isCanonicalUuid(value: String): Boolean {
+    val parsed = runCatching { UUID.fromString(value) }.getOrNull() ?: return false
+    return parsed.toString() == value
+}
+
 data class EvidenceObservation(
     val recordId: String = UUID.randomUUID().toString(),
     val elapsedRealtimeMs: Long,
@@ -96,9 +101,9 @@ data class EvidenceObservation(
     val payload: ByteArray
 ) {
     init {
-        require(runCatching { UUID.fromString(recordId) }.isSuccess) { "recordId must be UUID" }
-        require(elapsedRealtimeMs >= 0L) { "elapsedRealtimeMs must be non-negative" }
-        require(wallTimeMs > 0L) { "wallTimeMs must be positive" }
+        require(isCanonicalUuid(recordId)) { "recordId must be canonical lowercase UUID" }
+        require(elapsedRealtimeMs in 0L..EvidenceProtocol.MAX_WIRE_INTEGER) { "elapsedRealtimeMs outside wire-safe range" }
+        require(wallTimeMs in 1L..EvidenceProtocol.MAX_WIRE_INTEGER) { "wallTimeMs outside wire-safe range" }
         require(independenceGroup.matches(Regex("[A-Za-z0-9._:-]{1,64}"))) { "invalid independenceGroup" }
         require(payload.size <= EvidenceProtocol.MAX_RECORD_PAYLOAD_BYTES) { "evidence payload too large" }
     }
@@ -111,7 +116,7 @@ data class EvidenceRecord(
 ) {
     init {
         require(epoch >= 0) { "epoch must be non-negative" }
-        require(sequence > 0L) { "sequence must be positive" }
+        require(sequence in 1L..EvidenceProtocol.MAX_WIRE_INTEGER) { "sequence outside wire-safe range" }
     }
 }
 
