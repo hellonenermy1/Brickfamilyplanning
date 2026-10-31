@@ -11,6 +11,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
+import com.brick.safety.evidence.EvidenceJournal
 import org.json.JSONObject
 
 object HealthEvidence {
@@ -24,7 +25,13 @@ object HealthEvidence {
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
+        val lastEvidenceJournalFailure = prefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
         val bleAnchorConfigCount = prefs.getInt("bleAnchorConfigCount", 0).coerceIn(0, 8)
+        val evidenceStats = runCatching {
+            EvidenceJournal(context).let { journal ->
+                try { journal.stats() } finally { journal.close() }
+            }
+        }.getOrNull()
 
         fun ageSince(wallMs: Long): Any = if (wallMs > 0L) (now - wallMs).coerceAtLeast(0L) else JSONObject.NULL
 
@@ -64,5 +71,10 @@ object HealthEvidence {
             .put("lastJournalWriteFailureAgeMs", ageSince(lastJournalFailure))
             .put("safetyOutboxWriteHealthy", prefs.getBoolean("safetyOutboxWriteHealthy", true))
             .put("lastSafetyOutboxWriteFailureAgeMs", ageSince(lastSafetyOutboxFailure))
+            .put("evidenceJournalHealthy", evidenceStats != null && prefs.getBoolean("evidenceJournalHealthy", true))
+            .put("lastEvidenceJournalFailureAgeMs", ageSince(lastEvidenceJournalFailure))
+            .put("evidencePendingRecords", evidenceStats?.pendingCount ?: -1)
+            .put("evidenceQuarantinedRecords", evidenceStats?.quarantinedCount ?: -1)
+            .put("evidenceOldestPendingAgeMs", evidenceStats?.oldestPendingMs?.let { (now - it).coerceAtLeast(0L) } ?: JSONObject.NULL)
     }
 }
