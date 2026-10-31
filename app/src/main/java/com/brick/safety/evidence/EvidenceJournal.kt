@@ -69,25 +69,36 @@ class EvidenceJournal(
         val now = System.currentTimeMillis()
         val priorFailure = healthPrefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
         val freshPriorFailure = priorFailure > 0L && (now < priorFailure || now - priorFailure < FAILURE_HOLD_MS)
-
-        // Quarantined rows are retained as diagnostic history and reported separately in Stats.
-        // They must not poison current journal health forever after Brick has successfully isolated
-        // the bad row. A real failure is held unhealthy briefly; a later successful journal probe or
-        // operation can then demonstrate automatic recovery.
         val healthy = operationHealthy && !freshPriorFailure
         healthPrefs.edit().putBoolean("evidenceJournalHealthy", healthy).apply {
             if (!operationHealthy) putLong("lastEvidenceJournalFailureWallMs", now)
         }.apply()
     }
 
+    private fun addCount(key: String, delta: Int): Long {
+        val previous = healthPrefs.getLong(key, 0L).coerceAtLeast(0L)
+        val added = delta.toLong().coerceAtLeast(0L)
+        return if (Long.MAX_VALUE - previous < added) Long.MAX_VALUE else previous + added
+    }
+
     private fun noteIdentityChange(binding: OwnerBinding) {
         if (!binding.changed) return
-        val previous = healthPrefs.getLong("evidenceIdentityQuarantinedRecordsTotal", 0L).coerceAtLeast(0L)
-        val added = binding.quarantinedPending.toLong().coerceAtLeast(0L)
-        val total = if (Long.MAX_VALUE - previous < added) Long.MAX_VALUE else previous + added
         healthPrefs.edit()
             .putLong("lastEvidenceIdentityChangeWallMs", System.currentTimeMillis())
-            .putLong("evidenceIdentityQuarantinedRecordsTotal", total)
+            .putLong(
+                "evidenceIdentityQuarantinedRecordsTotal",
+                addCount("evidenceIdentityQuarantinedRecordsTotal", binding.quarantinedPending)
+            )
+            .apply()
+    }
+
+    private fun noteServerConflict(count: Int) {
+        healthPrefs.edit()
+            .putLong("lastEvidenceServerConflictWallMs", System.currentTimeMillis())
+            .putLong(
+                "evidenceServerConflictRecordsTotal",
+                addCount("evidenceServerConflictRecordsTotal", count)
+            )
             .apply()
     }
 
@@ -110,9 +121,6 @@ class EvidenceJournal(
         }
         if (existing == deviceId) return OwnerBinding(changed = false, quarantinedPending = 0)
 
-        // Evidence collected for one paired child identity must never be uploaded under another.
-        // Preserve old pending rows locally as quarantine history, then rebind so a legitimate
-        // re-pair can collect fresh evidence without manual database cleanup.
         val quarantined = db.update(
             "evidence",
             ContentValues().apply { put("acked", 2) },
@@ -129,10 +137,6 @@ class EvidenceJournal(
         return OwnerBinding(changed = true, quarantinedPending = quarantined)
     }
 
-    /**
-     * Ensure the durable journal belongs to the currently paired Brick device. A pairing identity
-     * change quarantines any old unsent records instead of misattributing them to the new child.
-     */
     fun ensureDeviceOwner(deviceId: String): OwnerBinding? {
         if (!DEVICE_ID_RE.matches(deviceId)) return null
         val db = writableDatabase
@@ -153,11 +157,6 @@ class EvidenceJournal(
         return binding
     }
 
-    /**
-     * Re-check current journal readability without altering queued/quarantined evidence. Health
-     * collection calls this so a quiet device can recover from an expired failure latch even when no
-     * new evidence happens to be written after the hold window.
-     */
     fun refreshHealth(): Boolean {
         val readable = runCatching {
             readableDatabase.rawQuery("SELECT COUNT(*) FROM evidence", emptyArray()).use { cursor ->
@@ -181,10 +180,6 @@ class EvidenceJournal(
         noteHealthy(false)
     }
 
-    /**
-     * Atomically binds the current paired identity, allocates the next sequence and persists the
-     * encrypted record. SharedPreferences is never used as the allocator or owner authority.
-     */
     fun appendNew(deviceId: String, epoch: Int, observation: EvidenceObservation): EvidenceRecord? {
         if (!DEVICE_ID_RE.matches(deviceId)) return null
         require(epoch >= 0)
@@ -257,10 +252,6 @@ class EvidenceJournal(
             )
             check(rowId != -1L) { "duplicate evidence record" }
             check(record.sequence < EvidenceProtocol.MAX_WIRE_INTEGER) { "evidence sequence exhausted" }
-
-            // Avoid relying on SQLite's newer UPSERT grammar. Brick supports Android versions whose
-            // bundled SQLite revision can vary by OEM. INSERT OR IGNORE + conditional UPDATE gives
-            // the same monotonic allocator semantics using long-established SQLite syntax.
             db.execSQL(
                 "INSERT OR IGNORE INTO evidence_sequence(epoch,next_seq) VALUES(?,?)",
                 arrayOf(record.epoch, record.sequence + 1L)
@@ -269,7 +260,6 @@ class EvidenceJournal(
                 "UPDATE evidence_sequence SET next_seq=? WHERE epoch=? AND next_seq<?",
                 arrayOf(record.sequence + 1L, record.epoch, record.sequence + 1L)
             )
-
             db.setTransactionSuccessful()
             healthy = true
         } catch (_: Throwable) {
@@ -295,10 +285,6 @@ class EvidenceJournal(
         val safeLimit = limit.coerceIn(1, EvidenceProtocol.MAX_RECORDS_PER_BATCH)
         val out = mutableListOf<Pending>()
         readableDatabase.rawQuery(
-            // BREV requires strict epoch/sequence ordering. Normal appendNew() insertion order is
-            // already monotonic, but deterministic import/recovery append(record) may not be. Read
-            // in wire order so a valid durable queue can never become unsendable just because rows
-            // were restored out of insertion order.
             "SELECT id,record_id,epoch,seq,payload FROM evidence WHERE acked=0 ORDER BY epoch,seq,id LIMIT ?",
             arrayOf((safeLimit + 16).toString())
         ).use { c ->
@@ -364,6 +350,37 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
+        return healthy
+    }
+
+    /**
+     * Preserve a server-rejected durable identity locally without letting it block all later
+     * evidence forever. This is not deletion and not an ACK: exact pending rows move to quarantine.
+     */
+    fun quarantineConflictBatch(items: List<EvidenceAck>): Boolean {
+        if (items.isEmpty() || items.distinct().size != items.size) return false
+        val db = writableDatabase
+        var healthy = false
+        try {
+            db.beginTransaction()
+            for (item in items) {
+                val changed = db.update(
+                    "evidence",
+                    ContentValues().apply { put("acked", 2) },
+                    "record_id=? AND epoch=? AND seq=? AND acked=0",
+                    arrayOf(item.recordId, item.epoch.toString(), item.sequence.toString())
+                )
+                if (changed != 1) throw IllegalStateException("conflict quarantine did not match one pending row")
+            }
+            db.setTransactionSuccessful()
+            healthy = true
+        } catch (_: Throwable) {
+            healthy = false
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+            noteHealthy(healthy)
+        }
+        if (healthy) noteServerConflict(items.size)
         return healthy
     }
 

@@ -55,7 +55,6 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
     fun testWrongOrMissingAckNeverDeletesPendingEvidence() {
         var journal = EvidenceJournal(context, TestCipher)
         assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("ack-boundary")))
-
         var dispatcher = EvidenceDispatcher(
             context = context,
             journal = journal,
@@ -117,9 +116,43 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
         dispatcher.close()
     }
 
+    fun testServerConflictIsolatesOnlyConflictingRecordAndDoesNotBlockLaterEvidence() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val journal = EvidenceJournal(context, TestCipher)
+        assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("good-a")))
+        assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("conflict")))
+        assertNotNull(journal.appendNew(TEST_DEVICE_ID, 71, observation("good-b")))
+
+        var calls = 0
+        val dispatcher = EvidenceDispatcher(
+            context = context,
+            journal = journal,
+            transport = EvidenceTransport { _, _, batch ->
+                calls += 1
+                val records = EvidenceProtocol.decodeBatch(batch.bytes).records
+                if (records.size > 1) throw EvidenceUploadConflict("simulated batch conflict")
+                val record = records.single()
+                if (record.observation.payload.toString(Charsets.UTF_8) == "conflict") {
+                    throw EvidenceUploadConflict("simulated record conflict")
+                }
+                listOf(EvidenceAck(record.epoch, record.sequence, record.observation.recordId))
+            },
+            coreBacklogProbe = { false },
+            scheduleRecovery = false
+        )
+
+        val outcome = dispatcher.drainDetailed(maxBatches = 1)
+        assertEquals(EvidenceDrainStop.BUDGET_EXHAUSTED, outcome.stop)
+        assertEquals(2, outcome.sentRecords)
+        assertEquals(4, calls) // one failed multi-record batch + three bounded single-record probes
+        assertEquals(0, dispatcher.stats().pendingCount)
+        assertEquals(1, dispatcher.stats().quarantinedCount)
+        assertEquals(1L, prefs.getLong("evidenceServerConflictRecordsTotal", 0L))
+        assertTrue(prefs.getLong("lastEvidenceServerConflictWallMs", 0L) > 0L)
+        dispatcher.close()
+    }
+
     fun testCoreBacklogDeferralDoesNotAggressivelyPoll() {
-        // Evidence is lower priority than Core. A persistent Core backlog must not make the evidence
-        // worker wake every few seconds just to learn that it still cannot send.
         assertTrue(EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS >= 60L)
         assertTrue(EvidenceRetryPolicy.CATCH_UP_DELAY_SECONDS < EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS)
     }

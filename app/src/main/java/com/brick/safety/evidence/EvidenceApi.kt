@@ -7,6 +7,8 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
+class EvidenceUploadConflict(message: String) : Exception(message)
+
 object EvidenceApi {
     private const val MAX_RESPONSE_BYTES = 65_536
     private val DEVICE_ID_RE = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
@@ -62,6 +64,10 @@ object EvidenceApi {
             c.outputStream.use { it.write(batch.bytes) }
             val code = c.responseCode
             val text = readBoundedText(if (code in 200..299) c.inputStream else c.errorStream)
+            // The authenticated Brick server uses 409 only when durable evidence identity/content
+            // conflicts. Retrying the same front-of-queue record forever cannot resolve that state;
+            // surface it separately so the dispatcher can retain it as quarantine and continue.
+            if (code == 409) throw EvidenceUploadConflict(text.take(1_024))
             if (code !in 200..299) error("Evidence upload failed $code: $text")
 
             val response = JSONObject(text)
