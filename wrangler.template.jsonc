@@ -36,6 +36,14 @@
         "max_retries": 5,
         "dead_letter_queue": "brick-family-v1-dlq",
         "max_concurrency": 1
+      },
+      {
+        "queue": "brick-family-v1-dlq",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 100,
+        "retry_delay": 300,
+        "max_concurrency": 1
       }
     ]
   },
