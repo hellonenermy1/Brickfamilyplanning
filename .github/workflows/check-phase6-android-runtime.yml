@@ -60,3 +60,12 @@ jobs:
           grep -F 'FAILURE_HOLD_MS = 120_000L' app/src/main/java/com/brick/safety/data/SafetyOutbox.kt >/dev/null
           grep -F 'freshPriorFailure' app/src/main/java/com/brick/safety/data/SafetyOutbox.kt >/dev/null
           grep -F '.put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+      - name: Verify Device Owner protects location and replay clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          policy='app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt'
+          grep -F 'dpm.setLocationEnabled(admin, true)' "$policy" >/dev/null
+          grep -F 'UserManager.DISALLOW_CONFIG_LOCATION' "$policy" >/dev/null
+          grep -F 'dpm.setAutoTimeEnabled(admin, true)' "$policy" >/dev/null
+          grep -F 'UserManager.DISALLOW_CONFIG_DATE_TIME' "$policy" >/dev/null
