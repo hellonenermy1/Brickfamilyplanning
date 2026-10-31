@@ -106,7 +106,8 @@ class MainActivity : AppCompatActivity() {
         val token = b.pairingToken.text.toString().trim()
         if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
         b.scanPairButton.isEnabled = false
-        b.pairButton.isEnabled = false; b.status.text = "● Pairing…"
+        b.pairButton.isEnabled = false
+        b.status.text = "● Pairing…"
         io.execute {
             try {
                 val r = BrickApi.completePairing(base, token)
@@ -235,6 +236,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.BLUETOOTH_SCAN
+        }
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.POST_NOTIFICATIONS
@@ -263,10 +268,17 @@ class MainActivity : AppCompatActivity() {
     private fun backgroundGranted(): Boolean = Build.VERSION.SDK_INT < 29 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    private fun bleAnchorPermissionNeeded(): Boolean {
+        if (Build.VERSION.SDK_INT < 31) return false
+        val configured = getSharedPreferences("brick", MODE_PRIVATE).getInt("bleAnchorConfigCount", 0) > 0
+        return configured && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
+    }
+
     private fun attentionReason(): String? {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return "Location permission needs attention"
         if (!locationEnabled()) return "Location needs attention"
         if (!ManagedPolicy.isDeviceOwner(this) && !backgroundGranted()) return "Background location needs attention"
+        if (bleAnchorPermissionNeeded()) return "Nearby-device scan permission needs attention"
         return null
     }
 
@@ -277,6 +289,7 @@ class MainActivity : AppCompatActivity() {
             !ManagedPolicy.isDeviceOwner(this) && !backgroundGranted() -> startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
             )
+            bleAnchorPermissionNeeded() -> requestPermissionsAndStart()
             else -> refresh()
         }
     }
