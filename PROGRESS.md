@@ -2,6 +2,93 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — Brick V1 Phase 2 continuation: final paired durability/retry/health hardening checkpoint
+
+### User request
+
+Continue Phase 2 from the existing work without restarting.
+
+### Resume point preserved
+
+Work continued directly on:
+
+- Cloud `v1-p2-evidence-cloud` / PR #6
+- Android `v1-p2-evidence-android` / PR #7
+
+No Phase 2 source was merged into canonical `main` or `apk-download`. Phase 3 was not started as accepted work.
+
+Exact paired checkpoint reached in this continuation:
+
+- Cloud: `60697dc37cb325574e9bd22283e2b3dd1d847817`
+- Android: `4ec37a2021bcd575cfefeadd58c968675965a8e7`
+
+The Cloud Phase 2 workflow now pins that exact Android SHA and asserts it in both Android jobs, so a rerun of one Cloud commit cannot silently test a newer moving Android branch.
+
+### Android defects and reliability gaps fixed
+
+1. **Stale test identity fixed.** Existing Phase 2 instrumentation still used `phase2-test-device` after production pairing had been hardened to canonical v4/variant-2 UUIDs. Tests were corrected to the production identity contract.
+2. **Pending wire order fixed.** `EvidenceJournal.nextPending()` now orders by `(epoch,sequence,id)` so recovery/import exact-record inserts cannot create a valid durable queue that BREV rejects for out-of-order records.
+3. **Quarantine no longer permanently poisons health.** Quarantined records remain counted as diagnostic history, but current journal health can recover after the failure-hold window when a later successful journal operation proves recovery.
+4. **Quiet-device health recovery added.** `EvidenceJournal.refreshHealth()` performs a deterministic `SELECT COUNT(*) FROM evidence` read probe. `HealthEvidence.collect()` calls it, so an expired failure latch can recover even if no new evidence arrives. Quarantine history is not deleted.
+5. **Exact ACK deletion boundary strengthened.** `EvidenceDispatcher.drainDetailed()` classifies stop reasons and independently requires the transport ACK set to exactly equal the pending record identities before deletion.
+6. **Persistent evidence failure backoff added.** Healthy backlog catch-up remains fast, Core backlog remains higher priority, and repeated transport/ACK/identity failure uses a durable 30→60→120→240→480→900 second bounded backoff instead of waking every 30 seconds forever.
+7. **Instrumentation expanded.** Added/updated tests for wire ordering, quarantine recovery, quiet health recovery, missing/wrong ACK retention, transport-vs-Core stop reason and bounded retry policy.
+8. **A newly introduced instrumentation compile mistake was caught in source review and fixed.** The test incorrectly accessed `EncodedBatch.records`; it now decodes `batch.bytes` through `EvidenceProtocol.decodeBatch()` first.
+
+### Cloud request and concurrency hardening completed
+
+1. **Actual streamed body bound.** Evidence route now uses existing `readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)` and must not call `req.arrayBuffer()` on the evidence path. A no-length/chunked-style request above 65,536 bytes is rejected before signature verification, device-rate consumption or persistence.
+2. **Oversize regression source added.** Route test includes a 65,537-byte request and expects 413, requester-only rate usage and zero durable writes.
+3. **Identical concurrent uploads converge.** If another request completes the exact same batch during the transaction window, the loser reads back the durable batch and returns the exact ACK instead of surfacing a false storage outage.
+4. **Mixed exact-record races converge once.** If a different valid batch wins one or more exact record identities, the current request re-reads D1 state and retries once, reusing exact winner rows and persisting only remaining records.
+5. **Conflicts still fail closed.** Changed batch bytes or changed record identity/content remain `EvidenceConflict`; unrelated storage errors are not masked.
+6. **Race retry is bounded.** Only one reconciliation pass is allowed.
+7. **CI gates updated.** Current workflow statically locks hard batch/record identity claims, content-addressed raw storage, replay dedupe, bounded body reading, no `req.arrayBuffer()` on evidence, race convergence source and Android-DER route-test helpers.
+
+### Exact evidence level
+
+Earlier Phase 2 heads had real local protocol/Cloud persistence/signed-route execution and targeted record-race/DER-format checks. Those results remain valid evidence for what actually ran, including markers:
+
+- `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+- `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+- `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+
+The final paired heads above include additional hardening after those complete local runs. This session could not honestly re-run the complete final Cloud branch from an exact mounted checkout, and the environment has no Android SDK. Therefore the earlier local passes are **not** claimed as full verification of final Cloud `60697dc3...` / Android `4ec37a20...`.
+
+### Hosted CI blocker on exact final pair
+
+Latest checked run:
+
+- run `41215211883`
+- Cloud head `60697dc37cb325574e9bd22283e2b3dd1d847817`
+- pinned Android head `4ec37a2021bcd575cfefeadd58c968675965a8e7`
+
+Observed:
+
+- Android compile/lint/dependency-lock: failure with `runner_id: 0`, empty runner name and `steps: []`;
+- Cloud protocol/persistence/regression: failure with `runner_id: 0`, empty runner name and `steps: []`;
+- Android instrumentation: skipped.
+
+No source step executed. This remains an external runner/infrastructure blocker, not a source pass and not evidence of source failure.
+
+### Deliberate non-change
+
+The audit noticed that Android `elapsedRealtime` resets at reboot while the retained baseline does not visibly increment the shared live-tracker `epoch` in `BootReceiver`. That touches the existing live protocol and broader durability/replay architecture, not just the Phase 2 evidence foundation. It was deliberately **not** changed blindly in Phase 2; the issue is recorded in project memory for the appropriate durability/replay phase unless concrete Phase 2 evidence proves it blocks the exit gate.
+
+### Current Phase 2 result
+
+**SOURCE IMPLEMENTED + FURTHER HARDENED / PRIOR LOCAL CLOUD-PROTOCOL-ROUTE EVIDENCE RETAINED / FINAL PAIRED HEAD EXECUTION BLOCKED / NOT ACCEPTED.**
+
+PR #6 and PR #7 remain draft/unmerged deliberately.
+
+`PHASE2_REPORT.md`, `PHASE2_LOCAL_VERIFICATION.md`, `AUDIT_STATUS.md` and `PROJECT_MEMORY.md` were updated to the exact paired checkpoint and evidence level.
+
+### Next required action
+
+When GitHub actually assigns a runner, execute the exact pinned pair and require the complete Cloud integration/regression suite, Android dependency-lock/compile/lint, and Android emulator instrumentation to run and pass. Repair real failures instead of weakening gates. Only then merge the paired PRs, rerun canonical checks, verify the live Cloudflare evidence endpoint/schema/retention, and evaluate the full Phase 2 exit gate.
+
+---
+
 ## 2026-10-31 — Brick V1 Phase 2 continuation: replay, concurrency, identity and signed-route hardening
 
 ### User request
