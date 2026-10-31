@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const [protocolPath, ingestPath] = process.argv.slice(2);
 if (!protocolPath || !ingestPath) throw new Error('usage: test-phase2-evidence.mjs <protocol-module> <ingest-module>');
@@ -143,6 +143,12 @@ assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 1);
 assert.equal(env.HISTORY.putCalls, 1);
+const firstBatchSha = createHash('sha256').update(first.bytes).digest('hex');
+const firstBatchRow = db.prepare('SELECT payload_sha256,r2_key FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', first.batchId);
+assert.equal(firstBatchRow.payload_sha256, firstBatchSha);
+assert.ok(firstBatchRow.r2_key.endsWith(`/${first.batchId}-${firstBatchSha}.brev`), 'raw evidence key must include the exact batch hash');
+assert.ok(env.HISTORY.objects.has(firstBatchRow.r2_key));
+assert.equal(env.HISTORY.objects.get(firstBatchRow.r2_key).options.customMetadata.sha256, firstBatchSha);
 let providerHealth = db.prepare('SELECT capability,health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
 assert.equal(providerHealth.capability, 0);
 assert.equal(providerHealth.health, 0);
@@ -162,6 +168,8 @@ assert.equal(result.duplicateBatch, false);
 assert.equal(result.acked.length, 2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records').get().n, 2, 'record-level retry must dedupe');
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches').get().n, 2);
+const retryBatchRow = db.prepare('SELECT r2_key FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', retryNewBatch.batchId);
+assert.notEqual(retryBatchRow.r2_key, firstBatchRow.r2_key, 'different signed batch bytes must never share one raw R2 key');
 
 // A wrong device wall clock must not make old provider state look newer. Provider health ordering
 // follows the durable Brick epoch/sequence pair instead of comparing wall-time values.
