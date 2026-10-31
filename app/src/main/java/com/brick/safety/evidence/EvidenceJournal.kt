@@ -19,9 +19,10 @@ object AndroidEvidenceCipher : EvidenceCipher {
 class EvidenceJournal(
     context: Context,
     private val cipher: EvidenceCipher = AndroidEvidenceCipher
-) : SQLiteOpenHelper(context, DATABASE_NAME, null, 1) {
+) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     companion object {
         const val DATABASE_NAME = "brick_evidence.db"
+        private const val DATABASE_VERSION = 2
         private const val FAILURE_HOLD_MS = 120_000L
     }
 
@@ -40,9 +41,18 @@ class EvidenceJournal(
                 "UNIQUE(epoch,seq))"
         )
         db.execSQL("CREATE INDEX idx_evidence_pending ON evidence(acked,id)")
+        db.execSQL("CREATE TABLE evidence_sequence(epoch INTEGER PRIMARY KEY,next_seq INTEGER NOT NULL)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS evidence_sequence(epoch INTEGER PRIMARY KEY,next_seq INTEGER NOT NULL)")
+            db.execSQL(
+                "INSERT OR REPLACE INTO evidence_sequence(epoch,next_seq) " +
+                    "SELECT epoch,COALESCE(MAX(seq),0)+1 FROM evidence GROUP BY epoch"
+            )
+        }
+    }
 
     data class Pending(val id: Long, val record: EvidenceRecord)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
@@ -74,10 +84,64 @@ class EvidenceJournal(
         noteHealthy(false)
     }
 
+    /**
+     * Atomically allocates the next sequence and persists the encrypted record. This method is the
+     * authoritative normal enqueue path; SharedPreferences is never used as the allocator.
+     */
+    fun appendNew(epoch: Int, observation: EvidenceObservation): EvidenceRecord? {
+        require(epoch >= 0)
+        val db = writableDatabase
+        var record: EvidenceRecord? = null
+        var healthy = false
+        try {
+            db.beginTransaction()
+            db.execSQL(
+                "INSERT OR IGNORE INTO evidence_sequence(epoch,next_seq) VALUES(?,COALESCE((SELECT MAX(seq)+1 FROM evidence WHERE epoch=?),1))",
+                arrayOf(epoch, epoch)
+            )
+            val next = db.rawQuery(
+                "SELECT next_seq FROM evidence_sequence WHERE epoch=?",
+                arrayOf(epoch.toString())
+            ).use { c ->
+                check(c.moveToFirst()) { "evidence sequence state missing" }
+                c.getLong(0)
+            }
+            check(next > 0L && next < Long.MAX_VALUE) { "evidence sequence exhausted" }
+            val candidate = EvidenceRecord(epoch, next, observation)
+            val encoded = EvidenceProtocol.encodeRecord(candidate)
+            val rowId = db.insertOrThrow(
+                "evidence",
+                null,
+                ContentValues().apply {
+                    put("record_id", candidate.observation.recordId)
+                    put("epoch", candidate.epoch)
+                    put("seq", candidate.sequence)
+                    put("payload", cipher.encrypt(encoded))
+                    put("created_ms", System.currentTimeMillis())
+                }
+            )
+            check(rowId != -1L)
+            db.execSQL("UPDATE evidence_sequence SET next_seq=? WHERE epoch=?", arrayOf(next + 1L, epoch))
+            db.setTransactionSuccessful()
+            record = candidate
+            healthy = true
+        } catch (_: Throwable) {
+            record = null
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+            noteHealthy(healthy)
+        }
+        return record
+    }
+
+    /** Exact-record insertion is retained for deterministic tests/import/recovery tooling. */
     fun append(record: EvidenceRecord): Boolean {
-        return try {
+        val db = writableDatabase
+        var healthy = false
+        try {
+            db.beginTransaction()
             val encoded = EvidenceProtocol.encodeRecord(record)
-            val rowId = writableDatabase.insertWithOnConflict(
+            val rowId = db.insertWithOnConflict(
                 "evidence",
                 null,
                 ContentValues().apply {
@@ -89,13 +153,22 @@ class EvidenceJournal(
                 },
                 SQLiteDatabase.CONFLICT_IGNORE
             )
-            val ok = rowId != -1L
-            noteHealthy(ok)
-            ok
+            check(rowId != -1L) { "duplicate evidence record" }
+            check(record.sequence < Long.MAX_VALUE) { "evidence sequence exhausted" }
+            db.execSQL(
+                "INSERT INTO evidence_sequence(epoch,next_seq) VALUES(?,?) " +
+                    "ON CONFLICT(epoch) DO UPDATE SET next_seq=MAX(next_seq,excluded.next_seq)",
+                arrayOf(record.epoch, record.sequence + 1L)
+            )
+            db.setTransactionSuccessful()
+            healthy = true
         } catch (_: Throwable) {
-            noteHealthy(false)
-            false
+            healthy = false
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+            noteHealthy(healthy)
         }
+        return healthy
     }
 
     fun maxSequence(epoch: Int): Long {
@@ -156,7 +229,8 @@ class EvidenceJournal(
         if (items.isEmpty()) return true
         if (items.distinct().size != items.size) return false
         val db = writableDatabase
-        return try {
+        var healthy = false
+        try {
             db.beginTransaction()
             for (ack in items) {
                 val changed = db.update(
@@ -169,14 +243,14 @@ class EvidenceJournal(
             }
             cleanupDelivered(db)
             db.setTransactionSuccessful()
-            noteHealthy(true)
-            true
+            healthy = true
         } catch (_: Throwable) {
-            noteHealthy(false)
-            false
+            healthy = false
         } finally {
             if (db.inTransaction()) db.endTransaction()
+            noteHealthy(healthy)
         }
+        return healthy
     }
 
     private fun cleanupDelivered(db: SQLiteDatabase) {
