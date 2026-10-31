@@ -7,6 +7,8 @@ import { batteryDrainTrend } from "./battery-health";
 import { snapshotD1ToR2 } from "./backup-v6";
 import { recordAudit } from "./phase5c";
 import { listBleAnchors, parentListBleAnchors, parentRemoveBleAnchor, parentSetBleAnchor } from "./ble-anchors";
+import { validateSafetyReplayWindow } from "./device-json-security";
+import { processDeadLetterBatch, processSafetyReceipts } from "./queue-v6";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -26,6 +28,13 @@ type Env = AccessAuthEnv & {
 
 type DeviceLife = { revoked_at: number | null };
 const base = phase6Base as ExportedHandler<Env>;
+const PRIMARY_QUEUE = "brick-family-v1-events";
+const DLQ = "brick-family-v1-dlq";
+const SAFETY_KINDS = new Set([
+  "safe_checkin", "sos_started", "sos_cancelled",
+  "battery_low", "battery_critical", "charging_started", "charging_stopped",
+  "geofence_enter", "geofence_exit", "trip_started", "trip_ended", "trip_alert"
+]);
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
@@ -66,6 +75,29 @@ async function healthWithConfiguration(req: Request<unknown, IncomingRequestCfPr
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("Cache-Control", "no-store");
   return new Response(JSON.stringify({ ...body, bleAnchors: anchors }), { status: response.status, headers });
+}
+
+async function queueCriticalSafetyReceipt(req: Request, env: Env, deviceId: string): Promise<Response | null> {
+  // Validate the signed anti-replay envelope before it is allowed to consume Queue/DLQ capacity.
+  const denied = await validateSafetyReplayWindow(req, env, deviceId);
+  if (denied) return denied;
+  let event: Record<string, unknown>;
+  try { event = await req.clone().json<Record<string, unknown>>(); }
+  catch { return json({ error: "invalid event JSON" }, 400); }
+  const eventId = event.eventId;
+  const kind = event.kind;
+  const createdAtMs = event.createdAtMs;
+  if (typeof eventId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(eventId) || typeof kind !== "string" || !SAFETY_KINDS.has(kind) ||
+      typeof createdAtMs !== "number" || !Number.isSafeInteger(createdAtMs)) {
+    return json({ error: "invalid safety event schema" }, 400);
+  }
+  try {
+    await env.EVENTS.send({ type: "safety_receipt", deviceId, eventId, kind, createdAtMs });
+    return null;
+  } catch {
+    // The child keeps the encrypted event locally. A 503 deliberately prevents ACK so it retries.
+    return json({ error: "safety durability queue unavailable" }, 503);
+  }
 }
 
 async function archivedRead(req: Request, env: Env, deviceId: string, suffix: string): Promise<Response> {
@@ -116,6 +148,15 @@ export default {
       return healthWithConfiguration(req, env, ctx, decodeURIComponent(deviceMatch[1]));
     }
 
+    const safetyMatch = u.pathname.match(/^\/api\/device\/([^/]+)\/event$/);
+    if (req.method === "POST" && safetyMatch) {
+      const denied = await queueCriticalSafetyReceipt(req, env, decodeURIComponent(safetyMatch[1]));
+      if (denied) return denied;
+      // The base handler now persists/broadcasts the same signed event. If that step fails, the
+      // Queue receipt remains unacknowledged until a client retry successfully creates the row.
+      return base.fetch!(req, env, ctx);
+    }
+
     const match = u.pathname.match(/^\/parent\/api\/device\/([^/]+)(\/.*)$/);
     if (match) {
       const denied = await requireParent(req, env); if (denied) return denied;
@@ -157,6 +198,11 @@ export default {
     return base.fetch!(req, env, ctx);
   },
   async queue(batch: MessageBatch<unknown>, env: Env, ctx: ExecutionContext) {
+    if (batch.queue === DLQ) {
+      await processDeadLetterBatch(batch, env);
+      return;
+    }
+    if (batch.queue === PRIMARY_QUEUE) await processSafetyReceipts(batch, env);
     if (base.queue) return base.queue(batch, env, ctx);
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
