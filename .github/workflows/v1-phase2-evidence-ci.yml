@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE2_SHA: c077a4a5bc7805dda81a55db52c33f73f0050626
+  ANDROID_PHASE2_SHA: 1aee070a52b78943d65a245a7fe1eb3adaea92c5
 
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
@@ -44,6 +44,7 @@ jobs:
           set -euo pipefail
           node --check scripts/setup-v1-phase2.mjs
           node --check scripts/test-phase2-evidence.mjs
+          node --check scripts/test-phase2-evidence-link-integrity.mjs
           node --check scripts/test-phase2-evidence-route.mjs
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
@@ -63,6 +64,7 @@ jobs:
           grep -F 'duplicateRecords: true' src/evidence-ingest.ts >/dev/null
           grep -F 'allowRaceRetry' src/evidence-ingest.ts >/dev/null
           grep -F 'raced: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'stored batch link does not match evidence record identity' src/evidence-ingest.ts >/dev/null
           grep -F 'readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)' src/evidence-route.ts >/dev/null
           ! grep -F 'await req.arrayBuffer()' src/evidence-route.ts >/dev/null
           grep -F 'error instanceof EvidenceConflict' src/evidence-route.ts >/dev/null
@@ -76,6 +78,7 @@ jobs:
           grep -F 'response.status, 409' scripts/test-phase2-evidence-route.mjs >/dev/null
           grep -F 'identical requests racing' scripts/test-phase2-evidence.mjs >/dev/null
           grep -F 'mixed-race' scripts/test-phase2-evidence.mjs >/dev/null
+          grep -F 'batch link does not match evidence record identity' scripts/test-phase2-evidence-link-integrity.mjs >/dev/null
 
       - name: Phase 2 protocol + durable idempotency integration tests
         shell: bash
@@ -84,6 +87,7 @@ jobs:
           npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
           npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
           node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
 
       - name: Phase 2 signed HTTP route integration tests
         shell: bash
@@ -183,7 +187,11 @@ jobs:
           grep -F 'fun ensureDeviceOwner(deviceId: String)' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'evidenceIdentityQuarantinedRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'QUARANTINE_RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'QUARANTINE_MAX_ROWS = 2_048' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceQuarantinePurgedRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'evidenceQuarantinePurgedRecordsTotal' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'evidenceUploadFailureStreak' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
@@ -195,10 +203,12 @@ jobs:
           grep -F 'fun refreshHealth()' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           grep -F 'SELECT COUNT(*) FROM evidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
           ! grep -F 'hasQuarantinedEvidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
-          grep -F 'journal.refreshHealth()' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'val healthy = journal.refreshHealth()' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'journal.stats() to healthy' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'testPendingRowsAreReadInWireOrderAfterRecoveryInsert' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
           grep -F 'testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
           grep -F 'testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
+          grep -F 'testExpiredQuarantinePurgesAutomaticallyWithoutReusingSequence' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
           grep -F 'testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'testCorruptApiOriginCannotCreateUnsendableEvidenceBacklog' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'testServerConflictIsolatesOnlyConflictingRecordAndDoesNotBlockLaterEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
