@@ -9,7 +9,7 @@ import com.brick.safety.activity.ActivitySnapshot
 import kotlin.math.*
 
 enum class PositionQuality(val code: Int) { PRECISE(1), ASSISTED(2), ANCHORED(3), ESTIMATED(4), COARSE(5), LAST_KNOWN(6), UNKNOWN(7) }
-enum class PositionSource(val code: Int) { FUSED(1), INERTIAL(2), LAST_KNOWN(3), UNKNOWN(0) }
+enum class PositionSource(val code: Int) { FUSED(1), INERTIAL(2), LAST_KNOWN(3), BLE_ANCHOR(4), UNKNOWN(0) }
 
 data class PositionSample(
     val rawLat: Double?, val rawLon: Double?, val rawAccuracyM: Float?,
@@ -28,11 +28,34 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val lat: Double, val lon: Double, val accuracyM: Float, val elapsedMs: Long, val wallMs: Long,
         val speedMps: Float?, val bearingDeg: Float?, val stepTotal: Long, val activity: ActivityMode
     )
+    private data class BleEvidence(
+        val latitude: Double, val longitude: Double, val radiusM: Float,
+        val seenElapsedMs: Long, val seenWallMs: Long
+    )
+
+    companion object {
+        private const val BLE_ANCHOR_MAX_AGE_MS = 90_000L
+    }
 
     private val prefs = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
     @Volatile private var lastTrusted: Anchor? = loadRecentAnchor()
+    @Volatile private var lastBleAnchor: BleEvidence? = null
     @Volatile private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
     @Volatile private var runningStrideM = prefs.getFloat("runningStrideM", 1.05f).coerceIn(0.70f, 1.80f)
+
+    @Synchronized
+    fun noteBleAnchor(config: BleAnchorEngine.Config) {
+        if (!config.latitude.isFinite() || config.latitude !in -90.0..90.0 ||
+            !config.longitude.isFinite() || config.longitude !in -180.0..180.0 ||
+            !config.radiusM.isFinite() || config.radiusM !in 25f..5_000f) return
+        lastBleAnchor = BleEvidence(
+            config.latitude,
+            config.longitude,
+            config.radiusM,
+            SystemClock.elapsedRealtime(),
+            System.currentTimeMillis()
+        )
+    }
 
     @Synchronized
     fun evaluate(raw: Location, activityInput: ActivitySnapshot): PositionSample {
@@ -47,8 +70,6 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val previous = lastTrusted
 
         if (accepted && previous != null) {
-            // Never let an out-of-order fused callback move the authoritative trusted anchor backwards.
-            // The raw fix is still preserved in the packet for diagnostics.
             if (rawElapsed <= previous.elapsedMs) {
                 accepted = false
             } else {
@@ -101,14 +122,51 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     @Synchronized
     fun fallback(activityInput: ActivitySnapshot): PositionSample? {
         val now = SystemClock.elapsedRealtime()
-        return buildFromAnchor(null, freshActivity(activityInput, now), false, now)
+        return buildBestFallback(null, freshActivity(activityInput, now), false, now)
     }
 
     private fun rejectedSample(raw: Location, activity: ActivitySnapshot, mock: Boolean, now: Long): PositionSample {
-        return buildFromAnchor(raw, activity, mock, now) ?: PositionSample(
+        return buildBestFallback(raw, activity, mock, now) ?: PositionSample(
             raw.latitude.takeIf { it.isFinite() && it in -90.0..90.0 }, raw.longitude.takeIf { it.isFinite() && it in -180.0..180.0 }, raw.accuracy.takeIf { it.isFinite() && it >= 0f },
             null, null, 5_000f, null, null, null, null, null, null,
             false, mock, activity, PositionQuality.UNKNOWN, PositionSource.UNKNOWN, gnss.snapshot(), 0, now, System.currentTimeMillis()
+        )
+    }
+
+    private fun buildBestFallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
+        return buildFromBleAnchor(raw, activity, rawMock, now) ?: buildFromAnchor(raw, activity, rawMock, now)
+    }
+
+    private fun buildFromBleAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
+        val anchor = lastBleAnchor ?: return null
+        val age = now - anchor.seenElapsedMs
+        if (age !in 0..BLE_ANCHOR_MAX_AGE_MS) return null
+        // A stationary/walking/unknown device can plausibly be present at a trusted indoor place.
+        // Bicycle/vehicle/running motion is deliberately not overridden by a transient drive-by beacon.
+        if (activity.mode == ActivityMode.VEHICLE || activity.mode == ActivityMode.BICYCLE || activity.mode == ActivityMode.RUNNING) return null
+        val wall = anchor.seenWallMs + age
+        return PositionSample(
+            raw?.latitude?.takeIf { it.isFinite() && it in -90.0..90.0 },
+            raw?.longitude?.takeIf { it.isFinite() && it in -180.0..180.0 },
+            raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
+            anchor.latitude,
+            anchor.longitude,
+            anchor.radiusM.coerceAtLeast(25f),
+            0f.takeIf { activity.mode == ActivityMode.STATIONARY },
+            null,
+            motion.snapshot().headingDeg,
+            null,
+            null,
+            null,
+            false,
+            rawMock,
+            activity,
+            PositionQuality.ANCHORED,
+            PositionSource.BLE_ANCHOR,
+            gnss.snapshot(),
+            0,
+            now,
+            wall
         )
     }
 
@@ -187,9 +245,6 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         val lon = Double.fromBits(prefs.getLong("anchorLonBits", 0L))
         val accuracy = prefs.getFloat("anchorAccuracyM", 100f)
         if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || !accuracy.isFinite() || accuracy < 0f) return null
-        // MotionEngine's step detector counter is process-local. A restored anchor therefore starts
-        // at the new process' zero baseline; reusing the previous process' saved count would suppress
-        // inertial walking/running updates until the new counter happened to catch up.
         return Anchor(lat, lon, accuracy, elapsed, wall,
             prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
             0L, ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
