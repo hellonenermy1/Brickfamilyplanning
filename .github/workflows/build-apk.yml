@@ -16,6 +16,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          # PR workflows normally check out a synthetic merge ref. Brick's APK evidence must map
+          # to the exact reviewed source commit instead, so the produced binary can be audited.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -53,6 +57,7 @@ jobs:
           grep -F 'eventSequence = eventSequence' app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt >/dev/null
           grep -F 'sendLiveLocationPreview' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'sendLocationBatch' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
+          grep -F 'require(url.protocol.equals("https", ignoreCase = true))' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'previewNewestIfBacklogged' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'journal.nextPending(LOCATION_BATCH_SIZE)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'journal.ackBatch(acked)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
@@ -118,13 +123,15 @@ jobs:
           RELEASE_AVAILABLE: ${{ steps.signing.outputs.available }}
         run: |
           set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
           apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
           test -x "$apksigner_bin"
           mkdir -p phase6-apk-evidence
           debug_apk='app/build/outputs/apk/debug/app-debug.apk'
           "$apksigner_bin" verify --verbose --print-certs "$debug_apk" > phase6-apk-evidence/debug-signing.txt
           {
-            echo "git_sha=$GITHUB_SHA"
+            echo "source_git_sha=$source_sha"
+            echo "github_event_sha=$GITHUB_SHA"
             echo "version_name=0.6.0-phase6-rc"
             echo "version_code=6"
             echo "build_type=debug"
@@ -135,7 +142,8 @@ jobs:
             test -f "$release_apk"
             "$apksigner_bin" verify --verbose --print-certs "$release_apk" > phase6-apk-evidence/release-signing.txt
             {
-              echo "git_sha=$GITHUB_SHA"
+              echo "source_git_sha=$source_sha"
+              echo "github_event_sha=$GITHUB_SHA"
               echo "version_name=0.6.0-phase6-rc"
               echo "version_code=6"
               echo "build_type=release"
