@@ -29,7 +29,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         context.deleteDatabase(EvidenceJournal.DATABASE_NAME)
         context.deleteDatabase("brick_journal.db")
         context.deleteDatabase("brick_safety.db")
-        context.deleteDatabase("brick_crash.db")
+        context.deleteDatabase("brick_crash_outbox.db")
         context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
@@ -37,7 +37,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         context.deleteDatabase(EvidenceJournal.DATABASE_NAME)
         context.deleteDatabase("brick_journal.db")
         context.deleteDatabase("brick_safety.db")
-        context.deleteDatabase("brick_crash.db")
+        context.deleteDatabase("brick_crash_outbox.db")
         super.tearDown()
     }
 
@@ -156,10 +156,10 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         )
 
         val cipher = TestCipher()
-        var journal = EvidenceJournal(context, cipher)
+        val enqueueJournal = EvidenceJournal(context, cipher)
         val enqueueDispatcher = EvidenceDispatcher(
             context = context,
-            journal = journal,
+            journal = enqueueJournal,
             transport = EvidenceTransport { _, _, _ -> error("network must not be used during enqueue") },
             coreBacklogProbe = { false },
             scheduleRecovery = false
@@ -168,12 +168,12 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         provider.start(EvidenceSink(enqueueDispatcher::enqueue))
         provider.applySampling(EvidenceSamplingCoordinator.decision(EvidenceSamplingClass.EVENT_SENSOR, BrickEvidenceState.MOVING))
         assertTrue(provider.emitOnce("persist-before-network"))
-        assertEquals(1, journal.stats().pendingCount)
+        assertEquals(1, enqueueDispatcher.stats().pendingCount)
         provider.stop()
+        enqueueDispatcher.close()
 
-        journal.close()
-        journal = EvidenceJournal(context, cipher)
-        assertEquals(1, journal.stats().pendingCount)
+        val reopenedJournal = EvidenceJournal(context, cipher)
+        assertEquals(1, reopenedJournal.stats().pendingCount)
 
         var transportCalls = 0
         val transport = EvidenceTransport { _, deviceId, batch ->
@@ -187,19 +187,19 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         }
         val drainDispatcher = EvidenceDispatcher(
             context = context,
-            journal = journal,
+            journal = reopenedJournal,
             transport = transport,
             coreBacklogProbe = { false },
             scheduleRecovery = false
         )
         assertEquals(1, drainDispatcher.drainIfSafe(maxBatches = 1))
         assertEquals(1, transportCalls)
-        assertEquals(0, journal.stats().pendingCount)
-        journal.close()
+        assertEquals(0, drainDispatcher.stats().pendingCount)
+        drainDispatcher.close()
 
-        journal = EvidenceJournal(context, cipher)
-        assertTrue(journal.nextPending().isEmpty())
-        journal.close()
+        val finalJournal = EvidenceJournal(context, cipher)
+        assertTrue(finalJournal.nextPending().isEmpty())
+        finalJournal.close()
     }
 
     fun testEvidenceNeverDrainsWhileCoreBacklogIsPresent() {
@@ -223,8 +223,8 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         )
         assertEquals(0, dispatcher.drainIfSafe())
         assertEquals(0, transportCalls)
-        assertEquals(1, journal.stats().pendingCount)
-        journal.close()
+        assertEquals(1, dispatcher.stats().pendingCount)
+        dispatcher.close()
     }
 
     fun testSamplingCoordinatorKeepsRadioBounded() {
