@@ -47,6 +47,7 @@ jobs:
           grep -F 'fun ackBatch(items: List<Pair<Int, Long>>): Boolean' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
           grep -F 'db.beginTransaction()' app/src/main/java/com/brick/safety/data/Journal.kt >/dev/null
           grep -F 'journal.maxSequence(epoch)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
+          grep -F 'runCatching { RecoveryScheduler.ensureScheduled(this) }' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
           grep -F '.put("healthSequence", healthSequence)' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'putLong("safetySequence", eventSequence).commit()' app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt >/dev/null
           grep -F 'eventSequence = eventSequence' app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt >/dev/null
@@ -57,6 +58,15 @@ jobs:
           grep -F 'journal.ackBatch(acked)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           if grep -F 'sendOne(baseUrl, deviceId, newest)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt; then
             echo 'Newest-first durable location ACK regression found.' >&2
+            exit 1
+          fi
+          grep -F 'NET_CAPABILITY_VALIDATED' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'runCatching { RecoveryScheduler.scheduleSoon(this, 15) }' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'HEADING_STALE_NS = 10_000_000_000L' app/src/main/java/com/brick/safety/location/MotionEngine.kt >/dev/null
+          grep -F '0L, ActivityMode.fromCode' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+          grep -F 'SOS ACTIVE — alert sent' app/src/main/java/com/brick/safety/ui/MainActivity.kt >/dev/null
+          if grep -F 'SOS ACTIVE — parent alerted' app/src/main/java/com/brick/safety/ui/MainActivity.kt; then
+            echo 'Child UI must not claim the parent saw an SOS without delivery/read evidence.' >&2
             exit 1
           fi
           grep -F 'runCatching { dpm.setLocationEnabled(admin, true) }' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
