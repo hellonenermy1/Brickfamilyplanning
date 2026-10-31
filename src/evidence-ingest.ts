@@ -68,7 +68,7 @@ async function exactAcksForExistingBatch(env: EvidenceEnv, deviceId: string, bat
   return exactAcks(batch);
 }
 
-export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, buffer: ArrayBuffer) {
+async function persistEvidenceBatchAttempt(env: EvidenceEnv, deviceId: string, buffer: ArrayBuffer, allowRaceRetry: boolean) {
   const batch = decodeEvidenceBatch(buffer);
   const batchSha = await sha256Hex(buffer);
   const existingAcks = await exactAcksForExistingBatch(env, deviceId, batch, batchSha, buffer.byteLength);
@@ -96,10 +96,9 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
   }
 
   // Raw object paths use a one-way device key rather than a sanitized identifier. The batch hash is
-  // part of the object key as well: if two concurrent signed requests reuse one batch UUID with
-  // different bytes before D1 has claimed the UUID, they write different objects instead of racing
-  // to overwrite the same raw evidence object. The losing conflicting object is harmless and ages
-  // out under the bounded raw-evidence lifecycle rule.
+  // part of the object key as well: concurrent conflicting requests that reuse one batch UUID write
+  // different objects instead of racing to overwrite one raw object. Any unreferenced losing object
+  // expires under the bounded raw-evidence lifecycle rule.
   const deviceKey = await sha256Hex(new TextEncoder().encode(deviceId));
   const r2Key = `evidence/raw/${deviceKey}/${batch.batchId}-${batchSha}.brev`;
   await env.HISTORY.put(r2Key, buffer, {
@@ -171,9 +170,43 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
       "last_received_at=CASE WHEN excluded.last_epoch>last_epoch OR (excluded.last_epoch=last_epoch AND excluded.last_sequence>last_sequence) THEN excluded.last_received_at ELSE last_received_at END"
     ).bind(deviceId, newest.epoch, newest.sequence, now)
   );
-  await env.DB.batch(statements);
+
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    // Concurrency should converge, not masquerade as a storage outage. First check whether another
+    // request durably completed this exact batch while we were between preflight and transaction.
+    // A reused batchId with different bytes still throws EvidenceConflict here.
+    const racedBatchAcks = await exactAcksForExistingBatch(env, deviceId, batch, batchSha, buffer.byteLength);
+    if (racedBatchAcks) {
+      return { protocol: 1, batchId: batch.batchId, acked: racedBatchAcks, duplicateBatch: true, raced: true };
+    }
+
+    if (allowRaceRetry) {
+      // A different batch may have claimed one or more exact record identities during the same
+      // window. Retry once only when D1 demonstrably changed since our preflight. The second pass
+      // revalidates every record and either reuses exact rows, rejects a conflict, or commits the
+      // remaining new rows. If nothing changed, preserve the original storage failure.
+      let observedNewExactRecord = false;
+      for (let i = 0; i < batch.records.length; i++) {
+        const existing = await readExistingRecord(env, deviceId, batch.records[i]);
+        if (existing && !sameRecord(existing, batch.records[i], payloadHashes[i])) {
+          throw new EvidenceConflict("evidence sequence or record id collision");
+        }
+        if (!recordAlreadyExists[i] && existing) observedNewExactRecord = true;
+      }
+      if (observedNewExactRecord) {
+        return persistEvidenceBatchAttempt(env, deviceId, buffer, false);
+      }
+    }
+    throw error;
+  }
 
   const verified = await exactAcksForExistingBatch(env, deviceId, batch, batchSha, buffer.byteLength);
   if (!verified) throw new Error("evidence batch persistence verification failed");
   return { protocol: 1, batchId: batch.batchId, acked: verified, duplicateBatch: false };
+}
+
+export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, buffer: ArrayBuffer) {
+  return persistEvidenceBatchAttempt(env, deviceId, buffer, true);
 }
