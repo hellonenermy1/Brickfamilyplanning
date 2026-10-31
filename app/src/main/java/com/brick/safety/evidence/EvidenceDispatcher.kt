@@ -6,9 +6,21 @@ import com.brick.safety.data.Journal
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 
+fun interface EvidenceTransport {
+    fun send(baseUrl: String, deviceId: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck>
+}
+
+object NetworkEvidenceTransport : EvidenceTransport {
+    override fun send(baseUrl: String, deviceId: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck> =
+        EvidenceApi.sendBatch(baseUrl, deviceId, batch)
+}
+
 class EvidenceDispatcher(
     context: Context,
-    private val journal: EvidenceJournal = EvidenceJournal(context)
+    private val journal: EvidenceJournal = EvidenceJournal(context),
+    private val transport: EvidenceTransport = NetworkEvidenceTransport,
+    private val coreBacklogProbe: (() -> Boolean)? = null,
+    private val scheduleRecovery: Boolean = true
 ) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
@@ -21,13 +33,13 @@ class EvidenceDispatcher(
         if (next <= 0L) return false
         if (!prefs.edit().putLong("evidenceSequence", next).commit()) return false
         val appended = journal.append(EvidenceRecord(epoch, next, observation))
-        if (appended) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
+        if (appended && scheduleRecovery) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
         return appended
     }
 
     fun stats(): EvidenceJournal.Stats = journal.stats()
 
-    private fun coreBacklogPresent(): Boolean {
+    private fun defaultCoreBacklogPresent(): Boolean {
         if (SafetyDispatcher.pendingCount(appContext) > 0) return true
 
         val locationPending = Journal(appContext).let { locationJournal ->
@@ -42,6 +54,8 @@ class EvidenceDispatcher(
         return crashPending
     }
 
+    private fun coreBacklogPresent(): Boolean = coreBacklogProbe?.invoke() ?: defaultCoreBacklogPresent()
+
     /**
      * Evidence is intentionally the lowest-priority durable stream. It is not sent while
      * safety, crash or durable location backlog exists. Later phases may improve cadence,
@@ -54,14 +68,13 @@ class EvidenceDispatcher(
 
         var sent = 0
         repeat(maxBatches.coerceIn(1, 8)) {
-            // Recheck before each network batch so new SOS/location work preempts evidence as soon
-            // as the scheduler observes it.
+            // Recheck before each batch so safety/location work can preempt evidence between
+            // evidence batches. Evidence never owns the live/safety upload path.
             if (coreBacklogPresent()) return sent
             val pending = journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
             if (pending.isEmpty()) return sent
-            val records = pending.map { it.record }
-            val batch = EvidenceProtocol.encodeBatch(records)
-            val acked = try { EvidenceApi.sendBatch(baseUrl, deviceId, batch) } catch (_: Throwable) { return sent }
+            val batch = EvidenceProtocol.encodeBatch(pending.map { it.record })
+            val acked = try { transport.send(baseUrl, deviceId, batch) } catch (_: Throwable) { return sent }
             if (!journal.ackBatch(acked)) return sent
             sent += acked.size
         }
