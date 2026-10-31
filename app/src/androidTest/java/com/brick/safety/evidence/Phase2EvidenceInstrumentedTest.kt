@@ -41,24 +41,22 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         super.tearDown()
     }
 
-    private fun record(sequence: Long = 1L): EvidenceRecord {
-        return EvidenceRecord(
-            epoch = 7,
-            sequence = sequence,
-            observation = EvidenceObservation(
-                recordId = UUID.randomUUID().toString(),
-                elapsedRealtimeMs = SystemClock.elapsedRealtime(),
-                wallTimeMs = System.currentTimeMillis(),
-                provider = EvidenceProviderId.DUMMY_TEST,
-                family = EvidenceFamily.DUMMY_TEST,
-                independenceGroup = "dummy:test:scene",
-                capability = ProviderCapability.SUPPORTED,
-                health = ProviderHealth.HEALTHY,
-                quality = EvidenceQuality.HIGH,
-                payload = "dummy-evidence-$sequence".toByteArray()
-            )
+    private fun record(sequence: Long = 1L): EvidenceRecord = EvidenceRecord(
+        epoch = 7,
+        sequence = sequence,
+        observation = EvidenceObservation(
+            recordId = UUID.randomUUID().toString(),
+            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            wallTimeMs = System.currentTimeMillis(),
+            provider = EvidenceProviderId.DUMMY_TEST,
+            family = EvidenceFamily.DUMMY_TEST,
+            independenceGroup = "dummy:test:scene",
+            capability = ProviderCapability.SUPPORTED,
+            health = ProviderHealth.HEALTHY,
+            quality = EvidenceQuality.HIGH,
+            payload = "dummy-evidence-$sequence".toByteArray()
         )
-    }
+    )
 
     fun testProtocolRoundTripAndBounds() {
         val records = listOf(record(1), record(2), record(3))
@@ -96,8 +94,19 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
             batchId = "00112233-4455-6677-8899-aabbccddeeff"
         ).bytes
         assertEquals(GOLDEN_HEX, bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) })
-        val decoded = EvidenceProtocol.decodeBatch(bytes)
-        assertEquals(golden, decoded.records.single())
+        val actual = EvidenceProtocol.decodeBatch(bytes).records.single()
+        assertEquals(golden.epoch, actual.epoch)
+        assertEquals(golden.sequence, actual.sequence)
+        assertEquals(golden.observation.recordId, actual.observation.recordId)
+        assertEquals(golden.observation.elapsedRealtimeMs, actual.observation.elapsedRealtimeMs)
+        assertEquals(golden.observation.wallTimeMs, actual.observation.wallTimeMs)
+        assertEquals(golden.observation.provider, actual.observation.provider)
+        assertEquals(golden.observation.family, actual.observation.family)
+        assertEquals(golden.observation.independenceGroup, actual.observation.independenceGroup)
+        assertEquals(golden.observation.capability, actual.observation.capability)
+        assertEquals(golden.observation.health, actual.observation.health)
+        assertEquals(golden.observation.quality, actual.observation.quality)
+        assertTrue(golden.observation.payload.contentEquals(actual.observation.payload))
     }
 
     fun testEncryptedJournalSurvivesReopenAndExactAck() {
@@ -162,7 +171,6 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         assertEquals(1, journal.stats().pendingCount)
         provider.stop()
 
-        // Simulate process death/restart by closing the DB helper and creating a fresh dispatcher.
         journal.close()
         journal = EvidenceJournal(context, cipher)
         assertEquals(1, journal.stats().pendingCount)
@@ -189,7 +197,6 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         assertEquals(0, journal.stats().pendingCount)
         journal.close()
 
-        // Reopening after ACK must not resurrect a delivered record.
         journal = EvidenceJournal(context, cipher)
         assertTrue(journal.nextPending().isEmpty())
         journal.close()
