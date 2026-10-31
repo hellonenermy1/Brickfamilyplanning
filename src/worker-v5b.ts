@@ -8,6 +8,7 @@ import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordA
 export { BrickDevice };
 
 const MAX_GEOFENCES_PER_DEVICE = 8;
+const MAX_PARENT_MUTATION_BYTES = 32 * 1024;
 
 type RuntimeEnv = AccessAuthEnv & {
   DB: D1Database;
@@ -79,6 +80,34 @@ function csrfDenied(message = "same-origin request required") {
   return Response.json({ error: message }, { status: 403, headers: { "Cache-Control": "no-store" } });
 }
 
+async function parentMutationBodyDenied(req: Request): Promise<Response | null> {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return null;
+  const declared = Number(req.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(declared) && declared > MAX_PARENT_MUTATION_BYTES) {
+    return Response.json({ error: "parent mutation payload too large" }, { status: 413, headers: { "Cache-Control": "no-store" } });
+  }
+  const stream = req.clone().body;
+  if (!stream) return null;
+  const reader = stream.getReader();
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_PARENT_MUTATION_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return Response.json({ error: "parent mutation payload too large" }, { status: 413, headers: { "Cache-Control": "no-store" } });
+      }
+    }
+  } catch {
+    return Response.json({ error: "invalid parent mutation body" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  } finally {
+    try { reader.releaseLock(); } catch { /* already released/cancelled */ }
+  }
+  return null;
+}
+
 async function pairingRateDenied(req: Request, env: RuntimeEnv): Promise<Response | null> {
   // CF-Connecting-IP is supplied by Cloudflare at the edge. Rate limiting only by the attacker-
   // controlled pairing token lets a scanner rotate random tokens and bypass the namespace limit.
@@ -121,6 +150,8 @@ async function forwardParentMutation(req: Request<unknown, IncomingRequestCfProp
   const denied = await requireParent(req, env);
   if (denied) return denied;
   if (!sameOriginMutation(req)) return csrfDenied();
+  const bodyDenied = await parentMutationBodyDenied(req);
+  if (bodyDenied) return bodyDenied;
   if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
   const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
   ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
@@ -214,6 +245,8 @@ export default {
       const denied = await requireParent(req, env); if (denied) return denied;
       if (u.pathname.endsWith("/ws") && !sameOriginWebSocket(req)) return csrfDenied("same-origin WebSocket upgrade required");
       if (!sameOriginMutation(req)) return csrfDenied();
+      const bodyDenied = await parentMutationBodyDenied(req);
+      if (bodyDenied) return bodyDenied;
       const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
       if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
       return response;
