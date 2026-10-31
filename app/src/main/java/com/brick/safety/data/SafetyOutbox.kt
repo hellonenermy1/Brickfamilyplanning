@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
+    companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -24,11 +25,16 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     }.getOrDefault(true)
 
     private fun noteHealthy(operationHealthy: Boolean) {
-        val healthy = operationHealthy && !hasQuarantinedEvidence()
+        val now = System.currentTimeMillis()
+        val quarantined = hasQuarantinedEvidence()
+        val priorFailure = healthPrefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
+        val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
+        val currentFailure = !operationHealthy || quarantined
+        val healthy = !currentFailure && !freshPriorFailure
         healthPrefs.edit()
             .putBoolean("safetyOutboxWriteHealthy", healthy)
             .apply {
-                if (!healthy) putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
+                if (currentFailure) putLong("lastSafetyOutboxWriteFailureWallMs", now)
             }
             .apply()
     }
