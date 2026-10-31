@@ -10,9 +10,9 @@ Brick remains a **release candidate**, not production-qualified.
 - Version code: `6`
 - Package: `com.brick.safety`
 - Qualification: `candidate-not-real-device-qualified`
-- V1 program: **Phase 1 ACCEPTED; Phase 2 ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED; Phases 3–9 not accepted**
+- V1 program: **Phase 1 ACCEPTED; Phase 2 ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED; Phase 3 SOURCE-COMPLETE + ACCEPTANCE-READY / DEPENDENCY + HOSTED + DEVICE GATES PENDING / NOT ACCEPTED; Phases 4–9 not accepted**
 
-No Phase 2 source is promoted to canonical `main` or `apk-download`.
+No Phase 2 or Phase 3 runtime source is promoted to canonical `main` or `apk-download`.
 
 ## Canonical V1 artifacts
 
@@ -32,9 +32,12 @@ Phase 2:
 - `PHASE2_CHECKPOINT_2026-11-01.md`
 - `PHASE2_ACCEPTANCE_READINESS_2026-11-01.md`
 
+Phase 3:
+- `PHASE3_REPORT.md`
+
 The duplicate source headings remain normalized as `23G-UI` and `23G-GROUND`.
 
-## Repository / exact Phase 2 pair
+## Repository / exact staging pairs
 
 Canonical branches:
 - `main` — Cloudflare/runtime
@@ -45,7 +48,11 @@ Phase 2 staging:
 - Cloud `v1-p2-evidence-cloud` / PR #6 / `1d880b703dd5d0c5f581926426a0db29e6c67b8b`
 - Android `v1-p2-evidence-android` / PR #7 / `9d1d04532abc52b679075fe2e330c3d2daafab3b`
 
-Both PRs remain draft, mergeable and deliberately unmerged. Cloud CI pins the exact Android SHA.
+Phase 3 staging:
+- Cloud `v1-p3-motion-positioning-cloud` / PR #9 / `3db7c6c54fcf4a6b35afa22e91076178fde29de9`
+- Android `v1-p3-motion-positioning-android` / PR #10 / `48423e5ba84dd6273315581f6c101141e5eae9ac`
+
+All four PRs remain draft/unmerged. Phase 3 deliberately targets the Phase 2 staging branches rather than bypassing the open Phase 2 dependency.
 
 ## Phase 1
 
@@ -81,9 +88,7 @@ The evidence/data foundation now includes:
 - test/CI/deploy gates for core persistence, link integrity and signed route;
 - later-phase tables remain foundations only and do not claim later algorithms.
 
-## Fresh current execution evidence
-
-PASS markers earned in this continuation:
+Phase 2 current execution markers:
 
 - `PHASE2_CURRENT_CLOUD_ACCEPTANCE_HARNESS_PASS`
 - `PHASE2_CURRENT_CLOUD_RERUN_TRIGGER_PASS`
@@ -92,19 +97,32 @@ PASS markers earned in this continuation:
 - `PHASE2_CURRENT_ANDROID_DISPATCHER_JVM_STUB_PASS`
 - `PHASE2_CURRENT_ANDROID_QUARANTINE_SQL_PASS`
 
-Cloud current logic received meaningful execution for protocol, D1-style transactional persistence, R2-style storage, replay/dedupe, conflicts, P-256 Android-DER signatures, body bounds, rate ordering and schema integrity.
+Those Android JVM/SQLite results are not Android framework, Keystore, WorkManager, emulator or OPPO/ColorOS proof.
 
-Android current model/protocol, ACK parser, dispatcher logic and quarantine SQL semantics received execution at pure/JVM/SQLite boundaries. These results are **not** Android framework, Keystore, WorkManager, emulator or OPPO/ColorOS proof.
+Phase 2 hosted run/retry `41221221445` again failed before source steps; Android instrumentation was skipped. Treat it as neither pass nor source failure.
 
-## Hosted run blocker
+## Phase 3 source state
 
-Latest exact run/retry: `41221221445`.
+Phase 3 is now source-complete on its staging branches and implements:
 
-- Cloud prerequisite job: failed before source steps / no runner execution.
-- Android compile/lint/dependency-lock job: same.
-- Android instrumentation: skipped.
+- raw accelerometer/linear acceleration, gyro, magnetometer, rotation-vector and step evidence with bounded power profiles;
+- learned odometry by motion mode/placement and zero-velocity correction;
+- deterministic persistent multi-particle hypotheses with monotonic uncertainty and honest expiry;
+- bounded learned route/path graph and signed private-map route cache;
+- repeated magnetic sequences and repeated physical-landmark sequences only; single readings/events never create location truth;
+- conservative fused-fix consistency gating before trusted-state/model training;
+- encrypted atomic Phase 3 local state;
+- route/magnetic/landmark aging and relearning;
+- stationary route isolation so nearby roads cannot tug a stationary child position;
+- phone-receipt-time route freshness rather than server-clock freshness;
+- safe route-response IDs/mode masks/locality validation;
+- privacy-safe Phase 3 health telemetry.
 
-GitHub Actions public status was operational when checked. The repeated no-step behavior appears repository/account-path specific, but the connected API does not expose enough billing/entitlement/annotation detail to identify the exact cause. It remains neither pass nor source failure.
+Explicit non-claim: Brick currently has route/path geometry, not generic building-wall polygons. It must not claim universal indoor wall avoidance when the required geometry is absent.
+
+Executed Phase 3 evidence includes the earlier `PHASE3_PURE_CORE_ACCEPTANCE_PASS` for the pure core at its then-current implementation and a later focused Kotlin/JVM pass of the final consistency-guard logic including fail-open cases. Newer route/sequence TTL, state-store, route-parser and health hardening are source-reviewed/test-covered but not yet Android-framework executed.
+
+Phase 3 CI run `41254615824` on Cloud `3db7c6c54fcf4a6b35afa22e91076178fde29de9` pins Android `48423e5ba84dd6273315581f6c101141e5eae9ac` and again failed before any prerequisite source steps; instrumentation was skipped. This remains an external execution blocker, not a source verdict.
 
 ## Phase 2 acceptance rule
 
@@ -117,11 +135,21 @@ Do **not** mark Phase 2 accepted or merge PR #6/#7 until all required gates actu
 5. exact Cloudflare production deployment plus deployed D1/R2/schema/retention/route verification;
 6. canonical post-merge checks after the above are green.
 
-Only then may Phase 2 move to **ACCEPTED** and Phase 3 unlock.
+## Phase 3 acceptance rule
+
+Do **not** mark Phase 3 accepted or merge PR #9/#10 until:
+
+1. Phase 2 is accepted first;
+2. hosted exact-pair Phase 3 Cloud + Android execution passes;
+3. Android dependency-lock/compile/lint and instrumentation actually execute and pass;
+4. relevant physical OPPO/ColorOS sensor, stationary, walking/running, GNSS-loss, process-recovery and precise-return tests in `PHASE3_REPORT.md` pass;
+5. any real failures are repaired without weakening uncertainty or anti-overconfidence rules.
+
+Only then may Phase 3 become **ACCEPTED** and Phase 4 formally unlock.
 
 ## Remaining broader production blockers
 
-Even after Phase 2 closes, Brick is not production-qualified until the later V1 phases and final release gates are complete, including stable Android signing, final authenticated parent testing, full Reno/ColorOS endurance/failure tests, measured resource usage and zero-manual-intervention proof.
+Even after Phases 2–3 close, Brick is not production-qualified until later V1 phases and final release gates are complete, including stable Android signing, final authenticated parent testing, full Reno/ColorOS endurance/failure tests, measured resource usage and zero-manual-intervention proof.
 
 ## Audit principle
 
