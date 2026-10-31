@@ -11,12 +11,14 @@ class RecoveryWorker(
 ) : Worker(appContext, params) {
     override fun doWork(): Result {
         return try {
-            // Core tracking recovery always runs first. Evidence is intentionally best-effort and
-            // lower priority; a failed evidence upload must never make core recovery fail.
+            // Brick Core recovery always runs first. Evidence has a separate network-constrained
+            // worker so a large evidence backlog cannot monopolise or fail core recovery work.
             ServiceControl.ensureTracking(applicationContext)
             runCatching {
-                EvidenceDispatcher(applicationContext).use { dispatcher ->
-                    dispatcher.drainIfSafe(maxBatches = 2)
+                EvidenceDispatcher(applicationContext, scheduleRecovery = false).use { dispatcher ->
+                    if (dispatcher.stats().pendingCount > 0) {
+                        RecoveryScheduler.scheduleEvidenceSoon(applicationContext, 1)
+                    }
                 }
             }
             Result.success()
