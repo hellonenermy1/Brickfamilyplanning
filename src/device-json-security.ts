@@ -10,10 +10,17 @@ function jsonError(error: string, status: number) {
 }
 
 export async function validatePairingPublicKey(req: Request): Promise<Response | null> {
-  const length = Number(req.headers.get("Content-Length") ?? "0");
-  if (Number.isFinite(length) && length > 4096) return jsonError("pairing payload too large", 400);
+  const declaredLength = Number(req.headers.get("Content-Length") ?? "0");
+  if (Number.isFinite(declaredLength) && declaredLength > 4096) return jsonError("pairing payload too large", 400);
+
+  // Content-Length is only an optimization. A public client can omit it (for example with a
+  // chunked request), so enforce the limit on the bytes Brick actually received before parsing.
+  let raw: ArrayBuffer;
+  try { raw = await req.clone().arrayBuffer(); } catch { return jsonError("invalid pairing body", 400); }
+  if (!raw.byteLength || raw.byteLength > 4096) return jsonError("pairing payload too large", 400);
+
   let value: unknown;
-  try { value = await req.clone().json(); } catch { return jsonError("invalid pairing JSON", 400); }
+  try { value = JSON.parse(new TextDecoder().decode(raw)); } catch { return jsonError("invalid pairing JSON", 400); }
   if (!value || typeof value !== "object" || Array.isArray(value)) return jsonError("invalid pairing JSON", 400);
   const body = value as Record<string, unknown>;
   const token = body.token;
