@@ -15,6 +15,7 @@
         android:name=".BrickApplication"
         android:allowBackup="false"
         android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Brick"
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
