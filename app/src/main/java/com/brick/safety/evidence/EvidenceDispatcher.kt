@@ -17,6 +17,17 @@ object NetworkEvidenceTransport : EvidenceTransport {
         EvidenceApi.sendBatch(baseUrl, deviceId, batch)
 }
 
+enum class EvidenceDrainStop {
+    EMPTY,
+    BUDGET_EXHAUSTED,
+    CORE_BACKLOG,
+    TRANSPORT_FAILURE,
+    ACK_FAILURE,
+    IDENTITY_UNAVAILABLE
+}
+
+data class EvidenceDrainResult(val sentRecords: Int, val stop: EvidenceDrainStop)
+
 class EvidenceDispatcher(
     context: Context,
     private val journal: EvidenceJournal = EvidenceJournal(context),
@@ -70,29 +81,43 @@ class EvidenceDispatcher(
     private fun coreBacklogPresent(): Boolean = coreBacklogProbe?.invoke() ?: defaultCoreBacklogPresent()
 
     /**
-     * Evidence is intentionally the lowest-priority durable stream. It is not sent while
-     * safety, crash or durable location backlog exists. Later phases may improve cadence,
-     * but they must preserve this ordering invariant.
+     * Evidence is intentionally the lowest-priority durable stream. This detailed result lets the
+     * worker distinguish healthy backlog catch-up from persistent transport/ACK/config failures, so
+     * failures can back off without slowing normal catch-up or competing with Brick Core.
      */
-    fun drainIfSafe(maxBatches: Int = 2): Int {
-        val deviceId = pairedDeviceId() ?: return 0
-        val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() } ?: return 0
-        if (coreBacklogPresent()) return 0
+    fun drainDetailed(maxBatches: Int = 2): EvidenceDrainResult {
+        val deviceId = pairedDeviceId() ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
+        val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() }
+            ?: return EvidenceDrainResult(0, EvidenceDrainStop.IDENTITY_UNAVAILABLE)
+        if (coreBacklogPresent()) return EvidenceDrainResult(0, EvidenceDrainStop.CORE_BACKLOG)
 
         var sent = 0
         repeat(maxBatches.coerceIn(1, 8)) {
-            // Recheck before each batch so safety/location work can preempt evidence between
-            // evidence batches. Evidence never owns the live/safety upload path.
-            if (coreBacklogPresent()) return sent
+            // Recheck before every batch so safety/location work can preempt evidence between batches.
+            if (coreBacklogPresent()) return EvidenceDrainResult(sent, EvidenceDrainStop.CORE_BACKLOG)
             val pending = journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
-            if (pending.isEmpty()) return sent
+            if (pending.isEmpty()) return EvidenceDrainResult(sent, EvidenceDrainStop.EMPTY)
             val batch = EvidenceProtocol.encodeBatch(pending.map { it.record })
-            val acked = try { transport.send(baseUrl, deviceId, batch) } catch (_: Throwable) { return sent }
-            if (!journal.ackBatch(acked)) return sent
+            val acked = try {
+                transport.send(baseUrl, deviceId, batch)
+            } catch (_: Throwable) {
+                return EvidenceDrainResult(sent, EvidenceDrainStop.TRANSPORT_FAILURE)
+            }
+
+            // Do not rely solely on the production HTTP transport's validation. The dispatcher is
+            // the final deletion boundary and independently requires the exact ACK identity set.
+            val expected = pending.map { EvidenceAck(it.record.epoch, it.record.sequence, it.record.observation.recordId) }
+            if (acked.size != expected.size || acked.toSet() != expected.toSet()) {
+                return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
+            }
+            if (!journal.ackBatch(acked)) return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
             sent += acked.size
         }
-        return sent
+        return EvidenceDrainResult(sent, EvidenceDrainStop.BUDGET_EXHAUSTED)
     }
+
+    /** Compatibility helper for existing callers/tests that only need the sent-record count. */
+    fun drainIfSafe(maxBatches: Int = 2): Int = drainDetailed(maxBatches).sentRecords
 
     override fun close() {
         journal.close()
