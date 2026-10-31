@@ -1,0 +1,129 @@
+name: Brick V1 Phase 2 — Evidence Foundation CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Cloud protocol / persistence / regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Phase 2 cloud source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check Worker and browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+
+      - name: Build same-origin parent assets and audit privacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          node scripts/audit-privacy.mjs
+          node scripts/check-parent-module.mjs
+
+      - name: Compile Phase 2 evidence modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
+          npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
+          npx esbuild src/worker-v7.ts --bundle --platform=browser --format=esm --outfile=/tmp/brick-worker-v7.mjs
+          test -s /tmp/brick-worker-v7.mjs
+
+      - name: Run Phase 2 evidence protocol and durable idempotency test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+
+      - name: Check Phase 2 setup and migration are wired
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/setup-v1-phase2.mjs
+          grep -F '"main": "src/worker-v7.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'schema/008_v1_phase2_evidence.sql' scripts/setup-v1-phase2.mjs >/dev/null
+          grep -F 'application/vnd.brick.evidence' src/worker-v7.ts >/dev/null
+          grep -F 'UNIQUE(device_id, record_id)' schema/008_v1_phase2_evidence.sql >/dev/null
+
+      - name: Run critical pre-existing regression gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
+          node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-store.mjs
+          node scripts/test-route-history.mjs /tmp/brick-history-store.mjs
+          npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-v6.mjs
+          node scripts/test-dlq-recovery.mjs /tmp/brick-queue-v6.mjs
+
+  android:
+    name: Android Phase 2 compile / lint / instrumentation compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout Phase 2 Android source
+        uses: actions/checkout@v5
+        with:
+          ref: v1-p2-evidence-android
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Verify dependency lock remains exact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/gradle.lockfile
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Compile, build, lint and compile instrumentation tests
+        run: gradle --no-daemon :app:compileDebugKotlin :app:assembleDebug :app:lintDebug :app:assembleDebugAndroidTest --stacktrace
+
+      - name: Verify Phase 2 evidence source is present in APK source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/src/main/java/com/brick/safety/evidence/EvidenceProtocol.kt
+          test -s app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt
+          test -s app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt
+          test -s app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt
+          grep -F 'coreBacklogPresent()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
