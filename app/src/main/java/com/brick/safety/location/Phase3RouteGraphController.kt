@@ -15,13 +15,9 @@ object Phase3RouteGraphController {
     private val running = AtomicBoolean(false)
     @Volatile private var lastAttemptElapsedMs = 0L
 
-    fun maybeRefresh(context: Context, phase3: Phase3PositioningEngine, sample: PositionSample) {
-        if (!sample.rawAccepted || sample.source != PositionSource.FUSED) return
-        if (sample.quality != PositionQuality.PRECISE && sample.quality != PositionQuality.ASSISTED) return
-        val lat = sample.trustedLat ?: return
-        val lon = sample.trustedLon ?: return
-        val wall = sample.wallTimeMs.takeIf { it > 0L } ?: return
-        if (!phase3.shouldRefreshPrivateMap(lat, lon, wall)) return
+    fun maybeRefresh(context: Context, phase3: Phase3PositioningEngine, lat: Double, lon: Double, wallMs: Long) {
+        if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || wallMs <= 0L) return
+        if (!phase3.shouldRefreshPrivateMap(lat, lon, wallMs)) return
 
         val appContext = context.applicationContext
         val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
