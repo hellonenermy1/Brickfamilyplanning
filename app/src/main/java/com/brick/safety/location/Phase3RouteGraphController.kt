@@ -41,7 +41,8 @@ object Phase3RouteGraphController {
                 // skew must never make a route cache appear fresh forever. Server generation time is
                 // retained separately for diagnostics/model provenance only.
                 val receivedWallMs = System.currentTimeMillis().coerceAtLeast(1L)
-                phase3.mergePrivateMap(result.centerLat, result.centerLon, receivedWallMs, result.segments)
+                val receivedSegments = result.segments.map { it.copy(lastSeenWallMs = receivedWallMs) }
+                phase3.mergePrivateMap(result.centerLat, result.centerLon, receivedWallMs, receivedSegments)
                 prefs.edit()
                     .putBoolean("phase3RouteGraphHealthy", true)
                     .putLong("lastPhase3RouteGraphSuccessWallMs", receivedWallMs)
