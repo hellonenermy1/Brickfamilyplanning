@@ -1,3 +1,4 @@
+import { readBoundedBody } from "./bounded-body";
 import { verifyDeviceSignature } from "./crypto";
 import { decodeEvidenceBatch, EVIDENCE_MAX_BATCH_BYTES } from "./evidence-protocol";
 import { EvidenceConflict, persistEvidenceBatch } from "./evidence-ingest";
@@ -43,12 +44,30 @@ function evidenceAttemptRateKey(req: Request) {
 async function signedEvidenceBody(req: Request, device: DeviceRecord): Promise<ArrayBuffer | Response> {
   const contentType = (req.headers.get("Content-Type") ?? "").split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/vnd.brick.evidence") return json({ error: "unsupported evidence content type" }, 415);
-  const declared = Number(req.headers.get("Content-Length") ?? "0");
-  if (Number.isFinite(declared) && declared > EVIDENCE_MAX_BATCH_BYTES) return json({ error: "evidence payload too large" }, 413);
+
+  // Fast-reject a declared oversized body without reading it. A missing or dishonest Content-Length
+  // is still safe because readBoundedBody() enforces the same limit while streaming the actual body.
+  const declaredRaw = req.headers.get("Content-Length");
+  if (declaredRaw !== null) {
+    const declared = Number(declaredRaw);
+    if (Number.isFinite(declared) && declared > EVIDENCE_MAX_BATCH_BYTES) {
+      return json({ error: "evidence payload too large" }, 413);
+    }
+  }
+
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return json({ error: "missing or invalid signature" }, 401);
-  const body = await req.arrayBuffer();
-  if (!body.byteLength || body.byteLength > EVIDENCE_MAX_BATCH_BYTES) return json({ error: "invalid evidence payload size" }, 400);
+
+  // Never call req.arrayBuffer() here. Chunked/no-length traffic must not make the Worker buffer an
+  // arbitrarily large body before discovering that BREV v1 is capped at 65,536 bytes.
+  const bounded = await readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES);
+  if (!bounded.ok) {
+    return bounded.reason === "too_large"
+      ? json({ error: "evidence payload too large" }, 413)
+      : json({ error: "could not read evidence payload" }, 400);
+  }
+  const body = bounded.body;
+  if (!body.byteLength) return json({ error: "invalid evidence payload size" }, 400);
   if (!(await verifyDeviceSignature(device.public_key_spki_b64, body, signature))) return json({ error: "bad signature" }, 401);
   return body;
 }
