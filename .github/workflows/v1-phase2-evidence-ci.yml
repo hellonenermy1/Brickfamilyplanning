@@ -15,6 +15,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ANDROID_PHASE2_SHA: 34eb0024b41996664d743c0579464d2b814dbf38
+
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -125,10 +128,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v1-p2-evidence-android
+          ref: ${{ env.ANDROID_PHASE2_SHA }}
 
-      - name: Record exact paired Android source
-        run: echo "Phase 2 Android source $(git rev-parse HEAD)"
+      - name: Verify exact paired Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ANDROID_PHASE2_SHA"
+          echo "Phase 2 Android source $(git rev-parse HEAD)"
 
       - uses: actions/setup-java@v5
         with:
@@ -197,10 +204,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v1-p2-evidence-android
+          ref: ${{ env.ANDROID_PHASE2_SHA }}
 
-      - name: Record exact paired Android source
-        run: echo "Phase 2 Android source $(git rev-parse HEAD)"
+      - name: Verify exact paired Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ANDROID_PHASE2_SHA"
+          echo "Phase 2 Android source $(git rev-parse HEAD)"
 
       - uses: actions/setup-java@v5
         with:
