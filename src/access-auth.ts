@@ -89,7 +89,8 @@ async function verifyWithJwk(jwk: AccessJwk, signingInput: string, signature: Ui
       false,
       ["verify"]
     );
-    const sig = signature.buffer.slice(signature.byteOffset, signature.byteOffset + signature.byteLength);
+    const sig = new ArrayBuffer(signature.byteLength);
+    new Uint8Array(sig).set(signature);
     return crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, encoder.encode(signingInput));
   } catch {
     return false;
