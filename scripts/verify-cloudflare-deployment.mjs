@@ -5,6 +5,8 @@ const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
 const EXPECTED_RELEASE = '0.6.0-phase6-rc';
 const EXPECTED_RELEASE_STATE = 'candidate-not-real-device-qualified';
+const EXPECTED_V1_PROGRAM_PHASE = 2;
+const EXPECTED_EVIDENCE_PROTOCOL = 1;
 const HISTORY_BUCKET = 'brick-family-v1-history';
 const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
@@ -12,7 +14,10 @@ const DLQ = 'brick-family-v1-dlq';
 const DAY_SECONDS = 86_400;
 const REQUIRED_TABLES = [
   'devices', 'device_health_samples', 'health_incidents', 'safety_events', 'geofences',
-  'trips', 'crash_reports', 'audit_log', 'device_replay_state', 'ble_anchors'
+  'trips', 'crash_reports', 'audit_log', 'device_replay_state', 'ble_anchors',
+  'evidence_batches', 'evidence_records', 'evidence_batch_records', 'device_evidence_state',
+  'evidence_provider_health', 'atlas_models', 'witness_authorizations', 'ground_receivers',
+  'device_commands', 'refined_history_runs'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -80,7 +85,10 @@ function requireAccessDenial(response, label) {
 const state = JSON.parse(await fs.readFile('setup-state.json', 'utf8'));
 const sourceGitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 assert(/^[0-9a-f]{40}$/.test(sourceGitSha), 'could not determine exact checked-out Git SHA');
-assert(state?.phase === 6, 'setup-state phase is not 6');
+assert(state?.phase === 6, 'underlying audited release baseline is not Phase 6');
+assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 2');
+assert(state?.v1Phase2EvidenceProtocol === EXPECTED_EVIDENCE_PROTOCOL, 'setup-state evidence protocol is not v1');
+assert(Number(state?.retention?.rawEvidenceDays) === 30, 'setup-state raw evidence retention is not 30 days');
 assert(state?.releaseState === EXPECTED_RELEASE_STATE, 'setup-state release qualification state is not explicitly unqualified');
 assert(state?.currentRelease === EXPECTED_RELEASE, 'setup-state current release does not match the audited APK release');
 assert(state?.accountId === accountId, 'setup-state account does not match workflow account');
@@ -103,6 +111,7 @@ await cf(`/accounts/${accountId}/r2/buckets/${MAPS_BUCKET}`);
 const historyLifecycle = await cf(`/accounts/${accountId}/r2/buckets/${HISTORY_BUCKET}/lifecycle`);
 requireAgeRule(historyLifecycle, 'brick-raw-history-30d', 'history/raw/', 30 * DAY_SECONDS, 'deleteObjectsTransition');
 requireAgeRule(historyLifecycle, 'brick-trusted-history-90d', 'history/trusted/', 90 * DAY_SECONDS, 'deleteObjectsTransition');
+requireAgeRule(historyLifecycle, 'brick-raw-evidence-30d', 'evidence/raw/', 30 * DAY_SECONDS, 'deleteObjectsTransition');
 requireAgeRule(historyLifecycle, 'brick-abort-multipart-7d', '', 7 * DAY_SECONDS, 'abortMultipartUploadsTransition');
 
 const queues = await cf(`/accounts/${accountId}/queues?per_page=100`);
@@ -117,13 +126,18 @@ for (const table of REQUIRED_TABLES) assert(tableNames.has(table), `required D1 
 
 const schemaRows = await cf(`/accounts/${accountId}/d1/database/${state.d1Id}/query`, {
   method: 'POST',
-  body: JSON.stringify({ sql: "SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('crash_reports','device_replay_state')" })
+  body: JSON.stringify({ sql: "SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('crash_reports','device_replay_state','evidence_records','evidence_provider_health')" })
 });
 const schemaByName = new Map((schemaRows?.[0]?.results || []).map(row => [row.name, String(row.sql || '')]));
 const crashSchema = schemaByName.get('crash_reports') || '';
 assert(crashSchema && !/latitude|longitude|stack_trace/i.test(crashSchema), 'crash-report schema contains forbidden location/stack fields');
 const replaySchema = schemaByName.get('device_replay_state') || '';
 assert(/last_health_sequence/i.test(replaySchema), 'health replay-state schema is incomplete');
+const evidenceSchema = schemaByName.get('evidence_records') || '';
+assert(/independence_group/i.test(evidenceSchema) && /payload_sha256/i.test(evidenceSchema), 'evidence record schema is incomplete');
+assert(/UNIQUE\s*\(\s*device_id\s*,\s*record_id\s*\)/i.test(evidenceSchema), 'evidence record-id idempotency constraint is missing');
+const providerHealthSchema = schemaByName.get('evidence_provider_health') || '';
+assert(/last_epoch/i.test(providerHealthSchema) && /last_sequence/i.test(providerHealthSchema), 'provider-health monotonic ordering fields are missing');
 
 // Access must be the exact self-hosted application and policy that setup intends.
 const app = await cf(`/accounts/${accountId}/access/apps/${state.access.appId}`);
@@ -172,7 +186,13 @@ const invalidDevice = await manualFetch(`${origin}/api/device/deployment-smoke/l
   headers: { 'content-type': 'application/json' },
   body: '{}'
 });
-assert(invalidDevice.status === 401 || invalidDevice.status === 429, `unsigned fake-device request did not fail closed (HTTP ${invalidDevice.status})`);
+assert(invalidDevice.status === 401 || invalidDevice.status === 429, `unsigned fake-device location request did not fail closed (HTTP ${invalidDevice.status})`);
+const invalidEvidence = await manualFetch(`${origin}/api/device/deployment-smoke/evidence`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/vnd.brick.evidence' },
+  body: new Uint8Array([0x42])
+});
+assert(invalidEvidence.status === 401 || invalidEvidence.status === 429, `unsigned fake-device evidence request did not fail closed (HTTP ${invalidEvidence.status})`);
 
 // The workflow performs a strict, tagged deploy immediately before this verifier. Keep the exact
 // source SHA in non-secret evidence so the APK/backend freeze can prove which source was deployed.
@@ -180,6 +200,8 @@ const verifiedAt = new Date().toISOString();
 const report = {
   ok: true,
   phase: 6,
+  v1ProgramPhase: EXPECTED_V1_PROGRAM_PHASE,
+  evidenceProtocol: EXPECTED_EVIDENCE_PROTOCOL,
   sourceGitSha,
   workerName: EXPECTED_WORKER,
   workerHost: state.workerHost,
@@ -197,7 +219,8 @@ const report = {
     eventQueue: EVENT_QUEUE,
     dlq: DLQ,
     requiredTables: REQUIRED_TABLES,
-    historyLifecycleVerified: true
+    historyLifecycleVerified: true,
+    rawEvidenceRetentionDays: 30
   },
   publicSmoke: {
     healthz: health.status,
@@ -205,7 +228,8 @@ const report = {
     mapStatus: mapStatus.status,
     parentRelease: parentRelease.status,
     invalidPair: invalidPair.status,
-    invalidDevice: invalidDevice.status
+    invalidDevice: invalidDevice.status,
+    invalidEvidence: invalidEvidence.status
   },
   privateMapRequired: requirePrivateMap,
   privateMapInstalled: Boolean(state?.privateMap?.installed),
@@ -217,4 +241,4 @@ state.deploymentVerifiedAt = verifiedAt;
 state.deploymentVerification = { ok: true, evidenceFile: 'deployment-verification.json' };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
 await fs.writeFile('deployment-verification.json', JSON.stringify(report, null, 2));
-console.log(`Brick Phase 6 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
+console.log(`Brick V1 Phase 2 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
