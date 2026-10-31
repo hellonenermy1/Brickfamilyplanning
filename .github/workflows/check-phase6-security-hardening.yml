@@ -53,6 +53,11 @@ jobs:
           print('Pairing edge limiter executes before public-key/token validation')
           PY
 
+      - name: Verify actual public pairing byte limit
+        run: |
+          npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-json-security.mjs
+          node scripts/test-public-pairing-limits.mjs /tmp/brick-device-json-security.mjs
+
       - name: Type-check hardening changes
         run: npm run typecheck
 
