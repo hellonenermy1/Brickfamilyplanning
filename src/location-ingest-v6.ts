@@ -16,6 +16,7 @@ export type LocationIngestEnv = {
 type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
 type QueuedLocation = { packet: LivePacket; rawPacket: LivePacket };
 const BATCH_VERSION = 1;
+const ROUTE_CONSTRAINED_SOURCE = 5;
 // 20 packets keeps one ingest comfortably below the Workers Free D1 50-query ceiling even when
 // geofence/trip state and safety events need writes in the same invocation.
 const MAX_BATCH = 20;
@@ -107,7 +108,12 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   await queueLocations(env, deviceId, [{ packet, rawPacket }]);
   const persisted = await persistAccepted(env, deviceId, [packet]);
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
-  return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: persisted.liveAdvanced, routeConstrained: packet.source === 4 });
+  return json({
+    ack: packet.sequence,
+    duplicate: persisted.insertedCount === 0,
+    liveAdvanced: persisted.liveAdvanced,
+    routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE
+  });
 }
 
 export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -148,7 +154,7 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
     acked: persisted.accepted,
     count: persisted.accepted.length,
     liveAdvanced: persisted.liveAdvanced,
-    routeConstrainedCount: packets.filter(packet => packet.source === 4).length
+    routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length
   });
 }
 
@@ -168,5 +174,10 @@ export async function previewLatestLocationV6(req: Request, env: LocationIngestE
   }
   const packet = await trustedPacket(rawPacket, env);
   const advanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(packet);
-  return json({ previewed: advanced, epoch: packet.epoch, sequence: packet.sequence, routeConstrained: packet.source === 4 });
+  return json({
+    previewed: advanced,
+    epoch: packet.epoch,
+    sequence: packet.sequence,
+    routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE
+  });
 }
