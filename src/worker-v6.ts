@@ -6,6 +6,7 @@ import { listHealthIncidents, reliability } from "./phase5-ops";
 import { batteryDrainTrend } from "./battery-health";
 import { snapshotD1ToR2 } from "./backup-v6";
 import { recordAudit } from "./phase5c";
+import { listBleAnchors, parentListBleAnchors, parentRemoveBleAnchor, parentSetBleAnchor } from "./ble-anchors";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -54,6 +55,19 @@ function finalParentResponse(baseResponse: Response, baseHtml: string) {
   return new Response(html, { status: baseResponse.status, headers: baseResponse.headers });
 }
 
+async function healthWithConfiguration(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext, deviceId: string) {
+  const response = await base.fetch!(req, env, ctx);
+  if (!response.ok) return response;
+  let body: Record<string, unknown>;
+  try { body = await response.json<Record<string, unknown>>(); }
+  catch { return response; }
+  const anchors = await listBleAnchors(env, deviceId);
+  const headers = new Headers(response.headers);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  return new Response(JSON.stringify({ ...body, bleAnchors: anchors }), { status: response.status, headers });
+}
+
 async function archivedRead(req: Request, env: Env, deviceId: string, suffix: string): Promise<Response> {
   const u = new URL(req.url);
   if (suffix === "/state" && req.method === "GET") {
@@ -77,6 +91,7 @@ async function archivedRead(req: Request, env: Env, deviceId: string, suffix: st
   }
   if (suffix === "/battery-drain" && req.method === "GET") return batteryDrainTrend(env, deviceId);
   if (suffix === "/geofences" && req.method === "GET") return noStore(await listGeofences(env, deviceId));
+  if (suffix === "/ble-anchors" && req.method === "GET") return parentListBleAnchors(env, deviceId);
   if (suffix === "/trips" && req.method === "GET") return noStore(await listTrips(env, deviceId));
   if (suffix === "/history" && req.method === "GET") {
     return noStore(await history(env, deviceId, Number(u.searchParams.get("from")), Number(u.searchParams.get("to"))));
@@ -96,6 +111,11 @@ export default {
       return finalParentResponse(response, await response.text());
     }
 
+    let deviceMatch = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
+    if (req.method === "POST" && deviceMatch) {
+      return healthWithConfiguration(req, env, ctx, decodeURIComponent(deviceMatch[1]));
+    }
+
     const match = u.pathname.match(/^\/parent\/api\/device\/([^/]+)(\/.*)$/);
     if (match) {
       const denied = await requireParent(req, env); if (denied) return denied;
@@ -105,6 +125,20 @@ export default {
       if (!life) return json({ error: "device not found" }, 404);
 
       if (suffix === "/battery-drain" && req.method === "GET") return batteryDrainTrend(env, deviceId);
+      if (suffix === "/ble-anchors" && req.method === "GET") return parentListBleAnchors(env, deviceId);
+      if (suffix === "/ble-anchors" && req.method === "POST") {
+        if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
+        const response = await parentSetBleAnchor(req, env, deviceId);
+        ctx.waitUntil(recordAudit(env, "ble_anchor_set", req, response.status, { deviceId }));
+        return response;
+      }
+      const anchorDelete = suffix.match(/^\/ble-anchors\/([^/]+)$/);
+      if (anchorDelete && req.method === "DELETE") {
+        if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
+        const response = await parentRemoveBleAnchor(env, deviceId, decodeURIComponent(anchorDelete[1]));
+        ctx.waitUntil(recordAudit(env, "ble_anchor_removed", req, response.status, { deviceId }));
+        return response;
+      }
 
       if (suffix === "/revoke" && req.method === "POST") {
         if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
