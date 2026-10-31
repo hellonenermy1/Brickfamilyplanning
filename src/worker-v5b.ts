@@ -1,4 +1,5 @@
 import core, { BrickDevice } from "./index";
+import { readBoundedBody } from "./bounded-body";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -82,30 +83,12 @@ function csrfDenied(message = "same-origin request required") {
 
 async function parentMutationBodyDenied(req: Request): Promise<Response | null> {
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return null;
-  const declared = Number(req.headers.get("Content-Length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_PARENT_MUTATION_BYTES) {
-    return Response.json({ error: "parent mutation payload too large" }, { status: 413, headers: { "Cache-Control": "no-store" } });
-  }
-  const stream = req.clone().body;
-  if (!stream) return null;
-  const reader = stream.getReader();
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > MAX_PARENT_MUTATION_BYTES) {
-        await reader.cancel().catch(() => undefined);
-        return Response.json({ error: "parent mutation payload too large" }, { status: 413, headers: { "Cache-Control": "no-store" } });
-      }
-    }
-  } catch {
-    return Response.json({ error: "invalid parent mutation body" }, { status: 400, headers: { "Cache-Control": "no-store" } });
-  } finally {
-    try { reader.releaseLock(); } catch { /* already released/cancelled */ }
-  }
-  return null;
+  const bounded = await readBoundedBody(req.clone(), MAX_PARENT_MUTATION_BYTES);
+  if (bounded.ok) return null;
+  return Response.json(
+    { error: bounded.reason === "too_large" ? "parent mutation payload too large" : "invalid parent mutation body" },
+    { status: bounded.reason === "too_large" ? 413 : 400, headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 async function pairingRateDenied(req: Request, env: RuntimeEnv): Promise<Response | null> {
@@ -117,12 +100,11 @@ async function pairingRateDenied(req: Request, env: RuntimeEnv): Promise<Respons
 }
 
 async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
+  const bounded = await readBoundedBody(req.clone(), 8192);
+  if (!bounded.ok || !bounded.body.byteLength) return null;
   let value: unknown;
-  try {
-    const body = await req.clone().arrayBuffer();
-    if (!body.byteLength || body.byteLength > 8192) return null;
-    value = JSON.parse(new TextDecoder().decode(body));
-  } catch { return null; }
+  try { value = JSON.parse(new TextDecoder().decode(bounded.body)); }
+  catch { return null; }
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const h = value as Record<string, unknown>;
   for (const field of ["journalWriteHealthy", "safetyOutboxWriteHealthy", "healthCounterWriteHealthy"]) {
