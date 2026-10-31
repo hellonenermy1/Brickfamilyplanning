@@ -18,6 +18,10 @@
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
 
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
+
         <activity android:name=".ui.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
