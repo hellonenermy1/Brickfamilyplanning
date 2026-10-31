@@ -2,7 +2,7 @@
 
 Date: 2026-10-31
 Phase: 2 of 9 — Evidence Platform, Protocol & Durable Data Foundation
-Current result: **SOURCE IMPLEMENTED + HARDENED — CLOUD CORE/SIGNED ROUTE LOCALLY VERIFIED — HOSTED CI BLOCKED — NOT ACCEPTED**
+Current result: **SOURCE IMPLEMENTED + HARDENED — CLOUD CORE/SIGNED ROUTE LOCALLY VERIFIED — FINAL RECORD-RACE + ANDROID-DER INVARIANTS TARGET-VERIFIED — HOSTED CI BLOCKED — NOT ACCEPTED**
 Production qualification change: **none**
 
 ## Phase 2 boundary
@@ -20,7 +20,7 @@ Source existence or source review alone does not pass this gate.
 Snapshot at this report update:
 
 - Android `v1-p2-evidence-android`: `389bc8744341aebcc42f74f79403fd2b3d5d5873` — PR #7, draft/unmerged.
-- Cloud `v1-p2-evidence-cloud`: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c` — PR #6, draft/unmerged.
+- Cloud `v1-p2-evidence-cloud`: `20a459f11f99195a0c56b3c1d82f2e7659976859` — PR #6, draft/unmerged.
 
 These are staging snapshots, not permanent release identifiers. Neither branch is promoted into canonical `apk-download` / `main` until the final paired heads receive real hosted verification.
 
@@ -88,7 +88,7 @@ Shared Android/TypeScript golden vector remains byte-identical:
 
 ## Cloud foundation implemented and hardened
 
-`worker-v7` preserves the prior worker behavior and adds only the evidence route. The signed evidence handler is isolated in `src/evidence-route.ts` so the actual request path can be executed in a focused integration harness.
+`worker-v7` preserves prior worker behavior and adds only the evidence route. The signed evidence handler is isolated in `src/evidence-route.ts` so the actual request path can be executed in a focused integration harness.
 
 Evidence route requires:
 
@@ -102,6 +102,10 @@ Evidence route requires:
 - durable persistence before ACK.
 
 Unsigned/bad-signature traffic therefore cannot consume the child's authenticated device bucket merely by knowing a device ID.
+
+### Android-compatible ECDSA format
+
+Android `DeviceKeys.sign()` uses Java `SHA256withECDSA`, which emits ASN.1 DER. Brick Cloud already converts DER ECDSA to 64-byte P1363 before Web Crypto verification. The Phase 2 signed-route test now deliberately converts locally generated P1363 signatures to DER (`p1363ToDer` / `signLikeAndroid`) before sending valid requests, so the test source exercises the Android-format boundary rather than only Web Crypto's native raw signature format.
 
 ### Content-addressed raw evidence
 
@@ -117,6 +121,12 @@ The first D1 statement is a hard `INSERT INTO evidence_batches`, not `INSERT OR 
 
 A concurrent request that already claimed the same `(deviceId,batchId)` makes the losing transactional D1 batch fail and roll back all later evidence-record/link/state writes. The losing raw object is unreferenced and expires under bounded raw-evidence retention.
 
+### Atomic new-record claims
+
+Records that were already present and matched exactly during preflight may be reused. Records that were absent during preflight now use hard `INSERT INTO evidence_records`, and batch-record links are hard inserted as well.
+
+This closes the record-level race where a competing signed batch could previously claim the same `(device,epoch,sequence)` or record ID after preflight and before commit. A unique-constraint collision now rolls back the entire losing batch instead of silently linking to the competitor's record.
+
 ### Record replay protection / storage amplification prevention
 
 If every record in a fresh transport batch UUID already exists and exactly matches durable record identity/metadata/payload hash, the server returns the exact ACK set immediately with `duplicateRecords:true`.
@@ -129,6 +139,8 @@ It does **not** create another `evidence_batches` row or raw R2 object.
 - same durable records under a new batch UUID → exact ACK, no new durable storage;
 - record ID/epoch/sequence collision with changed content → conflict;
 - accepted batch UUID reused with changed bytes → conflict;
+- concurrent batch identity claim → losing D1 transaction rolls back;
+- concurrent new-record identity claim → losing D1 transaction rolls back;
 - provider health orders by durable epoch/sequence, not device wall clock;
 - newly persisted batch membership is read back before exact ACK.
 
@@ -144,11 +156,11 @@ Environment used for local Cloud checks:
 
 - Node.js 22.16.0;
 - TypeScript 5.8.3;
-- Node `node:sqlite` D1-style harness;
+- Node `node:sqlite` / SQLite transactional harnesses;
 - in-memory R2-style harness;
-- Node Web Crypto P-256 for signed-route testing.
+- Node Web Crypto P-256 for signed-route/signature-format checks.
 
-Cloud protocol/persistence checks passed:
+Cloud protocol/persistence harness passed before the final record-claim refinement, covering:
 
 - exact shared golden vector;
 - protocol bounds/trailing/version/order rejection;
@@ -159,42 +171,43 @@ Cloud protocol/persistence checks passed:
 - provider-health ordering under regressed wall clock;
 - content-addressed raw key and hashed device metadata;
 - Android epoch-bound rejection;
-- simulated competing batch-ID claim between preflight and D1 transaction; losing transaction leaves zero evidence records/links and later retry becomes conflict.
+- simulated competing batch-ID claim between preflight and D1 transaction with full losing-transaction rollback.
 
 Observed:
 
 `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
 
-Signed HTTP route checks passed with a real generated P-256 keypair:
+The final new-record race invariant was then target-executed separately with SQLite. A competitor claimed `(device-1, epoch=55, sequence=1)` before the losing transaction's hard record insert. The hard insert raised the expected unique constraint and rollback left:
 
-- path decoder rejects non-v4/path-control/bad-encoding device IDs;
-- missing/bad signature → 401 and requester bucket only;
-- valid signature → requester bucket then device bucket;
-- valid request persists before 200/exact ACK;
-- exact retry does not rewrite storage;
-- fresh batch UUID with already-durable records does not grow storage;
-- requester/device rate-limit rejection ordering is correct;
-- revoked device fails closed;
-- signed malformed protocol fails closed without persistence.
+- losing batch rows: `0`;
+- epoch-55 records: `1`, the competitor only.
+
+Repository test source now contains the same `record-race` scenario; the complete latest repository test script awaits hosted execution.
+
+Signed HTTP route checks passed with a real generated P-256 keypair, covering canonical path validation, signature failure/success, split rate buckets, persistence-before-ACK, replay behavior, revocation and signed malformed protocol.
 
 Observed:
 
 `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
+The Android DER/P1363 signature-format invariant was also target-executed locally: a 64-byte P1363 P-256 signature was converted to DER (70 bytes in the observed run), converted back through Brick's DER→P1363 logic, and verified successfully (`true`). The updated repository route test now uses Android-style DER for valid requests and awaits hosted execution on the final head.
+
 Current Android pure Kotlin model/protocol has also been locally compiled and matched the shared golden bytes, including safe-integer/canonical-UUID rejection. This is protocol evidence only; it is not Android framework integration proof.
 
 ## CI gate alignment
 
-Current Phase 2 CI source requires:
+Current Phase 2 CI source now requires:
 
 Cloud:
 
 - type/static checks;
-- hard D1 batch-ID claim;
+- hard D1 batch-ID claim and no `INSERT OR IGNORE` for batch identity;
+- hard D1 new-record claims and no `INSERT OR IGNORE` for evidence record identity;
 - content-addressed raw object key;
 - record-replay no-storage path;
 - split requester/authenticated-device rate buckets;
 - canonical device-ID route boundary;
+- signed-route test retaining `p1363ToDer` and `signLikeAndroid`;
 - protocol/persistence harness;
 - signed HTTP route harness;
 - retained Phase 6 regression suite.
@@ -216,15 +229,15 @@ Android:
 
 ## Hosted CI blocker
 
-Latest checked hosted run for the final Cloud staging snapshot:
+Latest checked hosted run for the current Cloud staging head:
 
-- run `41212250461`
-- head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+- run `41212933879`
+- head `20a459f11f99195a0c56b3c1d82f2e7659976859`
 
 Observed:
 
-- Android compile/lint/dependency-lock: failure, `runner_id: 0`, `steps: []`;
-- Cloud protocol/persistence/regression: failure, `runner_id: 0`, `steps: []`;
+- Cloud protocol/persistence/regression: failure, `runner_id: 0`, empty runner name, `steps: []`;
+- Android compile/lint/dependency-lock: failure, `runner_id: 0`, empty runner name, `steps: []`;
 - Android instrumentation: skipped.
 
 No runner executed source steps. This is an infrastructure/no-runner failure, **not** a source failure and **not** a pass.
@@ -244,11 +257,13 @@ No runner executed source steps. This is an infrastructure/no-runner failure, **
 | dedicated non-starving evidence worker | IMPLEMENTED |
 | bounded separate Evidence Batch v1 | IMPLEMENTED |
 | signed evidence transport/endpoint | IMPLEMENTED |
-| atomic D1 batch-ID claim | IMPLEMENTED + LOCAL TEST PASS |
-| content-addressed raw evidence storage | IMPLEMENTED + LOCAL TEST PASS |
-| record replay storage-amplification prevention | IMPLEMENTED + LOCAL TEST PASS |
-| split unsigned/authenticated rate-limit buckets | IMPLEMENTED + LOCAL TEST PASS |
-| actual signed route with P-256 verification | LOCAL TEST PASS |
+| atomic D1 batch-ID claim | IMPLEMENTED + LOCAL HARNESS PASS |
+| atomic new-record claim | IMPLEMENTED + TARGETED LOCAL RACE PASS |
+| content-addressed raw evidence storage | IMPLEMENTED + LOCAL HARNESS PASS |
+| record replay storage-amplification prevention | IMPLEMENTED + LOCAL HARNESS PASS |
+| split unsigned/authenticated rate-limit buckets | IMPLEMENTED + LOCAL ROUTE PASS |
+| actual signed route with P-256 verification | LOCAL ROUTE PASS |
+| Android DER ECDSA format compatibility | IMPLEMENTED + TARGETED LOCAL PASS; FINAL ROUTE TEST HOSTED-PENDING |
 | Android/TypeScript protocol golden parity | LOCAL PASS |
 | Android full compile/lint | BLOCKED — NO HOSTED RUNNER / NO LOCAL ANDROID SDK |
 | Android instrumentation | BLOCKED — NO HOSTED RUNNER |
