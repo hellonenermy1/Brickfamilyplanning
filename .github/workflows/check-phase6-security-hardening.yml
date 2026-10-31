@@ -52,6 +52,12 @@ jobs:
           grep -F 'readBoundedBody(req.clone(), maxBytes)' src/device-json-security.ts >/dev/null
           grep -F 'readBoundedBody(req, maxBytes)' src/location-ingest-v6.ts >/dev/null
           grep -F 'readBoundedBody(req, 4096)' src/phase5c.ts >/dev/null
+          grep -F 'const MAX_BLE_ANCHOR_BODY_BYTES = 4096' src/ble-anchors.ts >/dev/null
+          grep -F 'readBoundedBody(req, MAX_BLE_ANCHOR_BODY_BYTES)' src/ble-anchors.ts >/dev/null
+          if grep -F 'await req.json<Record<string, unknown>>()' src/ble-anchors.ts; then
+            echo 'BLE anchor mutation regressed to an unbounded JSON parse.' >&2
+            exit 1
+          fi
           grep -F 'const bodyDenied = await parentMutationBodyDenied(req)' src/worker-v5b.ts >/dev/null
 
       - name: Require edge-IP rate limiting before public pairing validation
