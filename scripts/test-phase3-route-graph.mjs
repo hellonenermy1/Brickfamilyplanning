@@ -14,6 +14,10 @@ assert.equal(data.modeMaskForRoad('road', 'motorway'), VEHICLE);
 assert.equal(data.modeMaskForRoad('road', 'steps'), WALK | RUN);
 assert.equal(data.modeMaskForRoad('road', 'cycleway'), WALK | RUN | BIKE);
 assert.equal(data.modeMaskForRoad('road', 'residential'), WALK | RUN | BIKE | VEHICLE);
+assert.equal(data.modeMaskForRoad('residential', 'future_unrecognized_detail'), WALK | RUN | BIKE | VEHICLE,
+  'unrecognized detail must fall back to a recognized broad road class');
+assert.equal(data.modeMaskForRoad('rail', 'future_unrecognized_detail'), 0,
+  'unknown/non-road broad classes must still remain excluded');
 assert.equal(data.modeMaskForRoad('rail', 'rail'), 0, 'unknown/non-road classes must not constrain particles');
 
 function numberedBindings(params) { return Object.fromEntries(params.map((value, i) => [`?${i + 1}`, value])); }
