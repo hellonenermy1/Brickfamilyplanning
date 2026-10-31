@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import readline from 'node:readline';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-v1';
@@ -8,33 +7,11 @@ const HISTORY_BUCKET = 'brick-family-v1-history';
 const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
 const DLQ = 'brick-family-v1-dlq';
-const CURRENT_APP_VERSION = '0.6.0-phase6-rc';
 const ACCESS_APP_NAME = 'Brick Parent Dashboard';
 
-function ask(q) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => rl.question(q, a => { rl.close(); resolve(a.trim()); }));
-}
-function askHidden(q) {
-  if (!process.stdin.isTTY) return ask(q);
-  process.stdout.write(q);
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-  process.stdin.setEncoding('utf8');
-  return new Promise((resolve, reject) => {
-    let value = '';
-    const onData = ch => {
-      if (ch === '\u0003') { process.stdin.setRawMode(false); process.stdin.pause(); reject(new Error('Cancelled')); return; }
-      if (ch === '\r' || ch === '\n') { process.stdin.off('data', onData); process.stdin.setRawMode(false); process.stdin.pause(); process.stdout.write('\n'); resolve(value); return; }
-      if (ch === '\u007f') { value = value.slice(0, -1); return; }
-      value += ch;
-    };
-    process.stdin.on('data', onData);
-  });
-}
-
-let token = process.env.CLOUDFLARE_API_TOKEN || await askHidden('Cloudflare scoped API token (hidden): ');
-if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required. Do not use a Global API key.');
+const token = process.env.CLOUDFLARE_API_TOKEN;
+const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required. Use a scoped API token; do not use or commit a Global API key.');
 
 async function cf(path, init = {}) {
   const response = await fetch(API + path, {
@@ -47,52 +24,45 @@ async function cf(path, init = {}) {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body.success === false) {
-    const detail = JSON.stringify(body.errors || body);
-    throw new Error(`Cloudflare API ${response.status}: ${detail}`);
+    throw new Error(`Cloudflare API ${response.status} for ${path}: ${JSON.stringify(body.errors || body)}`);
   }
   return body.result;
 }
 
-async function chooseAccount() {
-  if (process.env.CLOUDFLARE_ACCOUNT_ID) return process.env.CLOUDFLARE_ACCOUNT_ID;
+async function selectAccount() {
   const accounts = await cf('/accounts?per_page=50');
-  if (!accounts.length) throw new Error('No Cloudflare account is visible to this API token.');
-  if (accounts.length === 1) return accounts[0].id;
-  console.log('\nCloudflare accounts:');
-  accounts.forEach((a, i) => console.log(`  ${i + 1}. ${a.name} (${a.id})`));
-  const n = Number(await ask('Choose account number: '));
-  if (!Number.isInteger(n) || n < 1 || n > accounts.length) throw new Error('Invalid account selection.');
-  return accounts[n - 1].id;
+  if (!Array.isArray(accounts) || accounts.length === 0) throw new Error('No Cloudflare accounts are visible to this scoped token.');
+  if (explicitAccount) {
+    const found = accounts.find(a => a.id === explicitAccount);
+    if (!found) throw new Error('CLOUDFLARE_ACCOUNT_ID is not visible to the supplied scoped token.');
+    return found.id;
+  }
+  if (accounts.length !== 1) {
+    throw new Error(`Token can access ${accounts.length} accounts. Set CLOUDFLARE_ACCOUNT_ID explicitly so Brick never deploys to a guessed account.`);
+  }
+  return accounts[0].id;
 }
 
-const accountId = await chooseAccount();
-process.env.CLOUDFLARE_API_TOKEN = token;
-process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+const accountId = await selectAccount();
 
 async function ensureD1() {
-  const list = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
-  let db = list.find(x => x.name === D1_NAME);
-  if (!db) db = await cf(`/accounts/${accountId}/d1/database`, { method: 'POST', body: JSON.stringify({ name: D1_NAME, primary_location_hint: 'apac' }) });
+  const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
+  let db = databases.find(x => x.name === D1_NAME);
+  if (!db) db = await cf(`/accounts/${accountId}/d1/database`, { method: 'POST', body: JSON.stringify({ name: D1_NAME }) });
+  if (!db?.uuid) throw new Error('D1 database was not created or returned no UUID.');
   return db.uuid;
 }
 
 async function ensureR2Bucket(name) {
-  try { await cf(`/accounts/${accountId}/r2/buckets/${name}`); }
-  catch (error) {
-    const msg = String(error);
-    if (msg.includes('10042') || /enable R2/i.test(msg)) {
-      throw new Error('Cloudflare R2 is not enabled for this account. Enable R2 in Storage & databases > R2, then rerun deployment.');
-    }
-    try {
-      await cf(`/accounts/${accountId}/r2/buckets`, { method: 'POST', body: JSON.stringify({ name, locationHint: 'apac', storageClass: 'Standard' }) });
-    } catch (createError) {
-      throw new Error(`Could not create R2 bucket ${name}: ${String(createError)}`);
-    }
+  try {
+    await cf(`/accounts/${accountId}/r2/buckets/${name}`);
+  } catch {
+    await cf(`/accounts/${accountId}/r2/buckets`, { method: 'POST', body: JSON.stringify({ name, locationHint: 'apac' }) });
   }
 }
 
 async function ensureR2Lifecycle() {
-  const day = 86_400;
+  const day = 86400;
   await cf(`/accounts/${accountId}/r2/buckets/${HISTORY_BUCKET}/lifecycle`, {
     method: 'PUT',
     body: JSON.stringify({ rules: [
@@ -140,31 +110,48 @@ async function ensureAccess(workerHost) {
   await ensureCloudflareIdp();
   const destination = `${workerHost}/parent*`;
   const apps = await cf(`/accounts/${accountId}/access/apps?per_page=100`);
-  let app = apps.find(a => a.type === 'self_hosted' && appDestinations(a).includes(destination));
-  if (!app) {
+  const candidates = apps.filter(a => a.type === 'self_hosted' && (a.name === ACCESS_APP_NAME || appDestinations(a).includes(destination)));
+  if (candidates.length > 1) {
+    throw new Error(`Multiple Brick Access applications match ${destination}. Refusing to guess which security policy to mutate; remove the duplicate Access app and rerun.`);
+  }
+
+  const desired = {
+    type: 'self_hosted',
+    name: ACCESS_APP_NAME,
+    session_duration: '24h',
+    app_launcher_visible: false,
+    allow_iframe: false,
+    enable_binding_cookie: true,
+    http_only_cookie_attribute: true,
+    same_site_cookie_attribute: 'lax',
+    path_cookie_attribute: true,
+    destinations: [{ type: 'public', uri: destination }],
+    policies: [{
+      name: 'Brick parents — Cloudflare account members',
+      decision: 'allow',
+      precedence: 1,
+      include: [{ cloudflare_account_member: { account_id: accountId } }]
+    }]
+  };
+
+  let app;
+  if (candidates.length === 0) {
     app = await cf(`/accounts/${accountId}/access/apps`, {
       method: 'POST',
-      body: JSON.stringify({
-        type: 'self_hosted',
-        name: ACCESS_APP_NAME,
-        session_duration: '24h',
-        app_launcher_visible: false,
-        allow_iframe: false,
-        enable_binding_cookie: true,
-        http_only_cookie_attribute: true,
-        same_site_cookie_attribute: 'lax',
-        path_cookie_attribute: true,
-        destinations: [{ type: 'public', uri: destination }],
-        policies: [{
-          name: 'Brick parents — Cloudflare account members',
-          decision: 'allow',
-          precedence: 1,
-          include: [{ cloudflare_account_member: { account_id: accountId } }]
-        }]
-      })
+      body: JSON.stringify(desired)
+    });
+  } else {
+    // A one-click rerun must converge old dashboard state to the audited policy instead of silently
+    // trusting whatever was configured previously. Cloudflare's Access Applications API supports
+    // PUT updates for self-hosted applications, including destinations and inline policies.
+    app = await cf(`/accounts/${accountId}/access/apps/${candidates[0].id}`, {
+      method: 'PUT',
+      body: JSON.stringify(desired)
     });
   }
-  if (!app?.aud) throw new Error('Cloudflare Access application has no AUD tag; refusing to deploy a Worker that cannot verify Access JWTs.');
+
+  if (!app?.id || !app?.aud) throw new Error('Cloudflare Access application has no ID/AUD tag after reconciliation; refusing to deploy a Worker that cannot verify Access JWTs.');
+  if (!appDestinations(app).includes(destination)) throw new Error('Cloudflare Access application update did not retain the exact /parent* destination.');
   return { appId: app.id, aud: app.aud, destination };
 }
 
@@ -259,22 +246,32 @@ const workerHost = match[1];
 console.log('[13/14] Protecting /parent* with Cloudflare Access and obtaining its AUD…');
 const access = await ensureAccess(workerHost);
 
-console.log('[14/14] Final deploy with exact Access issuer/AUD verification…');
+console.log('[14/14] Final deploy with cryptographically verified Access configuration…');
 await fs.writeFile('wrangler.jsonc', renderWrangler(template, d1Id, teamDomain, access.aud));
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy', '--config', 'wrangler.jsonc']);
 
-await fs.writeFile('setup-state.json', JSON.stringify({
+const state = {
   phase: 6,
-  releaseState: 'candidate-not-real-device-qualified',
+  phaseSlice: '6-strict-access-r2-queues',
   accountId,
-  workerHost,
   d1Id,
-  currentRelease: CURRENT_APP_VERSION,
-  resources: { D1_NAME, HISTORY_BUCKET, MAPS_BUCKET, EVENT_QUEUE, DLQ },
-  access: { appId: access.appId, destination: access.destination, teamDomain, aud: access.aud },
-  retention: { rawHistoryDays: 30, trustedHistoryDays: 90, defaultSafetyEventDays: 180, healthSampleDays: 35, healthIncidentDays: 365, crashReportDays: 365, auditLogDays: 90 },
-  privateMap: { bucket: MAPS_BUCKET, key: 'basemap/singapore.pmtiles', installed: false },
+  workerHost,
+  resources: {
+    D1_NAME,
+    HISTORY_BUCKET,
+    MAPS_BUCKET,
+    EVENT_QUEUE,
+    DLQ
+  },
+  access: { mode: 'cloudflare-access-rs256', appId: access.appId, aud: access.aud, teamDomain, destination: access.destination },
+  currentRelease: '0.6.0-phase6-rc',
+  releaseState: 'phase6_candidate',
   configuredAt: new Date().toISOString()
-}, null, 2));
-
-console.log(`\nBrick Phase 6 candidate cloud setup complete.\nParent dashboard: https://${workerHost}/parent\nChild API base:     https://${workerHost}\nHistory R2:         ${HISTORY_BUCKET}\nPrivate map R2:     ${MAPS_BUCKET}\nEvent Queue:        ${EVENT_QUEUE}\nDead Letter Queue:  ${DLQ}\nCloudflare Access:  ${access.destination}\nCurrent app release:${CURRENT_APP_VERSION}\n\nRun npm run map:install once to provision the Singapore OSM-derived PMTiles archive. The live parent map has no third-party tile/geocoder fallback.\n\nThe API token was not written to disk. This is still a release candidate until the required real OPPO/ColorOS endurance qualification is completed.`);
+};
+await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
+console.log('\nBrick Phase 6 strict cloud setup completed.');
+console.log(`Parent dashboard: https://${workerHost}/parent`);
+console.log(`Child API base:   https://${workerHost}`);
+console.log(`Access issuer:    ${teamDomain}`);
+console.log(`Access AUD:       ${access.aud}`);
+console.log('R2 history/maps + Queues/DLQ are real Cloudflare resources.');
