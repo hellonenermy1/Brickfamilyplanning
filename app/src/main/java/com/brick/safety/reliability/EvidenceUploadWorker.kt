@@ -7,7 +7,9 @@ import com.brick.safety.evidence.EvidenceDispatcher
 import com.brick.safety.evidence.EvidenceDrainStop
 
 object EvidenceRetryPolicy {
-    const val CORE_BACKLOG_DELAY_SECONDS = 10L
+    // Evidence is explicitly lower priority than Brick Core. If Core has durable safety/location/
+    // crash work, do not poll every few seconds just to rediscover that evidence is still blocked.
+    const val CORE_BACKLOG_DELAY_SECONDS = 60L
     const val CATCH_UP_DELAY_SECONDS = 2L
     private const val BASE_FAILURE_DELAY_SECONDS = 30L
     private const val MAX_FAILURE_DELAY_SECONDS = 15 * 60L

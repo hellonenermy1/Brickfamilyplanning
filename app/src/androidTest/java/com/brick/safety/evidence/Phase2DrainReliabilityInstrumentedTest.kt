@@ -117,6 +117,13 @@ class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
         dispatcher.close()
     }
 
+    fun testCoreBacklogDeferralDoesNotAggressivelyPoll() {
+        // Evidence is lower priority than Core. A persistent Core backlog must not make the evidence
+        // worker wake every few seconds just to learn that it still cannot send.
+        assertTrue(EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS >= 60L)
+        assertTrue(EvidenceRetryPolicy.CATCH_UP_DELAY_SECONDS < EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS)
+    }
+
     fun testPersistentFailureBackoffIsBounded() {
         assertEquals(30L, EvidenceRetryPolicy.failureDelaySeconds(1))
         assertEquals(60L, EvidenceRetryPolicy.failureDelaySeconds(2))
