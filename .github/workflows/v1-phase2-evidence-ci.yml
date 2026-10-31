@@ -125,10 +125,12 @@ jobs:
           set -euo pipefail
           grep -F 'const val VERSION: Byte = 2' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
           grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'journal.appendNew(epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
-          grep -F 'EvidenceDispatcher(applicationContext).drainIfSafe' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'EvidenceDispatcher(applicationContext).use' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'dispatcher.drainIfSafe(maxBatches = 2)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
 
   android-instrumentation:
     name: Android evidence journal / protocol instrumentation
