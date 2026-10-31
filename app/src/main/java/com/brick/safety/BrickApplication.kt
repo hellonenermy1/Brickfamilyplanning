@@ -12,7 +12,9 @@ class BrickApplication : Application() {
         super.onCreate()
         CrashReporter.install(this)
         recoverSequenceWatermark()
-        RecoveryScheduler.ensureScheduled(this)
+        // WorkManager is only a recovery backstop. A corrupt/unavailable WorkManager database must
+        // never crash Brick before BootReceiver or the foreground tracking service can recover.
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
     }
 
     private fun recoverSequenceWatermark() {
