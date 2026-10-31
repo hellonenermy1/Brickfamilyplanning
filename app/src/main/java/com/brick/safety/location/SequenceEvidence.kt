@@ -4,6 +4,15 @@ import kotlin.math.*
 
 data class SequenceSupport(val segmentId: String, val strength: Double)
 
+private const val SEQUENCE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+private const val MAX_FUTURE_SKEW_MS = 24L * 60L * 60L * 1_000L
+
+private fun sequenceFresh(lastSeenWallMs: Long, nowWallMs: Long): Boolean {
+    if (lastSeenWallMs <= 0L || nowWallMs <= 0L) return false
+    val age = nowWallMs - lastSeenWallMs
+    return age in -MAX_FUTURE_SKEW_MS..SEQUENCE_TTL_MS
+}
+
 private data class MagFeature(val x: Float, val y: Float, val z: Float, val m: Float, val g: Float)
 private data class MagSignature(
     val segmentId: String,
@@ -21,6 +30,8 @@ class MagneticSequenceModel(private val maxSignatures: Int = 256) {
     private val signatures = linkedMapOf<String, MagSignature>()
 
     fun observeTrusted(segmentId: String, headingDeg: Float?, points: List<MagneticPoint>, wallMs: Long): Boolean {
+        if (wallMs <= 0L) return false
+        prune(System.currentTimeMillis())
         val normalized = normalizedSequence(points) ?: return false
         val bin = headingBin(headingDeg)
         val key = "$segmentId@$bin"
@@ -46,11 +57,12 @@ class MagneticSequenceModel(private val maxSignatures: Int = 256) {
         return true
     }
 
-    fun match(headingDeg: Float?, points: List<MagneticPoint>): List<SequenceSupport> {
+    fun match(headingDeg: Float?, points: List<MagneticPoint>, nowWallMs: Long = System.currentTimeMillis()): List<SequenceSupport> {
         val candidate = normalizedSequence(points) ?: return emptyList()
         val bin = headingBin(headingDeg)
         val best = mutableMapOf<String, Double>()
         for (signature in signatures.values) {
+            if (!sequenceFresh(signature.lastSeenWallMs, nowWallMs)) continue
             if (signature.repeats < 2 || signature.features.size != candidate.size) continue
             if (bin >= 0 && signature.headingBin >= 0) {
                 val d = min(abs(bin - signature.headingBin), 8 - abs(bin - signature.headingBin))
@@ -93,12 +105,14 @@ class MagneticSequenceModel(private val maxSignatures: Int = 256) {
         return features
     }
 
-    fun encode(): String = signatures.values.joinToString(";") { s ->
-        val fs = s.features.joinToString("/") { f -> "${f.x},${f.y},${f.z},${f.m},${f.g}" }
-        "${s.segmentId}|${s.headingBin}|${s.repeats}|${s.lastSeenWallMs}|$fs"
-    }
+    fun encode(nowWallMs: Long = System.currentTimeMillis()): String = signatures.values
+        .filter { sequenceFresh(it.lastSeenWallMs, nowWallMs) }
+        .joinToString(";") { s ->
+            val fs = s.features.joinToString("/") { f -> "${f.x},${f.y},${f.z},${f.m},${f.g}" }
+            "${s.segmentId}|${s.headingBin}|${s.repeats}|${s.lastSeenWallMs}|$fs"
+        }
 
-    fun restore(encoded: String?) {
+    fun restore(encoded: String?, nowWallMs: Long = System.currentTimeMillis()) {
         signatures.clear()
         if (encoded.isNullOrBlank()) return
         for (token in encoded.split(';').takeLast(maxSignatures)) {
@@ -108,6 +122,7 @@ class MagneticSequenceModel(private val maxSignatures: Int = 256) {
             val bin = p[1].toIntOrNull()?.takeIf { it in -1..7 } ?: continue
             val repeats = p[2].toIntOrNull()?.coerceIn(1, 255) ?: continue
             val wall = p[3].toLongOrNull()?.coerceAtLeast(0L) ?: continue
+            if (!sequenceFresh(wall, nowWallMs)) continue
             val fs = p[4].split('/').mapNotNull { value ->
                 val v = value.split(',')
                 if (v.size != 5) return@mapNotNull null
@@ -122,6 +137,10 @@ class MagneticSequenceModel(private val maxSignatures: Int = 256) {
     }
 
     private fun headingBin(heading: Float?): Int = heading?.takeIf { it.isFinite() }?.let { ((GeoMath.normalizeDegrees(it.toDouble()) / 45.0).roundToInt() % 8) } ?: -1
+
+    private fun prune(nowWallMs: Long) {
+        signatures.entries.removeAll { !sequenceFresh(it.value.lastSeenWallMs, nowWallMs) }
+    }
 
     private fun trim() {
         if (signatures.size <= maxSignatures) return
@@ -143,6 +162,8 @@ class LandmarkSequenceModel(private val maxSignatures: Int = 256) {
     private val signatures = linkedMapOf<String, LandmarkSignature>()
 
     fun observeTrusted(segmentId: String, events: List<LandmarkEvent>, wallMs: Long): Boolean {
+        if (wallMs <= 0L) return false
+        prune(System.currentTimeMillis())
         val sequence = compact(events) ?: return false
         val key = "$segmentId@${sequence.joinToString(".") { it.ordinal.toString() }}"
         val old = signatures[key]
@@ -152,10 +173,11 @@ class LandmarkSequenceModel(private val maxSignatures: Int = 256) {
         return true
     }
 
-    fun match(events: List<LandmarkEvent>): List<SequenceSupport> {
+    fun match(events: List<LandmarkEvent>, nowWallMs: Long = System.currentTimeMillis()): List<SequenceSupport> {
         val candidate = compact(events) ?: return emptyList()
         val best = mutableMapOf<String, Double>()
         for (signature in signatures.values) {
+            if (!sequenceFresh(signature.lastSeenWallMs, nowWallMs)) continue
             if (signature.repeats < 2) continue
             val score = sequenceSimilarity(candidate, signature.kinds)
             if (score < 0.72) continue
@@ -187,11 +209,13 @@ class LandmarkSequenceModel(private val maxSignatures: Int = 256) {
         return dp[n][m].toDouble() / max(n, m).coerceAtLeast(1)
     }
 
-    fun encode(): String = signatures.values.joinToString(";") { s ->
-        "${s.segmentId}|${s.repeats}|${s.lastSeenWallMs}|${s.kinds.joinToString(",") { it.ordinal.toString() }}"
-    }
+    fun encode(nowWallMs: Long = System.currentTimeMillis()): String = signatures.values
+        .filter { sequenceFresh(it.lastSeenWallMs, nowWallMs) }
+        .joinToString(";") { s ->
+            "${s.segmentId}|${s.repeats}|${s.lastSeenWallMs}|${s.kinds.joinToString(",") { it.ordinal.toString() }}"
+        }
 
-    fun restore(encoded: String?) {
+    fun restore(encoded: String?, nowWallMs: Long = System.currentTimeMillis()) {
         signatures.clear()
         if (encoded.isNullOrBlank()) return
         for (token in encoded.split(';').takeLast(maxSignatures)) {
@@ -200,12 +224,17 @@ class LandmarkSequenceModel(private val maxSignatures: Int = 256) {
             val segmentId = p[0].takeIf { it.length in 3..120 } ?: continue
             val repeats = p[1].toIntOrNull()?.coerceIn(1, 255) ?: continue
             val wall = p[2].toLongOrNull()?.coerceAtLeast(0L) ?: continue
+            if (!sequenceFresh(wall, nowWallMs)) continue
             val kinds = p[3].split(',').mapNotNull { LandmarkKind.entries.getOrNull(it.toIntOrNull() ?: -1) }
             if (kinds.size < 3 || kinds.size > 6) continue
             val key = "$segmentId@${kinds.joinToString(".") { it.ordinal.toString() }}"
             signatures[key] = LandmarkSignature(segmentId, kinds, repeats, wall)
         }
         trim()
+    }
+
+    private fun prune(nowWallMs: Long) {
+        signatures.entries.removeAll { !sequenceFresh(it.value.lastSeenWallMs, nowWallMs) }
     }
 
     private fun trim() {
