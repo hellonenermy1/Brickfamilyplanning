@@ -85,12 +85,18 @@ class Phase3ConsistencyInstrumentedTest : InstrumentationTestCase() {
         assertEquals(FixConsistencyReason.STEP_CONTRADICTION, result.reason)
     }
 
-    fun testExtremeAccelerationRejectedButPlausibleVehicleChangeAccepted() {
+    fun testExtremeAccelerationRequiresCoordinateSupport() {
         val walkingPrev = fix(speedMps = 1f)
         val impossible = fix(lon = 103.80015, elapsedMs = 11_000L, speedMps = 12f, speedAcc = 0.5f)
         val bad = PositionConsistencyGuard.evaluate(walkingPrev, impossible, motion(Phase3Mode.WALKING, stepSensor = false))
         assertFalse(bad.accepted)
         assertEquals(FixConsistencyReason.EXTREME_ACCELERATION, bad.reason)
+
+        // Speed metadata claims 12 m/s, but the coordinate barely moved. Do not throw away a good
+        // position because one speed field glitched.
+        val speedOnlyGlitch = fix(lon = 103.80001, elapsedMs = 11_000L, speedMps = 12f, speedAcc = 0.5f)
+        val failOpen = PositionConsistencyGuard.evaluate(walkingPrev, speedOnlyGlitch, motion(Phase3Mode.WALKING, stepSensor = false))
+        assertTrue(failOpen.accepted)
 
         val vehiclePrev = fix(speedMps = 10f, bearing = 90f)
         val vehicle = fix(lon = 103.80040, elapsedMs = 12_000L, speedMps = 30f, speedAcc = 1f, bearing = 90f, bearingAcc = 8f)
