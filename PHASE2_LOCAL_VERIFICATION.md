@@ -37,11 +37,11 @@ Observed:
 
 Checks include golden bytes, decode payload content, canonical UUID validation and JavaScript-safe integer bounds. This does not prove Android framework integrations.
 
-## Current Cloud protocol / persistence harness
+## Cloud protocol / persistence harness
 
-Current staged Cloud persistence behavior was locally executed using TypeScript/Node plus SQLite/R2-style fakes.
+Phase 2 Cloud persistence behavior was locally executed using TypeScript/Node plus SQLite/R2-style fakes.
 
-Executed checks:
+Executed checks include:
 
 - BREV golden vector and normal decode;
 - bad version / trailing bytes / reverse ordering rejection;
@@ -57,15 +57,38 @@ Executed checks:
 - content-addressed R2 key containing exact `batchSha`;
 - simulated concurrent competing claim of the same batch UUID between preflight and D1 `batch()`;
 - hard D1 batch insert failure rolls back the losing transaction, leaving zero loser evidence records and zero loser batch links;
-- retry after competing claim becomes `EvidenceConflict`.
+- retry after competing batch claim becomes `EvidenceConflict`.
 
-Observed:
+Observed on the pre-final-record-claim harness:
 
 `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
 
-This validates the Phase 2 persistence/idempotency/concurrency design in the local transactional harness. It is not live Cloudflare D1/R2 proof.
+## Final record-level concurrency hardening — targeted local execution
 
-## Current signed HTTP evidence-route harness
+A later source audit found a second concurrency edge: a competing signed request could claim an individual `(device,epoch,sequence)` or `(device,recordId)` after preflight but before the D1 transaction. Phase 2 now tracks which exact records already existed during preflight and:
+
+- reuses only those exact matched records;
+- hard-inserts records that were absent during preflight;
+- hard-inserts batch-record links;
+- never uses `INSERT OR IGNORE` for new evidence record identity.
+
+A targeted local SQLite transaction reproduced the race:
+
+1. competitor record was inserted after the losing request's conceptual preflight;
+2. losing transaction inserted its batch claim;
+3. losing transaction then hard-inserted the same `(device,epoch,sequence)` with another record ID;
+4. SQLite raised the unique constraint;
+5. transaction rolled back.
+
+Observed targeted result:
+
+- error: `UNIQUE constraint failed: evidence_records.device_id, evidence_records.epoch, evidence_records.sequence`
+- losing batch rows after rollback: `0`
+- epoch-55 records after rollback: `1` — only the competitor record remained.
+
+Repository test source now includes the equivalent `record-race` scenario in `scripts/test-phase2-evidence.mjs`. The complete latest repository script still awaits hosted execution; the transactional invariant itself was executed locally as described above.
+
+## Signed HTTP evidence-route harness
 
 The actual Phase 2 route logic lives in `src/evidence-route.ts`, with `worker-v7` delegating the evidence endpoint to that handler. A local route harness used a real generated Web Crypto P-256 keypair and Brick's signature-verification implementation.
 
@@ -87,11 +110,24 @@ Executed checks:
 - revoked device returns 401 without persistence;
 - correctly signed malformed BREV payload returns 400 without persistence.
 
-Observed:
+Observed on the route harness:
 
 `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
-The current route TypeScript also compiled successfully in the local harness.
+## Android DER ECDSA compatibility — targeted local execution
+
+Android `DeviceKeys.sign()` uses Java `SHA256withECDSA`, which emits ASN.1 DER signatures. The Cloud verifier converts DER to 64-byte P1363 before Web Crypto verification.
+
+The route test source was tightened so valid requests use `signLikeAndroid()` / `p1363ToDer()` rather than passing Web Crypto's native raw signature directly.
+
+A targeted local Node/WebCrypto check executed the exact format conversion shape:
+
+- generated P-256 signature: 64-byte P1363;
+- converted to ASN.1 DER: 70 bytes in the observed run;
+- converted back through the same DER→P1363 logic used by Brick Cloud;
+- signature verification: `true`.
+
+This materially tests the Android/Cloud signature-format boundary, but the updated full route script on the newest repository head still awaits hosted CI execution.
 
 ## Android source tests prepared but not executed
 
@@ -115,13 +151,14 @@ These are **source/test definitions**, not executed Android proof, because the c
 
 Latest checked run:
 
-- run: `41212250461`
-- Cloud head: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+- run: `41212933879`
+- Cloud head: `20a459f11f99195a0c56b3c1d82f2e7659976859`
+- Android staging snapshot: `389bc8744341aebcc42f74f79403fd2b3d5d5873`
 
 Observed jobs:
 
-- Android compile/lint/dependency-lock: failure with `runner_id: 0` and `steps: []`;
-- Cloud protocol/persistence/regression: failure with `runner_id: 0` and `steps: []`;
+- Cloud protocol/persistence/regression: failure with `runner_id: 0`, empty runner name and `steps: []`;
+- Android compile/lint/dependency-lock: failure with `runner_id: 0`, empty runner name and `steps: []`;
 - Android instrumentation: skipped.
 
 No source step executed. This is a hosted runner/infrastructure failure. It is neither a source pass nor a source failure.
@@ -141,6 +178,6 @@ Local checks do **not** prove:
 - retained Phase 6 cloud regressions on the final Phase 2 head;
 - physical OPPO/ColorOS behavior.
 
-Therefore the correct Phase 2 evidence state is:
+Therefore the correct Phase 2 evidence state remains:
 
-**SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + REAL SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED**.
+**SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED, WITH FINAL RECORD-RACE AND DER FORMAT INVARIANTS TARGET-VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED**.
