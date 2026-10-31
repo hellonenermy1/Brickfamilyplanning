@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE2_SHA: 8bc21222a327e15e24503a1ec5ad20c5a4cbcdf7
+  ANDROID_PHASE2_SHA: 82ac7f6b0279ac6a3740bc788515bd65af0478f4
 
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
@@ -170,6 +170,10 @@ jobs:
           grep -F 'UUID.fromString(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'parsed.version() == 4' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'parsed.variant() == 2' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'private fun pairedApiBase()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'EvidenceApi.normalizeBase(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'fun normalizeBase(baseUrl: String)' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'MAX_RESPONSE_BYTES = 65_536' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
           grep -F 'journal.appendNew(deviceId, epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'journal.ensureDeviceOwner(deviceId)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'EvidenceDrainStop.JOURNAL_FAILURE' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
@@ -192,6 +196,7 @@ jobs:
           grep -F 'testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
           grep -F 'testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
           grep -F 'testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testCorruptApiOriginCannotCreateUnsendableEvidenceBacklog' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
           grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
