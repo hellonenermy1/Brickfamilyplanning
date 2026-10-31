@@ -80,27 +80,28 @@ function distanceToSegmentM(lon: number, lat: number, a: Coord, b: Coord) {
   return Math.hypot(ax + t * dx, ay + t * dy);
 }
 
-/** Broad movement plausibility only; this is not a legal routing/access decision. */
-export function modeMaskForRoad(kindRaw: unknown, detailRaw: unknown): number {
-  const kind = typeof kindRaw === "string" ? kindRaw.toLowerCase() : "";
-  const detail = typeof detailRaw === "string" ? detailRaw.toLowerCase() : "";
-  const value = detail || kind;
-  if (!value) return 0;
-
+function modeMaskForValue(value: string): number {
   if (["motorway", "motorway_link", "trunk", "trunk_link", "raceway", "drive_through"].includes(value)) return MODE_VEHICLE;
   if (["steps", "corridor", "sidewalk", "crossing", "pedestrian", "footway"].includes(value)) return HUMAN;
   if (value === "cycleway") return ACTIVE;
-  if (["path", "bridleway"].includes(value)) return ACTIVE;
-  if (value === "track") return ACTIVE;
+  if (["path", "bridleway", "track"].includes(value)) return ACTIVE;
   if ([
     "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link",
     "residential", "service", "unclassified", "road", "living_street", "driveway",
     "parking_aisle", "alley", "emergency_access"
   ].includes(value)) return ALL_MOVING;
-
-  // The layer may also contain rail/aeroway/ferry-like geometries. Unknown classes are skipped
-  // rather than used to constrain particles with invented access semantics.
   return 0;
+}
+
+/** Broad movement plausibility only; this is not a legal routing/access decision. */
+export function modeMaskForRoad(kindRaw: unknown, detailRaw: unknown): number {
+  const kind = typeof kindRaw === "string" ? kindRaw.toLowerCase() : "";
+  const detail = typeof detailRaw === "string" ? detailRaw.toLowerCase() : "";
+
+  // A recognized detail is more specific. An unfamiliar detail must not erase a recognized broad
+  // road class, otherwise harmless schema/detail additions in the basemap silently create holes in
+  // Brick's local route graph. Unknown broad classes remain excluded rather than invented.
+  return (detail ? modeMaskForValue(detail) : 0) || (kind ? modeMaskForValue(kind) : 0);
 }
 
 function geometryLines(geometry: { type?: string; coordinates?: unknown }): Coord[][] {
