@@ -1,8 +1,13 @@
 package com.brick.safety.location
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.location.Location
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
 import com.brick.safety.activity.ActivityMode
 import com.brick.safety.activity.ActivitySnapshot
@@ -79,6 +84,34 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
                 val allowance = maxPlausibleSpeed(activity.mode) * dt + previous.accuracyM + raw.accuracy + 35.0
                 if (distance > allowance) accepted = false
                 if (raw.accuracy > 500f && nowElapsed - previous.elapsedMs < 5 * 60_000L) accepted = false
+            }
+        }
+
+        if (accepted && previous != null) {
+            val motionSnapshot = motion.phase3Snapshot()
+            val stepDelta = (motionSnapshot.totalSteps - previous.stepTotal).coerceAtLeast(0L).coerceAtMost(65_535L).toInt()
+            val candidateSpeed = if (raw.hasSpeed() && raw.speed.isFinite() && raw.speed >= 0f) raw.speed else null
+            val candidateSpeedAccuracy = if (raw.hasSpeedAccuracy() && raw.speedAccuracyMetersPerSecond.isFinite() && raw.speedAccuracyMetersPerSecond >= 0f) raw.speedAccuracyMetersPerSecond else null
+            val candidateBearing = if (raw.hasBearing() && raw.bearing.isFinite()) normalizeDegrees(raw.bearing) else null
+            val candidateBearingAccuracy = if (raw.hasBearingAccuracy() && raw.bearingAccuracyDegrees.isFinite() && raw.bearingAccuracyDegrees >= 0f) raw.bearingAccuracyDegrees else null
+            val result = PositionConsistencyGuard.evaluate(
+                previous = ConsistencyFix(previous.lat, previous.lon, previous.accuracyM, previous.elapsedMs, previous.speedMps, null, previous.bearingDeg, null),
+                candidate = ConsistencyFix(raw.latitude, raw.longitude, raw.accuracy, rawElapsed, candidateSpeed, candidateSpeedAccuracy, candidateBearing, candidateBearingAccuracy),
+                motion = ConsistencyMotion(
+                    mode = phase3Mode(activity.mode),
+                    activityConfidence = activity.confidence,
+                    stepDelta = stepDelta,
+                    stepSensorAvailable = stepSensorEvidenceAvailable(),
+                    stationaryScore = motionSnapshot.stationaryScore,
+                    placement = motionSnapshot.placement,
+                    rotationHealthy = motionSnapshot.rotationHealthy,
+                    headingDeg = motionSnapshot.headingDeg,
+                    headingAgeMs = motionSnapshot.headingAgeMs
+                )
+            )
+            if (!result.accepted) {
+                accepted = false
+                noteConsistencyReject(result.reason)
             }
         }
         if (!accepted) return rejectedSample(raw, activity, mock, nowElapsed)
@@ -300,6 +333,31 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         return Anchor(lat, lon, accuracy, elapsed, wall,
             prefs.getFloat("anchorSpeedMps", Float.NaN).takeIf { it.isFinite() && it >= 0f }, prefs.getFloat("anchorBearingDeg", Float.NaN).takeIf { it.isFinite() },
             prefs.getLong("anchorStepTotal", 0L), ActivityMode.fromCode(prefs.getInt("anchorActivity", ActivityMode.UNKNOWN.code)))
+    }
+
+    private fun noteConsistencyReject(reason: FixConsistencyReason) {
+        val p = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val total = p.getLong("phase3ConsistencyRejectTotal", 0L).coerceAtLeast(0L)
+        p.edit()
+            .putLong("phase3ConsistencyRejectTotal", total + 1L)
+            .putLong("lastPhase3ConsistencyRejectWallMs", System.currentTimeMillis())
+            .putString("lastPhase3ConsistencyRejectReason", reason.name.lowercase())
+            .apply()
+    }
+
+    private fun stepSensorEvidenceAvailable(): Boolean {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) return false
+        val sm = context.getSystemService(SensorManager::class.java)
+        return sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null || sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null
+    }
+
+    private fun phase3Mode(mode: ActivityMode): Phase3Mode = when (mode) {
+        ActivityMode.STATIONARY -> Phase3Mode.STATIONARY
+        ActivityMode.WALKING -> Phase3Mode.WALKING
+        ActivityMode.RUNNING -> Phase3Mode.RUNNING
+        ActivityMode.BICYCLE -> Phase3Mode.BICYCLE
+        ActivityMode.VEHICLE -> Phase3Mode.VEHICLE
+        ActivityMode.UNKNOWN -> Phase3Mode.UNKNOWN
     }
 
     private fun freshActivity(a: ActivitySnapshot, now: Long) =
