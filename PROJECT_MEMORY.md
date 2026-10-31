@@ -22,7 +22,7 @@ Last updated: 2026-10-31
 Phase 1 is accepted as a documentation/contract phase. The program is:
 
 1. Contract, Baseline & Architecture Freeze — **ACCEPTED 2026-10-31**
-2. Evidence Platform, Protocol & Durable Data Foundation — **SOURCE IMPLEMENTED + HARDENED / HOSTED CI BLOCKED / NOT ACCEPTED**
+2. Evidence Platform, Protocol & Durable Data Foundation — **SOURCE IMPLEMENTED + FURTHER HARDENED / FINAL PAIRED EXECUTION BLOCKED / NOT ACCEPTED**
 3. Motion Intelligence, Learned Odometry & Particle Positioning
 4. Environmental Fingerprint Atlas & Signal Trust Engine
 5. Unified Fusion, Learned Places, Routes, Witness Mesh & Ground Network
@@ -54,11 +54,12 @@ When Jayvian says to continue Phase 2, **do not restart**. Resume from the curre
 
 - Cloud staging: `v1-p2-evidence-cloud`, PR #6, draft/unmerged.
 - Android staging: `v1-p2-evidence-android`, PR #7, draft/unmerged.
-- Snapshot at this memory update:
-  - Cloud `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
-  - Android `389bc8744341aebcc42f74f79403fd2b3d5d5873`
-- These SHA values are snapshots only; always re-read branch heads before modifying or merging.
-- Do not merge either PR until the final paired heads receive real hosted Cloud + Android + emulator execution.
+- Exact paired checkpoint at this memory update:
+  - Cloud `60697dc37cb325574e9bd22283e2b3dd1d847817`
+  - Android `4ec37a2021bcd575cfefeadd58c968675965a8e7`
+- Cloud Phase 2 CI pins that exact Android SHA in both Android jobs and asserts the checkout SHA. Do not replace the pin with a moving branch ref for an acceptance run.
+- Always re-read branch heads before modifying or merging. If a real defect requires a new Android head, update the Cloud CI pin in the same task so the pair remains explicit.
+- Do not merge either PR until the exact paired heads receive real hosted Cloud + Android + emulator execution.
 - Do not treat Phase 3 as unlocked/accepted while the Phase 2 exit gate remains open.
 
 Phase 2 permanent design decisions:
@@ -67,38 +68,46 @@ Phase 2 permanent design decisions:
 2. **Evidence stays below safety.** Evidence never outranks SOS/safety, durable live location or crash backlog.
 3. **DB owns Android sequencing.** `brick_evidence.db` transactionally allocates sequence; SharedPreferences is only a cache.
 4. **Dedicated evidence catch-up worker.** Initial evidence work uses `KEEP`; bounded successors use `APPEND_OR_REPLACE`; network is required; generic RecoveryWorker restores Core first.
-5. **Paired identity is canonical v4.** Android only journals/drains evidence for canonical lowercase RFC-4122 v4/variant-2 device IDs created by pairing. Cloud evidence route enforces the same boundary.
-6. **Raw R2 is privacy-reduced/content-addressed.** Raw evidence object paths use `sha256(deviceId)` and include exact `batchSha`; never use raw/sanitized device ID in the R2 key.
-7. **Batch UUID is a hard transactional claim.** `evidence_batches` uses a normal `INSERT`, not `INSERT OR IGNORE`. A concurrent duplicate claim must abort the entire D1 batch transaction.
-8. **Record replay must not amplify storage.** If all records already exist and match exactly under a fresh transport batch UUID, return exact ACKs with `duplicateRecords:true` and create no new R2 object/batch row.
-9. **Rate limits are split by trust boundary.** Request-attempt limiting happens on requester context first; the device-scoped evidence bucket is consumed only after successful P-256 device-signature verification. Rate limiting is abuse resistance, not an authentication primitive.
-10. **Signed route is testable separately.** `src/evidence-route.ts` owns the actual evidence HTTP validation/auth/rate/persistence flow; `worker-v7` delegates to it and preserves older worker behavior.
-11. **Persist before ACK.** A success ACK is returned only after the applicable durable evidence state has been verified. Storage failure is never ACKed as success.
-12. **Later-phase tables are foundations only.** Atlas/witness/receiver/command/refined-history schema existence does not mean those algorithms are implemented.
+5. **Persistent evidence failures back off.** Healthy backlog catch-up stays fast, Core backlog stays higher priority, and repeated transport/ACK/identity failure uses a durable bounded exponential delay capped at 15 minutes rather than waking forever at a fixed short interval.
+6. **Paired identity is canonical v4.** Android only journals/drains evidence for canonical lowercase RFC-4122 v4/variant-2 device IDs created by pairing. Cloud evidence route enforces the same boundary.
+7. **Exact ACK is the deletion boundary.** Dispatcher independently reconstructs the expected ACK set and must see that exact set before local evidence deletion; a missing/partial/wrong ACK never deletes pending evidence.
+8. **Pending evidence is read in wire order.** Recovery/import insertion order must not make valid durable evidence unsendable; `nextPending()` orders by `(epoch,sequence,id)`.
+9. **Quarantine is historical evidence, not permanent current failure.** Quarantined rows remain counted, but current journal health can recover after the failure hold when a successful operation or `refreshHealth()` read probe proves the journal is readable. Health telemetry calls the probe so quiet devices can recover honestly.
+10. **Raw R2 is privacy-reduced/content-addressed.** Raw evidence object paths use `sha256(deviceId)` and include exact `batchSha`; never use raw/sanitized device ID in the R2 key.
+11. **Batch UUID and new record identities are hard transactional claims.** `evidence_batches` and absent `evidence_records` use normal `INSERT`, not `INSERT OR IGNORE`. Conflicting concurrent claims must roll back rather than silently link to competing data.
+12. **Record replay must not amplify storage.** If all records already exist and match exactly under a fresh transport batch UUID, return exact ACKs with `duplicateRecords:true` and create no new R2 object/batch row.
+13. **Legitimate concurrency converges once.** An exact same-batch race may return the already-durable ACK; a mixed exact-record race may re-read state and retry once. Changed content remains `EvidenceConflict`; unrelated storage failure must not be masked.
+14. **Evidence request bodies are actually bounded.** Evidence route uses `readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)` and must not use unbounded `req.arrayBuffer()`; no-length/chunked traffic over 65,536 bytes is rejected before device-rate consumption or persistence.
+15. **Rate limits are split by trust boundary.** Request-attempt limiting happens on requester context first; the device-scoped evidence bucket is consumed only after successful P-256 device-signature verification. Rate limiting is abuse resistance, not an authentication primitive.
+16. **Signed route is testable separately.** `src/evidence-route.ts` owns the actual evidence HTTP validation/auth/rate/persistence flow; `worker-v7` delegates to it and preserves older worker behavior.
+17. **Android signature format matters.** Android `SHA256withECDSA` emits DER. The route test uses Android-style DER via `signLikeAndroid()`/`p1363ToDer()` so the intended verification boundary matches the APK.
+18. **Persist before ACK.** A success ACK is returned only after the applicable durable evidence state has been verified. Storage failure is never ACKed as success.
+19. **Later-phase tables are foundations only.** Atlas/witness/receiver/command/refined-history schema existence does not mean those algorithms are implemented.
+20. **Do not change live epoch/reboot semantics casually in Phase 2.** The existing epoch lifecycle affects the retained live-tracking protocol and broader DUR/P8 work. A Phase 2 audit noted that `elapsedRealtime` resets on reboot while the baseline epoch is not visibly incremented by BootReceiver, but changing this cross-cutting behavior is deferred until the relevant durability/replay phase unless concrete Phase 2 evidence proves it blocks the current exit gate.
 
-Locally executed evidence as of this memory update:
+Verification truth at this memory update:
 
-- pure Kotlin Android evidence protocol/model matches the shared BREV golden vector and safe-integer/canonical-UUID rules;
-- current Cloud protocol/persistence harness passes persistence, exact ACK, replay dedupe, collision rejection, content-addressed raw storage and simulated concurrent batch-ID rollback;
-- current signed evidence route passes a local real-P-256 Web Crypto harness for missing/bad/valid signatures, rate-bucket ordering, persistence-before-ACK, retry/replay, revocation and malformed signed payload behavior.
+- Earlier Phase 2 heads received real local pure-Kotlin protocol execution and Cloud SQLite/R2/WebCrypto harness execution.
+- Earlier observed markers remain valid evidence for what actually ran:
+  - `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+  - `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+  - `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+- Targeted local checks also exercised the later record-identity unique-constraint rollback and DER↔P1363 verification shape.
+- The final paired heads add streaming body bounds, race convergence, exact dispatcher ACK-set validation, persistent-failure backoff, wire-order recovery and journal-health recovery **after** those earlier complete harness runs.
+- Therefore do not describe the earlier local passes as full verification of final Cloud `60697dc3...` / Android `4ec37a20...`.
 
-Observed local markers:
+Latest hosted CI at this memory update:
 
-- `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
-- `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
-- `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
-
-Hosted CI remains blocked externally. Latest checked run at this memory update:
-
-- run `41212250461`
-- Cloud head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+- run `41215211883`
+- Cloud head `60697dc37cb325574e9bd22283e2b3dd1d847817`
+- pinned Android head `4ec37a2021bcd575cfefeadd58c968675965a8e7`
 - Cloud job: failure with `runner_id: 0`, `steps: []`
 - Android build/lint job: failure with `runner_id: 0`, `steps: []`
 - Android instrumentation: skipped
 
 Treat zero-step/no-runner runs as neither pass nor source failure. The current execution environment also has no Android SDK, so do not claim local full Android compile/lint/SQLite/Keystore/WorkManager/emulator proof.
 
-Phase 2 acceptance still requires actual hosted execution of Cloud integration/regression tests, Android dependency-lock/compile/lint, Android emulator instrumentation, then canonical post-merge checks and live Cloudflare verification before live-integration claims.
+Phase 2 acceptance still requires actual hosted execution of the final Cloud integration/regression suite, exact-pinned Android dependency-lock/compile/lint, Android emulator instrumentation, then canonical post-merge checks and live Cloudflare evidence-route/schema/retention verification before live-integration claims.
 
 ## Canonical GitHub layout
 
