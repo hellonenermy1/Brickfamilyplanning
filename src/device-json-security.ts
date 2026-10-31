@@ -1,3 +1,4 @@
+import { readBoundedBody } from "./bounded-body";
 import { validDevicePublicKey, verifyDeviceSignature } from "./crypto";
 
 export type DeviceJsonSecurityEnv = { DB: D1Database };
@@ -10,14 +11,12 @@ function jsonError(error: string, status: number) {
 }
 
 export async function validatePairingPublicKey(req: Request): Promise<Response | null> {
-  const declaredLength = Number(req.headers.get("Content-Length") ?? "0");
-  if (Number.isFinite(declaredLength) && declaredLength > 4096) return jsonError("pairing payload too large", 400);
-
-  // Content-Length is only an optimization. A public client can omit it (for example with a
-  // chunked request), so enforce the limit on the bytes Brick actually received before parsing.
-  let raw: ArrayBuffer;
-  try { raw = await req.clone().arrayBuffer(); } catch { return jsonError("invalid pairing body", 400); }
-  if (!raw.byteLength || raw.byteLength > 4096) return jsonError("pairing payload too large", 400);
+  // Read a clone because the validated original request still has to reach completePairing(). The
+  // shared reader stops at the application limit even when Content-Length is omitted/chunked.
+  const bounded = await readBoundedBody(req.clone(), 4096);
+  if (!bounded.ok) return jsonError(bounded.reason === "too_large" ? "pairing payload too large" : "invalid pairing body", 400);
+  const raw = bounded.body;
+  if (!raw.byteLength) return jsonError("invalid pairing body", 400);
 
   let value: unknown;
   try { value = JSON.parse(new TextDecoder().decode(raw)); } catch { return jsonError("invalid pairing JSON", 400); }
@@ -37,8 +36,9 @@ async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: st
   if (!signature || signature.length > 512) return jsonError("missing or invalid signature", 401);
   const row = await env.DB.prepare("SELECT public_key_spki_b64,revoked_at FROM devices WHERE id=?1").bind(deviceId).first<DeviceKeyRow>();
   if (!row || row.revoked_at) return jsonError("device unauthorized", 401);
-  const body = await req.clone().arrayBuffer();
-  if (!body.byteLength || body.byteLength > maxBytes) return jsonError("invalid payload size", 400);
+  const bounded = await readBoundedBody(req.clone(), maxBytes);
+  if (!bounded.ok || !bounded.body.byteLength) return jsonError("invalid payload size", 400);
+  const body = bounded.body;
   const ok = await verifyDeviceSignature(row.public_key_spki_b64, body, signature);
   if (!ok) return jsonError("bad signature", 401);
   let value: unknown;
