@@ -6,6 +6,7 @@ export const EVIDENCE_MAX_BATCH_BYTES = 65_536;
 const MAGIC = 0x42524556; // BREV
 const HEADER_BYTES = 4 + 1 + 16 + 2;
 const RECORD_FIXED_BYTES = 16 + 4 + 8 + 8 + 8 + 5 + 1 + 2;
+const MAX_ANDROID_EPOCH = 0x7fffffff;
 
 export type EvidenceRecord = {
   recordId: string;
@@ -76,6 +77,7 @@ export function decodeEvidenceBatch(buffer: ArrayBuffer): EvidenceBatch {
     const groupLength = view.getUint8(o++);
     const payloadLength = view.getUint16(o, false); o += 2;
 
+    if (epoch > MAX_ANDROID_EPOCH) throw new Error("evidence epoch outside Android wire range");
     requireRange(provider, validProviders, "evidence provider");
     requireRange(family, validFamilies, "evidence family");
     if (capability > 3) throw new Error("unknown provider capability");
