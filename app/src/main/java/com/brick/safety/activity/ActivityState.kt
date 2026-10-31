@@ -20,7 +20,8 @@ enum class ActivityMode(val code: Int) {
 data class ActivitySnapshot(
     val mode: ActivityMode,
     val confidence: Int,
-    val updatedElapsedMs: Long
+    val updatedElapsedMs: Long,
+    val modeSinceElapsedMs: Long = 0L
 )
 
 object ActivityState {
@@ -28,18 +29,26 @@ object ActivityState {
 
     fun read(context: Context): ActivitySnapshot {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val updated = p.getLong("updatedElapsedMs", 0L)
         return ActivitySnapshot(
             ActivityMode.fromCode(p.getInt("mode", ActivityMode.UNKNOWN.code)),
             p.getInt("confidence", 0).coerceIn(0, 100),
-            p.getLong("updatedElapsedMs", 0L)
+            updated,
+            p.getLong("modeSinceElapsedMs", updated).coerceAtLeast(0L)
         )
     }
 
     fun write(context: Context, mode: ActivityMode, confidence: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = SystemClock.elapsedRealtime()
+        val previousMode = ActivityMode.fromCode(prefs.getInt("mode", ActivityMode.UNKNOWN.code))
+        val previousSince = prefs.getLong("modeSinceElapsedMs", 0L)
+        val modeSince = if (previousMode == mode && previousSince in 1..now) previousSince else now
+        prefs.edit()
             .putInt("mode", mode.code)
             .putInt("confidence", confidence.coerceIn(0, 100))
-            .putLong("updatedElapsedMs", SystemClock.elapsedRealtime())
+            .putLong("updatedElapsedMs", now)
+            .putLong("modeSinceElapsedMs", modeSince)
             .apply()
     }
 }
