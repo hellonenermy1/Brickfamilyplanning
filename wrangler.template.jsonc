@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "brick-family-v1",
-  "main": "src/worker-v6.ts",
+  "main": "src/worker-v7.ts",
   "compatibility_date": "2026-10-29",
   "workers_dev": true,
   "observability": { "enabled": true },
