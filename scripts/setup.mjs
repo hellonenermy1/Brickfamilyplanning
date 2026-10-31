@@ -49,7 +49,12 @@ const accountId = await selectAccount();
 async function ensureD1() {
   const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
   let db = databases.find(x => x.name === D1_NAME);
-  if (!db) db = await cf(`/accounts/${accountId}/d1/database`, { method: 'POST', body: JSON.stringify({ name: D1_NAME }) });
+  if (!db) {
+    db = await cf(`/accounts/${accountId}/d1/database`, {
+      method: 'POST',
+      body: JSON.stringify({ name: D1_NAME, primary_location_hint: 'apac' })
+    });
+  }
   if (!db?.uuid) throw new Error('D1 database was not created or returned no UUID.');
   return db.uuid;
 }
@@ -57,13 +62,27 @@ async function ensureD1() {
 async function ensureR2Bucket(name) {
   try {
     await cf(`/accounts/${accountId}/r2/buckets/${name}`);
-  } catch {
-    await cf(`/accounts/${accountId}/r2/buckets`, { method: 'POST', body: JSON.stringify({ name, locationHint: 'apac' }) });
+    return;
+  } catch (error) {
+    const message = String(error);
+    if (/10042|enable R2/i.test(message)) {
+      throw new Error('Cloudflare R2 is not enabled for this account. Enable R2 in Storage & databases > R2, then rerun deployment.');
+    }
+    if (!message.includes('Cloudflare API 404 ')) throw error;
+  }
+
+  try {
+    await cf(`/accounts/${accountId}/r2/buckets`, {
+      method: 'POST',
+      body: JSON.stringify({ name, locationHint: 'apac', storageClass: 'Standard' })
+    });
+  } catch (error) {
+    throw new Error(`Could not create R2 bucket ${name}: ${String(error)}`);
   }
 }
 
 async function ensureR2Lifecycle() {
-  const day = 86400;
+  const day = 86_400;
   await cf(`/accounts/${accountId}/r2/buckets/${HISTORY_BUCKET}/lifecycle`, {
     method: 'PUT',
     body: JSON.stringify({ rules: [
@@ -143,8 +162,8 @@ async function ensureAccess(workerHost) {
     });
   } else {
     // A one-click rerun must converge old dashboard state to the audited policy instead of silently
-    // trusting whatever was configured previously. Cloudflare's Access Applications API supports
-    // PUT updates for self-hosted applications, including destinations and inline policies.
+    // trusting whatever was configured previously. Cloudflare supports PUT application updates with
+    // destinations and inline policies for self-hosted applications.
     app = await cf(`/accounts/${accountId}/access/apps/${candidates[0].id}`, {
       method: 'PUT',
       body: JSON.stringify(desired)
@@ -254,9 +273,11 @@ await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy
 const state = {
   phase: 6,
   phaseSlice: '6-strict-access-r2-queues',
+  releaseState: 'candidate-not-real-device-qualified',
   accountId,
   d1Id,
   workerHost,
+  currentRelease: CURRENT_APP_VERSION,
   resources: {
     D1_NAME,
     HISTORY_BUCKET,
@@ -265,14 +286,24 @@ const state = {
     DLQ
   },
   access: { mode: 'cloudflare-access-rs256', appId: access.appId, aud: access.aud, teamDomain, destination: access.destination },
-  currentRelease: CURRENT_APP_VERSION,
-  releaseState: 'candidate-not-real-device-qualified',
+  retention: {
+    rawHistoryDays: 30,
+    trustedHistoryDays: 90,
+    defaultSafetyEventDays: 180,
+    healthSampleDays: 35,
+    healthIncidentDays: 365,
+    crashReportDays: 365,
+    auditLogDays: 90
+  },
+  privateMap: { bucket: MAPS_BUCKET, key: 'basemap/singapore.pmtiles', installed: false },
   configuredAt: new Date().toISOString()
 };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
-console.log('\nBrick Phase 6 strict cloud setup completed.');
+console.log('\nBrick Phase 6 strict cloud candidate setup completed.');
 console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child API base:   https://${workerHost}`);
 console.log(`Access issuer:    ${teamDomain}`);
 console.log(`Access AUD:       ${access.aud}`);
+console.log(`Current release:  ${CURRENT_APP_VERSION}`);
 console.log('R2 history/maps + Queues/DLQ are real Cloudflare resources.');
+console.log('This remains a release candidate until the required real OPPO/ColorOS qualification is completed.');
