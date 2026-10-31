@@ -10,7 +10,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
     private lateinit var context: Context
 
     private class TestCipher : EvidenceCipher {
-        override fun encrypt(plain: ByteArray): ByteArray = byteArrayOf(0x42) + plain.map { (it.toInt() xor 0x5a).toByte() }
+        override fun encrypt(plain: ByteArray): ByteArray = byteArrayOf(0x42.toByte()) + plain.map { (it.toInt() xor 0x5a).toByte() }
         override fun decrypt(blob: ByteArray): ByteArray {
             require(blob.isNotEmpty() && blob[0] == 0x42.toByte())
             return blob.copyOfRange(1, blob.size).map { (it.toInt() xor 0x5a).toByte() }.toByteArray()
