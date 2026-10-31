@@ -94,6 +94,7 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
     ).bind(deviceId, batch.batchId, batch.records.length, buffer.byteLength, batchSha, r2Key, now)
   ];
 
+  const latestByProvider = new Map<number, EvidenceRecord>();
   batch.records.forEach((record, index) => {
     statements.push(
       env.DB.prepare(
@@ -105,7 +106,21 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
         "INSERT OR IGNORE INTO evidence_batch_records(device_id,batch_id,record_id,epoch,sequence) VALUES(?1,?2,?3,?4,?5)"
       ).bind(deviceId, batch.batchId, record.recordId, record.epoch, record.sequence)
     );
+    const current = latestByProvider.get(record.provider);
+    if (!current || record.wallTimeMs >= current.wallTimeMs) latestByProvider.set(record.provider, record);
   });
+
+  for (const record of latestByProvider.values()) {
+    statements.push(
+      env.DB.prepare(
+        "INSERT INTO evidence_provider_health(device_id,provider,capability,health,reason,observed_at) VALUES(?1,?2,?3,?4,NULL,?5) " +
+        "ON CONFLICT(device_id,provider) DO UPDATE SET " +
+        "capability=CASE WHEN excluded.observed_at>=observed_at THEN excluded.capability ELSE capability END," +
+        "health=CASE WHEN excluded.observed_at>=observed_at THEN excluded.health ELSE health END," +
+        "observed_at=MAX(observed_at,excluded.observed_at)"
+      ).bind(deviceId, record.provider, record.capability, record.health, record.wallTimeMs)
+    );
+  }
 
   const newest = batch.records[batch.records.length - 1];
   statements.push(
