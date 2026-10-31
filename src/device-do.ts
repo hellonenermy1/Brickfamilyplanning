@@ -31,6 +31,7 @@ export type DeviceHealth = {
   fineLocationPermission?: boolean;
   backgroundLocationPermission?: boolean;
   activityRecognitionPermission?: boolean;
+  bluetoothScanPermission?: boolean;
   notificationPermission?: boolean;
   batteryOptimizationExempt?: boolean;
   powerSaveMode?: boolean;
@@ -90,185 +91,125 @@ type LatestState = {
   activityConfidence: number;
   quality: string;
   source: string;
-  gnss: { usedInFix: number; total: number; averageCn0DbHz: number | null };
-  fallback: boolean;
+  rawAccepted: boolean;
+  rawMock: boolean;
   batteryPct: number;
   charging: boolean;
   wallTimeMs: number;
   receivedAt: number;
 };
 
-type Derived = {
-  deviceStatus: "healthy" | "degraded" | "offline" | "unknown";
-  positionStatus: "fresh" | "stale" | "unavailable" | "unknown";
-  evaluatedAt: number;
-};
-
-function advances(candidate: SequenceHighWater, current: SequenceHighWater | undefined) {
-  return !current || candidate.epoch > current.epoch || (candidate.epoch === current.epoch && candidate.sequence > current.sequence);
-}
+type StoredSafetyEvent = RealtimeSafetyEvent & { receivedAt: number };
 
 export class BrickDevice extends DurableObject {
-  private async ensureWatchdog() {
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(Date.now() + 15_000);
+  private sockets = new Set<WebSocket>();
+
+  constructor(ctx: DurableObjectState, env: unknown) {
+    super(ctx, env);
+    for (const ws of this.ctx.getWebSockets()) this.sockets.add(ws);
   }
 
-  private async derive(now = Date.now()): Promise<Derived> {
-    const latest = await this.ctx.storage.get<LatestState>("latest");
-    const health = await this.ctx.storage.get<StoredHealth>("health");
-    const heartbeatAge = health ? now - health.receivedAt : Number.POSITIVE_INFINITY;
-    const positionAge = latest ? now - latest.receivedAt : Number.POSITIVE_INFINITY;
-
-    const deviceStatus: Derived["deviceStatus"] = !health
-      ? "unknown"
-      : heartbeatAge > 75_000 ? "offline"
-      : heartbeatAge > 45_000 || health.operationalStatus === "degraded" ? "degraded"
-      : "healthy";
-
-    const interval = Math.min(Math.max(health?.trackingIntervalMs ?? 5_000, 3_000), 120_000);
-    const freshLimit = Math.max(15_000, interval * 2.5);
-    const staleLimit = Math.max(60_000, interval * 3 + 30_000);
-
-    const positionStatus: Derived["positionStatus"] = !latest
-      ? "unknown"
-      : latest.lat === null || latest.lon === null
-        ? "unavailable"
-        : positionAge <= freshLimit ? "fresh" : positionAge <= staleLimit ? "stale" : "unavailable";
-
-    return { deviceStatus, positionStatus, evaluatedAt: now };
-  }
-
-  private async snapshot() {
-    const [latest, health, networkEvidence, derived, latestSafetyEvent] = await Promise.all([
-      this.ctx.storage.get<LatestState>("latest"),
-      this.ctx.storage.get<StoredHealth>("health"),
-      this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
-      this.derive(),
-      this.ctx.storage.get<RealtimeSafetyEvent>("latestSafetyEvent")
-    ]);
-    return {
-      latest: latest ?? null,
-      health: health ?? null,
-      networkEvidence: networkEvidence ?? null,
-      latestSafetyEvent: latestSafetyEvent ?? null,
-      derived
-    };
-  }
-
-  private broadcast(type: string, payload: unknown) {
-    const msg = JSON.stringify({ type, ...((payload && typeof payload === "object") ? payload : { payload }) });
+  private async broadcast(payload: unknown) {
+    const data = JSON.stringify(payload);
     for (const ws of this.ctx.getWebSockets()) {
-      try { ws.send(msg); } catch { try { ws.close(1011, "send failed"); } catch {} }
+      try { ws.send(data); } catch { this.sockets.delete(ws); }
     }
   }
 
-  async setLatest(packet: LivePacket): Promise<boolean> {
-    const current = await this.ctx.storage.get<LatestState>("latest");
-    if (current && !advances({ epoch: packet.epoch, sequence: packet.sequence }, current)) return false;
-
-    const raw = packet.rawLatE7 !== null && packet.rawLonE7 !== null ? {
-      lat: packet.rawLatE7 / 1e7,
-      lon: packet.rawLonE7 / 1e7,
-      accuracyM: packet.rawAccuracyCm === null ? null : packet.rawAccuracyCm / 100,
-      accepted: packet.rawAccepted,
-      mock: packet.rawMock
-    } : null;
-
+  async setLatest(packet: LivePacket) {
     const state: LatestState = {
       epoch: packet.epoch,
       sequence: packet.sequence,
-      lat: packet.trustedLatE7 === null ? null : packet.trustedLatE7 / 1e7,
-      lon: packet.trustedLonE7 === null ? null : packet.trustedLonE7 / 1e7,
-      uncertaintyM: packet.uncertaintyCm / 100,
+      lat: packet.trustedLat,
+      lon: packet.trustedLon,
+      uncertaintyM: packet.uncertaintyM,
       routeCorridor: packet.routeCorridor ?? null,
-      raw,
-      speedKph: packet.speedCms === null ? null : packet.speedCms * 0.036,
-      speedAccuracyKph: packet.speedAccuracyCms === null ? null : packet.speedAccuracyCms * 0.036,
-      bearingDeg: packet.bearingCdeg === null ? null : packet.bearingCdeg / 100,
-      bearingAccuracyDeg: packet.bearingAccuracyCdeg === null ? null : packet.bearingAccuracyCdeg / 100,
-      altitudeM: packet.altitudeCm === null ? null : packet.altitudeCm / 100,
-      verticalAccuracyM: packet.verticalAccuracyCm === null ? null : packet.verticalAccuracyCm / 100,
+      raw: packet.rawLat === null || packet.rawLon === null ? null : {
+        lat: packet.rawLat,
+        lon: packet.rawLon,
+        accuracyM: packet.rawAccuracyM,
+        accepted: packet.rawAccepted,
+        mock: packet.rawMock
+      },
+      speedKph: packet.speedMps === null ? null : packet.speedMps * 3.6,
+      speedAccuracyKph: packet.speedAccuracyMps === null ? null : packet.speedAccuracyMps * 3.6,
+      bearingDeg: packet.bearingDeg,
+      bearingAccuracyDeg: packet.bearingAccuracyDeg,
+      altitudeM: packet.altitudeM,
+      verticalAccuracyM: packet.verticalAccuracyM,
       activity: activityName(packet.activity),
       activityConfidence: packet.activityConfidence,
       quality: qualityName(packet.quality),
       source: sourceName(packet.source),
-      gnss: {
-        usedInFix: packet.gnssUsedInFix,
-        total: packet.gnssTotal,
-        averageCn0DbHz: packet.gnssAverageCn0Tenth > 0 ? packet.gnssAverageCn0Tenth / 10 : null
-      },
-      fallback: packet.fallback,
+      rawAccepted: packet.rawAccepted,
+      rawMock: packet.rawMock,
       batteryPct: packet.batteryPct,
       charging: packet.charging,
       wallTimeMs: packet.wallTimeMs,
       receivedAt: Date.now()
     };
     await this.ctx.storage.put("latest", state);
-    await this.ensureWatchdog();
-    this.broadcast("location", { state, derived: await this.derive() });
-    return true;
-  }
-
-  async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> {
-    if (!Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(sequence) || sequence <= 0) return false;
-    const current = await this.ctx.storage.get<SequenceHighWater>("safetyEvalHighWater");
-    return advances({ epoch, sequence }, current);
-  }
-
-  async commitSafetyEvaluation(epoch: number, sequence: number): Promise<boolean> {
-    if (!Number.isSafeInteger(epoch) || epoch < 0 || !Number.isSafeInteger(sequence) || sequence <= 0) return false;
-    const next = { epoch, sequence };
-    const current = await this.ctx.storage.get<SequenceHighWater>("safetyEvalHighWater");
-    if (!advances(next, current)) return false;
-    await this.ctx.storage.put("safetyEvalHighWater", next);
-    return true;
+    await this.broadcast({ type: "state", state });
   }
 
   async setHealth(health: DeviceHealth) {
     const stored: StoredHealth = { ...health, receivedAt: Date.now() };
     await this.ctx.storage.put("health", stored);
-    await this.ensureWatchdog();
-    this.broadcast("health", { health: stored, derived: await this.derive() });
+    await this.broadcast({ type: "health", health: stored });
   }
 
-  async setNetworkEvidence(evidence: NetworkEvidence) {
-    await this.ctx.storage.put("networkEvidence", evidence);
-    this.broadcast("networkEvidence", { networkEvidence: evidence, derived: await this.derive() });
+  async setNetworkEvidence(network: NetworkEvidence) {
+    await this.ctx.storage.put("networkEvidence", network);
+    await this.broadcast({ type: "network", network });
   }
 
   async pushSafetyEvent(event: RealtimeSafetyEvent) {
-    await this.ctx.storage.put("latestSafetyEvent", event);
-    this.broadcast("safety_event", { event, derived: await this.derive() });
+    const stored: StoredSafetyEvent = { ...event, receivedAt: Date.now() };
+    await this.ctx.storage.put("lastSafetyEvent", stored);
+    await this.broadcast({ type: "safety", event: stored });
   }
 
-  async alarm() {
-    const previous = await this.ctx.storage.get<Derived>("derived");
-    const derived = await this.derive();
-    await this.ctx.storage.put("derived", derived);
-    if (!previous || previous.deviceStatus !== derived.deviceStatus || previous.positionStatus !== derived.positionStatus) {
-      this.broadcast("status", { derived });
+  async readSequenceHighWater(): Promise<SequenceHighWater | null> {
+    return (await this.ctx.storage.get<SequenceHighWater>("sequenceHighWater")) ?? null;
+  }
+
+  async commitSequenceHighWater(epoch: number, sequence: number) {
+    const current = await this.readSequenceHighWater();
+    if (!current || epoch > current.epoch || (epoch === current.epoch && sequence > current.sequence)) {
+      await this.ctx.storage.put("sequenceHighWater", { epoch, sequence });
     }
-    await this.ctx.storage.setAlarm(Date.now() + 15_000);
+  }
+
+  async readSafetyHighWater(): Promise<number> {
+    return (await this.ctx.storage.get<number>("safetyHighWater")) ?? 0;
+  }
+
+  async commitSafetyHighWater(sequence: number) {
+    const current = await this.readSafetyHighWater();
+    if (sequence > current) await this.ctx.storage.put("safetyHighWater", sequence);
   }
 
   async fetch(req: Request): Promise<Response> {
-    const url = new URL(req.url);
-    if (url.pathname.endsWith("/state")) return Response.json(await this.snapshot());
-    if (url.pathname.endsWith("/ws")) {
-      if (req.headers.get("Upgrade") !== "websocket") return new Response("Expected websocket", { status: 426 });
+    const u = new URL(req.url);
+    if (u.pathname === "/state") {
+      const [state, health, network, lastSafetyEvent] = await Promise.all([
+        this.ctx.storage.get<LatestState>("latest"),
+        this.ctx.storage.get<StoredHealth>("health"),
+        this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
+        this.ctx.storage.get<StoredSafetyEvent>("lastSafetyEvent")
+      ]);
+      return Response.json({ state: state ?? null, health: health ?? null, network: network ?? null, lastSafetyEvent: lastSafetyEvent ?? null });
+    }
+    if (u.pathname === "/ws") {
       const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
+      const client = pair[0], server = pair[1];
       this.ctx.acceptWebSocket(server);
-      server.send(JSON.stringify({ type: "snapshot", ...(await this.snapshot()) }));
+      this.sockets.add(server);
       return new Response(null, { status: 101, webSocket: client });
     }
     return new Response("Not found", { status: 404 });
   }
 
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
-    if (typeof message === "string" && message === "ping") ws.send("pong");
-  }
-
-  async webSocketClose(ws: WebSocket, code: number, reason: string) { try { ws.close(code, reason); } catch {} }
-  async webSocketError(ws: WebSocket) { try { ws.close(1011, "websocket error"); } catch {} }
+  webSocketClose(ws: WebSocket) { this.sockets.delete(ws); }
+  webSocketError(ws: WebSocket) { this.sockets.delete(ws); }
 }
