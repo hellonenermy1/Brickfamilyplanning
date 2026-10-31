@@ -10,14 +10,17 @@
     <TextView android:id="@+id/status" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_marginTop="34dp" android:text="● Setup required" android:textSize="18sp" />
 
+    <Button android:id="@+id/scanPairButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="32dp" android:text="SCAN PAIRING QR" />
+
     <EditText android:id="@+id/serverUrl" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="32dp" android:hint="https://brick.example.com" android:inputType="textUri" />
+        android:layout_marginTop="12dp" android:hint="https://brick.example.com" android:inputType="textUri" />
 
     <EditText android:id="@+id/pairingToken" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="10dp" android:hint="Pairing code" android:inputType="text" />
 
     <Button android:id="@+id/pairButton" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="10dp" android:text="PAIR" />
+        android:layout_marginTop="10dp" android:text="PAIR MANUALLY" />
 
     <Button android:id="@+id/fixButton" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="16dp" android:text="FIX" android:visibility="gone" />
