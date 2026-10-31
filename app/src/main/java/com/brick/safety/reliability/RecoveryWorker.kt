@@ -14,7 +14,11 @@ class RecoveryWorker(
             // Core tracking recovery always runs first. Evidence is intentionally best-effort and
             // lower priority; a failed evidence upload must never make core recovery fail.
             ServiceControl.ensureTracking(applicationContext)
-            runCatching { EvidenceDispatcher(applicationContext).drainIfSafe(maxBatches = 2) }
+            runCatching {
+                EvidenceDispatcher(applicationContext).use { dispatcher ->
+                    dispatcher.drainIfSafe(maxBatches = 2)
+                }
+            }
             Result.success()
         } catch (_: Throwable) {
             Result.retry()
