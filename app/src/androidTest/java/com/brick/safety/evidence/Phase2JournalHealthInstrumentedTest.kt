@@ -7,6 +7,10 @@ import java.util.UUID
 
 @Suppress("DEPRECATION")
 class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
+    companion object {
+        private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
+    }
+
     private lateinit var context: Context
 
     private object TestCipher : EvidenceCipher {
@@ -45,7 +49,7 @@ class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
     fun testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory() {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val journal = EvidenceJournal(context, TestCipher)
-        val record = journal.appendNew(81, observation())
+        val record = journal.appendNew(TEST_DEVICE_ID, 81, observation())
         assertNotNull(record)
 
         val rawDb = context.openOrCreateDatabase(EvidenceJournal.DATABASE_NAME, Context.MODE_PRIVATE, null)
