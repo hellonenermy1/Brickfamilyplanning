@@ -52,7 +52,10 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
     @Volatile private var lastMapLat: Double? = null
     @Volatile private var lastMapLon: Double? = null
 
-    init { restore() }
+    init {
+        restore()
+        publishHealth(SystemClock.elapsedRealtime())
+    }
 
     @Synchronized
     fun onTrustedFix(
@@ -97,12 +100,19 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
     @Synchronized
     fun fallback(activity: ActivitySnapshot, nowElapsedMs: Long = SystemClock.elapsedRealtime()): Phase3FallbackEstimate? {
         motion.setSamplingProfile(if (isSosActive()) MotionSamplingProfile.SOS else MotionSamplingProfile.DEGRADED)
-        if (!particles.isInitialized()) return null
+        if (!particles.isInitialized()) {
+            publishHealth(nowElapsedMs)
+            return null
+        }
         val lastUpdate = particles.lastUpdateElapsedMs()
-        if (lastUpdate <= 0L || nowElapsedMs < lastUpdate) return null
+        if (lastUpdate <= 0L || nowElapsedMs < lastUpdate) {
+            publishHealth(nowElapsedMs)
+            return null
+        }
         val dtMs = nowElapsedMs - lastUpdate
         if (dtMs == 0L) {
             val current = particles.estimate(nowElapsedMs) ?: return null
+            publishHealth(nowElapsedMs)
             return current.takeUnless { it.expired }?.let { Phase3FallbackEstimate(it, 0, false) }
         }
 
@@ -232,7 +242,10 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
 
     private fun persist(force: Boolean) {
         val nowElapsed = SystemClock.elapsedRealtime()
-        if (!force && lastSaveElapsedMs > 0L && nowElapsed - lastSaveElapsedMs < SAVE_INTERVAL_MS) return
+        if (!force && lastSaveElapsedMs > 0L && nowElapsed - lastSaveElapsedMs < SAVE_INTERVAL_MS) {
+            publishHealth(nowElapsed)
+            return
+        }
         val state = Phase3PersistedState(
             odometry = odometry.encode(),
             routeGraph = routeGraph.encode(System.currentTimeMillis()),
@@ -245,6 +258,30 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
             lastMapLonBits = lastMapLon?.toBits() ?: 0L
         )
         if (stateStore.write(state)) lastSaveElapsedMs = nowElapsed
+        publishHealth(nowElapsed)
+    }
+
+    private fun publishHealth(nowElapsedMs: Long) {
+        val estimate = particles.estimate(nowElapsedMs)
+        val routes = routeGraph.all()
+        val sensors = runCatching { motion.phase3Snapshot() }.getOrNull()
+        val edit = healthPrefs.edit()
+            .putBoolean("phase3Initialized", particles.isInitialized())
+            .putInt("phase3RouteSegments", routes.size)
+            .putInt("phase3PrivateMapSegments", routes.count { it.source == RouteSegmentSource.PRIVATE_MAP })
+            .putInt("phase3LearnedRouteSegments", routes.count { it.source == RouteSegmentSource.LEARNED })
+            .putBoolean("phase3RouteConstrained", estimate?.routeConstrained == true)
+            .putBoolean("phase3AccelerometerHealthy", sensors?.accelerometerHealthy == true)
+            .putBoolean("phase3GyroscopeHealthy", sensors?.gyroscopeHealthy == true)
+            .putBoolean("phase3MagneticHealthy", sensors?.magneticHealthy == true)
+            .putBoolean("phase3RotationHealthy", sensors?.rotationHealthy == true)
+        if (estimate != null) {
+            edit.putFloat("phase3UncertaintyM", estimate.uncertaintyM)
+                .putLong("phase3AgeSinceTrustedMs", estimate.ageSinceTrustedMs)
+        } else {
+            edit.remove("phase3UncertaintyM").remove("phase3AgeSinceTrustedMs")
+        }
+        edit.apply()
     }
 
     private fun applyTrustedSamplingProfile(activity: ActivitySnapshot, nowElapsedMs: Long) {
