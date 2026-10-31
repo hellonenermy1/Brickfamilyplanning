@@ -3,6 +3,11 @@ import { parentV5BHtml } from "./parent-v5b";
 export function parentV6Html() {
   let html = parentV5BHtml();
 
+  const moduleNeedle = "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
+  const modulePatch = moduleNeedle + "import { pairingQrDataUrl } from '/brick-pair.mjs';";
+  if (!html.includes(moduleNeedle)) throw new Error("Phase 6 pairing module import target missing");
+  html = html.replace(moduleNeedle, modulePatch);
+
   const deviceNeedle = "o.value=d.id;o.textContent=d.name;s.appendChild(o)";
   const devicePatch = "o.value=d.id;o.dataset.revoked=d.revoked_at?'1':'0';o.textContent=d.name+(d.revoked_at?' · REVOKED':'');s.appendChild(o)";
   if (!html.includes(deviceNeedle)) throw new Error("Phase 6 device-list UI patch target missing");
@@ -29,7 +34,7 @@ export function parentV6Html() {
   html = html.replace(pairCardNeedle, pairCardPatch);
 
   const pairHandlerNeedle = "$('#pairBtn').onclick=async()=>{try{const j=await api('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});text('#pairOut','Pairing code: '+j.token+' · expires '+new Date(j.expiresAt).toLocaleTimeString())}catch(e){text('#pairOut',e.message)}};";
-  const pairHandlerPatch = "$('#pairBtn').onclick=async()=>{const qr=$('#pairQr');try{const j=await api('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});qr.src='/parent/api/pair/qr?token='+encodeURIComponent(j.token);qr.hidden=false;text('#pairOut','Scan this one-time QR in Brick. Manual code: '+j.token+' · expires '+new Date(j.expiresAt).toLocaleTimeString())}catch(e){qr.hidden=true;qr.removeAttribute('src');text('#pairOut',e.message)}};";
+  const pairHandlerPatch = "$('#pairBtn').onclick=async()=>{const qr=$('#pairQr');try{const j=await api('/parent/api/pair/start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('#pairName').value})});qr.src=pairingQrDataUrl(location.origin,j.token);qr.hidden=false;text('#pairOut','Scan this one-time QR in Brick. Manual code: '+j.token+' · expires '+new Date(j.expiresAt).toLocaleTimeString())}catch(e){qr.hidden=true;qr.removeAttribute('src');text('#pairOut',e.message)}};";
   if (!html.includes(pairHandlerNeedle)) throw new Error("Phase 6 pairing QR handler target missing");
   html = html.replace(pairHandlerNeedle, pairHandlerPatch);
 
