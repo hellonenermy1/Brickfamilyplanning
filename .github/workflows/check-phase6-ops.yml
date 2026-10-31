@@ -1,0 +1,31 @@
+name: Check Brick Phase 6 Ops
+
+on:
+  push:
+    branches: [phase6-cloud-final-audit, phase6-integration, phase6-final]
+  pull_request:
+    branches: [phase6-integration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Bundle operational modules
+        run: |
+          npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
+          npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
+      - name: Validate battery trend and private backup behavior
+        run: node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
