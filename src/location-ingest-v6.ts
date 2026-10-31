@@ -13,7 +13,9 @@ export type LocationIngestEnv = {
 
 type DeviceRecord = { public_key_spki_b64: string; revoked_at: number | null };
 const BATCH_VERSION = 1;
-const MAX_BATCH = 50;
+// 20 packets keeps one ingest comfortably below the Workers Free D1 50-query ceiling even when
+// geofence/trip state and safety events need writes in the same invocation.
+const MAX_BATCH = 20;
 const MAX_HISTORY_AGE_MS = 30 * 86_400_000;
 const MAX_FUTURE_MS = 10 * 60_000;
 const LIVE_PREVIEW_MAX_AGE_MS = 10 * 60_000;
@@ -55,29 +57,29 @@ async function queueLocations(env: LocationIngestEnv, deviceId: string, packets:
 async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
   const highest = packets[packets.length - 1];
   const now = Date.now();
-  const statements = packets.map(packet =>
-    env.DB.prepare("INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES(?1,?2,?3,'location',?4)")
-      .bind(deviceId, packet.epoch, packet.sequence, now)
-  );
-  statements.push(
-    env.DB.prepare("UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))")
-      .bind(highest.epoch, highest.sequence, now, deviceId)
-  );
-  const results = await env.DB.batch(statements);
-  const advance = results[results.length - 1];
-  const liveAdvanced = (advance?.meta.changes ?? 0) > 0;
+  // One multi-row INSERT replaces N individual D1 subqueries. Four bound parameters per packet
+  // means MAX_BATCH=20 uses 80 parameters, safely below D1's 100-bound-parameter limit.
+  const bindings: unknown[] = [];
+  const values = packets.map((packet, index) => {
+    const base = index * 4;
+    bindings.push(deviceId, packet.epoch, packet.sequence, now);
+    return `(?${base + 1},?${base + 2},?${base + 3},'location',?${base + 4})`;
+  }).join(",");
+  const insert = env.DB.prepare(
+    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES ${values}`
+  ).bind(...bindings);
+  const advance = env.DB.prepare(
+    "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
+  ).bind(highest.epoch, highest.sequence, now, deviceId);
+  const [insertResult, advanceResult] = await env.DB.batch([insert, advance]);
+  const liveAdvanced = (advanceResult?.meta.changes ?? 0) > 0;
   if (liveAdvanced) {
-    // BrickDevice itself is monotonic, so a prior live-preview packet can never be overwritten by
-    // older chronological backlog while D1 catches up.
     await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
   }
   return {
     liveAdvanced,
-    accepted: results.slice(0, packets.length).map((r, i) => ({
-      epoch: packets[i].epoch,
-      sequence: packets[i].sequence,
-      duplicate: (r.meta.changes ?? 0) === 0
-    }))
+    insertedCount: insertResult?.meta.changes ?? 0,
+    accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence }))
   };
 }
 
@@ -93,12 +95,10 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   try { packet = decodeLivePacket(body); } catch { return json({ error: "invalid location packet" }, 400); }
   if (!timeValid(packet, Date.now())) return json({ error: "location timestamp outside allowed history window" }, 400);
 
-  // Queue first. If anything later fails, retry may enqueue a duplicate, which is safer than a
-  // D1 dedupe row permanently suppressing a history message that never reached the Queue.
   await queueLocations(env, deviceId, [packet]);
   const persisted = await persistAccepted(env, deviceId, [packet]);
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
-  return json({ ack: packet.sequence, duplicate: persisted.accepted[0].duplicate, liveAdvanced: persisted.liveAdvanced });
+  return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: persisted.liveAdvanced });
 }
 
 export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
