@@ -18,19 +18,21 @@ class Phase3CoreInstrumentedTest : InstrumentationTestCase() {
         assertEquals(0.0, stationary.speedMps ?: -1.0)
     }
 
-    fun testSequenceEvidenceNeedsRepeatedMultiSampleSupport() {
+    fun testSequenceEvidenceNeedsRepeatedMultiSampleSupportAndExpires() {
+        val nowWall = System.currentTimeMillis()
         val graph = LocalRouteGraph()
-        val east = graph.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f, 1_000L)!!
-        graph.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f, 2_000L)
+        val east = graph.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f, nowWall)!!
+        graph.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f, nowWall + 1_000L)
 
         val magnetic = (0 until 8).map { i ->
             MagneticPoint(i * 600_000_000L, 20f + i * 1.8f, 5f - i * 0.7f, 34f + i * 0.4f, 40f + i * 1.1f, (i - 3) * 2.2f)
         }
         val magModel = MagneticSequenceModel()
-        assertTrue(magModel.observeTrusted(east, 90f, magnetic, 1_000L))
-        assertTrue(magModel.match(90f, magnetic).isEmpty())
-        assertTrue(magModel.observeTrusted(east, 90f, magnetic.map { it.copy(eastUt = it.eastUt + 0.2f) }, 2_000L))
-        assertEquals(east, magModel.match(90f, magnetic).firstOrNull()?.segmentId)
+        assertTrue(magModel.observeTrusted(east, 90f, magnetic, nowWall))
+        assertTrue(magModel.match(90f, magnetic, nowWall).isEmpty())
+        assertTrue(magModel.observeTrusted(east, 90f, magnetic.map { it.copy(eastUt = it.eastUt + 0.2f) }, nowWall + 1_000L))
+        assertEquals(east, magModel.match(90f, magnetic, nowWall + 2_000L).firstOrNull()?.segmentId)
+        assertTrue(magModel.match(90f, magnetic, nowWall + 91L * 24L * 60L * 60L * 1_000L).isEmpty())
 
         val events = listOf(
             LandmarkEvent(LandmarkKind.START, 0L, 1f),
@@ -39,11 +41,12 @@ class Phase3CoreInstrumentedTest : InstrumentationTestCase() {
             LandmarkEvent(LandmarkKind.STOP, 8_000_000_000L, 1f)
         )
         val landmarkModel = LandmarkSequenceModel()
-        assertTrue(landmarkModel.observeTrusted(east, events, 1_000L))
-        assertTrue(landmarkModel.match(events).isEmpty())
-        assertTrue(landmarkModel.observeTrusted(east, events, 2_000L))
-        assertEquals(east, landmarkModel.match(events).firstOrNull()?.segmentId)
-        assertTrue(landmarkModel.match(listOf(events[2])).isEmpty())
+        assertTrue(landmarkModel.observeTrusted(east, events, nowWall))
+        assertTrue(landmarkModel.match(events, nowWall).isEmpty())
+        assertTrue(landmarkModel.observeTrusted(east, events, nowWall + 1_000L))
+        assertEquals(east, landmarkModel.match(events, nowWall + 2_000L).firstOrNull()?.segmentId)
+        assertTrue(landmarkModel.match(listOf(events[2]), nowWall + 2_000L).isEmpty())
+        assertTrue(landmarkModel.match(events, nowWall + 91L * 24L * 60L * 60L * 1_000L).isEmpty())
     }
 
     fun testParticlesGrowUncertaintyEliminateRoutesPersistAndRecover() {
