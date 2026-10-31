@@ -4,6 +4,19 @@ export const V1_BYTES = 43;
 export const V2_BYTES = 90;
 const MISSING = -2147483648;
 
+export type RouteCorridorCandidate = {
+  a: [number, number];
+  b: [number, number];
+  distanceM: number;
+  headingDeltaDeg: number | null;
+  score: number;
+};
+export type RouteCorridor = {
+  center: [number, number];
+  radiusM: number;
+  candidates: RouteCorridorCandidate[];
+};
+
 export type LivePacket = {
   version: number;
   epoch: number;
@@ -35,6 +48,8 @@ export type LivePacket = {
   gnssTotal: number;
   gnssAverageCn0Tenth: number;
   stepDelta: number;
+  // Server-only enrichment. This is never accepted from an Android-signed binary packet.
+  routeCorridor?: RouteCorridor;
 };
 
 export function decodeLivePacket(buf: ArrayBuffer): LivePacket {
@@ -158,18 +173,15 @@ function decodeV2(v: DataView): LivePacket {
 function nullableInt(value: number): number | null { return value === MISSING ? null : value; }
 
 function validateCoordinate(latE7: number, lonE7: number) {
-  if (latE7 < -900000000 || latE7 > 900000000) throw new Error("bad latitude");
-  if (lonE7 < -1800000000 || lonE7 > 1800000000) throw new Error("bad longitude");
+  if (latE7 < -900_000_000 || latE7 > 900_000_000 || lonE7 < -1_800_000_000 || lonE7 > 1_800_000_000) throw new Error("bad coordinate");
 }
 
-export function activityName(code: number): string {
-  return ["unknown", "stationary", "walking", "running", "bicycle", "vehicle"][code] ?? "unknown";
+export function sourceName(v: number) {
+  return v === 1 ? "fused" : v === 2 ? "inertial" : v === 3 ? "last_known" : v === 4 ? "route_constrained" : "unknown";
 }
-
-export function qualityName(code: number): string {
-  return ["unknown", "precise", "assisted", "anchored", "estimated", "coarse", "last_known", "unknown"][code] ?? "unknown";
+export function activityName(v: number) {
+  return v === 1 ? "stationary" : v === 2 ? "walking" : v === 3 ? "running" : v === 4 ? "bicycle" : v === 5 ? "vehicle" : "unknown";
 }
-
-export function sourceName(code: number): string {
-  return ["unknown", "fused", "inertial", "last_known", "route_constrained"][code] ?? "unknown";
+export function qualityName(v: number) {
+  return v === 1 ? "precise" : v === 2 ? "assisted" : v === 3 ? "anchored" : v === 4 ? "estimated" : v === 5 ? "coarse" : v === 6 ? "last_known" : "unknown";
 }
