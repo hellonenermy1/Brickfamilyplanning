@@ -69,3 +69,12 @@ jobs:
           grep -F 'UserManager.DISALLOW_CONFIG_LOCATION' "$policy" >/dev/null
           grep -F 'dpm.setAutoTimeEnabled(admin, true)' "$policy" >/dev/null
           grep -F 'UserManager.DISALLOW_CONFIG_DATE_TIME' "$policy" >/dev/null
+      - name: Verify pairing cannot redirect the child to a different API origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          api='app/src/main/java/com/brick/safety/network/BrickApi.kt'
+          grep -F 'val requestedBase = secureBase(baseUrl)' "$api" >/dev/null
+          grep -F 'require(token.length in 16..256)' "$api" >/dev/null
+          grep -F 'require(apiBase == requestedBase)' "$api" >/dev/null
+          grep -F 'Pairing server attempted to change Brick API origin' "$api" >/dev/null
