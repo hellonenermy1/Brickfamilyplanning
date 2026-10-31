@@ -37,10 +37,15 @@ object Phase3RouteGraphController {
         executor.execute {
             try {
                 val result = RouteGraphApi.fetch(baseUrl, deviceId, lat, lon)
-                phase3.mergePrivateMap(result.centerLat, result.centerLon, result.generatedAtMs, result.segments)
+                // Cache freshness is a local-device policy. Do not base it on server wall time: clock
+                // skew must never make a route cache appear fresh forever. Server generation time is
+                // retained separately for diagnostics/model provenance only.
+                val receivedWallMs = System.currentTimeMillis().coerceAtLeast(1L)
+                phase3.mergePrivateMap(result.centerLat, result.centerLon, receivedWallMs, result.segments)
                 prefs.edit()
                     .putBoolean("phase3RouteGraphHealthy", true)
-                    .putLong("lastPhase3RouteGraphSuccessWallMs", System.currentTimeMillis())
+                    .putLong("lastPhase3RouteGraphSuccessWallMs", receivedWallMs)
+                    .putLong("lastPhase3RouteGraphServerGeneratedWallMs", result.generatedAtMs)
                     .apply()
             } catch (_: Throwable) {
                 val total = prefs.getLong("phase3RouteGraphFailureTotal", 0L).coerceAtLeast(0L)
