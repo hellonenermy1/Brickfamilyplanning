@@ -10,7 +10,7 @@ Brick remains a **release candidate**, not production-qualified.
 - Version code: `6`
 - Package: `com.brick.safety`
 - Qualification: `candidate-not-real-device-qualified`
-- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED, WITH FINAL RECORD-RACE + ANDROID-DER INVARIANTS TARGET-VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
+- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED + FURTHER HARDENED / PRIOR LOCAL CLOUD-PROTOCOL-ROUTE EVIDENCE RETAINED / FINAL PAIRED HEAD EXECUTION BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
 
 No Phase 2 source has been promoted to canonical `main` or `apk-download`.
 
@@ -59,18 +59,18 @@ Phase 2 staging:
 - `v1-p2-evidence-cloud` — PR #6, draft/unmerged
 - `v1-p2-evidence-android` — PR #7, draft/unmerged
 
-Current audit snapshot:
+Current exact paired checkpoint:
 
-- Android: `389bc8744341aebcc42f74f79403fd2b3d5d5873`
-- Cloud: `20a459f11f99195a0c56b3c1d82f2e7659976859`
+- Android: `4ec37a2021bcd575cfefeadd58c968675965a8e7`
+- Cloud: `60697dc37cb325574e9bd22283e2b3dd1d847817`
 
-These refs may advance while Phase 2 is repaired. Acceptance is tied to executed verification of the final paired heads, not to a stale SHA snapshot.
+The Cloud CI workflow pins the exact Android SHA above. Acceptance is tied to executed verification of the paired heads, not merely to source existence.
 
 ## Phase 1 — ACCEPTED
 
 Phase 1 froze the baseline, nine-phase program, architecture invariants, requirement IDs, complete source coverage and non-goals. No runtime feature was added in Phase 1.
 
-## Phase 2 — SOURCE IMPLEMENTED + HARDENED / NOT ACCEPTED
+## Phase 2 — SOURCE IMPLEMENTED + FURTHER HARDENED / NOT ACCEPTED
 
 Implemented staging source includes:
 
@@ -79,59 +79,54 @@ Implemented staging source includes:
 - adaptive bounded sampling;
 - separate encrypted Android evidence journal;
 - DB-owned transactional evidence sequence allocation;
-- exact local ACK semantics and corruption quarantine;
-- canonical paired v4 device-ID boundary on Android and Cloud evidence path;
+- canonical paired v4/variant-2 identity boundary;
+- exact ACK deletion semantics plus dispatcher-level exact ACK-set validation;
+- wire-order-safe pending queue for recovery/import inserts;
+- quarantine history separated from current journal-health recovery;
+- quiet journal read probe through `refreshHealth()` and health telemetry;
 - safety/live-location/crash priority over evidence;
-- dedicated network-constrained evidence worker using non-postponing initial work and bounded follow-up work;
+- dedicated network-constrained evidence worker;
+- fast healthy catch-up plus bounded persistent-failure backoff to a 15-minute cap;
 - separate bounded binary BREV v1 protocol;
 - canonical UUID / wire-safe integer rules and shared Android/TypeScript golden vector;
-- actual signed evidence route isolated in `src/evidence-route.ts` and delegated from worker-v7;
-- requester-attempt and authenticated-device rate-limit buckets separated so unsigned traffic cannot consume the child's device bucket;
+- signed evidence route isolated in `src/evidence-route.ts` and delegated from worker-v7;
+- requester-attempt and authenticated-device rate buckets separated;
+- actual streaming body bound using `readBoundedBody()` rather than unbounded `req.arrayBuffer()`;
 - content-addressed raw R2 objects using hashed device identity plus exact batch hash;
-- hard transactional D1 batch-ID claim to prevent concurrent batch-ID contamination;
-- hard transactional claims for new evidence record identities, while exact records observed during preflight can be reused;
-- record-level replay dedupe so already-durable records under a fresh transport batch UUID ACK without new durable storage;
-- exact batch/record collision detection;
+- hard transactional D1 claims for batch and new-record identities;
+- record-level replay dedupe without storage amplification;
+- bounded one-pass convergence for legitimate same-batch/mixed-record races;
+- exact conflicts remain fail-closed;
 - provider-health ordering by epoch/sequence rather than wall clock;
-- Android-compatible DER ECDSA route test source (`p1363ToDer` / `signLikeAndroid`) matching `SHA256withECDSA` output format;
-- evidence and later-phase schema foundations without claiming later algorithms;
-- schema/retention-before-worker-v7 setup ordering;
-- Android instrumentation source for restart/ACK/priority/sequence/pairing behavior;
-- Cloud protocol/persistence and signed HTTP route integration test source;
-- CI gates locking batch and record hard claims, replay, identity, rate-limit and Android-DER signature-format invariants.
+- Android-compatible DER ECDSA route-test source;
+- schema and retention foundations without claiming later algorithms;
+- Android instrumentation source for restart/ACK/priority/sequence/pairing/wire-order/quarantine/health/backoff behavior;
+- deterministic paired CI that pins the exact Android source SHA.
 
-### Executed local evidence
+### Evidence level
 
-Cloud protocol/persistence behavior passed the local TypeScript + SQLite/R2-style harness before the final record-claim refinement, covering golden bytes, persistence/ACK, exact retry, replay dedupe, collision rejection, provider-health ordering, content-addressed raw storage, epoch bounds and competing batch-ID rollback.
+Earlier Phase 2 heads received real local protocol/Cloud route/persistence execution, including the shared golden vector, persistence-before-ACK, replay/dedupe, collision handling, batch-ID race rollback, signed-route behavior and targeted record-race/DER-format checks.
 
-Observed:
+Observed earlier markers include:
 
-`LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+- `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
+- `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+- `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
-The actual signed route logic also passed a local P-256 Web Crypto integration harness covering canonical-v4 route parsing, missing/bad/valid signatures, split rate buckets, persistence-before-ACK, retries/replay, revocation and signed malformed-protocol rejection.
-
-Observed:
-
-`LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
-
-Final additional invariants were then target-executed locally:
-
-- **record identity race:** competing `(device,epoch,sequence)` claim caused the losing hard record insert to hit the unique constraint and roll back its batch; losing batch rows `0`, only competitor record remained;
-- **Android DER signature format:** 64-byte P1363 P-256 signature → DER (70 bytes observed) → Brick DER-to-P1363 conversion → verify `true`.
-
-The current Android pure Kotlin evidence model/protocol also matched the shared golden bytes and safe-integer/canonical-UUID rules locally. This is not a full Android app/framework pass.
+The final paired heads add further hardening after those runs. Those earlier passes are retained as useful evidence but are **not** represented as full verification of final Cloud `60697dc3...` and Android `4ec37a20...`.
 
 ### Hosted CI blocker
 
 Latest checked hosted run:
 
-- run `41212933879`
-- Cloud head `20a459f11f99195a0c56b3c1d82f2e7659976859`
+- run `41215211883`
+- Cloud head `60697dc37cb325574e9bd22283e2b3dd1d847817`
+- pinned Android head `4ec37a2021bcd575cfefeadd58c968675965a8e7`
 
 Observed:
 
-- Cloud protocol/persistence/regression: failure with `runner_id: 0`, empty runner name and `steps: []`;
 - Android compile/lint/dependency-lock: failure with `runner_id: 0`, empty runner name and `steps: []`;
+- Cloud protocol/persistence/regression: failure with `runner_id: 0`, empty runner name and `steps: []`;
 - Android instrumentation: skipped.
 
 No runner executed source steps. This is **not a source pass and not evidence of source failure**. It does not satisfy `CI_VERIFIED`.
@@ -142,8 +137,8 @@ PR #6 and PR #7 remain draft/unmerged deliberately.
 
 Phase 2 is accepted only after actual execution proves:
 
-1. Cloud typecheck, protocol/persistence harness, signed-route harness and retained Phase 6 regressions pass on the final head;
-2. Android dependency lock, full compile and lint pass;
+1. Cloud typecheck, protocol/persistence harness, signed-route harness and retained Phase 6 regressions pass on the final paired checkpoint;
+2. Android dependency lock, full compile and lint pass on the exact pinned Android SHA;
 3. Android emulator instrumentation passes;
 4. dummy evidence persists across restart, transmits, receives exact ACK and is removed without starving safety/live-location work;
 5. canonical post-merge checks pass;
@@ -168,4 +163,4 @@ All remain **NOT ACCEPTED**. Phase 3 must not be treated as unlocked accepted wo
 
 ## Audit principle
 
-Source existence, local harnesses, targeted local invariant checks, hosted CI, deployed Cloudflare state, Android hardware behavior and production qualification are separate evidence layers. Brick advances only to the level directly supported by observed evidence.
+Source existence, prior local harnesses, targeted invariant checks, final-head hosted CI, deployed Cloudflare state, Android hardware behavior and production qualification are separate evidence layers. Brick advances only to the level directly supported by observed evidence.
