@@ -11,6 +11,7 @@ object EvidenceProtocol {
     const val MAX_RECORD_PAYLOAD_BYTES = 2_048
     const val MAX_INDEPENDENCE_GROUP_BYTES = 64
     const val MAX_BATCH_BYTES = 65_536
+    const val MAX_WIRE_INTEGER = 9_007_199_254_740_991L // JavaScript Number.MAX_SAFE_INTEGER
     private const val BATCH_HEADER_BYTES = 4 + 1 + 16 + 2
     private const val RECORD_FIXED_BYTES = 16 + 4 + 8 + 8 + 8 + 5 + 1 + 2
 
@@ -53,7 +54,8 @@ object EvidenceProtocol {
 
     fun encodeBatch(records: List<EvidenceRecord>, batchId: String = UUID.randomUUID().toString()): EncodedBatch {
         require(records.isNotEmpty() && records.size <= MAX_RECORDS_PER_BATCH)
-        require(runCatching { UUID.fromString(batchId) }.isSuccess) { "batchId must be UUID" }
+        val parsedBatchId = runCatching { UUID.fromString(batchId) }.getOrNull()
+        require(parsedBatchId != null && parsedBatchId.toString() == batchId) { "batchId must be canonical lowercase UUID" }
         validateOrder(records)
         require(records.map { it.observation.recordId }.toSet().size == records.size) { "duplicate evidence recordId" }
         val bodies = records.map(::encodeRecord)
