@@ -1,3 +1,4 @@
+import { readBoundedBody } from "./bounded-body";
 import { verifyDeviceSignature } from "./crypto";
 import type { BrickDevice } from "./device-do";
 import { decodeLivePacket, V1_BYTES, V2_BYTES, type LivePacket } from "./protocol";
@@ -36,8 +37,9 @@ async function device(env: LocationIngestEnv, id: string) {
 async function signedBody(req: Request, publicKey: string, maxBytes: number): Promise<ArrayBuffer | Response> {
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return json({ error: "missing or invalid signature" }, 401);
-  const body = await req.arrayBuffer();
-  if (!body.byteLength || body.byteLength > maxBytes) return json({ error: "invalid payload size" }, 400);
+  const bounded = await readBoundedBody(req, maxBytes);
+  if (!bounded.ok || !bounded.body.byteLength) return json({ error: "invalid payload size" }, 400);
+  const body = bounded.body;
   if (!(await verifyDeviceSignature(publicKey, body, signature))) return json({ error: "bad signature" }, 401);
   return body;
 }
