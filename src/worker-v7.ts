@@ -30,6 +30,14 @@ async function authorizedDevice(env: Env, id: string) {
   return row && row.revoked_at === null ? row : null;
 }
 
+function evidenceAttemptRateKey(req: Request) {
+  // Cloudflare supplies CF-Connecting-IP at the edge. Invalid/unsigned traffic is limited by the
+  // requester, not by the claimed device ID, so a stranger cannot exhaust a child's device bucket
+  // merely by learning that identifier. The post-signature device bucket still bounds valid traffic.
+  const ip = (req.headers.get("CF-Connecting-IP") ?? "").trim();
+  return `evidence-attempt:${ip && ip.length <= 64 ? ip : "unknown"}`;
+}
+
 async function signedEvidenceBody(req: Request, device: DeviceRecord): Promise<ArrayBuffer | Response> {
   const contentType = (req.headers.get("Content-Type") ?? "").split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/vnd.brick.evidence") return json({ error: "unsupported evidence content type" }, 415);
@@ -44,12 +52,18 @@ async function signedEvidenceBody(req: Request, device: DeviceRecord): Promise<A
 }
 
 async function ingestEvidence(req: Request, env: Env, deviceId: string) {
-  const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:evidence` });
-  if (!rate.success) return json({ error: "rate limited" }, 429);
+  const attemptRate = await env.DEVICE_RATE.limit({ key: evidenceAttemptRateKey(req) });
+  if (!attemptRate.success) return json({ error: "rate limited" }, 429);
+
   const device = await authorizedDevice(env, deviceId);
   if (!device) return json({ error: "device unauthorized" }, 401);
   const body = await signedEvidenceBody(req, device);
   if (body instanceof Response) return body;
+
+  // Only a request that has proved possession of this device's key can consume the device-scoped
+  // evidence budget. This prevents unsigned traffic from starving the real phone's upload path.
+  const deviceRate = await env.DEVICE_RATE.limit({ key: `evidence-device:${deviceId}` });
+  if (!deviceRate.success) return json({ error: "rate limited" }, 429);
 
   // Separate validation from persistence so malformed client payloads are 400s while storage
   // failures remain server errors. persistEvidenceBatch validates again before durable writes.
