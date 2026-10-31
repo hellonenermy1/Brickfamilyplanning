@@ -150,6 +150,8 @@ jobs:
           grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
           grep -F 'private fun pairedDeviceId()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'UUID.fromString(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'parsed.version() == 4' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'parsed.variant() == 2' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'journal.appendNew(epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
@@ -163,7 +165,7 @@ jobs:
           grep -F 'scheduleEvidenceFollowUp' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'ServiceControl.ensureTracking(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
           grep -F 'RecoveryScheduler.scheduleEvidenceSoon(applicationContext, 1)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
-          grep -F 'testCorruptDeviceIdCannotPersistOrDrainEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testCorruptOrNonV4DeviceIdCannotPersistOrDrainEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'Phase2SequenceAllocatorInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2SequenceAllocatorInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
