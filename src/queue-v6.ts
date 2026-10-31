@@ -1,4 +1,4 @@
-import { processHistoryBatch } from "./history-store";
+import { processHistoryBatch, type QueueMessageView } from "./history-store";
 
 type QueueEnv = { DB: D1Database; HISTORY: R2Bucket };
 
@@ -25,7 +25,7 @@ function safeEventId(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-fA-F-]{36}$/.test(value);
 }
 
-export async function processSafetyReceipts(batch: MessageBatch<unknown>, env: QueueEnv): Promise<QueueWorkResult> {
+export async function processSafetyReceipts(batch: QueueMessageView, env: QueueEnv): Promise<QueueWorkResult> {
   const result: QueueWorkResult = { succeededDeviceIds: new Set<string>(), retriedDeviceIds: new Set<string>() };
   for (const message of batch.messages) {
     const body = message.body as QueueBody;
@@ -54,7 +54,7 @@ export async function processSafetyReceipts(batch: MessageBatch<unknown>, env: Q
 }
 
 async function recordBackendFailure(env: QueueEnv, deviceId: string, batch: MessageBatch<unknown>, body: QueueBody, now: number) {
-  const queueName = (batch as MessageBatch<unknown> & { queue?: string }).queue ?? "unknown";
+  const queueName = batch.queue ?? "unknown";
   const detail = JSON.stringify({
     queue: queueName,
     messageType: typeof body.type === "string" ? body.type.slice(0, 64) : "unknown",
@@ -118,7 +118,7 @@ export async function processDeadLetterBatch(batch: MessageBatch<unknown>, env: 
   // Re-run the actual durable work instead of treating the DLQ as a logging sink. This is the
   // critical guarantee: a location that failed R2 processing is ACKed only after R2 succeeds, and
   // a safety receipt is ACKed only after its durable safety row is present in D1.
-  const eligibleBatch = { queue: batch.queue, messages: eligible } as MessageBatch<unknown>;
+  const eligibleBatch: QueueMessageView = { messages: eligible };
   const safety = await processSafetyReceipts(eligibleBatch, env);
   const history = await processHistoryBatch(eligibleBatch, env);
   const retried = new Set<string>([...safety.retriedDeviceIds, ...history.retriedDeviceIds]);
