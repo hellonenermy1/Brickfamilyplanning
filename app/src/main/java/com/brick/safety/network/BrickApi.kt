@@ -34,9 +34,17 @@ object BrickApi {
         return URL(secureBase(baseUrl) + path)
     }
 
+    private fun connection(url: URL): HttpURLConnection {
+        return (url.openConnection() as HttpURLConnection).apply {
+            // Signed device traffic is bound to the paired Brick origin. Following a 30x could
+            // otherwise replay a signed body/header to a different host selected by the server.
+            instanceFollowRedirects = false
+        }
+    }
+
     fun completePairing(baseUrl: String, token: String): PairResult {
         val url = endpoint(baseUrl, "/api/pair/complete")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 10_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         val body = JSONObject().put("token", token).put("publicKeySpkiB64", DeviceKeys.publicSpkiBase64()).toString().toByteArray()
@@ -50,7 +58,7 @@ object BrickApi {
 
     fun sendLocation(baseUrl: String, deviceId: String, payload: ByteArray): Long {
         val url = endpoint(baseUrl, "/api/device/$deviceId/location")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
@@ -63,7 +71,7 @@ object BrickApi {
     fun sendLiveLocationPreview(baseUrl: String, deviceId: String, payload: ByteArray): Boolean {
         require(payload.size == LOCATION_V2_BYTES && payload.firstOrNull()?.toInt() == 2)
         val url = endpoint(baseUrl, "/api/device/$deviceId/location/live")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 5_000; c.readTimeout = 5_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
@@ -81,7 +89,7 @@ object BrickApi {
             .apply { items.forEach { put(it.payload) } }
             .array()
         val url = endpoint(baseUrl, "/api/device/$deviceId/location/batch")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 15_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(body))
@@ -120,7 +128,7 @@ object BrickApi {
     fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
         val url = endpoint(baseUrl, "/api/device/$deviceId/health")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
@@ -156,7 +164,7 @@ object BrickApi {
 
     fun sendSafetyPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedEventId: String): String {
         val url = endpoint(baseUrl, "/api/device/$deviceId/event")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
@@ -171,7 +179,7 @@ object BrickApi {
 
     fun sendCrashPayload(baseUrl: String, deviceId: String, payload: ByteArray, expectedReportId: String): String {
         val url = endpoint(baseUrl, "/api/device/$deviceId/crash")
-        val c = url.openConnection() as HttpURLConnection
+        val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
         c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
