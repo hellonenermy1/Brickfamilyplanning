@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
@@ -23,6 +25,9 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Reject high-severity runtime dependency vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Syntax-check operational scripts
         run: |
@@ -81,6 +86,15 @@ jobs:
           }
           console.log('Cron syntax shape OK:', crons.join(', '));
           NODE
+
+      - name: Reject browser injection primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE '\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(|\beval\s*\(|new[[:space:]]+Function\s*\(' src/parent-v5.ts src/parent-v5b.ts web; then
+            echo 'Unsafe browser DOM/code execution primitive found.' >&2
+            exit 1
+          fi
 
       - name: Type-check Worker and browser modules
         run: |
