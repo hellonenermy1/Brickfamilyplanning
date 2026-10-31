@@ -102,14 +102,19 @@ object PositionConsistencyGuard {
             }
         }
 
-        // Absolute phone orientation is only used when the phone appears hand-held while on foot.
-        // A phone can face any direction in a vehicle, bicycle mount or bag, so those modes fail open.
+        // Phone orientation is not automatically travel direction. It only becomes rejection evidence
+        // when the previous trusted travel bearing already agreed with the current hand-held heading;
+        // then a sudden high-quality GPS reversal can contradict that established continuity.
+        val previousBearing = previous.bearingDeg?.toDouble()?.takeIf { it.isFinite() }
         val candidateBearing = candidate.bearingDeg?.toDouble()?.takeIf { it.isFinite() }
         val bearingAccuracy = candidate.bearingAccuracyDeg?.toDouble()?.takeIf { it.isFinite() && it >= 0.0 }
         val motionHeading = motion.headingDeg?.toDouble()?.takeIf { it.isFinite() }
         val headingFresh = motion.headingAgeMs != null && motion.headingAgeMs in 0L..2_500L
-        if (accurateEnoughForMotionGate && motion.rotationHealthy && headingFresh && motion.placement == MotionPlacement.HAND_LIKELY &&
-            motion.activityConfidence >= 70 && (motion.mode == Phase3Mode.WALKING || motion.mode == Phase3Mode.RUNNING) &&
+        val priorHeadingAgreed = previousBearing != null && motionHeading != null &&
+            GeoMath.angularDifference(previousBearing, motionHeading) <= 45.0
+        if (accurateEnoughForMotionGate && motion.rotationHealthy && headingFresh && priorHeadingAgreed &&
+            motion.placement == MotionPlacement.HAND_LIKELY && motion.activityConfidence >= 70 &&
+            (motion.mode == Phase3Mode.WALKING || motion.mode == Phase3Mode.RUNNING) &&
             candidateBearing != null && bearingAccuracy != null && bearingAccuracy <= 20.0 && motionHeading != null &&
             effectiveDistance >= 18.0 && effectiveSpeed >= 1.0) {
             val disagreement = GeoMath.angularDifference(candidateBearing, motionHeading)
