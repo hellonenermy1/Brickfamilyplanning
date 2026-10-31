@@ -74,11 +74,15 @@ class BrickLocationService : Service() {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            kickUploadPump()
+            if (networkAvailable()) kickUploadPump()
             lastHealthElapsed = 0L
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                kickUploadPump()
+            }
             lastHealthElapsed = 0L
         }
     }
@@ -104,7 +108,7 @@ class BrickLocationService : Service() {
         recoveryCount = prefs.getInt("recoveryCount", 0)
 
         runCatching { ManagedPolicy.apply(this) }
-        RecoveryScheduler.ensureScheduled(this)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
         runCatching { activityEngine.start() }
         runCatching { motionEngine.start() }
@@ -424,7 +428,12 @@ class BrickLocationService : Service() {
         healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
     }
 
-    private fun networkAvailable(): Boolean = networkKind() != "offline"
+    private fun networkAvailable(): Boolean {
+        val network = connectivity.activeNetwork ?: return false
+        val caps = connectivity.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     private fun networkKind(): String {
         val network = connectivity.activeNetwork ?: return "offline"
@@ -453,8 +462,8 @@ class BrickLocationService : Service() {
         .build()
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        RecoveryScheduler.ensureScheduled(this)
-        RecoveryScheduler.scheduleSoon(this, 15)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
+        runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         super.onTaskRemoved(rootIntent)
     }
 
@@ -465,8 +474,8 @@ class BrickLocationService : Service() {
         runCatching { motionEngine.stop() }
         runCatching { gnssMonitor.stop() }
         locationSubscribed = false
-        RecoveryScheduler.ensureScheduled(this)
-        RecoveryScheduler.scheduleSoon(this, 15)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
+        runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         fallbackTicker.shutdownNow()
         supervisor.shutdownNow()
         networkIo.shutdownNow()
