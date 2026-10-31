@@ -36,6 +36,10 @@ function newer(a: EvidenceRecord, b: EvidenceRecord) {
   return a.epoch > b.epoch || (a.epoch === b.epoch && a.sequence > b.sequence);
 }
 
+function exactAcks(batch: EvidenceBatch) {
+  return batch.records.map(r => ({ epoch: r.epoch, sequence: r.sequence, recordId: r.recordId }));
+}
+
 async function readExistingRecord(env: EvidenceEnv, deviceId: string, record: EvidenceRecord): Promise<RecordRow | null> {
   return env.DB.prepare(
     "SELECT record_id,epoch,sequence,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256 " +
@@ -61,7 +65,7 @@ async function exactAcksForExistingBatch(env: EvidenceEnv, deviceId: string, bat
   for (let i = 0; i < batch.records.length; i++) {
     if (!sameRecord(stored.results[i], batch.records[i], payloadHashes[i])) throw new EvidenceConflict("stored evidence record does not match retry");
   }
-  return batch.records.map(r => ({ epoch: r.epoch, sequence: r.sequence, recordId: r.recordId }));
+  return exactAcks(batch);
 }
 
 export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, buffer: ArrayBuffer) {
@@ -71,11 +75,23 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
   if (existingAcks) return { protocol: 1, batchId: batch.batchId, acked: existingAcks, duplicateBatch: true };
 
   const payloadHashes = await Promise.all(batch.records.map(r => sha256Hex(r.payload)));
+  let existingRecordCount = 0;
   for (let i = 0; i < batch.records.length; i++) {
     const existing = await readExistingRecord(env, deviceId, batch.records[i]);
-    if (existing && !sameRecord(existing, batch.records[i], payloadHashes[i])) {
-      throw new EvidenceConflict("evidence sequence or record id collision");
+    if (existing) {
+      if (!sameRecord(existing, batch.records[i], payloadHashes[i])) {
+        throw new EvidenceConflict("evidence sequence or record id collision");
+      }
+      existingRecordCount += 1;
     }
+  }
+
+  // A transport retry may legitimately rebuild the same records under a fresh batch UUID after the
+  // original response was lost. Once every record identity and payload is already durable, ACK it
+  // directly instead of creating unlimited new batch rows/R2 objects. This is record-level replay
+  // protection as well as idempotency; the Android client only needs the exact ACK set.
+  if (existingRecordCount === batch.records.length) {
+    return { protocol: 1, batchId: batch.batchId, acked: exactAcks(batch), duplicateBatch: false, duplicateRecords: true };
   }
 
   // Raw object paths use a one-way device key rather than a sanitized identifier. The batch hash is
