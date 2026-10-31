@@ -2,6 +2,84 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — New Brick V1 Phase 1: contract, baseline and architecture freeze
+
+### User request
+
+Start Phase 1 of the newly agreed nine-phase Brick V1 program. Do not build the new runtime features yet; make the plan detailed and reliable enough that later work does not hallucinate completion or miss requirements from `Yes.docx`.
+
+### Source/implementation evidence reviewed
+
+- Read the current `Yes.docx` project contract (version 1, 122 pages) and indexed all numbered headings.
+- Confirmed the contract contains sections 1–83 plus the 23A–23O expansion and contains **two separate sections numbered 23G**.
+- Read the detailed positioning/evidence/Atlas/Shizuku/history/reliability/acceptance portions needed to build a granular requirement map.
+- Read current `PROJECT_MEMORY.md`, `PROGRESS.md`, `AUDIT_STATUS.md` and retained audit state.
+- Re-checked current GitHub branch heads:
+  - `main`: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
+  - `apk-download`: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
+  - pre-Phase-1 `audit-progress`: `da2d56f6d46eeb293d5ef5010304730dd45378d1`
+- Recorded current runtime trees:
+  - `main`: `33cdcddcfab9cd3e0325b2cd9312511b65c5b7f3`
+  - `apk-download`: `034d0cdfe494f3f74ddfa5d44e1d1e974fd92f42`
+- Re-checked Android build identity from `app/build.gradle.kts`: package `com.brick.safety`, version `0.6.0-phase6-rc`, versionCode `6`, minSdk 29, targetSdk 35, compileSdk 36.
+- Re-checked representative current Android positioning/managed/reliability/API code and current Cloudflare protocol/route-map/runtime source before assigning baseline statuses.
+
+### Changes completed
+
+Created temporary documentation branch `v1-p1-contract` from `audit-progress` and added:
+
+- `PHASE1_BASELINE.md`
+- `V1_ARCHITECTURE_FREEZE.md`
+- `V1_PHASES.md`
+- `V1_REQUIREMENTS.md`
+- `PHASE1_SOURCE_COVERAGE.md`
+- `PHASE1_REPORT.md`
+
+Updated `PROJECT_MEMORY.md` with:
+
+- `Yes.docx` as the new expanded V1 contract;
+- fixed nine-phase program;
+- Phase 1 accepted state;
+- requirement-led implementation rule;
+- architecture-freeze rule;
+- new Evidence/Atlas/Witness/Shizuku architecture decisions;
+- exact Phase 1 baseline heads/trees;
+- unchanged release-candidate truth.
+
+### Requirement/coverage result
+
+- Every source section from 1 through 83 has an explicit mapping in `PHASE1_SOURCE_COVERAGE.md`.
+- 23A–23O are decomposed into stable requirement groups rather than being represented by one vague feature checkbox.
+- The duplicate document numbering is normalized as `23G-UI` and `23G-GROUND` without changing the source contract.
+- The final §83 V1 feature set is cross-checked against requirement IDs.
+- Explicit V1 non-goals are recorded so later phases do not reintroduce excluded features.
+- Each implementation requirement records a conservative baseline state, owner phase and expected acceptance evidence.
+
+### Architecture decisions frozen
+
+- Fused Location remains the primary normal position source.
+- New sources feed a central Evidence/particle hypothesis engine rather than independently declaring exact truth.
+- Correlated evidence uses independence groups and cannot be double-counted.
+- Atlas learns only from trusted labelled positions and automatically decays/relearns changed signals.
+- Raw observations, realtime estimates and future refined estimates remain separate.
+- Witness/Ground identifiers rotate cryptographically; no public crowdsourced tracker; RSSI is not exact distance.
+- Device Owner remains primary management; Shizuku is optional enhancement only and no arbitrary remote shell endpoint is allowed.
+- Parent Location control is desired-vs-actual and must be confirmed by the phone.
+- Persist-before-send, exact ACK, idempotency and safety-priority durability remain non-negotiable.
+- Child UI remains minimal; parent UI must distinguish device health from position quality and show honest uncertainty geometry.
+
+### Result
+
+**Phase 1 accepted.** It is a documentation/contract freeze only. No Android/Cloudflare runtime feature code was changed and Brick remains `candidate-not-real-device-qualified`.
+
+Phase 2 may begin from `V1_REQUIREMENTS.md` and `V1_ARCHITECTURE_FREEZE.md` rather than rediscovering or reinterpreting the contract.
+
+### Housekeeping / blocker
+
+The connected GitHub interface exposes branch creation/update but not branch-ref deletion. `v1-p1-contract` is therefore a temporary non-canonical documentation ref that should be removed after integration into `audit-progress` when a supported ref-deletion/cleanup path is available. This does not block the Phase 1 technical/contract exit gate.
+
+---
+
 ## 2026-10-31 — Persist complete current Brick state into project memory
 
 ### User request
