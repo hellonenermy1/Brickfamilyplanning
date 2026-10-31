@@ -6,7 +6,7 @@ import androidx.work.WorkerParameters
 import com.brick.safety.evidence.EvidenceDispatcher
 import com.brick.safety.evidence.EvidenceDrainStop
 
-internal object EvidenceRetryPolicy {
+object EvidenceRetryPolicy {
     const val CORE_BACKLOG_DELAY_SECONDS = 10L
     const val CATCH_UP_DELAY_SECONDS = 2L
     private const val BASE_FAILURE_DELAY_SECONDS = 30L
