@@ -146,6 +146,51 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
         journal.close()
     }
 
+    fun testPendingRowsAreReadInWireOrderAfterRecoveryInsert() {
+        val journal = EvidenceJournal(context, TestCipher())
+        // Recovery/import tooling is allowed to insert exact records. Insert them out of order and
+        // prove nextPending() still returns the strict epoch/sequence order BREV requires.
+        assertTrue(journal.append(record(2)))
+        assertTrue(journal.append(record(1)))
+        val pending = journal.nextPending()
+        assertEquals(listOf(1L, 2L), pending.map { it.record.sequence })
+        EvidenceProtocol.encodeBatch(pending.map { it.record })
+        journal.close()
+    }
+
+    fun testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val journal = EvidenceJournal(context, TestCipher())
+        val damaged = record(50)
+        assertTrue(journal.append(damaged))
+
+        // Corrupt only the encrypted blob. The row should be quarantined and current health should
+        // fail immediately, while later healthy operations are still able to prove recovery.
+        val rawDb = context.openOrCreateDatabase(EvidenceJournal.DATABASE_NAME, Context.MODE_PRIVATE, null)
+        rawDb.execSQL(
+            "UPDATE evidence SET payload=? WHERE record_id=?",
+            arrayOf(byteArrayOf(0x00), damaged.observation.recordId)
+        )
+        rawDb.close()
+
+        assertTrue(journal.nextPending().isEmpty())
+        assertEquals(1, journal.stats().quarantinedCount)
+        assertFalse(prefs.getBoolean("evidenceJournalHealthy", true))
+
+        // Simulate the existing failure-hold window having elapsed, then perform a successful write.
+        assertTrue(
+            prefs.edit()
+                .putLong("lastEvidenceJournalFailureWallMs", System.currentTimeMillis() - 180_000L)
+                .commit()
+        )
+        val recovered = journal.appendNew(7, record(51).observation)
+        assertNotNull(recovered)
+        assertTrue(prefs.getBoolean("evidenceJournalHealthy", false))
+        assertEquals(1, journal.stats().quarantinedCount)
+        assertEquals(1, journal.stats().pendingCount)
+        journal.close()
+    }
+
     fun testDummyProviderSurvivesReopenThenDrainsWithExactAck() {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         assertTrue(
