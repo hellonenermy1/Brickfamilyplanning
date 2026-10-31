@@ -43,6 +43,8 @@ class BrickLocationService : Service() {
         private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
         private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
+        private const val BLE_SCAN_NORMAL_MS = 60_000L
+        private const val BLE_SCAN_DEGRADED_MS = 30_000L
         private const val LOCATION_V2_BYTES = 90
         private const val LOCATION_BATCH_SIZE = 50
     }
@@ -61,6 +63,7 @@ class BrickLocationService : Service() {
     private lateinit var motionEngine: MotionEngine
     private lateinit var gnssMonitor: GnssQualityMonitor
     private lateinit var positionEngine: PositionEngine
+    private lateinit var bleAnchorEngine: BleAnchorEngine
 
     private val seq = AtomicLong()
     private var epoch: Int = 1
@@ -69,6 +72,7 @@ class BrickLocationService : Service() {
     @Volatile private var lastFallbackElapsed = 0L
     @Volatile private var lastAckElapsed = 0L
     @Volatile private var lastHealthElapsed = 0L
+    @Volatile private var lastBleScanElapsed = 0L
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
     @Volatile private var trackingIntervalMs = 3_000L
@@ -99,6 +103,7 @@ class BrickLocationService : Service() {
         motionEngine = MotionEngine(this)
         gnssMonitor = GnssQualityMonitor(this)
         positionEngine = PositionEngine(this, motionEngine, gnssMonitor)
+        bleAnchorEngine = BleAnchorEngine(this) { config -> positionEngine.noteBleAnchor(config) }
 
         createChannel()
         startForeground(1001, notification("Safety active"))
@@ -131,6 +136,7 @@ class BrickLocationService : Service() {
         if (!locationSubscribed || desired != trackingIntervalMs) startTracking(desired)
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
+        maybeScanBleAnchors(SystemClock.elapsedRealtime())
         kickUploadPump()
         return START_STICKY
     }
@@ -245,7 +251,6 @@ class BrickLocationService : Service() {
         if (pendingCount <= 1) return
         val newest = runCatching { journal.latestPending() }.getOrNull() ?: return
         if (!isV2(newest)) return
-        // Preview only updates realtime state. It never ACKs or deletes the durable journal record.
         runCatching { BrickApi.sendLiveLocationPreview(baseUrl, deviceId, newest.payload) }
     }
 
@@ -272,9 +277,7 @@ class BrickLocationService : Service() {
                 SafetyDispatcher.drain(this, 100)
                 if (SafetyDispatcher.pendingCount(this) > 0) return@execute
 
-                // Diagnostics are deliberately lower priority than safety packets and never block location delivery.
                 drainCrashReports(baseUrl, deviceId)
-
                 previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)
 
                 while (true) {
@@ -326,9 +329,29 @@ class BrickLocationService : Service() {
             }
 
             checkBatterySafety()
+            maybeScanBleAnchors(now)
             if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0 || runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false))) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
+    }
+
+    private fun maybeScanBleAnchors(now: Long, force: Boolean = false) {
+        if (!::bleAnchorEngine.isInitialized || bleAnchorEngine.configuredCount() == 0 || !bleAnchorEngine.permissionGranted()) return
+        val activity = activityEngine.snapshot().mode
+        if (activity == ActivityMode.VEHICLE || activity == ActivityMode.BICYCLE || activity == ActivityMode.RUNNING) return
+        val locationDegraded = lastLocationElapsed == 0L || now - lastLocationElapsed > max(15_000L, trackingIntervalMs * 2)
+        val interval = if (locationDegraded) BLE_SCAN_DEGRADED_MS else BLE_SCAN_NORMAL_MS
+        if (!force && lastBleScanElapsed > 0L && now - lastBleScanElapsed < interval) return
+        lastBleScanElapsed = now
+        bleAnchorEngine.scanOnce()
+    }
+
+    private fun updateBleAnchorConfigs(configs: List<BrickApi.BleAnchorConfig>) {
+        val mapped = configs.map {
+            BleAnchorEngine.Config(it.geofenceId, it.name, it.beaconUuid, it.latitude, it.longitude, it.radiusM)
+        }
+        bleAnchorEngine.updateConfigs(mapped)
+        if (mapped.isNotEmpty()) maybeScanBleAnchors(SystemClock.elapsedRealtime(), force = true)
     }
 
     private fun checkBatterySafety() {
@@ -435,7 +458,10 @@ class BrickLocationService : Service() {
             health.put(key, evidence.get(key))
         }
 
-        healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
+        healthIo.execute {
+            runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) }
+                .onSuccess(::updateBleAnchorConfigs)
+        }
     }
 
     private fun networkAvailable(): Boolean {
@@ -483,6 +509,7 @@ class BrickLocationService : Service() {
         runCatching { activityEngine.stop() }
         runCatching { motionEngine.stop() }
         runCatching { gnssMonitor.stop() }
+        runCatching { bleAnchorEngine.stop() }
         locationSubscribed = false
         runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
