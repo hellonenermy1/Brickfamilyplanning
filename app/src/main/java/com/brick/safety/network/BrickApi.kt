@@ -47,7 +47,9 @@ object BrickApi {
     }
 
     fun completePairing(baseUrl: String, token: String): PairResult {
-        val url = endpoint(baseUrl, "/api/pair/complete")
+        val requestedBase = secureBase(baseUrl)
+        require(token.length in 16..256) { "Invalid Brick pairing token" }
+        val url = endpoint(requestedBase, "/api/pair/complete")
         val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 10_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json")
@@ -57,6 +59,7 @@ object BrickApi {
         if (c.responseCode !in 200..299) error("Pairing failed: $text")
         val j = JSONObject(text)
         val apiBase = secureBase(j.getString("apiBase"))
+        require(apiBase == requestedBase) { "Pairing server attempted to change Brick API origin" }
         return PairResult(j.getString("deviceId"), apiBase)
     }
 
