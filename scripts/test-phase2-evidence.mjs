@@ -144,6 +144,22 @@ assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE dev
 assert.equal(db.prepare('SELECT payload_sha256 FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).payload_sha256, competitorSha);
 await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), ingest.EvidenceConflict);
 
+// Simulate a different signed batch claiming one record identity between this request's preflight
+// and D1 transaction. New records are hard-inserted, so the unique collision must roll back this
+// batch instead of silently linking it to the competitor's record.
+const recordRaceRecords = makeRecords(55, 'record-race'), recordRace = encodeBatch(recordRaceRecords);
+const competitorRecordId = randomUUID();
+env.DB.beforeBatch = async () => {
+  db.prepare(
+    'INSERT INTO evidence_records(device_id,epoch,sequence,record_id,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256,first_seen_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+  ).run('device-1', 55, 1, competitorRecordId, 255, 255, 0, 0, 3, 'dummy:test:competitor', 1, Date.now(), 'e'.repeat(64), Date.now());
+};
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(recordRace.bytes)), /UNIQUE|constraint/i);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', recordRace.batchId).n, 0, 'losing record-race batch claim must roll back');
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', recordRace.batchId).n, 0);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 55).n, 1, 'only competitor record should remain');
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(recordRace.bytes)), ingest.EvidenceConflict);
+
 // Record identity collisions and changed bytes under an accepted batch UUID fail closed.
 const collisionRecords = structuredClone(records); collisionRecords[0].recordId = randomUUID(); collisionRecords[0].payload = Buffer.from('changed');
 await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(encodeBatch(collisionRecords).bytes)), ingest.EvidenceConflict);
