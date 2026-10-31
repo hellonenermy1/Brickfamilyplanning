@@ -41,6 +41,7 @@ jobs:
           set -euo pipefail
           node --check scripts/setup-v1-phase2.mjs
           node --check scripts/test-phase2-evidence.mjs
+          node --check scripts/test-phase2-evidence-route.mjs
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           grep -F '"main": "src/worker-v7.ts"' wrangler.template.jsonc >/dev/null
@@ -52,15 +53,17 @@ jobs:
           grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
 
-          # Phase 2 concurrency/replay/privacy invariants. These complement the executable harness
+          # Phase 2 concurrency/replay/privacy invariants. These complement the executable harnesses
           # below and deliberately fail if a later refactor removes the hard D1 batch-ID claim,
-          # content-addressed raw object, canonical device boundary, or split abuse/device buckets.
+          # content-addressed raw object, replay dedupe, canonical ID boundary or split rate buckets.
           grep -F '"INSERT INTO evidence_batches(' src/evidence-ingest.ts >/dev/null
           ! grep -F 'INSERT OR IGNORE INTO evidence_batches' src/evidence-ingest.ts >/dev/null
           grep -F '${batch.batchId}-${batchSha}.brev' src/evidence-ingest.ts >/dev/null
-          grep -F 'evidence-attempt:' src/worker-v7.ts >/dev/null
-          grep -F 'evidence-device:${deviceId}' src/worker-v7.ts >/dev/null
-          grep -F 'DEVICE_ID_RE' src/worker-v7.ts >/dev/null
+          grep -F 'duplicateRecords: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'evidence-attempt:' src/evidence-route.ts >/dev/null
+          grep -F 'evidence-device:${deviceId}' src/evidence-route.ts >/dev/null
+          grep -F 'DEVICE_ID_RE' src/evidence-route.ts >/dev/null
+          grep -F 'handleEvidenceRequest(req, env, deviceId)' src/worker-v7.ts >/dev/null
 
       - name: Phase 2 protocol + durable idempotency integration tests
         shell: bash
@@ -69,6 +72,13 @@ jobs:
           npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
           npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
           node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+
+      - name: Phase 2 signed HTTP route integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
 
       - name: Existing Phase 6 regression gates
         shell: bash
