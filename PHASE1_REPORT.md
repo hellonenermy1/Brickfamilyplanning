@@ -177,6 +177,8 @@ The major new work begins in Phase 2–6: evidence framework, particle/odometry,
 
 Therefore Phase 1 is accepted and Phase 2 may begin from this contract.
 
-## 8. Housekeeping note
+## 8. Integration / housekeeping
 
-A temporary documentation branch `v1-p1-contract` was created for this Phase 1 work. The connected GitHub interface exposes branch creation/update but not branch-ref deletion, so cleanup of that temporary ref may require the existing repository-cleanup mechanism or a later supported ref-deletion path after its documentation commits are integrated into `audit-progress`. This does not change runtime code or V1 acceptance state.
+The Phase 1 documentation commits were staged on `v1-p1-contract` and then **fast-forward integrated into canonical `audit-progress`**.
+
+The temporary `v1-p1-contract` ref still exists only because the connected GitHub interface does not expose branch-ref deletion. It is non-canonical and contains no runtime source. It should be removed through the repository-cleanup/ref-deletion path when available; its continued existence is housekeeping, not a Phase 1 acceptance blocker.
