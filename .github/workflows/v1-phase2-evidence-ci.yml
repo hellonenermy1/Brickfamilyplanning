@@ -52,6 +52,16 @@ jobs:
           grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
 
+          # Phase 2 concurrency/replay/privacy invariants. These complement the executable harness
+          # below and deliberately fail if a later refactor removes the hard D1 batch-ID claim,
+          # content-addressed raw object, canonical device boundary, or split abuse/device buckets.
+          grep -F '"INSERT INTO evidence_batches(' src/evidence-ingest.ts >/dev/null
+          ! grep -F 'INSERT OR IGNORE INTO evidence_batches' src/evidence-ingest.ts >/dev/null
+          grep -F '${batch.batchId}-${batchSha}.brev' src/evidence-ingest.ts >/dev/null
+          grep -F 'evidence-attempt:' src/worker-v7.ts >/dev/null
+          grep -F 'evidence-device:${deviceId}' src/worker-v7.ts >/dev/null
+          grep -F 'DEVICE_ID_RE' src/worker-v7.ts >/dev/null
+
       - name: Phase 2 protocol + durable idempotency integration tests
         shell: bash
         run: |
@@ -96,6 +106,9 @@ jobs:
         with:
           ref: v1-p2-evidence-android
 
+      - name: Record exact paired Android source
+        run: echo "Phase 2 Android source $(git rev-parse HEAD)"
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -125,6 +138,8 @@ jobs:
           set -euo pipefail
           grep -F 'const val VERSION: Byte = 2' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
           grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'private fun pairedDeviceId()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'UUID.fromString(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'journal.appendNew(epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
@@ -138,7 +153,7 @@ jobs:
           grep -F 'scheduleEvidenceFollowUp' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'ServiceControl.ensureTracking(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
           grep -F 'RecoveryScheduler.scheduleEvidenceSoon(applicationContext, 1)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
-          grep -F 'Phase2PairingGuardInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testCorruptDeviceIdCannotPersistOrDrainEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
           grep -F 'Phase2SequenceAllocatorInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2SequenceAllocatorInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
@@ -150,6 +165,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: v1-p2-evidence-android
+
+      - name: Record exact paired Android source
+        run: echo "Phase 2 Android source $(git rev-parse HEAD)"
 
       - uses: actions/setup-java@v5
         with:
