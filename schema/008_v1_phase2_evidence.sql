@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS evidence_records (
   first_seen_at INTEGER NOT NULL,
   PRIMARY KEY(device_id, epoch, sequence),
   UNIQUE(device_id, record_id),
+  UNIQUE(device_id, record_id, epoch, sequence),
   FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
 );
 
@@ -49,7 +50,8 @@ CREATE TABLE IF NOT EXISTS evidence_batch_records (
   sequence INTEGER NOT NULL,
   PRIMARY KEY(device_id, batch_id, record_id),
   FOREIGN KEY(device_id, batch_id) REFERENCES evidence_batches(device_id, batch_id) ON DELETE CASCADE,
-  FOREIGN KEY(device_id, record_id) REFERENCES evidence_records(device_id, record_id) ON DELETE CASCADE
+  FOREIGN KEY(device_id, record_id, epoch, sequence)
+    REFERENCES evidence_records(device_id, record_id, epoch, sequence) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS device_evidence_state (
