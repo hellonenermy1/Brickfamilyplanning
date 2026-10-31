@@ -48,7 +48,6 @@ export type LivePacket = {
   gnssTotal: number;
   gnssAverageCn0Tenth: number;
   stepDelta: number;
-  // Server-only enrichment. This is never accepted from an Android-signed binary packet.
   routeCorridor?: RouteCorridor;
 };
 
@@ -144,9 +143,10 @@ function decodeV2(v: DataView): LivePacket {
   if (activity > 5) throw new Error("bad activity");
   if (activityConfidence > 100) throw new Error("bad activity confidence");
   if (quality < 1 || quality > 7) throw new Error("bad quality");
-  // Android-origin packets may only claim sources it can directly produce. Source 4
-  // (route_constrained) is a server-only trusted refinement applied after signature verification.
-  if (source > 3) throw new Error("bad source");
+  // Android may directly produce fused, inertial, last-known and BLE place-anchor evidence.
+  // Source 5 (route_constrained) is reserved for the server after signature verification.
+  if (source > 4) throw new Error("bad source");
+  if (source === 4 && (quality !== 3 || trustedLatE7 === null || trustedLonE7 === null || (flags & 0x02) !== 0)) throw new Error("invalid BLE anchor packet");
   if (gnssUsedInFix > gnssTotal) throw new Error("bad GNSS satellite counts");
   if (gnssAverageCn0Tenth > 1000) throw new Error("bad GNSS C/N0");
   if ((flags & 0x04) !== 0 && (flags & 0x02) !== 0) throw new Error("mock fix cannot be accepted");
@@ -177,7 +177,7 @@ function validateCoordinate(latE7: number, lonE7: number) {
 }
 
 export function sourceName(v: number) {
-  return v === 1 ? "fused" : v === 2 ? "inertial" : v === 3 ? "last_known" : v === 4 ? "route_constrained" : "unknown";
+  return v === 1 ? "fused" : v === 2 ? "inertial" : v === 3 ? "last_known" : v === 4 ? "ble_anchor" : v === 5 ? "route_constrained" : "unknown";
 }
 export function activityName(v: number) {
   return v === 1 ? "stationary" : v === 2 ? "walking" : v === 3 ? "running" : v === 4 ? "bicycle" : v === 5 ? "vehicle" : "unknown";
