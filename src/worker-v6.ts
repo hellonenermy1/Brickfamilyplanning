@@ -6,6 +6,7 @@ import { listHealthIncidents, reliability } from "./phase5-ops";
 import { batteryDrainTrend } from "./battery-health";
 import { snapshotD1ToR2 } from "./backup-v6";
 import { recordAudit } from "./phase5c";
+import { pairingQrResponse } from "./pairing-qr";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -94,6 +95,11 @@ export default {
       const response = await base.fetch!(req, env, ctx);
       if (!response.ok) return response;
       return finalParentResponse(response, await response.text());
+    }
+
+    if (req.method === "GET" && u.pathname === "/parent/api/pair/qr") {
+      const denied = await requireParent(req, env); if (denied) return denied;
+      return pairingQrResponse(req);
     }
 
     const match = u.pathname.match(/^\/parent\/api\/device\/([^/]+)(\/.*)$/);
