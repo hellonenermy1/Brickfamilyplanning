@@ -19,7 +19,12 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     data class Pending(val rowId: Long, val eventId: String, val kind: String, val payload: ByteArray, val priority: Int)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
 
-    private fun noteHealthy(healthy: Boolean) {
+    private fun hasQuarantinedEvidence(): Boolean = runCatching {
+        readableDatabase.rawQuery("SELECT 1 FROM safety_events WHERE acked=2 LIMIT 1", emptyArray()).use { it.moveToFirst() }
+    }.getOrDefault(true)
+
+    private fun noteHealthy(operationHealthy: Boolean) {
+        val healthy = operationHealthy && !hasQuarantinedEvidence()
         healthPrefs.edit()
             .putBoolean("safetyOutboxWriteHealthy", healthy)
             .apply {
@@ -96,6 +101,7 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
             )
             if (changed != 1) return false
             writableDatabase.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
+            noteHealthy(true)
             true
         } catch (_: Throwable) {
             noteHealthy(false)
