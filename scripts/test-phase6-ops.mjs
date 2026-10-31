@@ -54,16 +54,23 @@ const backupEnv = {
 };
 const result = await backup.snapshotD1ToR2(backupEnv, now);
 assert.equal(result.key, 'backups/d1/2026-10-31.json.gz');
+assert.match(result.sha256, /^[0-9a-f]{64}$/);
 const object = stored.get(result.key);
 assert.ok(object);
 assert.equal(object.options.httpMetadata.contentEncoding, 'gzip');
-const decompressed = new Blob([object.body]).stream().pipeThrough(new DecompressionStream('gzip'));
-const snapshot = JSON.parse(await new Response(decompressed).text());
-assert.equal(snapshot.format, 'brick-d1-snapshot-v1');
-assert.deepEqual(Object.keys(snapshot.tables), tableNames);
-assert.equal(snapshot.tables.devices[0].marker, 'devices');
-assert.ok(snapshot.excludes.some(x => x.startsWith('device_health_samples:')));
-assert.ok(!('device_health_samples' in snapshot.tables));
-assert.ok(!('device_events' in snapshot.tables));
+assert.equal(object.options.customMetadata.sha256, result.sha256);
 
-console.log('Phase 6 battery trend + private R2 backup behavior OK');
+const validated = await backup.validateBackupBody(object.body, result.sha256);
+assert.equal(validated.format, 'brick-d1-snapshot-v1');
+assert.deepEqual(Object.keys(validated.tables), tableNames);
+assert.equal(validated.tables.devices[0].marker, 'devices');
+assert.ok(validated.excludes.some(x => x.startsWith('device_health_samples:')));
+assert.ok(!('device_health_samples' in validated.tables));
+assert.ok(!('device_events' in validated.tables));
+
+const corrupted = object.body.slice(0);
+new Uint8Array(corrupted)[Math.floor(corrupted.byteLength / 2)] ^= 0x01;
+await assert.rejects(() => backup.validateBackupBody(corrupted, result.sha256), /integrity hash mismatch/);
+await assert.rejects(() => backup.validateBackupBody(object.body, '0'.repeat(64)), /integrity hash mismatch/);
+
+console.log('Phase 6 battery trend + private R2 backup integrity OK');
