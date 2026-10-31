@@ -5,6 +5,7 @@ import com.brick.safety.data.CrashOutbox
 import com.brick.safety.data.Journal
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
+import java.io.Closeable
 
 fun interface EvidenceTransport {
     fun send(baseUrl: String, deviceId: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck>
@@ -21,7 +22,7 @@ class EvidenceDispatcher(
     private val transport: EvidenceTransport = NetworkEvidenceTransport,
     private val coreBacklogProbe: (() -> Boolean)? = null,
     private val scheduleRecovery: Boolean = true
-) {
+) : Closeable {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
@@ -31,10 +32,13 @@ class EvidenceDispatcher(
         val stored = prefs.getLong("evidenceSequence", 0L)
         val next = maxOf(stored, journal.maxSequence(epoch)) + 1L
         if (next <= 0L) return false
-        if (!prefs.edit().putLong("evidenceSequence", next).commit()) return false
-        val appended = journal.append(EvidenceRecord(epoch, next, observation))
-        if (appended && scheduleRecovery) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
-        return appended
+
+        // The journal is authoritative. Persist the evidence row first; the preference is only a
+        // sequence cache and can be reconstructed from journal.maxSequence() after a crash.
+        if (!journal.append(EvidenceRecord(epoch, next, observation))) return false
+        prefs.edit().putLong("evidenceSequence", next).apply()
+        if (scheduleRecovery) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
+        return true
     }
 
     fun stats(): EvidenceJournal.Stats = journal.stats()
@@ -79,5 +83,9 @@ class EvidenceDispatcher(
             sent += acked.size
         }
         return sent
+    }
+
+    override fun close() {
+        journal.close()
     }
 }
