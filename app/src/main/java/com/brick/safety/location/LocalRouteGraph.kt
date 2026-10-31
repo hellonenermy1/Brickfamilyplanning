@@ -30,6 +30,12 @@ data class RouteMatch(
  * never treated as a wall or proof that a path is impossible.
  */
 class LocalRouteGraph(private val maxSegments: Int = 768) {
+    companion object {
+        private const val PRIVATE_MAP_TTL_MS = 7L * 24L * 60L * 60L * 1_000L
+        private const val LEARNED_SINGLE_TTL_MS = 45L * 24L * 60L * 60L * 1_000L
+        private const val LEARNED_REPEAT_TTL_MS = 180L * 24L * 60L * 60L * 1_000L
+    }
+
     private val segments = linkedMapOf<String, LocalRouteSegment>()
 
     fun size(): Int = segments.size
@@ -45,7 +51,7 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
         endAccuracyM: Float,
         wallMs: Long
     ): String? {
-        if (!validLatLon(aLat, aLon) || !validLatLon(bLat, bLon)) return null
+        if (!validLatLon(aLat, aLon) || !validLatLon(bLat, bLon) || wallMs <= 0L) return null
         if (!startAccuracyM.isFinite() || !endAccuracyM.isFinite() || startAccuracyM > 35f || endAccuracyM > 35f) return null
         if (mode == Phase3Mode.UNKNOWN || mode == Phase3Mode.STATIONARY) return null
         val distance = GeoMath.distanceMeters(aLat, aLon, bLat, bLon)
@@ -67,7 +73,7 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
     fun mergePrivateMap(items: Collection<LocalRouteSegment>) {
         for (item in items) {
             if (item.source != RouteSegmentSource.PRIVATE_MAP || !validLatLon(item.aLat, item.aLon) || !validLatLon(item.bLat, item.bLon)) continue
-            if (item.allowedModeMask <= 0) continue
+            if (item.allowedModeMask <= 0 || item.lastSeenWallMs <= 0L) continue
             val distance = GeoMath.distanceMeters(item.aLat, item.aLon, item.bLat, item.bLon)
             if (distance !in 0.5..2_000.0) continue
             val id = if (item.id.startsWith("map:")) item.id else "map:${item.id}"
@@ -77,7 +83,7 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
     }
 
     fun nearest(lat: Double, lon: Double, mode: Phase3Mode, headingDeg: Double?, maxDistanceM: Double, limit: Int = 8): List<RouteMatch> {
-        if (!validLatLon(lat, lon) || maxDistanceM <= 0.0) return emptyList()
+        if (!validLatLon(lat, lon) || maxDistanceM <= 0.0 || mode == Phase3Mode.STATIONARY) return emptyList()
         val out = ArrayList<RouteMatch>()
         for (segment in segments.values) {
             if (!modeCompatible(segment, mode)) continue
@@ -103,16 +109,13 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
     }
 
     fun encode(nowWallMs: Long): String {
-        val minWall = nowWallMs - 45L * 24L * 60L * 60L * 1_000L
-        return segments.values
-            .filter { it.source == RouteSegmentSource.PRIVATE_MAP || it.lastSeenWallMs <= 0L || it.lastSeenWallMs >= minWall || it.observations >= 2 }
-            .takeLast(maxSegments)
-            .joinToString(";") { s ->
-                listOf(s.id, s.aLat, s.aLon, s.bLat, s.bLon, s.allowedModeMask, s.observations, s.lastSeenWallMs, s.source.ordinal).joinToString("|")
-            }
+        pruneExpired(nowWallMs)
+        return segments.values.takeLast(maxSegments).joinToString(";") { s ->
+            listOf(s.id, s.aLat, s.aLon, s.bLat, s.bLon, s.allowedModeMask, s.observations, s.lastSeenWallMs, s.source.ordinal).joinToString("|")
+        }
     }
 
-    fun restore(encoded: String?) {
+    fun restore(encoded: String?, nowWallMs: Long = System.currentTimeMillis()) {
         segments.clear()
         if (encoded.isNullOrBlank()) return
         for (token in encoded.split(';').takeLast(maxSegments)) {
@@ -128,14 +131,33 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
             val observations = p[6].toIntOrNull()?.coerceIn(1, 65_535) ?: continue
             val wall = p[7].toLongOrNull()?.coerceAtLeast(0L) ?: continue
             val source = RouteSegmentSource.entries.getOrNull(p[8].toIntOrNull() ?: -1) ?: continue
-            segments[id] = LocalRouteSegment(id, aLat, aLon, bLat, bLon, mask, observations, wall, source)
+            val segment = LocalRouteSegment(id, aLat, aLon, bLat, bLon, mask, observations, wall, source)
+            if (!expired(segment, nowWallMs)) segments[id] = segment
         }
         trim()
     }
 
     private fun modeCompatible(segment: LocalRouteSegment, mode: Phase3Mode): Boolean {
-        if (mode == Phase3Mode.UNKNOWN || mode == Phase3Mode.STATIONARY) return true
+        if (mode == Phase3Mode.UNKNOWN) return true
+        if (mode == Phase3Mode.STATIONARY) return false
         return segment.allowedModeMask and mode.bit != 0
+    }
+
+    private fun pruneExpired(nowWallMs: Long) {
+        if (nowWallMs <= 0L) return
+        segments.entries.removeAll { expired(it.value, nowWallMs) }
+    }
+
+    private fun expired(segment: LocalRouteSegment, nowWallMs: Long): Boolean {
+        if (nowWallMs <= 0L || segment.lastSeenWallMs <= 0L) return true
+        val age = nowWallMs - segment.lastSeenWallMs
+        if (age < -24L * 60L * 60L * 1_000L) return true
+        if (age < 0L) return false
+        val ttl = when (segment.source) {
+            RouteSegmentSource.PRIVATE_MAP -> PRIVATE_MAP_TTL_MS
+            RouteSegmentSource.LEARNED -> if (segment.observations >= 2) LEARNED_REPEAT_TTL_MS else LEARNED_SINGLE_TTL_MS
+        }
+        return age > ttl
     }
 
     private fun trim() {
