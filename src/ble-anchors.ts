@@ -1,4 +1,7 @@
+import { readBoundedBody } from "./bounded-body";
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_BLE_ANCHOR_BODY_BYTES = 4096;
 
 export type BleAnchorEnv = { DB: D1Database };
 export type BleAnchorConfig = {
@@ -44,9 +47,13 @@ export async function parentListBleAnchors(env: BleAnchorEnv, deviceId: string) 
 }
 
 export async function parentSetBleAnchor(req: Request, env: BleAnchorEnv, deviceId: string) {
+  const bounded = await readBoundedBody(req, MAX_BLE_ANCHOR_BODY_BYTES);
+  if (!bounded.ok) return json({ error: bounded.reason === "too_large" ? "BLE anchor payload too large" : "invalid BLE anchor body" }, bounded.reason === "too_large" ? 413 : 400);
   let body: Record<string, unknown>;
-  try { body = await req.json<Record<string, unknown>>(); }
-  catch { body = {}; }
+  try {
+    const decoded = JSON.parse(new TextDecoder().decode(bounded.body)) as unknown;
+    body = decoded && typeof decoded === "object" && !Array.isArray(decoded) ? decoded as Record<string, unknown> : {};
+  } catch { body = {}; }
   const geofenceId = typeof body.geofenceId === "string" ? body.geofenceId.trim() : "";
   const beaconUuid = normalizeUuid(body.beaconUuid);
   if (!geofenceId || geofenceId.length > 64 || !beaconUuid) return json({ error: "invalid BLE anchor" }, 400);
