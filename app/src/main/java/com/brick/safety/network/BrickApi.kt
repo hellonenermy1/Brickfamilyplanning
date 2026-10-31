@@ -15,7 +15,8 @@ object BrickApi {
 
     private const val LOCATION_V2_BYTES = 90
     private const val LOCATION_BATCH_VERSION: Byte = 1
-    private const val MAX_LOCATION_BATCH = 50
+    private const val MAX_LOCATION_DRAIN_GROUP = 50
+    private const val MAX_LOCATION_HTTP_BATCH = 20
 
     fun completePairing(baseUrl: String, token: String): PairResult {
         val url = URL(baseUrl.trimEnd('/') + "/api/pair/complete")
@@ -55,15 +56,8 @@ object BrickApi {
         return JSONObject(text).optBoolean("previewed", false)
     }
 
-    fun sendLocationBatch(baseUrl: String, deviceId: String, items: List<LocationUpload>): List<Pair<Int, Long>> {
-        require(items.isNotEmpty() && items.size <= MAX_LOCATION_BATCH)
-        items.forEachIndexed { index, item ->
-            require(item.payload.size == LOCATION_V2_BYTES && item.payload.firstOrNull()?.toInt() == 2)
-            if (index > 0) {
-                val previous = items[index - 1]
-                require(item.epoch > previous.epoch || (item.epoch == previous.epoch && item.sequence > previous.sequence))
-            }
-        }
+    private fun sendLocationBatchChunk(baseUrl: String, deviceId: String, items: List<LocationUpload>): List<Pair<Int, Long>> {
+        require(items.isNotEmpty() && items.size <= MAX_LOCATION_HTTP_BATCH)
         val body = ByteBuffer.allocate(3 + items.size * LOCATION_V2_BYTES).order(ByteOrder.BIG_ENDIAN)
             .put(LOCATION_BATCH_VERSION)
             .putShort(items.size.toShort())
@@ -89,6 +83,21 @@ object BrickApi {
         }
         if (actual.size != items.size || actual != expected) error("Batch ACK contents mismatch")
         return items.map { it.epoch to it.sequence }
+    }
+
+    fun sendLocationBatch(baseUrl: String, deviceId: String, items: List<LocationUpload>): List<Pair<Int, Long>> {
+        require(items.isNotEmpty() && items.size <= MAX_LOCATION_DRAIN_GROUP)
+        items.forEachIndexed { index, item ->
+            require(item.payload.size == LOCATION_V2_BYTES && item.payload.firstOrNull()?.toInt() == 2)
+            if (index > 0) {
+                val previous = items[index - 1]
+                require(item.epoch > previous.epoch || (item.epoch == previous.epoch && item.sequence > previous.sequence))
+            }
+        }
+        val acknowledged = ArrayList<Pair<Int, Long>>(items.size)
+        for (chunk in items.chunked(MAX_LOCATION_HTTP_BATCH)) acknowledged += sendLocationBatchChunk(baseUrl, deviceId, chunk)
+        if (acknowledged.size != items.size) error("Durable batch ACK count mismatch")
+        return acknowledged
     }
 
     fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
