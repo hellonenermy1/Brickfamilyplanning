@@ -54,6 +54,38 @@ CREATE TABLE IF NOT EXISTS evidence_batch_records (
     REFERENCES evidence_records(device_id, record_id, epoch, sequence) ON DELETE CASCADE
 );
 
+-- `CREATE TABLE IF NOT EXISTS` cannot retrofit a stronger FK onto a Phase 2 table that was created
+-- by an earlier interrupted/staging setup. These idempotent triggers enforce the exact same link
+-- identity on both fresh and already-created Phase 2 schemas, so rerunning setup never silently
+-- leaves the older recordId-only relationship in force.
+CREATE TRIGGER IF NOT EXISTS trg_evidence_batch_records_identity_insert
+BEFORE INSERT ON evidence_batch_records
+FOR EACH ROW
+WHEN NOT EXISTS (
+  SELECT 1 FROM evidence_records r
+  WHERE r.device_id = NEW.device_id
+    AND r.record_id = NEW.record_id
+    AND r.epoch = NEW.epoch
+    AND r.sequence = NEW.sequence
+)
+BEGIN
+  SELECT RAISE(ABORT, 'evidence batch link identity mismatch');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_evidence_batch_records_identity_update
+BEFORE UPDATE OF device_id, record_id, epoch, sequence ON evidence_batch_records
+FOR EACH ROW
+WHEN NOT EXISTS (
+  SELECT 1 FROM evidence_records r
+  WHERE r.device_id = NEW.device_id
+    AND r.record_id = NEW.record_id
+    AND r.epoch = NEW.epoch
+    AND r.sequence = NEW.sequence
+)
+BEGIN
+  SELECT RAISE(ABORT, 'evidence batch link identity mismatch');
+END;
+
 CREATE TABLE IF NOT EXISTS device_evidence_state (
   device_id TEXT PRIMARY KEY,
   last_epoch INTEGER NOT NULL DEFAULT 0,
