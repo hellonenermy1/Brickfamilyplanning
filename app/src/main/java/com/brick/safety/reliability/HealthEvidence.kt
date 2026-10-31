@@ -25,6 +25,10 @@ object HealthEvidence {
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
         val lastSafetyOutboxFailure = prefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
 
+        // Wall-clock corrections must never turn health evidence into a negative age that the
+        // server rejects. A backwards clock jump therefore reports age zero until time catches up.
+        fun ageSince(wallMs: Long): Any = if (wallMs > 0L) (now - wallMs).coerceAtLeast(0L) else JSONObject.NULL
+
         // Health is signed, but signatures alone do not prevent replay. Burn a durable monotonic
         // sequence before transmission. If the disk commit fails, publish sequence 0 so the server
         // rejects this heartbeat instead of accepting a sequence the phone cannot safely remember.
@@ -57,10 +61,10 @@ object HealthEvidence {
             .put("rotationVectorAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null)
             .put("stepCounterAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null)
             .put("stepDetectorAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null)
-            .put("lastSelfRecoveryAgeMs", if (lastRecovery > 0L) now - lastRecovery else JSONObject.NULL)
+            .put("lastSelfRecoveryAgeMs", ageSince(lastRecovery))
             .put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))
-            .put("lastJournalWriteFailureAgeMs", if (lastJournalFailure > 0L) now - lastJournalFailure else JSONObject.NULL)
+            .put("lastJournalWriteFailureAgeMs", ageSince(lastJournalFailure))
             .put("safetyOutboxWriteHealthy", prefs.getBoolean("safetyOutboxWriteHealthy", true))
-            .put("lastSafetyOutboxWriteFailureAgeMs", if (lastSafetyOutboxFailure > 0L) now - lastSafetyOutboxFailure else JSONObject.NULL)
+            .put("lastSafetyOutboxWriteFailureAgeMs", ageSince(lastSafetyOutboxFailure))
     }
 }
