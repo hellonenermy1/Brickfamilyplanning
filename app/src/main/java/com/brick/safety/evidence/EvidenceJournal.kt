@@ -24,6 +24,11 @@ class EvidenceJournal(
         const val DATABASE_NAME = "brick_evidence.db"
         private const val DATABASE_VERSION = 3
         private const val FAILURE_HOLD_MS = 120_000L
+        private const val QUARANTINE_RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L
+        private const val QUARANTINE_CLEANUP_INTERVAL_MS = 6L * 60L * 60L * 1_000L
+        private const val QUARANTINE_MAX_ROWS = 2_048
+        private const val PREF_LAST_QUARANTINE_CLEANUP = "lastEvidenceQuarantineCleanupWallMs"
+        private const val PREF_QUARANTINE_PURGED_TOTAL = "evidenceQuarantinePurgedRecordsTotal"
         private val DEVICE_ID_RE = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
     }
 
@@ -79,6 +84,61 @@ class EvidenceJournal(
         val previous = healthPrefs.getLong(key, 0L).coerceAtLeast(0L)
         val added = delta.toLong().coerceAtLeast(0L)
         return if (Long.MAX_VALUE - previous < added) Long.MAX_VALUE else previous + added
+    }
+
+    /**
+     * Quarantine is diagnostic retention, not an infinite second backlog. Permanent server
+     * conflicts, corrupt rows and a re-pair can otherwise accumulate forever even though those rows
+     * can no longer be delivered. Keep a generous 30-day window plus a hard 2,048-row ceiling and
+     * preserve lifetime counters in health preferences when old quarantine is automatically purged.
+     */
+    private fun maybeCleanupQuarantine(force: Boolean = false): Int {
+        val now = System.currentTimeMillis()
+        val last = healthPrefs.getLong(PREF_LAST_QUARANTINE_CLEANUP, 0L)
+        if (!force && last > 0L && now >= last && now - last < QUARANTINE_CLEANUP_INTERVAL_MS) return 0
+
+        val db = writableDatabase
+        var purged = 0
+        var healthy = false
+        try {
+            db.beginTransaction()
+            val cutoff = (now - QUARANTINE_RETENTION_MS).coerceAtLeast(0L)
+            purged += db.delete("evidence", "acked=2 AND created_ms<?", arrayOf(cutoff.toString()))
+
+            val quarantined = db.rawQuery("SELECT COUNT(*) FROM evidence WHERE acked=2", emptyArray()).use { c ->
+                check(c.moveToFirst()) { "quarantine count returned no row" }
+                c.getInt(0)
+            }
+            val overflow = (quarantined - QUARANTINE_MAX_ROWS).coerceAtLeast(0)
+            if (overflow > 0) {
+                db.execSQL(
+                    "DELETE FROM evidence WHERE id IN (" +
+                        "SELECT id FROM evidence WHERE acked=2 ORDER BY created_ms,id LIMIT ?)",
+                    arrayOf(overflow)
+                )
+                purged += db.rawQuery("SELECT changes()", emptyArray()).use { c ->
+                    check(c.moveToFirst()) { "quarantine cleanup changes returned no row" }
+                    c.getInt(0)
+                }
+            }
+            db.setTransactionSuccessful()
+            healthy = true
+        } catch (_: Throwable) {
+            healthy = false
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+        }
+
+        if (healthy) {
+            val edit = healthPrefs.edit().putLong(PREF_LAST_QUARANTINE_CLEANUP, now)
+            if (purged > 0) {
+                edit.putLong(PREF_QUARANTINE_PURGED_TOTAL, addCount(PREF_QUARANTINE_PURGED_TOTAL, purged))
+            }
+            edit.apply()
+        } else {
+            noteHealthy(false)
+        }
+        return if (healthy) purged else 0
     }
 
     private fun noteIdentityChange(binding: OwnerBinding) {
@@ -153,11 +213,15 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
-        if (healthy) binding?.let(::noteIdentityChange)
+        if (healthy) {
+            binding?.let(::noteIdentityChange)
+            maybeCleanupQuarantine()
+        }
         return binding
     }
 
     fun refreshHealth(): Boolean {
+        maybeCleanupQuarantine()
         val readable = runCatching {
             readableDatabase.rawQuery("SELECT COUNT(*) FROM evidence", emptyArray()).use { cursor ->
                 check(cursor.moveToFirst()) { "evidence health probe returned no row" }
@@ -227,7 +291,10 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
-        if (healthy) binding?.let(::noteIdentityChange)
+        if (healthy) {
+            binding?.let(::noteIdentityChange)
+            maybeCleanupQuarantine()
+        }
         return record
     }
 
@@ -268,6 +335,7 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
+        if (healthy) maybeCleanupQuarantine()
         return healthy
     }
 
@@ -350,6 +418,7 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
+        if (healthy) maybeCleanupQuarantine()
         return healthy
     }
 
@@ -380,7 +449,10 @@ class EvidenceJournal(
             if (db.inTransaction()) db.endTransaction()
             noteHealthy(healthy)
         }
-        if (healthy) noteServerConflict(items.size)
+        if (healthy) {
+            noteServerConflict(items.size)
+            maybeCleanupQuarantine()
+        }
         return healthy
     }
 
