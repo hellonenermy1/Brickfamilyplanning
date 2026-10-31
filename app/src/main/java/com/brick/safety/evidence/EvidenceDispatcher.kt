@@ -18,6 +18,7 @@ class EvidenceDispatcher(
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
         val stored = prefs.getLong("evidenceSequence", 0L)
         val next = maxOf(stored, journal.maxSequence(epoch)) + 1L
+        if (next <= 0L) return false
         if (!prefs.edit().putLong("evidenceSequence", next).commit()) return false
         val appended = journal.append(EvidenceRecord(epoch, next, observation))
         if (appended) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
@@ -25,6 +26,21 @@ class EvidenceDispatcher(
     }
 
     fun stats(): EvidenceJournal.Stats = journal.stats()
+
+    private fun coreBacklogPresent(): Boolean {
+        if (SafetyDispatcher.pendingCount(appContext) > 0) return true
+
+        val locationPending = Journal(appContext).let { locationJournal ->
+            try { locationJournal.stats().pendingCount } finally { locationJournal.close() }
+        }
+        if (locationPending > 0) return true
+
+        val crashPending = CrashOutbox(appContext).let { outbox ->
+            try { runCatching { outbox.pendingCount() > 0 }.getOrDefault(true) }
+            finally { outbox.close() }
+        }
+        return crashPending
+    }
 
     /**
      * Evidence is intentionally the lowest-priority durable stream. It is not sent while
@@ -34,18 +50,13 @@ class EvidenceDispatcher(
     fun drainIfSafe(maxBatches: Int = 2): Int {
         val deviceId = prefs.getString("deviceId", null) ?: return 0
         val baseUrl = prefs.getString("apiBase", null) ?: return 0
-        if (SafetyDispatcher.pendingCount(appContext) > 0) return 0
-
-        val locationJournal = Journal(appContext)
-        val locationPending = try { locationJournal.stats().pendingCount } finally { locationJournal.close() }
-        if (locationPending > 0) return 0
-
-        val crashOutbox = CrashOutbox(appContext)
-        if (runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true)) return 0
+        if (coreBacklogPresent()) return 0
 
         var sent = 0
         repeat(maxBatches.coerceIn(1, 8)) {
-            if (SafetyDispatcher.pendingCount(appContext) > 0) return sent
+            // Recheck before each network batch so new SOS/location work preempts evidence as soon
+            // as the scheduler observes it.
+            if (coreBacklogPresent()) return sent
             val pending = journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
             if (pending.isEmpty()) return sent
             val records = pending.map { it.record }
