@@ -1,0 +1,73 @@
+name: Brick — Export Historical Branches
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/archive-historical-branches.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all remote branches
+        run: git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
+
+      - name: Export exact historical branch snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            phase1-child-apk
+            phase1-cloudflare-setup
+            phase2-child-reliability
+            phase2-cloudflare-reliability
+            phase3-child-position-intelligence
+            phase3-cloudflare-position-intelligence
+            phase4-child-safety-history
+            phase4-cloudflare-safety-history
+            phase5-child-health-ops
+            phase5-cloudflare-parent-ops
+            phase5b-no-r2
+            phase5b-private-map-places
+            phase5c-child-hardening
+            phase5c-hardening-audit
+            phase6-child-final-audit
+            phase6-cloud-final-audit
+            phase6-cloud-final-audit-v2
+            phase6-final-hardening
+            phase6-integration
+          )
+          mkdir -p historical-branch-snapshots
+          : > historical-branch-snapshots/MANIFEST.tsv
+          printf 'branch\thead_sha\ttree_sha\tarchive_file\tsha256\n' >> historical-branch-snapshots/MANIFEST.tsv
+          for branch in "${branches[@]}"; do
+            ref="refs/remotes/origin/$branch"
+            git show-ref --verify --quiet "$ref" || { echo "Missing branch: $branch" >&2; exit 1; }
+            head_sha="$(git rev-parse "$ref")"
+            tree_sha="$(git rev-parse "$ref^{tree}")"
+            archive="historical-branch-snapshots/$branch.tar.gz"
+            git archive --format=tar "$ref" | gzip -9 > "$archive"
+            sha256="$(sha256sum "$archive" | awk '{print $1}')"
+            printf '%s\t%s\t%s\t%s\t%s\n' "$branch" "$head_sha" "$tree_sha" "$(basename "$archive")" "$sha256" >> historical-branch-snapshots/MANIFEST.tsv
+          done
+          sha256sum historical-branch-snapshots/*.tar.gz > historical-branch-snapshots/SHA256SUMS.txt
+          cat historical-branch-snapshots/MANIFEST.tsv
+
+      - name: Upload historical branch archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: brick-historical-branches-${{ github.sha }}
+          path: historical-branch-snapshots/
+          if-no-files-found: error
+          retention-days: 30
