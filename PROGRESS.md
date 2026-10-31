@@ -2,6 +2,57 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — Move historical branches to Brickfamilyplanning-archive
+
+### User request
+
+Move every non-canonical historical branch out of `hellonenermy1/Brickfamilyplanning` into `hellonenermy1/Brickfamilyplanning-archive`, then delete the historical refs from the active repository. Keep only `main`, `apk-download`, and `audit-progress` active.
+
+### Safe archive work completed
+
+- Initialized `hellonenermy1/Brickfamilyplanning-archive`.
+- Added `ARCHIVE_MANIFEST.md` recording all 19 historical branch names and their exact original source head SHAs.
+- Created all 19 matching historical branch names in the archive repository:
+  - `phase1-child-apk`
+  - `phase1-cloudflare-setup`
+  - `phase2-child-reliability`
+  - `phase2-cloudflare-reliability`
+  - `phase3-child-position-intelligence`
+  - `phase3-cloudflare-position-intelligence`
+  - `phase4-child-safety-history`
+  - `phase4-cloudflare-safety-history`
+  - `phase5-child-health-ops`
+  - `phase5-cloudflare-parent-ops`
+  - `phase5b-no-r2`
+  - `phase5b-private-map-places`
+  - `phase5c-child-hardening`
+  - `phase5c-hardening-audit`
+  - `phase6-child-final-audit`
+  - `phase6-cloud-final-audit`
+  - `phase6-cloud-final-audit-v2`
+  - `phase6-final-hardening`
+  - `phase6-integration`
+- Added a source-repo workflow, `Brick — Export Historical Branches`, designed to produce an exact `git archive` tar.gz snapshot plus SHA-256 checksum for every historical branch before deletion.
+
+### Evidence / current blocker
+
+- GitHub does not permit direct reuse of private Git commit/tree objects across the two repositories; attempting to create an archive branch from the original source commit returned `Object does not exist`.
+- The exact-export workflow was triggered automatically and then retried once.
+- Both attempts failed before GitHub assigned a runner: the jobs contained zero executed steps. No archive tarball artifact was produced.
+- The connected GitHub tool does not expose Git ref deletion directly.
+
+### Safety decision
+
+Historical source branches were **not deleted** because an exact recoverable snapshot has not yet been produced in the archive repository. Deleting them now would risk losing unique historical content and would violate Brick's no-fake-proof rule.
+
+The archive repository currently has the 19 branch names and authoritative original-head manifest, but not yet the exact branch-content tarballs. This distinction must remain explicit.
+
+### Next required completion step
+
+When GitHub Actions assigns a runner again, rerun `Brick — Export Historical Branches`, copy the resulting checked tar.gz snapshots into `Brickfamilyplanning-archive`, verify checksums/head manifest, then delete the 19 historical source refs. Do not delete before that verification.
+
+---
+
 ## 2026-10-31 — Repository cleanup and permanent progress logging
 
 ### User request
