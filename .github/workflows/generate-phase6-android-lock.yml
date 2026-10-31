@@ -3,6 +3,8 @@ name: Generate Brick Phase 6 Android Dependency Lock
 on:
   push:
     branches: [phase6-final-hardening]
+  pull_request:
+    branches: [phase6-integration]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +16,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
