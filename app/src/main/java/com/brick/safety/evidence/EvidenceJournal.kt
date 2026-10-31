@@ -57,18 +57,18 @@ class EvidenceJournal(
     data class Pending(val id: Long, val record: EvidenceRecord)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
 
-    private fun hasQuarantinedEvidence(): Boolean = runCatching {
-        readableDatabase.rawQuery("SELECT 1 FROM evidence WHERE acked=2 LIMIT 1", emptyArray()).use { it.moveToFirst() }
-    }.getOrDefault(true)
-
     private fun noteHealthy(operationHealthy: Boolean) {
         val now = System.currentTimeMillis()
         val priorFailure = healthPrefs.getLong("lastEvidenceJournalFailureWallMs", 0L)
         val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
-        val currentFailure = !operationHealthy || hasQuarantinedEvidence()
-        val healthy = !currentFailure && !freshPriorFailure
+
+        // Quarantined rows are retained as diagnostic history and reported separately in Stats.
+        // They must not poison current journal health forever after Brick has successfully isolated
+        // the bad row and resumed normal reads/writes. A real failure is held unhealthy for a short
+        // window, then a later successful operation can demonstrate automatic recovery.
+        val healthy = operationHealthy && !freshPriorFailure
         healthPrefs.edit().putBoolean("evidenceJournalHealthy", healthy).apply {
-            if (currentFailure) putLong("lastEvidenceJournalFailureWallMs", now)
+            if (!operationHealthy) putLong("lastEvidenceJournalFailureWallMs", now)
         }.apply()
     }
 
@@ -194,7 +194,11 @@ class EvidenceJournal(
         val safeLimit = limit.coerceIn(1, EvidenceProtocol.MAX_RECORDS_PER_BATCH)
         val out = mutableListOf<Pending>()
         readableDatabase.rawQuery(
-            "SELECT id,record_id,epoch,seq,payload FROM evidence WHERE acked=0 ORDER BY id LIMIT ?",
+            // BREV requires strict epoch/sequence ordering. Normal appendNew() insertion order is
+            // already monotonic, but deterministic import/recovery append(record) may not be. Read
+            // in wire order so a valid durable queue can never become unsendable just because rows
+            // were restored out of insertion order.
+            "SELECT id,record_id,epoch,seq,payload FROM evidence WHERE acked=0 ORDER BY epoch,seq,id LIMIT ?",
             arrayOf((safeLimit + 16).toString())
         ).use { c ->
             while (c.moveToNext() && out.size < safeLimit) {
