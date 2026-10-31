@@ -131,22 +131,47 @@ assert.equal(result.acked.length, 1);
 const health = db.prepare('SELECT health,last_epoch,last_sequence,observed_wall_ms FROM evidence_provider_health WHERE device_id=? AND provider=?').get('device-1', 255);
 assert.equal(health.health, 1); assert.equal(health.last_epoch, 9); assert.equal(health.last_sequence, 3); assert.equal(health.observed_wall_ms, clockRegressed.wallTimeMs);
 
-// Simulate a competing request claiming the same batch UUID between preflight and D1 batch().
-// The hard batch INSERT must fail and roll the complete losing transaction back.
+// Two identical requests racing must converge to the already durable exact ACK instead of turning
+// the losing unique-constraint claim into a false 503/storage failure.
+const identicalRaceRecords = makeRecords(40, 'identical-race'), identicalRace = encodeBatch(identicalRaceRecords);
+env.DB.beforeBatch = async () => {
+  const winner = await ingest.persistEvidenceBatch(env, 'device-1', ab(identicalRace.bytes));
+  assert.equal(winner.duplicateBatch, false);
+};
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(identicalRace.bytes));
+assert.equal(result.duplicateBatch, true); assert.equal(result.raced, true); assert.equal(result.acked.length, 2);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', identicalRace.batchId).n, 1);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 40).n, 2);
+
+// Simulate a competing request claiming the same batch UUID with different bytes between preflight
+// and D1 batch(). The exact-batch reconciliation must still fail closed as EvidenceConflict.
 const raceRecords = makeRecords(44, 'race'), race = encodeBatch(raceRecords), competitorSha = 'f'.repeat(64);
 env.DB.beforeBatch = async () => {
   db.prepare('INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?,?,?,?,?,?,?,?)')
     .run('device-1', race.batchId, 1, raceRecords.length, race.bytes.length, competitorSha, 'evidence/raw/competitor.brev', Date.now());
 };
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), /UNIQUE|constraint/i);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), ingest.EvidenceConflict);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 44).n, 0);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).n, 0);
 assert.equal(db.prepare('SELECT payload_sha256 FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', race.batchId).payload_sha256, competitorSha);
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(race.bytes)), ingest.EvidenceConflict);
 
-// Simulate a different signed batch claiming one record identity between this request's preflight
-// and D1 transaction. New records are hard-inserted, so the unique collision must roll back this
-// batch instead of silently linking it to the competitor's record.
+// If a different valid batch wins one exact record identity during our transaction window, retry
+// once from fresh D1 state: reuse the exact winner record, persist the remaining new record and
+// commit a complete batch rather than returning a false storage failure.
+const mixedRaceRecords = makeRecords(52, 'mixed-race'), mixedRace = encodeBatch(mixedRaceRecords);
+const winnerOne = encodeBatch([mixedRaceRecords[0]]);
+env.DB.beforeBatch = async () => {
+  const winner = await ingest.persistEvidenceBatch(env, 'device-1', ab(winnerOne.bytes));
+  assert.equal(winner.duplicateBatch, false);
+};
+result = await ingest.persistEvidenceBatch(env, 'device-1', ab(mixedRace.bytes));
+assert.equal(result.duplicateBatch, false); assert.equal(result.acked.length, 2);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 52).n, 2);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', mixedRace.batchId).n, 1);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', mixedRace.batchId).n, 2);
+
+// A different signed batch claiming the same record identity with different content still fails
+// closed. The losing batch claim/link rows must roll back completely.
 const recordRaceRecords = makeRecords(55, 'record-race'), recordRace = encodeBatch(recordRaceRecords);
 const competitorRecordId = randomUUID();
 env.DB.beforeBatch = async () => {
@@ -154,11 +179,10 @@ env.DB.beforeBatch = async () => {
     'INSERT INTO evidence_records(device_id,epoch,sequence,record_id,provider,family,capability,health,quality,independence_group,elapsed_realtime_ms,wall_time_ms,payload_sha256,first_seen_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).run('device-1', 55, 1, competitorRecordId, 255, 255, 0, 0, 3, 'dummy:test:competitor', 1, Date.now(), 'e'.repeat(64), Date.now());
 };
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(recordRace.bytes)), /UNIQUE|constraint/i);
+await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(recordRace.bytes)), ingest.EvidenceConflict);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batches WHERE device_id=? AND batch_id=?').get('device-1', recordRace.batchId).n, 0, 'losing record-race batch claim must roll back');
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_batch_records WHERE device_id=? AND batch_id=?').get('device-1', recordRace.batchId).n, 0);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM evidence_records WHERE device_id=? AND epoch=?').get('device-1', 55).n, 1, 'only competitor record should remain');
-await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(recordRace.bytes)), ingest.EvidenceConflict);
 
 // Record identity collisions and changed bytes under an accepted batch UUID fail closed.
 const collisionRecords = structuredClone(records); collisionRecords[0].recordId = randomUUID(); collisionRecords[0].payload = Buffer.from('changed');
@@ -167,5 +191,5 @@ const changedBatch = encodeBatch([{ ...records[0], payload: Buffer.from('tampere
 await assert.rejects(ingest.persistEvidenceBatch(env, 'device-1', ab(changedBatch.bytes)), ingest.EvidenceConflict);
 
 const state = db.prepare('SELECT last_epoch,last_sequence FROM device_evidence_state WHERE device_id=?').get('device-1');
-assert.equal(state.last_epoch, 9); assert.equal(state.last_sequence, 3);
-console.log('Brick V1 Phase 2 evidence protocol + idempotent persistence integration tests OK');
+assert.equal(state.last_epoch, 52); assert.equal(state.last_sequence, 2);
+console.log('Brick V1 Phase 2 evidence protocol + idempotent/concurrent persistence integration tests OK');
