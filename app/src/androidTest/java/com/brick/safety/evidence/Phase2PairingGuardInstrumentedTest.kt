@@ -46,30 +46,25 @@ class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
         payload = "unpaired-must-not-persist".toByteArray(Charsets.UTF_8)
     )
 
-    private fun dispatcher(journal: EvidenceJournal) = EvidenceDispatcher(
+    private fun dispatcher(journal: EvidenceJournal, failIfTransportRuns: Boolean = false) = EvidenceDispatcher(
         context,
         journal,
-        EvidenceTransport { _, _, _ -> emptyList() },
+        EvidenceTransport { _, _, _ ->
+            if (failIfTransportRuns) error("transport must not run for invalid identity") else emptyList()
+        },
         { false },
         false
     )
 
     fun testUnpairedInstallationDoesNotPersistEvidence() {
         val journal = EvidenceJournal(context, TestCipher)
-        val dispatcher = EvidenceDispatcher(
-            context = context,
-            journal = journal,
-            transport = EvidenceTransport { _, _, _ -> error("transport must not run") },
-            coreBacklogProbe = { false },
-            scheduleRecovery = false
-        )
-
+        val dispatcher = dispatcher(journal, failIfTransportRuns = true)
         assertFalse(dispatcher.enqueue(observation()))
         assertEquals(0, dispatcher.stats().pendingCount)
         dispatcher.close()
     }
 
-    fun testPairingRequiresBothCanonicalDeviceIdAndApiBase() {
+    fun testPairingRequiresBothCanonicalV4DeviceIdAndApiBase() {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         assertTrue(prefs.edit().putString("deviceId", TEST_DEVICE_ID).commit())
 
@@ -87,26 +82,26 @@ class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
         dispatcher.close()
     }
 
-    fun testCorruptDeviceIdCannotPersistOrDrainEvidence() {
+    private fun assertInvalidDeviceIdRejected(value: String) {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         assertTrue(
             prefs.edit()
-                .putString("deviceId", "../../victim")
+                .clear()
+                .putString("deviceId", value)
                 .putString("apiBase", "https://brick.invalid")
                 .commit()
         )
-
         val journal = EvidenceJournal(context, TestCipher)
-        val dispatcher = EvidenceDispatcher(
-            context,
-            journal,
-            EvidenceTransport { _, _, _ -> error("transport must not run for invalid identity") },
-            { false },
-            false
-        )
+        val dispatcher = dispatcher(journal, failIfTransportRuns = true)
         assertFalse(dispatcher.enqueue(observation()))
         assertEquals(0, dispatcher.stats().pendingCount)
         assertEquals(0, dispatcher.drainIfSafe())
         dispatcher.close()
+    }
+
+    fun testCorruptOrNonV4DeviceIdCannotPersistOrDrainEvidence() {
+        assertInvalidDeviceIdRejected("../../victim")
+        // Canonical UUID text but version 5; pairing only creates RFC-4122 v4 IDs.
+        assertInvalidDeviceIdRejected("12345678-1234-5678-9abc-def012345678")
     }
 }
