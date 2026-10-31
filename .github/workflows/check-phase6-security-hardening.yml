@@ -41,8 +41,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'export async function readBoundedBody(req: Request, maxBytes: number)' src/bounded-body.ts >/dev/null
+          grep -F 'export type BoundedBodyRequest = {' src/bounded-body.ts >/dev/null
+          grep -F 'export async function readBoundedBody(req: BoundedBodyRequest, maxBytes: number)' src/bounded-body.ts >/dev/null
           grep -F 'total > maxBytes' src/bounded-body.ts >/dev/null
+          grep -F 'void reader.cancel().catch(() => undefined)' src/bounded-body.ts >/dev/null
           grep -F 'const MAX_PARENT_MUTATION_BYTES = 32 * 1024' src/worker-v5b.ts >/dev/null
           grep -F 'readBoundedBody(req.clone(), MAX_PARENT_MUTATION_BYTES)' src/worker-v5b.ts >/dev/null
           grep -F 'readBoundedBody(req.clone(), 8192)' src/worker-v5b.ts >/dev/null
