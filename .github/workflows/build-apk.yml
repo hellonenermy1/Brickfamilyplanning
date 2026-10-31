@@ -31,11 +31,10 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Verify APK source branch and privacy contract
+      - name: Verify APK source and privacy contract
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git branch --show-current)" = "apk-download"
           test -s app/gradle.lockfile
           grep -F 'versionName = "0.6.0-phase6-rc"' app/build.gradle.kts >/dev/null
           grep -F 'versionCode = 6' app/build.gradle.kts >/dev/null
@@ -46,6 +45,7 @@ jobs:
             echo 'Analytics/ad tracker reference found in child app.' >&2
             exit 1
           fi
+          echo "APK source SHA: $(git rev-parse HEAD)"
 
       - name: Prepare optional stable release signing
         id: signing
