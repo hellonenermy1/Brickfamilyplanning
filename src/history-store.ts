@@ -1,7 +1,7 @@
 import type { LivePacket } from "./protocol";
 import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./history-codec";
 
-type QueueLocation = { type: "location"; deviceId: string; packet: LivePacket; rawPacket?: LivePacket };
+type QueueBody = { type?: string; deviceId?: string; packet?: LivePacket; rawPacket?: LivePacket };
 type Env = { HISTORY: R2Bucket };
 
 type StoredRawSegment = {
@@ -50,8 +50,6 @@ async function existingSegment(env: Env, key: string): Promise<{ raw: LivePacket
   if (!obj) return { raw: [], trusted: [] };
   const parsed = await readJsonObject<StoredRawSegment>(obj);
   const raw = Array.isArray(parsed.packets) ? parsed.packets.filter(validPacket) : [];
-  // V3 and older segments predate server route-constraining, so their raw packet was also the
-  // authoritative trusted packet. V4+ stores both views to keep evidence immutable.
   const trusted = Array.isArray(parsed.trustedPackets) ? parsed.trustedPackets.filter(validPacket) : raw;
   return { raw, trusted };
 }
@@ -65,11 +63,9 @@ function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: num
   return merged;
 }
 
-function originalForQueue(body: Partial<QueueLocation>, packet: LivePacket): LivePacket {
+function originalForQueue(body: QueueBody, packet: LivePacket): LivePacket {
   const raw = body.rawPacket;
   if (!validPacket(raw)) return packet;
-  // A Queue message may carry the original signed child packet only for the exact same identity/time.
-  // Never allow an unrelated raw packet to be attached to a server-trusted point.
   if (raw.epoch !== packet.epoch || raw.sequence !== packet.sequence || raw.wallTimeMs !== packet.wallTimeMs) return packet;
   return raw;
 }
@@ -77,15 +73,13 @@ function originalForQueue(body: Partial<QueueLocation>, packet: LivePacket): Liv
 export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env) {
   const groups = new Map<string, Group>();
   for (const message of batch.messages) {
-    const body = message.body as Partial<QueueLocation> & { type?: string };
-    // Phase 6 critical-event redundancy shares the primary Queue. Its receipts are handled by
-    // queue-v6 before history processing; never acknowledge them as "invalid history" here.
+    const body = message.body as QueueBody;
     if (body.type === "safety_receipt") continue;
     if (body.type !== "location" || typeof body.deviceId !== "string" || !body.packet || typeof body.packet !== "object") {
       message.ack();
       continue;
     }
-    const packet = body.packet as LivePacket;
+    const packet = body.packet;
     if (!Number.isFinite(packet.wallTimeMs) || packet.wallTimeMs <= 0 || !Number.isSafeInteger(packet.sequence) || packet.sequence <= 0 || !Number.isSafeInteger(packet.epoch) || packet.epoch < 0) {
       message.ack();
       continue;
@@ -102,10 +96,6 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
     group.entries.push({ message, packet, rawPacket });
   }
 
-  // Queues explicitly do not guarantee publication order. History processing is therefore
-  // order-independent: each 15-minute segment is read/merged/deduplicated by sequence and written
-  // back deterministically. Location-derived safety is evaluated synchronously before client ACK,
-  // not here, so Queue reordering can never corrupt geofence/trip state.
   for (const group of groups.values()) {
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
@@ -122,9 +112,6 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
           segmentStartMs: group.segmentStartMs,
           storedAt,
           packets: rawPackets,
-          // Keeping server-trusted packets beside raw packets lets later Queue retries merge the
-          // segment without recomputing/loss of the route-constrained result. Raw evidence remains
-          // the exact signed child packet in `packets`.
           trustedPackets
         }),
         gzipJson({ v: 4, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, delta: encodeTrustedDelta(points) })
