@@ -69,8 +69,11 @@ object PositionConsistencyGuard {
         val candidateSpeedAcc = candidate.speedAccuracyMps?.toDouble()?.takeIf { it.isFinite() && it >= 0.0 }
         if (dtSec <= 20.0 && previousSpeed != null && candidateSpeed != null && candidateSpeedAcc != null && candidateSpeedAcc <= 3.0) {
             val measuredAccel = abs(candidateSpeed - previousSpeed) / dtSec
-            // These are intentionally generous rejection bounds. They catch sensor/GPS teleport spikes,
-            // not ordinary human/vehicle acceleration or braking.
+            val geometricSpeed = distance / dtSec
+            val coordinateSupportsCandidateSpeed = abs(geometricSpeed - candidateSpeed) <= max(8.0, candidateSpeed * 0.75)
+            // These are intentionally generous rejection bounds. The coordinate displacement must
+            // independently support the reported high speed; a speed-metadata glitch alone never
+            // rejects an otherwise plausible position.
             val limit = when (motion.mode) {
                 Phase3Mode.STATIONARY -> 4.0
                 Phase3Mode.WALKING -> 4.5
@@ -79,7 +82,7 @@ object PositionConsistencyGuard {
                 Phase3Mode.VEHICLE -> 13.0
                 Phase3Mode.UNKNOWN -> 16.0
             }
-            if (measuredAccel > limit + candidateSpeedAcc / dtSec.coerceAtLeast(0.5)) {
+            if (coordinateSupportsCandidateSpeed && measuredAccel > limit + candidateSpeedAcc / dtSec.coerceAtLeast(0.5)) {
                 return rejected(FixConsistencyReason.EXTREME_ACCELERATION, distance, effectiveDistance, effectiveSpeed)
             }
         }
