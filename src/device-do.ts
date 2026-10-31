@@ -161,7 +161,10 @@ export class BrickDevice extends DurableObject {
     }
   }
 
-  async setLatest(packet: LivePacket) {
+  async setLatest(packet: LivePacket): Promise<boolean> {
+    const current = await this.ctx.storage.get<LatestState>("latest");
+    if (current && !advances({ epoch: packet.epoch, sequence: packet.sequence }, current)) return false;
+
     const raw = packet.rawLatE7 !== null && packet.rawLonE7 !== null ? {
       lat: packet.rawLatE7 / 1e7,
       lon: packet.rawLonE7 / 1e7,
@@ -201,6 +204,7 @@ export class BrickDevice extends DurableObject {
     await this.ctx.storage.put("latest", state);
     await this.ensureWatchdog();
     this.broadcast("location", { state, derived: await this.derive() });
+    return true;
   }
 
   async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> {
