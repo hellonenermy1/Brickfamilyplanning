@@ -78,10 +78,13 @@ export async function persistEvidenceBatch(env: EvidenceEnv, deviceId: string, b
     }
   }
 
-  // Raw object paths use a one-way device key rather than a sanitized identifier. This avoids
-  // path collisions between different identifiers and reduces identifier exposure in R2 metadata.
+  // Raw object paths use a one-way device key rather than a sanitized identifier. The batch hash is
+  // part of the object key as well: if two concurrent signed requests reuse one batch UUID with
+  // different bytes before D1 has claimed the UUID, they write different objects instead of racing
+  // to overwrite the same raw evidence object. The losing conflicting object is harmless and ages
+  // out under the bounded raw-evidence lifecycle rule.
   const deviceKey = await sha256Hex(new TextEncoder().encode(deviceId));
-  const r2Key = `evidence/raw/${deviceKey}/${batch.batchId}.brev`;
+  const r2Key = `evidence/raw/${deviceKey}/${batch.batchId}-${batchSha}.brev`;
   await env.HISTORY.put(r2Key, buffer, {
     httpMetadata: { contentType: "application/vnd.brick.evidence" },
     customMetadata: {
