@@ -3,6 +3,7 @@ import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./hi
 
 type QueueBody = { type?: string; deviceId?: string; packet?: LivePacket; rawPacket?: LivePacket };
 type Env = { HISTORY: R2Bucket };
+export type QueueMessageView = { messages: readonly Message<unknown>[] };
 
 type StoredRawSegment = {
   v?: number;
@@ -78,7 +79,7 @@ function originalForQueue(body: QueueBody, packet: LivePacket): LivePacket {
   return raw;
 }
 
-export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env): Promise<HistoryBatchResult> {
+export async function processHistoryBatch(batch: QueueMessageView, env: Env): Promise<HistoryBatchResult> {
   const groups = new Map<string, Group>();
   const result: HistoryBatchResult = {
     succeededDeviceIds: new Set<string>(),
