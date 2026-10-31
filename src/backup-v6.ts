@@ -7,6 +7,7 @@ export const BACKUP_TABLES = [
   "devices",
   "geofences",
   "geofence_state",
+  "ble_anchors",
   "trips",
   "retention_settings",
   "safety_events",
