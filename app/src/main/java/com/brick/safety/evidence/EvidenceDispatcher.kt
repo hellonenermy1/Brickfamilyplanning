@@ -33,7 +33,7 @@ class EvidenceDispatcher(
         // Preference is only a cheap observable cache. The SQLite journal owns allocation and can
         // recover the correct next sequence even if this async preference write never happens.
         prefs.edit().putLong("evidenceSequence", record.sequence).apply()
-        if (scheduleRecovery) runCatching { RecoveryScheduler.scheduleSoon(appContext, 5) }
+        if (scheduleRecovery) runCatching { RecoveryScheduler.scheduleEvidenceSoon(appContext, 5) }
         return true
     }
 
