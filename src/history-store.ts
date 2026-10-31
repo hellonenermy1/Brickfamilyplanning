@@ -21,6 +21,14 @@ type Group = {
   entries: { message: Message<unknown>; packet: LivePacket; rawPacket: LivePacket }[];
 };
 
+export type HistoryBatchResult = {
+  succeededDeviceIds: Set<string>;
+  retriedDeviceIds: Set<string>;
+  processedMessages: number;
+  retriedMessages: number;
+  ignoredMessages: number;
+};
+
 const SEGMENT_MS = 15 * 60 * 1000;
 const MAX_PACKETS_PER_SEGMENT = 40_000;
 
@@ -70,18 +78,33 @@ function originalForQueue(body: QueueBody, packet: LivePacket): LivePacket {
   return raw;
 }
 
-export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env) {
+export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env): Promise<HistoryBatchResult> {
   const groups = new Map<string, Group>();
+  const result: HistoryBatchResult = {
+    succeededDeviceIds: new Set<string>(),
+    retriedDeviceIds: new Set<string>(),
+    processedMessages: 0,
+    retriedMessages: 0,
+    ignoredMessages: 0
+  };
+
   for (const message of batch.messages) {
     const body = message.body as QueueBody;
-    if (body.type === "safety_receipt") continue;
+    // Safety receipts are handled by queue-v6. Do not ACK here because that handler may have
+    // deliberately requested a retry while waiting for the durable safety row to appear.
+    if (body.type === "safety_receipt") {
+      result.ignoredMessages += 1;
+      continue;
+    }
     if (body.type !== "location" || typeof body.deviceId !== "string" || !body.packet || typeof body.packet !== "object") {
       message.ack();
+      result.ignoredMessages += 1;
       continue;
     }
     const packet = body.packet;
     if (!Number.isFinite(packet.wallTimeMs) || packet.wallTimeMs <= 0 || !Number.isSafeInteger(packet.sequence) || packet.sequence <= 0 || !Number.isSafeInteger(packet.epoch) || packet.epoch < 0) {
       message.ack();
+      result.ignoredMessages += 1;
       continue;
     }
     const rawPacket = originalForQueue(body, packet);
@@ -128,9 +151,19 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
         })
       ]);
 
-      for (const entry of group.entries) entry.message.ack();
+      for (const entry of group.entries) {
+        entry.message.ack();
+        result.processedMessages += 1;
+      }
+      result.succeededDeviceIds.add(group.deviceId);
     } catch {
-      for (const entry of group.entries) entry.message.retry();
+      for (const entry of group.entries) {
+        entry.message.retry();
+        result.retriedMessages += 1;
+      }
+      result.retriedDeviceIds.add(group.deviceId);
     }
   }
+
+  return result;
 }
