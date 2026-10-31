@@ -78,6 +78,9 @@ export async function processHistoryBatch(batch: MessageBatch<unknown>, env: Env
   const groups = new Map<string, Group>();
   for (const message of batch.messages) {
     const body = message.body as Partial<QueueLocation> & { type?: string };
+    // Phase 6 critical-event redundancy shares the primary Queue. Its receipts are handled by
+    // queue-v6 before history processing; never acknowledge them as "invalid history" here.
+    if (body.type === "safety_receipt") continue;
     if (body.type !== "location" || typeof body.deviceId !== "string" || !body.packet || typeof body.packet !== "object") {
       message.ack();
       continue;
