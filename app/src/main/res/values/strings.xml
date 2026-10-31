@@ -1,5 +1,0 @@
-<resources>
-    <string name="app_name">Brick</string>
-    <string name="channel_name">Brick safety tracking</string>
-    <string name="channel_description">Shows when Brick is actively sharing safety location.</string>
-</resources>
