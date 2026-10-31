@@ -9,16 +9,16 @@ Brick remains a **release candidate**, not production-qualified.
 - Version: `0.6.0-phase6-rc`
 - Version code: `6`
 - Package: `com.brick.safety`
-- Qualification state: `candidate-not-real-device-qualified`
-- New nine-phase V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED / CI BLOCKED / NOT ACCEPTED; Phases 3–9 not yet accepted**
+- Qualification: `candidate-not-real-device-qualified`
+- V1 program: **Phase 1 ACCEPTED; Phase 2 SOURCE IMPLEMENTED / CORE CLOUD+PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED; Phases 3–9 not accepted**
 
-Phase 1 is a documentation/contract freeze. Phase 2 source now exists on staging branches, but no Phase 2 CI/integration pass is claimed because GitHub Actions has repeatedly failed before assigning a runner.
+No Phase 2 source has been promoted to the canonical runtime branches yet.
 
-## New V1 contract truth
+## Contract / audit artifacts
 
-The current Brick V1 contract is the expanded project `Yes.docx` version 1.
+Canonical V1 contract: project `Yes.docx` version 1.
 
-The permanent Phase 1 audit artifacts are:
+Phase 1 artifacts:
 
 - `PHASE1_BASELINE.md`
 - `V1_ARCHITECTURE_FREEZE.md`
@@ -27,17 +27,16 @@ The permanent Phase 1 audit artifacts are:
 - `PHASE1_SOURCE_COVERAGE.md`
 - `PHASE1_REPORT.md`
 
-Current Phase 2 implementation/verification record:
+Phase 2 artifacts:
 
 - `PHASE2_REPORT.md`
+- `PHASE2_LOCAL_VERIFICATION.md`
 
-The contract includes the original Phase 6-era reliability/safety/history architecture plus the new Parallel Evidence Engine, learned odometry/particle positioning, Environmental Fingerprint Atlas, Signal Trust/Uniqueness Engine, Witness Mesh, fixed Ground Network, learned places/routes, future ranging interface, parent Location desired-state control and optional Shizuku enhancement.
+The duplicate source headings are normalized as `23G-UI` and `23G-GROUND` in the requirement ledger.
 
-The duplicate source numbering for the two `23G` sections is normalized in the Phase 1 ledger as `23G-UI` and `23G-GROUND`.
+## Proven retained Phase 6 baseline
 
-## Proven source baseline carried into the new program
-
-The fully validated Phase 6 source commit was:
+Fully validated source commit:
 
 `176d94f604eb562a59260ef380ee680a564acfcc`
 
@@ -45,200 +44,141 @@ Git tree:
 
 `b5f4ea6e97e9e2afef7a01c8386829f316b4af2e`
 
-The later pre-cleanup hardening head:
+The later pre-cleanup hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree.
 
-`b23741d31ec6c51a5b00b6fe15b753b0d70d04c8`
+All eight normal Phase 6 CI workflows previously passed on the retained baseline: source inventory, Android runtime wiring, Android recovery hardening, Cloudflare validation, security hardening, operations/durability, exact Gradle locking, and Android debug/release build + lint/APK inspection/provenance.
 
-had the exact same Git tree. GitHub compare showed zero file differences.
+That evidence does not prove the new V1 additions.
 
-Phase 1 start heads were recorded as:
-
-- `main`: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
-- `apk-download`: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
-- `audit-progress`: `da2d56f6d46eeb293d5ef5010304730dd45378d1` before Phase 1 documentation integration
-
-Runtime trees observed at Phase 1 start:
-
-- `main`: `33cdcddcfab9cd3e0325b2cd9312511b65c5b7f3`
-- `apk-download`: `034d0cdfe494f3f74ddfa5d44e1d1e974fd92f42`
-
-## Proven CI evidence on the retained Phase 6 tree
-
-All eight normal Phase 6 workflows completed successfully:
-
-1. Source inventory
-2. Android runtime wiring
-3. Android recovery hardening
-4. Cloudflare Phase 6 validation
-5. Security hardening
-6. Operations/durability checks
-7. Exact Android dependency-lock generation
-8. Android debug + release build, lint, APK inspection and provenance
-
-The committed Android Gradle lock matched fresh dependency resolution.
-
-These checks remain useful baseline evidence but do **not** prove the new V1 requirements added after Phase 6.
-
-## APK evidence
-
-- Debug APK: built successfully and validly signed with the Android debug certificate on the retained Phase 6 source.
-- Release variant: built successfully on that retained source.
-- Stable production signing: **not configured** at the time of the proven build.
-- Stable-signed release upload: skipped.
-- Therefore the unsigned release candidate must not be presented as a production APK.
-- No current Phase 2 Android build pass is claimed until the Phase 2 Actions job actually runs.
-
-## Cloud deployment evidence
-
-The hardened Phase 6 one-click workflow is prepared on `main` and verifies:
-
-- exact source SHA,
-- D1/R2/Queues/DLQ resource state,
-- Cloudflare Access configuration,
-- required D1 tables and privacy/replay schema,
-- R2 lifecycle retention rules,
-- public `/healthz`,
-- unauthenticated parent-route denial,
-- invalid pairing fail-closed behavior,
-- unsigned fake-device fail-closed behavior,
-- optional private Singapore map installation.
-
-**No new live Phase 6/new-V1 deployment is claimed in this record yet.** A successful future workflow run must produce and retain deployment evidence before that blocker is closed.
-
-## Current repository organization
+## Repository organization
 
 Canonical branches:
 
-- `main` — canonical Cloudflare/runtime branch and manual Run workflow dispatchers.
-- `apk-download` — Android-only source branch for APK builds.
-- `audit-progress` — documentation-only audit/progress/project-memory branch.
+- `main` — Cloudflare/runtime.
+- `apk-download` — Android source.
+- `audit-progress` — audit/progress/project memory.
 
-Temporary/non-canonical work branches currently include:
+Current non-canonical Phase 2 staging branches:
 
-- `v1-p1-contract` — Phase 1 documentation staging ref already integrated into `audit-progress`;
-- `v1-p2-evidence-cloud` — Phase 2 Cloud source staging branch, PR #6;
-- `v1-p2-evidence-android` — Phase 2 Android source staging branch, PR #7.
+- `v1-p2-evidence-cloud` — PR #6, draft/unmerged.
+- `v1-p2-evidence-android` — PR #7, draft/unmerged.
 
-The Phase 2 branches are intentionally not promoted into canonical runtime branches until executed verification exists.
+Latest snapshot used by the current Phase 2 report:
 
-## New V1 phase acceptance
+- Android: `ae20681d4e4fc938da9d13f1071c28199a6af1f7`
+- Cloud: `999b6573c90bab8352fe4f2bc648baf9bb8784e6`
 
-### Phase 1 — Contract, Baseline & Architecture Freeze
+The branches are active staging refs and may move as Phase 2 defects are repaired; acceptance is tied to executed verification of the final paired heads, not to these SHA strings alone.
 
-**ACCEPTED**
+## Phase 1 — ACCEPTED
 
-Evidence:
+Phase 1 froze:
 
-- exact baseline heads/trees frozen;
-- nine-phase program frozen;
-- architecture/invariants frozen;
-- every numbered `Yes.docx` section mapped to stable requirement IDs;
-- final §83 feature list cross-checked;
-- V1 non-goals captured;
-- each implementation requirement assigned an owner phase and acceptance evidence;
-- no Android/backend runtime feature was changed in Phase 1.
+- exact baseline identity;
+- nine-phase program;
+- architecture/invariants;
+- stable requirement IDs;
+- source coverage including both 23G sections;
+- explicit V1 non-goals;
+- owner phase and required proof for every implementation requirement.
 
-### Phase 2 — Evidence Platform, Protocol & Durable Data Foundation
+No runtime feature was added in Phase 1.
 
-**SOURCE IMPLEMENTED — CI EXECUTION BLOCKED — NOT ACCEPTED**
+## Phase 2 — SOURCE IMPLEMENTED / LOCALLY PARTIALLY VERIFIED / NOT ACCEPTED
 
-Staged source includes:
+Implemented staging source includes:
 
 - canonical evidence/provider/capability/health/quality model;
 - mandatory independence groups;
 - adaptive sampling coordinator;
 - separate encrypted Android evidence journal;
+- DB-owned transactional evidence sequence allocator;
 - exact evidence ACK semantics;
 - evidence priority below safety/live-location/crash backlog;
 - separate bounded binary Evidence Batch v1 protocol;
 - shared Android/TypeScript golden vector;
+- canonical UUID and wire-safe integer restrictions;
 - signed evidence endpoint;
+- safe evidence device-path parsing;
 - D1/R2 idempotent persistence and collision detection;
-- evidence/Atlas/witness/receiver/command/refined-history schema foundations without claiming later algorithms;
-- Phase 2 setup that applies schema and raw-evidence retention before worker-v7 activation;
-- Android dummy-provider/instrumentation test source;
-- Cloud protocol/idempotency test source.
+- provider-health ordering by epoch/sequence rather than wall-clock time;
+- hashed device identity in raw R2 evidence paths/metadata;
+- schema foundations for evidence plus later Atlas/witness/receiver/command/refined-history metadata, without claiming those later algorithms exist;
+- setup ordering that applies schema + raw-evidence retention before worker-v7 activation;
+- Android dummy-provider and sequence/restart instrumentation source;
+- Cloud protocol/idempotency integration-test source.
 
-Current staging heads recorded in `PHASE2_REPORT.md`:
+### Executed local evidence
 
-- Android: `62401f69608bec2dcf13b3d897a783180b9a0e56`
-- Cloud: `a1c6bb1df3a47644ab59893de55da9e71bfe1d47`
+The core current Cloud protocol/ingest logic has been executed locally with TypeScript + in-memory SQLite/R2-style harness and passed:
 
-Verification blocker:
+- fixed golden vector;
+- strict decode;
+- persistence and exact ACK;
+- duplicate/retry idempotency;
+- collision rejection;
+- provider-health ordering under regressed wall clock;
+- hashed R2 device metadata;
+- rejection of epoch above Android signed-Int range.
 
-GitHub Actions run `41208244208` and multiple earlier Phase 2 attempts failed before runner assignment. Android and Cloud jobs report `runner_id: 0` and `steps: []`; Android instrumentation is skipped as a dependency. This is not a source pass or source failure. It is insufficient evidence for `CI_VERIFIED` or acceptance.
+Observed outputs:
 
-PR #6 and PR #7 remain unmerged deliberately.
+- `LOCAL CLOUD PHASE2 HARNESS PASS`
+- `LATEST CLOUD EPOCH BOUND PASS`
 
-### Phase 3 — Motion Intelligence, Learned Odometry & Particle Positioning
+The pure Kotlin evidence protocol was also locally compiled earlier and produced the same golden bytes. Latest Android application-level hardening remains dependent on full Android build/instrumentation execution.
 
-**NOT STARTED**
+### Hosted CI blocker
 
-### Phase 4 — Environmental Fingerprint Atlas & Signal Trust Engine
+GitHub Actions continues to fail before runner assignment.
 
-**NOT STARTED**
+Run `41208953558` shows:
 
-### Phase 5 — Unified Fusion, Learned Places, Routes, Witness Mesh & Ground Network
+- Cloud job: `runner_id: 0`, empty runner name, `steps: []`, failure;
+- Android compile/lint job: `runner_id: 0`, empty runner name, `steps: []`, failure;
+- Android instrumentation: skipped, `steps: []`.
 
-**NOT STARTED**
+Later runs have continued to fail before useful hosted execution at the time of this audit update.
 
-### Phase 6 — Device Owner, Parent Location Control & Optional Shizuku Enhancement
+These are **not source failures and not passes**. They do not satisfy `CI_VERIFIED`.
 
-**NOT STARTED**
+### Phase 2 merge/acceptance rule
 
-### Phase 7 — Cloud Intelligence, History, Parent Dashboard & Child UX Integration
+PR #6 and PR #7 remain draft/unmerged deliberately.
 
-**NOT STARTED**
+Phase 2 cannot be marked accepted until the final paired heads receive actual execution proving:
 
-### Phase 8 — Reliability, Security, Privacy & Operational Hardening
+1. Cloud typecheck/protocol/idempotency/regression tests pass;
+2. Android dependency lock, compile and lint pass;
+3. Android instrumentation executes and passes;
+4. dummy evidence persists across restart, transports, receives exact ACK and is removed without starving safety/live-location work;
+5. post-merge canonical checks pass.
 
-**NOT STARTED**
+## Phases 3–9
 
-### Phase 9 — Real OPPO Qualification, Production Release & Acceptance
+- Phase 3 — NOT STARTED/NOT ACCEPTED
+- Phase 4 — NOT STARTED/NOT ACCEPTED
+- Phase 5 — NOT STARTED/NOT ACCEPTED
+- Phase 6 — NOT STARTED/NOT ACCEPTED
+- Phase 7 — NOT STARTED/NOT ACCEPTED
+- Phase 8 — NOT STARTED/NOT ACCEPTED
+- Phase 9 — NOT STARTED/NOT ACCEPTED
 
-**NOT STARTED**
+Do not treat Phase 3 as approved continuation until Phase 2's acceptance gate is closed.
 
-## Production blockers
+## Remaining production blockers
 
-### Blocker 1 — New V1 implementation is incomplete
-
-Phase 2 foundation source exists but is not yet accepted, and major Phase 3–6 additions from the expanded `Yes.docx` contract remain unimplemented. See `V1_REQUIREMENTS.md` and `PHASE2_REPORT.md`.
-
-### Blocker 2 — Phase 2 CI runner execution
-
-The current Phase 2 source must receive an actual GitHub Actions runner and pass Cloud + Android + instrumentation gates before its PRs are promoted or Phase 2 is accepted. Zero-step/no-runner workflow failures do not count either way.
-
-### Blocker 3 — Stable Android signing
-
-Required GitHub secrets:
-
-- `BRICK_ANDROID_KEYSTORE_B64`
-- `BRICK_ANDROID_KEYSTORE_PASSWORD`
-- `BRICK_ANDROID_KEY_ALIAS`
-- `BRICK_ANDROID_KEY_PASSWORD`
-
-A final production Device Owner qualification should use the stable-signed APK, not a disposable debug certificate.
-
-### Blocker 4 — Final live Cloudflare deployment
-
-Run the canonical deployment workflow from `main` for the exact final V1 source and retain its generated deployment-verification artifact.
-
-### Blocker 5 — Authenticated browser smoke test
-
-The parent dashboard must be tested while genuinely authenticated through Cloudflare Access. Public denial checks alone do not prove the full parent UI/session path.
-
-### Blocker 6 — Physical OPPO/ColorOS qualification
-
-The final V1 contract requires real Reno10 Pro / Reno14 Pro ColorOS testing, including the original reliability suite plus Atlas/particle/Witness/Ground/Shizuku/Location-control capability tests defined in `V1_REQUIREMENTS.md`.
-
-### Blocker 7 — Zero-manual-intervention proof
-
-After every recoverable failure in the acceptance suite, Brick must recover without reopening the app, manually restarting tracking, clearing storage or rebooting the phone.
-
-### Blocker 8 — Measured resource behavior
-
-Battery/storage/network/CPU/memory/wakeup/scan cadence and cloud usage must be measured under normal and degraded modes, including 24h/72h Atlas tests and multi-day offline backlog.
+1. Complete/accept Phase 2 and all later V1 phases.
+2. Stable Android production signing.
+3. Exact final live Cloudflare deployment with retained verifier evidence.
+4. Authenticated Cloudflare Access parent-browser smoke test.
+5. Physical Reno10/Reno14 ColorOS qualification.
+6. 72h and 7-day endurance, Doze, network/GNSS/battery/process/reboot/deployment failure suite.
+7. Atlas/Witness/Ground/Shizuku/Location-control real-device capability tests once those phases exist.
+8. Zero-manual-intervention proof after every recoverable failure.
+9. Measured battery/storage/network/CPU/memory/wakeup/scan/cloud usage.
+10. Backup **and restore** drill on final production schema/data path.
 
 ## Audit principle
 
-A green source/build check is not the same thing as implementation completeness, live deployment, browser integration, hardware capability, or physical reliability qualification. Likewise, a GitHub Actions job that never receives a runner and executes zero steps is not evidence of a source failure. Each acceptance layer stays open until its own evidence exists.
+Source existence, a local unit harness, hosted CI, deployed Cloudflare state, Android hardware behavior and production qualification are separate evidence layers. Brick only advances a requirement to the level directly supported by the evidence actually observed.
