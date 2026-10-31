@@ -67,9 +67,7 @@ class Phase3PositioningEngine(
     @Volatile private var lastMapLat: Double? = null
     @Volatile private var lastMapLon: Double? = null
 
-    init {
-        restore()
-    }
+    init { restore() }
 
     @Synchronized
     fun onTrustedFix(
@@ -85,6 +83,7 @@ class Phase3PositioningEngine(
         if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 ||
             !accuracyM.isFinite() || accuracyM < 0f || elapsedMs < 0L || wallMs <= 0L) return
 
+        applyTrustedSamplingProfile(activity, elapsedMs)
         val nowNs = SystemClock.elapsedRealtimeNanos()
         val snapshot = motion.phase3Snapshot(nowNs)
         val mode = mode(activity.mode)
@@ -96,11 +95,7 @@ class Phase3PositioningEngine(
             val distance = GeoMath.distanceMeters(previous.lat, previous.lon, lat, lon)
             val stepDelta = (snapshot.totalSteps - previous.stepTotal).coerceIn(0L, 65_535L).toInt()
             learnedSomething = odometry.calibrateStride(mode, snapshot.placement, stepDelta, distance, previous.accuracyM, accuracyM) || learnedSomething
-
-            val segmentId = routeGraph.addTrustedSegment(
-                previous.lat, previous.lon, lat, lon, mode,
-                previous.accuracyM, accuracyM, wallMs
-            )
+            val segmentId = routeGraph.addTrustedSegment(previous.lat, previous.lon, lat, lon, mode, previous.accuracyM, accuracyM, wallMs)
             if (segmentId != null) {
                 learnedSomething = true
                 if (previous.accuracyM <= 20f && accuracyM <= 20f) {
@@ -121,6 +116,7 @@ class Phase3PositioningEngine(
 
     @Synchronized
     fun fallback(activity: ActivitySnapshot, nowElapsedMs: Long = SystemClock.elapsedRealtime()): Phase3FallbackEstimate? {
+        motion.setSamplingProfile(if (isSosActive()) MotionSamplingProfile.SOS else MotionSamplingProfile.DEGRADED)
         if (!particles.isInitialized()) return null
         val lastUpdate = particles.lastUpdateElapsedMs()
         if (lastUpdate <= 0L || nowElapsedMs < lastUpdate) return null
@@ -151,9 +147,7 @@ class Phase3PositioningEngine(
         val priorHeading = currentEstimate?.headingDeg
         val headingAgrees = snapshot.headingDeg != null && priorHeading != null &&
             GeoMath.angularDifference(snapshot.headingDeg.toDouble(), priorHeading.toDouble()) <= 45.0
-        val forwardAccel = snapshot.forwardAccelMps2.takeIf {
-            gapIsDirectlyTrackable && snapshot.accelerometerHealthy && headingAgrees
-        }
+        val forwardAccel = snapshot.forwardAccelMps2.takeIf { gapIsDirectlyTrackable && snapshot.accelerometerHealthy && headingAgrees }
 
         val inputDtSec = (dtMs / 1000.0).coerceAtLeast(0.0)
         var delta = odometry.propagate(
@@ -272,6 +266,18 @@ class Phase3PositioningEngine(
         )
         if (stateStore.write(state)) lastSaveElapsedMs = nowElapsed
     }
+
+    private fun applyTrustedSamplingProfile(activity: ActivitySnapshot, nowElapsedMs: Long) {
+        val profile = when {
+            isSosActive() -> MotionSamplingProfile.SOS
+            activity.mode == ActivityMode.STATIONARY && activity.modeSinceElapsedMs > 0L &&
+                activity.modeSinceElapsedMs <= nowElapsedMs && nowElapsedMs - activity.modeSinceElapsedMs >= 10L * 60L * 1_000L -> MotionSamplingProfile.LOW_POWER
+            else -> MotionSamplingProfile.NORMAL
+        }
+        motion.setSamplingProfile(profile)
+    }
+
+    private fun isSosActive(): Boolean = healthPrefs.getBoolean("sosActive", false)
 
     private fun mode(activity: ActivityMode): Phase3Mode = when (activity) {
         ActivityMode.STATIONARY -> Phase3Mode.STATIONARY
