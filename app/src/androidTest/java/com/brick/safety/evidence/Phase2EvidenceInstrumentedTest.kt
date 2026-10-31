@@ -183,7 +183,7 @@ class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
                 .putLong("lastEvidenceJournalFailureWallMs", System.currentTimeMillis() - 180_000L)
                 .commit()
         )
-        val recovered = journal.appendNew(7, record(51).observation)
+        val recovered = journal.appendNew(TEST_DEVICE_ID, 7, record(51).observation)
         assertNotNull(recovered)
         assertTrue(prefs.getBoolean("evidenceJournalHealthy", false))
         assertEquals(1, journal.stats().quarantinedCount)
