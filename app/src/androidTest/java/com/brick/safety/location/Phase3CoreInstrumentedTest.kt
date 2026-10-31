@@ -78,4 +78,48 @@ class Phase3CoreInstrumentedTest : InstrumentationTestCase() {
         assertTrue(recovered.uncertaintyM <= 6.01f)
         assertTrue(GeoMath.distanceMeters(1.3020, 103.8020, recovered.lat, recovered.lon) < 2.0)
     }
+
+    fun testStationaryParticlesIgnoreRoutesAndStaleRoutesExpire() {
+        val nowWall = 200L * 24L * 60L * 60L * 1_000L
+        val graph = LocalRouteGraph()
+        graph.mergePrivateMap(listOf(LocalRouteSegment(
+            "map:test", 1.3000, 103.8000, 1.3000, 103.8010,
+            Phase3Mode.WALKING.bit or Phase3Mode.VEHICLE.bit,
+            1,
+            nowWall,
+            RouteSegmentSource.PRIVATE_MAP
+        )))
+
+        val pf = ParticlePositionEngine(96)
+        pf.initialize(1.30015, 103.80050, 6f, 90f, 0f, 10_000L, nowWall)
+        val before = pf.estimate(10_000L)!!
+        val after = pf.propagate(
+            15_000L,
+            OdometryDelta(0.0, 0.5, 90.0, 0.0, 8.0, 0.0, 1.0, true, true),
+            Phase3Mode.STATIONARY,
+            graph
+        )!!
+        assertFalse(after.routeConstrained)
+        assertTrue(after.routeCandidateIds.isEmpty())
+        assertTrue(GeoMath.distanceMeters(before.lat, before.lon, after.lat, after.lon) < 1.0)
+
+        val stalePrivate = LocalRouteGraph()
+        stalePrivate.mergePrivateMap(listOf(LocalRouteSegment(
+            "map:old", 1.3000, 103.8000, 1.3000, 103.8010,
+            Phase3Mode.WALKING.bit,
+            1,
+            nowWall - 8L * 24L * 60L * 60L * 1_000L,
+            RouteSegmentSource.PRIVATE_MAP
+        )))
+        stalePrivate.encode(nowWall)
+        assertEquals(0, stalePrivate.size())
+
+        val staleLearned = LocalRouteGraph()
+        staleLearned.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f,
+            nowWall - 181L * 24L * 60L * 60L * 1_000L)
+        staleLearned.addTrustedSegment(1.3000, 103.8000, 1.3000, 103.8010, Phase3Mode.WALKING, 5f, 5f,
+            nowWall - 181L * 24L * 60L * 60L * 1_000L + 1_000L)
+        staleLearned.encode(nowWall)
+        assertEquals(0, staleLearned.size())
+    }
 }
