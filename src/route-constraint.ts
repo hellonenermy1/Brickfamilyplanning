@@ -1,15 +1,16 @@
 import { PMTiles, type RangeResponse, type Source } from "pmtiles";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
-import type { LivePacket } from "./protocol";
+import type { LivePacket, RouteCorridorCandidate } from "./protocol";
 
 const MAP_KEY = "basemap/singapore.pmtiles";
 const DETAIL_ZOOM = 15;
 const ROUTE_SOURCE_CODE = 4;
+const MAX_CORRIDORS = 3;
 
 type Coord = [number, number];
 export type RouteSegment = { a: Coord; b: Coord };
-export type NearestRoutePoint = { lon: number; lat: number; distanceM: number };
+type SegmentMatch = { segment: RouteSegment; lon: number; lat: number; distanceM: number; headingDeltaDeg: number | null; score: number };
 
 class R2PmtilesSource implements Source {
   constructor(private readonly bucket: R2Bucket, private readonly key = MAP_KEY) {}
@@ -60,25 +61,34 @@ function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }
   return out;
 }
 
-export function nearestRoutePoint(lon: number, lat: number, segments: RouteSegment[]): NearestRoutePoint | null {
-  let best: NearestRoutePoint | null = null;
-  for (const segment of segments) {
-    const [ax, ay] = projectMeters(segment.a[0], segment.a[1], lon, lat);
-    const [bx, by] = projectMeters(segment.b[0], segment.b[1], lon, lat);
-    const dx = bx - ax, dy = by - ay;
-    const denom = dx * dx + dy * dy;
-    const t = denom <= 1e-9 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / denom));
-    const x = ax + t * dx, y = ay + t * dy;
-    const distanceM = Math.hypot(x, y);
-    if (!best || distanceM < best.distanceM) {
-      best = {
-        lon: segment.a[0] + (segment.b[0] - segment.a[0]) * t,
-        lat: segment.a[1] + (segment.b[1] - segment.a[1]) * t,
-        distanceM
-      };
-    }
-  }
-  return best;
+function angularDifference(a: number, b: number) {
+  const d = Math.abs(((a - b + 540) % 360) - 180);
+  return Math.min(d, 180 - d);
+}
+function segmentHeading(segment: RouteSegment) {
+  const avgLat = (segment.a[1] + segment.b[1]) / 2;
+  const [dx, dy] = projectMeters(segment.b[0], segment.b[1], segment.a[0], avgLat);
+  return (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+}
+function matchSegment(lon: number, lat: number, segment: RouteSegment, bearingDeg: number | null): SegmentMatch {
+  const [ax, ay] = projectMeters(segment.a[0], segment.a[1], lon, lat);
+  const [bx, by] = projectMeters(segment.b[0], segment.b[1], lon, lat);
+  const dx = bx - ax, dy = by - ay;
+  const denom = dx * dx + dy * dy;
+  const t = denom <= 1e-9 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / denom));
+  const x = ax + t * dx, y = ay + t * dy;
+  const distanceM = Math.hypot(x, y);
+  const headingDeltaDeg = bearingDeg === null ? null : angularDifference(segmentHeading(segment), bearingDeg);
+  // Distance dominates. Heading only ranks nearby alternatives and never eliminates a corridor.
+  const score = distanceM + (headingDeltaDeg === null ? 0 : headingDeltaDeg * 0.35);
+  return {
+    segment,
+    lon: segment.a[0] + (segment.b[0] - segment.a[0]) * t,
+    lat: segment.a[1] + (segment.b[1] - segment.a[1]) * t,
+    distanceM,
+    headingDeltaDeg,
+    score
+  };
 }
 
 function trimCache() {
@@ -125,28 +135,59 @@ async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
   return (await Promise.all(jobs)).flat();
 }
 
+function distinctMatches(matches: SegmentMatch[], max: number) {
+  const out: SegmentMatch[] = [];
+  for (const candidate of matches) {
+    const duplicate = out.some(existing => {
+      const sameA = Math.hypot(candidate.segment.a[0] - existing.segment.a[0], candidate.segment.a[1] - existing.segment.a[1]) < 1e-6;
+      const sameB = Math.hypot(candidate.segment.b[0] - existing.segment.b[0], candidate.segment.b[1] - existing.segment.b[1]) < 1e-6;
+      const reversedA = Math.hypot(candidate.segment.a[0] - existing.segment.b[0], candidate.segment.a[1] - existing.segment.b[1]) < 1e-6;
+      const reversedB = Math.hypot(candidate.segment.b[0] - existing.segment.a[0], candidate.segment.b[1] - existing.segment.a[1]) < 1e-6;
+      return (sameA && sameB) || (reversedA && reversedB);
+    });
+    if (!duplicate) out.push(candidate);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucket): Promise<LivePacket> {
-  // Source 2 is the child inertial estimate. Fused/last-known fixes are never map-snapped here.
+  // Source 2 is the child's short inertial estimate. Fresh fused or last-known fixes are never
+  // route-processed. Crucially, Brick does NOT move the estimate onto one chosen road: it preserves
+  // the inertial center and attaches several plausible private-map corridors as uncertainty evidence.
   if (packet.version !== 2 || packet.source !== 2 || packet.quality !== 4) return packet;
   if (packet.trustedLatE7 === null || packet.trustedLonE7 === null) return packet;
-  if (![2, 3, 4, 5].includes(packet.activity)) return packet; // walking/running/bicycle/vehicle only
+  if (![2, 3, 4, 5].includes(packet.activity)) return packet;
   const lat = packet.trustedLatE7 / 1e7, lon = packet.trustedLonE7 / 1e7;
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return packet;
 
   try {
     const segments = await nearbyRoads(maps, lon, lat);
-    const nearest = nearestRoutePoint(lon, lat, segments);
-    if (!nearest) return packet;
+    const bearingDeg = packet.bearingCdeg === null ? null : packet.bearingCdeg / 100;
     const maxByMode = packet.activity === 5 || packet.activity === 4 ? 60 : 35;
     const uncertaintyM = packet.uncertaintyCm / 100;
     const thresholdM = Math.min(maxByMode, Math.max(12, uncertaintyM * 0.4));
-    if (nearest.distanceM > thresholdM) return packet;
+    const matches = distinctMatches(
+      segments.map(segment => matchSegment(lon, lat, segment, bearingDeg))
+        .filter(match => match.distanceM <= thresholdM)
+        .sort((a, b) => a.score - b.score),
+      MAX_CORRIDORS
+    );
+    if (!matches.length) return packet;
+
+    const candidates: RouteCorridorCandidate[] = matches.map(match => ({
+      a: match.segment.a,
+      b: match.segment.b,
+      distanceM: Math.round(match.distanceM * 10) / 10,
+      headingDeltaDeg: match.headingDeltaDeg === null ? null : Math.round(match.headingDeltaDeg * 10) / 10,
+      score: Math.round(match.score * 10) / 10
+    }));
+    const radiusM = Math.max(uncertaintyM, Math.max(...matches.map(m => m.distanceM)) + 12);
     return {
       ...packet,
-      trustedLatE7: Math.round(nearest.lat * 1e7),
-      trustedLonE7: Math.round(nearest.lon * 1e7),
-      uncertaintyCm: Math.max(packet.uncertaintyCm, Math.round((nearest.distanceM + 8) * 100)),
-      source: ROUTE_SOURCE_CODE
+      uncertaintyCm: Math.max(packet.uncertaintyCm, Math.round(radiusM * 100)),
+      source: ROUTE_SOURCE_CODE,
+      routeCorridor: { center: [lon, lat], radiusM, candidates }
     };
   } catch {
     // Private map absence/corruption must never invent a route or block location delivery.
