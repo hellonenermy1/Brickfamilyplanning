@@ -5,15 +5,19 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.PI
 
 class MotionEngine(context: Context) : SensorEventListener {
+    companion object { private const val HEADING_STALE_NS = 10_000_000_000L }
+
     private val sensorManager = context.getSystemService(SensorManager::class.java)
     private val stepDetector = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
     private val rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
     private val totalSteps = AtomicLong(0)
     @Volatile private var headingDeg: Float? = null
+    @Volatile private var lastHeadingElapsedNs: Long = 0L
     @Volatile private var lastStepElapsedNs: Long = 0L
 
     fun start() {
@@ -29,7 +33,13 @@ class MotionEngine(context: Context) : SensorEventListener {
         val lastStepElapsedNs: Long
     )
 
-    fun snapshot(): Snapshot = Snapshot(totalSteps.get(), headingDeg, lastStepElapsedNs)
+    fun snapshot(): Snapshot {
+        val nowNs = SystemClock.elapsedRealtimeNanos()
+        val heading = headingDeg.takeIf {
+            lastHeadingElapsedNs > 0L && lastHeadingElapsedNs <= nowNs && nowNs - lastHeadingElapsedNs <= HEADING_STALE_NS
+        }
+        return Snapshot(totalSteps.get(), heading, lastStepElapsedNs)
+    }
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
@@ -47,6 +57,7 @@ class MotionEngine(context: Context) : SensorEventListener {
                 var degrees = (orientation[0] * 180f / PI.toFloat())
                 if (degrees < 0f) degrees += 360f
                 headingDeg = degrees
+                lastHeadingElapsedNs = event.timestamp
             }
         }
     }
