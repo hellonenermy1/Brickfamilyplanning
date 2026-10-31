@@ -1,9 +1,9 @@
 {
-  "name": "brick-v1-phase1-cloudflare",
+  "name": "brick-v1-phase2-cloudflare",
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "node scripts/setup.mjs",
+    "setup": "node scripts/setup-v1-phase2.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build:parent-assets": "node scripts/build-parent-assets.mjs",
