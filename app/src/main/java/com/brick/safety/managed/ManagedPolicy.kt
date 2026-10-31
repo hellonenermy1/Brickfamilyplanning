@@ -10,12 +10,18 @@ import android.os.UserManager
 object ManagedPolicy {
     fun isDeviceOwner(context: Context): Boolean {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
-        return dpm.isDeviceOwnerApp(context.packageName)
+        return runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
     }
 
+    /**
+     * Applies each supported safety policy independently. A vendor-specific policy failure must
+     * never prevent Brick's foreground tracking service from starting or recovering.
+     * Returns true only when Brick is Device Owner; individual failures remain observable through
+     * the actual permission/location health evidence rather than being mistaken for success.
+     */
     fun apply(context: Context): Boolean {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
-        if (!dpm.isDeviceOwnerApp(context.packageName)) return false
+        if (!runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)) return false
         val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
 
         listOf(
@@ -45,8 +51,8 @@ object ManagedPolicy {
         }
 
         if (Build.VERSION.SDK_INT >= 30) {
-            dpm.setLocationEnabled(admin, true)
-            dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)
+            runCatching { dpm.setLocationEnabled(admin, true) }
+            runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
         }
         return true
     }
