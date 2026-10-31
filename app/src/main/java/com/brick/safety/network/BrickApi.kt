@@ -12,6 +12,14 @@ object BrickApi {
     data class PairResult(val deviceId: String, val apiBase: String)
     data class SafetyEnvelope(val eventId: String, val kind: String, val payload: ByteArray)
     data class LocationUpload(val epoch: Int, val sequence: Long, val payload: ByteArray)
+    data class BleAnchorConfig(
+        val geofenceId: String,
+        val name: String,
+        val beaconUuid: String,
+        val latitude: Double,
+        val longitude: Double,
+        val radiusM: Float
+    )
 
     private const val LOCATION_V2_BYTES = 90
     private const val LOCATION_BATCH_VERSION: Byte = 1
@@ -35,11 +43,7 @@ object BrickApi {
     }
 
     private fun connection(url: URL): HttpURLConnection {
-        return (url.openConnection() as HttpURLConnection).apply {
-            // Signed device traffic is bound to the paired Brick origin. Following a 30x could
-            // otherwise replay a signed body/header to a different host selected by the server.
-            instanceFollowRedirects = false
-        }
+        return (url.openConnection() as HttpURLConnection).apply { instanceFollowRedirects = false }
     }
 
     fun completePairing(baseUrl: String, token: String): PairResult {
@@ -84,10 +88,7 @@ object BrickApi {
     private fun sendLocationBatchChunk(baseUrl: String, deviceId: String, items: List<LocationUpload>): List<Pair<Int, Long>> {
         require(items.isNotEmpty() && items.size <= MAX_LOCATION_HTTP_BATCH)
         val body = ByteBuffer.allocate(3 + items.size * LOCATION_V2_BYTES).order(ByteOrder.BIG_ENDIAN)
-            .put(LOCATION_BATCH_VERSION)
-            .putShort(items.size.toShort())
-            .apply { items.forEach { put(it.payload) } }
-            .array()
+            .put(LOCATION_BATCH_VERSION).putShort(items.size.toShort()).apply { items.forEach { put(it.payload) } }.array()
         val url = endpoint(baseUrl, "/api/device/$deviceId/location/batch")
         val c = connection(url)
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 15_000; c.doOutput = true
@@ -125,7 +126,7 @@ object BrickApi {
         return acknowledged
     }
 
-    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject) {
+    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): List<BleAnchorConfig> {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
         val url = endpoint(baseUrl, "/api/device/$deviceId/health")
         val c = connection(url)
@@ -135,28 +136,29 @@ object BrickApi {
         c.outputStream.use { it.write(payload) }
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
+        val response = JSONObject(text)
+        val array = response.optJSONArray("bleAnchors") ?: return emptyList()
+        return buildList {
+            for (i in 0 until minOf(array.length(), 8)) {
+                val j = array.optJSONObject(i) ?: continue
+                val uuid = j.optString("beaconUuid", "").lowercase()
+                val geofenceId = j.optString("geofenceId", "")
+                val lat = j.optDouble("latitude", Double.NaN)
+                val lon = j.optDouble("longitude", Double.NaN)
+                val radius = j.optDouble("radiusM", Double.NaN)
+                if (runCatching { UUID.fromString(uuid) }.isFailure || geofenceId.isBlank() || !lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0 || !radius.isFinite() || radius !in 25.0..5_000.0) continue
+                add(BleAnchorConfig(geofenceId, j.optString("name", "Trusted place").take(64), uuid, lat, lon, radius.toFloat()))
+            }
+        }
     }
 
-    fun createSafetyEnvelope(
-        kind: String,
-        eventSequence: Long,
-        detail: JSONObject = JSONObject(),
-        latitude: Double? = null,
-        longitude: Double? = null,
-        accuracyM: Double? = null
-    ): SafetyEnvelope {
+    fun createSafetyEnvelope(kind: String, eventSequence: Long, detail: JSONObject = JSONObject(), latitude: Double? = null, longitude: Double? = null, accuracyM: Double? = null): SafetyEnvelope {
         require(eventSequence > 0L)
         val eventId = UUID.randomUUID().toString()
-        val event = JSONObject()
-            .put("protocol", 1)
-            .put("eventId", eventId)
-            .put("eventSequence", eventSequence)
-            .put("kind", kind)
-            .put("createdAtMs", System.currentTimeMillis())
-            .put("detail", detail)
+        val event = JSONObject().put("protocol", 1).put("eventId", eventId).put("eventSequence", eventSequence)
+            .put("kind", kind).put("createdAtMs", System.currentTimeMillis()).put("detail", detail)
         if (latitude != null && longitude != null) {
-            event.put("latitude", latitude)
-            event.put("longitude", longitude)
+            event.put("latitude", latitude).put("longitude", longitude)
             if (accuracyM != null) event.put("accuracyM", accuracyM)
         }
         return SafetyEnvelope(eventId, kind, event.toString().toByteArray(Charsets.UTF_8))
@@ -171,8 +173,7 @@ object BrickApi {
         c.outputStream.use { it.write(payload) }
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Safety event upload failed ${c.responseCode}: $text")
-        val response = JSONObject(text)
-        val ack = response.optString("eventId")
+        val ack = JSONObject(text).optString("eventId")
         if (ack != expectedEventId) error("Safety event ACK mismatch")
         return ack
     }
