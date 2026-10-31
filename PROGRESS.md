@@ -2,6 +2,146 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-10-31 — Brick V1 Phase 2 continuation: replay, concurrency, identity and signed-route hardening
+
+### User request
+
+Continue Phase 2 from the existing work without restarting.
+
+### Resume point preserved
+
+Work continued directly on the existing Phase 2 staging branches and draft PRs:
+
+- Cloud `v1-p2-evidence-cloud` / PR #6
+- Android `v1-p2-evidence-android` / PR #7
+
+No Phase 2 source was merged into canonical `main` or `apk-download`, and Phase 3 was not started as accepted work.
+
+Final staging snapshot for this checkpoint:
+
+- Cloud: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+- Android: `389bc8744341aebcc42f74f79403fd2b3d5d5873`
+
+### Cloud durability / replay fixes completed
+
+A source audit found three concrete failure/abuse cases and repaired them:
+
+1. Raw R2 object overwrite race: concurrent conflicting requests reusing one batch UUID previously targeted the same raw R2 object. Raw evidence is now content-addressed by exact batch hash:
+   `evidence/raw/<sha256-device-key>/<batchId>-<batchSha>.brev`.
+2. Concurrent D1 batch-ID race: `evidence_batches` now uses a hard transactional `INSERT`, not `INSERT OR IGNORE`. A competing claim of `(deviceId,batchId)` aborts the losing D1 batch transaction so no losing record/link/state writes survive.
+3. Record replay storage amplification: if every record in a fresh transport batch already exists and matches exactly, the server returns the exact ACK set with `duplicateRecords:true` without creating another batch row or raw R2 object.
+
+### Signed route / abuse-resistance hardening
+
+The actual evidence request path was extracted into `src/evidence-route.ts` and `worker-v7` delegates to it while preserving prior Worker behavior.
+
+The route now enforces:
+
+- canonical lowercase RFC-4122 v4 Brick device ID;
+- requester-attempt rate limit first;
+- non-revoked paired device;
+- exact content type and body limits;
+- P-256 signature over exact evidence bytes;
+- device-scoped rate limit only after successful signature proof;
+- strict BREV validation;
+- durable persistence before success ACK.
+
+This prevents unsigned traffic from consuming the actual child's device-scoped evidence rate bucket merely by knowing a device ID.
+
+### Android paired-identity hardening
+
+Android `EvidenceDispatcher` now journals/drains evidence only when stored pairing identity:
+
+- parses as UUID;
+- is canonical lowercase text;
+- is RFC-4122 version 4 / variant 2;
+- has a nonblank Brick API base.
+
+The pairing guard instrumentation source now rejects path-like corrupt IDs and canonical-looking non-v4 UUIDs in addition to the original unpaired/API-base cases.
+
+### Executed local verification
+
+Cloud protocol/persistence/concurrency harness executed locally and passed:
+
+- fixed BREV golden vector;
+- strict protocol rejection cases;
+- D1/R2-style persistence and exact ACK;
+- exact-batch retry without storage rewrite;
+- same-record/new-batch replay without storage growth;
+- record/batch collision rejection;
+- provider-health epoch/sequence ordering under wall-clock regression;
+- content-addressed raw object and hashed device metadata;
+- Android epoch-bound rejection;
+- simulated competing batch-ID claim between preflight and D1 batch; loser rolls back with zero record/link contamination.
+
+Observed:
+
+`LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
+
+The actual signed-route logic also executed locally using a real generated Web Crypto P-256 keypair and passed:
+
+- missing/bad signature rejection;
+- requester bucket only for unauthenticated attempts;
+- valid signature then authenticated device bucket;
+- persistence-before-ACK;
+- exact retry and fresh-batch record replay behavior;
+- requester/device rate-limit ordering;
+- revoked-device rejection;
+- signed malformed-protocol rejection;
+- canonical-v4/path decoding guards.
+
+Observed:
+
+`LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
+
+The pure Kotlin Android evidence model/protocol remains locally verified for shared golden bytes and protocol validation only. This environment has no Android SDK, so full Android framework behavior is not claimed.
+
+### CI gates strengthened
+
+Phase 2 CI now explicitly checks or executes:
+
+- hard D1 batch-ID claim;
+- no `INSERT OR IGNORE` for batch identity;
+- content-addressed raw key;
+- record-replay no-storage path;
+- requester/authenticated-device split rate buckets;
+- canonical v4 route boundary;
+- signed HTTP route integration harness;
+- Android canonical v4/variant-2 pairing guard;
+- dedicated network-constrained evidence worker architecture;
+- original live V2 / 90-byte location packet preserved;
+- retained Phase 6 regressions;
+- Android dependency lock, build, lint and emulator instrumentation when runners work.
+
+### Hosted CI blocker remains external
+
+Latest checked run:
+
+- run `41212250461`
+- Cloud head `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
+
+Observed:
+
+- Android compile/lint/dependency-lock: failure, `runner_id: 0`, `steps: []`;
+- Cloud protocol/persistence/regression: failure, `runner_id: 0`, `steps: []`;
+- Android instrumentation: skipped.
+
+No hosted source step executed. This remains a runner/infrastructure failure, not a source pass and not evidence of source failure.
+
+### Current Phase 2 result
+
+**SOURCE IMPLEMENTED + HARDENED / CLOUD CORE + REAL SIGNED ROUTE + CROSS-LANGUAGE PROTOCOL LOCALLY VERIFIED / HOSTED CI BLOCKED / NOT ACCEPTED.**
+
+PR #6 and PR #7 remain draft/unmerged deliberately.
+
+Detailed truth is recorded in `PHASE2_REPORT.md`, `PHASE2_LOCAL_VERIFICATION.md`, `AUDIT_STATUS.md` and `PROJECT_MEMORY.md`.
+
+### Next required action
+
+When GitHub Actions assigns a runner, execute the final paired Phase 2 heads and require Cloud integration/regression, Android dependency-lock/compile/lint, and Android emulator instrumentation to pass. Repair real failures rather than weakening gates. Only then merge the paired PRs, rerun canonical checks, verify the live Cloudflare evidence deployment, and consider Phase 2 acceptance.
+
+---
+
 ## 2026-10-31 — Brick V1 Phase 2: evidence/data foundation implementation
 
 ### User request
