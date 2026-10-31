@@ -59,6 +59,8 @@ jobs:
           grep -F 'segmentMinutes: "15"' src/history-store.ts >/dev/null
           grep -F 'history/raw/' src/history-store.ts >/dev/null
           grep -F 'history/trusted/' src/history-store.ts >/dev/null
+          grep -F "script-src 'self' 'nonce-" src/worker-v5b.ts >/dev/null
+          grep -F "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';" src/parent-v5b.ts >/dev/null
           if grep -E 'D1MapBucket|withD1ObjectStores|MAP_DB|D1QueueProducer' src/worker-v5b.ts wrangler.template.jsonc; then
             echo 'Temporary D1 R2/Queue compatibility layer leaked into Phase 6 production runtime.' >&2
             exit 1
@@ -152,4 +154,4 @@ jobs:
           grep -F "releaseState: 'candidate-not-real-device-qualified'" scripts/setup.mjs >/dev/null
           grep -F 'Private Singapore basemap installed' scripts/install-private-map.mjs >/dev/null
           grep -F 'Strict-Transport-Security' src/worker-v5b.ts >/dev/null
-          grep -F "script-src 'nonce-" src/worker-v5b.ts >/dev/null
+          grep -F "script-src 'self' 'nonce-" src/worker-v5b.ts >/dev/null
