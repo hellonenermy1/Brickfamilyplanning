@@ -8,13 +8,19 @@ import com.brick.safety.managed.ManagedPolicy
 
 object ServiceControl {
     fun ensureTracking(context: Context) {
-        ManagedPolicy.apply(context)
-        RecoveryScheduler.ensureScheduled(context)
+        runCatching { ManagedPolicy.apply(context) }
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
-        if (prefs.getString("deviceId", null).isNullOrBlank()) return
+        if (prefs.getString("deviceId", null).isNullOrBlank()) {
+            runCatching { RecoveryScheduler.ensureScheduled(context) }
+            return
+        }
+
+        // Live tracking is primary. WorkManager is only a recovery backstop and must never be able
+        // to prevent a foreground-service start if its own scheduler/database is unhealthy.
         ContextCompat.startForegroundService(
             context,
             Intent(context, BrickLocationService::class.java).setAction(BrickLocationService.ACTION_ENSURE_RUNNING)
         )
+        runCatching { RecoveryScheduler.ensureScheduled(context) }
     }
 }
