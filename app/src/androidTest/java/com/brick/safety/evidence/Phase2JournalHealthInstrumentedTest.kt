@@ -33,7 +33,7 @@ class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
         super.tearDown()
     }
 
-    private fun observation() = EvidenceObservation(
+    private fun observation(label: String = "health-probe") = EvidenceObservation(
         recordId = UUID.randomUUID().toString(),
         elapsedRealtimeMs = SystemClock.elapsedRealtime(),
         wallTimeMs = System.currentTimeMillis(),
@@ -43,7 +43,7 @@ class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
         capability = ProviderCapability.SUPPORTED,
         health = ProviderHealth.HEALTHY,
         quality = EvidenceQuality.HIGH,
-        payload = "health-probe".toByteArray(Charsets.UTF_8)
+        payload = label.toByteArray(Charsets.UTF_8)
     )
 
     fun testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory() {
@@ -64,7 +64,7 @@ class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
         assertFalse(prefs.getBoolean("evidenceJournalHealthy", true))
 
         // No append/ACK follows. Once the existing hold period is old, a successful read probe is
-        // enough to prove that the journal itself recovered while retaining quarantine history.
+        // enough to prove that the journal itself recovered while retaining recent quarantine.
         assertTrue(
             prefs.edit()
                 .putLong("lastEvidenceJournalFailureWallMs", System.currentTimeMillis() - 180_000L)
@@ -74,6 +74,34 @@ class Phase2JournalHealthInstrumentedTest : InstrumentationTestCase() {
         assertTrue(prefs.getBoolean("evidenceJournalHealthy", false))
         assertEquals(1, journal.stats().quarantinedCount)
         assertEquals(0, journal.stats().pendingCount)
+        journal.close()
+    }
+
+    fun testExpiredQuarantinePurgesAutomaticallyWithoutReusingSequence() {
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val journal = EvidenceJournal(context, TestCipher)
+        val first = requireNotNull(journal.appendNew(TEST_DEVICE_ID, 82, observation("expired-quarantine")))
+        val exact = EvidenceAck(first.epoch, first.sequence, first.observation.recordId)
+        assertTrue(journal.quarantineConflictBatch(listOf(exact)))
+        assertEquals(1, journal.stats().quarantinedCount)
+
+        val rawDb = context.openOrCreateDatabase(EvidenceJournal.DATABASE_NAME, Context.MODE_PRIVATE, null)
+        rawDb.execSQL(
+            "UPDATE evidence SET created_ms=? WHERE record_id=?",
+            arrayOf(System.currentTimeMillis() - 31L * 24L * 60L * 60L * 1_000L, first.observation.recordId)
+        )
+        rawDb.close()
+
+        // Force the periodic maintenance window due; refreshHealth is already part of normal health
+        // collection, so no user/manual cleanup path is required.
+        assertTrue(prefs.edit().putLong("lastEvidenceQuarantineCleanupWallMs", 0L).commit())
+        assertTrue(journal.refreshHealth())
+        assertEquals(0, journal.stats().quarantinedCount)
+        assertEquals(1L, prefs.getLong("evidenceQuarantinePurgedRecordsTotal", 0L))
+
+        val second = requireNotNull(journal.appendNew(TEST_DEVICE_ID, 82, observation("after-purge")))
+        assertEquals(first.sequence + 1L, second.sequence)
+        assertEquals(1, journal.stats().pendingCount)
         journal.close()
     }
 }
