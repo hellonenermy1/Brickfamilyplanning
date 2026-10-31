@@ -8,6 +8,7 @@ const [protocolPath, ingestPath] = process.argv.slice(2);
 if (!protocolPath || !ingestPath) throw new Error('usage: test-phase2-evidence.mjs <protocol-module> <ingest-module>');
 const protocol = await import(pathToFileURL(protocolPath).href + `?v=${Date.now()}`);
 const ingest = await import(pathToFileURL(ingestPath).href + `?v=${Date.now()}`);
+const GOLDEN_HEX = '425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e';
 
 function uuidBytes(id) {
   const hex = id.replaceAll('-', '');
@@ -98,6 +99,23 @@ class FakeR2 {
   }
 }
 
+// This vector is duplicated in Android instrumentation. A byte-level mismatch therefore catches
+// cross-language protocol drift even when each side's own round-trip tests still pass.
+const goldenRecord = {
+  recordId: '12345678-1234-5678-9abc-def012345678', epoch: 7, sequence: 42,
+  elapsedRealtimeMs: 123_456_789, wallTimeMs: 1_761_930_000_123,
+  provider: 255, family: 255, capability: 0, health: 0, quality: 3,
+  independenceGroup: 'dummy:test:scene', payload: Buffer.from('phase2-golden')
+};
+const golden = encodeBatch([goldenRecord], '00112233-4455-6677-8899-aabbccddeeff');
+assert.equal(golden.bytes.toString('hex'), GOLDEN_HEX);
+const decodedGolden = protocol.decodeEvidenceBatch(golden.bytes.buffer.slice(golden.bytes.byteOffset, golden.bytes.byteOffset + golden.bytes.byteLength));
+assert.equal(decodedGolden.batchId, golden.batchId);
+assert.equal(decodedGolden.records.length, 1);
+assert.equal(decodedGolden.records[0].recordId, goldenRecord.recordId);
+assert.equal(decodedGolden.records[0].sequence, goldenRecord.sequence);
+assert.equal(Buffer.from(decodedGolden.records[0].payload).toString('utf8'), 'phase2-golden');
+
 const records = makeRecords();
 const first = encodeBatch(records);
 const decoded = protocol.decodeEvidenceBatch(first.bytes.buffer.slice(first.bytes.byteOffset, first.bytes.byteOffset + first.bytes.byteLength));
@@ -150,7 +168,7 @@ await assert.rejects(
 
 const reusedBatchChanged = encodeBatch([{ ...records[0], payload: Buffer.from('tampered') }, records[1]], first.batchId);
 await assert.rejects(
-  ingest.persistEvidenceBatch(env, 'device-1', reusedBatchChanged.bytes.buffer.slice(reusedBatchChanged.bytes.byteOffset, reusedBatchChanged.bytes.byteOffset + reusedBatchChanged.bytes.byteLength)),
+  ingest.persistEvidenceBatch(env, 'device-1', reusedBatchChanged.bytes.buffer.slice(reusedBatchChanged.bytes.byteOffset, reusedBatchChanged.bytes.byteLength)),
   ingest.EvidenceConflict
 );
 
