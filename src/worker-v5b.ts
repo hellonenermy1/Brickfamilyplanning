@@ -3,6 +3,7 @@ import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
 import { reserveHealthReplay, validatePairingPublicKey, validateSafetyReplayWindow } from "./device-json-security";
+import { ingestLocationBatchV6, ingestLocationV6, previewLatestLocationV6 } from "./location-ingest-v6";
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
 export { BrickDevice };
 
@@ -145,7 +146,14 @@ export default {
       if (denied) return denied;
     }
 
-    let m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/crashes$/);
+    let m = u.pathname.match(/^\/api\/device\/([^/]+)\/location\/batch$/);
+    if (req.method === "POST" && m) return ingestLocationBatchV6(req, env, decodeURIComponent(m[1]));
+    m = u.pathname.match(/^\/api\/device\/([^/]+)\/location\/live$/);
+    if (req.method === "POST" && m) return previewLatestLocationV6(req, env, decodeURIComponent(m[1]));
+    m = u.pathname.match(/^\/api\/device\/([^/]+)\/location$/);
+    if (req.method === "POST" && m) return ingestLocationV6(req, env, decodeURIComponent(m[1]));
+
+    m = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/crashes$/);
     if (req.method === "GET" && m) {
       const denied = await requireParent(req, env); if (denied) return denied;
       const limit = Number(u.searchParams.get("limit") ?? "50");
