@@ -47,6 +47,47 @@ object EvidenceApi {
         }
     }
 
+    private fun strictInteger(obj: JSONObject, key: String, min: Long, max: Long): Long {
+        val raw = obj.get(key)
+        val value = when (raw) {
+            is Byte -> raw.toLong()
+            is Short -> raw.toLong()
+            is Int -> raw.toLong()
+            is Long -> raw
+            else -> throw IllegalArgumentException("Evidence ACK $key must be an integer JSON number")
+        }
+        require(value in min..max) { "Evidence ACK $key outside allowed range" }
+        return value
+    }
+
+    /**
+     * Parse only the exact ACK schema that may authorize local deletion. JSONObject.getInt/getLong
+     * can coerce strings and fractional JSON numbers; that is intentionally forbidden here. The
+     * server must return real integral JSON numbers and the exact record identities in this batch.
+     */
+    fun parseAckResponse(text: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck> {
+        val response = JSONObject(text)
+        require(strictInteger(response, "protocol", 1L, 1L) == 1L) { "Evidence ACK protocol mismatch" }
+        val responseBatchId = response.get("batchId")
+        require(responseBatchId is String && responseBatchId == batch.batchId) { "Evidence batch ACK mismatch" }
+
+        val array = response.getJSONArray("acked")
+        require(array.length() == batch.records.size) { "Evidence ACK count mismatch" }
+        val actual = ArrayList<EvidenceAck>(array.length())
+        for (i in 0 until array.length()) {
+            val item = array.getJSONObject(i)
+            val epoch = strictInteger(item, "epoch", 0L, Int.MAX_VALUE.toLong()).toInt()
+            val sequence = strictInteger(item, "sequence", 1L, EvidenceProtocol.MAX_WIRE_INTEGER)
+            val recordId = item.get("recordId")
+            require(recordId is String) { "Evidence ACK recordId must be a string" }
+            actual += EvidenceAck(epoch, sequence, recordId)
+        }
+
+        val expected = batch.records.map { EvidenceAck(it.epoch, it.sequence, it.observation.recordId) }
+        require(actual.size == expected.size && actual.toSet() == expected.toSet()) { "Evidence ACK contents mismatch" }
+        return expected
+    }
+
     fun sendBatch(baseUrl: String, deviceId: String, batch: EvidenceProtocol.EncodedBatch): List<EvidenceAck> {
         require(DEVICE_ID_RE.matches(deviceId)) { "Invalid Brick device identity" }
         require(batch.bytes.size <= EvidenceProtocol.MAX_BATCH_BYTES)
@@ -69,21 +110,7 @@ object EvidenceApi {
             // surface it separately so the dispatcher can retain it as quarantine and continue.
             if (code == 409) throw EvidenceUploadConflict(text.take(1_024))
             if (code !in 200..299) error("Evidence upload failed $code: $text")
-
-            val response = JSONObject(text)
-            require(response.optInt("protocol", -1) == 1) { "Evidence ACK protocol mismatch" }
-            require(response.optString("batchId") == batch.batchId) { "Evidence batch ACK mismatch" }
-            val array = response.getJSONArray("acked")
-            require(array.length() == batch.records.size) { "Evidence ACK count mismatch" }
-            val actual = buildSet {
-                for (i in 0 until array.length()) {
-                    val item = array.getJSONObject(i)
-                    add(EvidenceAck(item.getInt("epoch"), item.getLong("sequence"), item.getString("recordId")))
-                }
-            }
-            val expected = batch.records.map { EvidenceAck(it.epoch, it.sequence, it.observation.recordId) }.toSet()
-            require(actual.size == expected.size && actual == expected) { "Evidence ACK contents mismatch" }
-            return batch.records.map { EvidenceAck(it.epoch, it.sequence, it.observation.recordId) }
+            return parseAckResponse(text, batch)
         } finally {
             c.disconnect()
         }
