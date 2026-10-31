@@ -17,7 +17,7 @@ This file does **not** upgrade Phase 2 to `CI_VERIFIED` or `ACCEPTED`.
 
 ## Cross-language BREV v1 protocol
 
-The Android pure Kotlin evidence model/protocol and TypeScript evidence protocol have been locally compiled/executed against the shared fixed golden vector.
+The Android pure Kotlin evidence model/protocol and TypeScript protocol have been locally executed against the shared fixed golden vector.
 
 Golden batch UUID:
 
@@ -31,7 +31,7 @@ Expected encoded bytes:
 
 `425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e`
 
-Observed current local result:
+Observed:
 
 `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
 
@@ -39,17 +39,17 @@ Checks include golden bytes, decode payload content, canonical UUID validation a
 
 ## Current Cloud protocol / persistence harness
 
-Current staged Cloud persistence behavior was locally executed using TypeScript/Node + SQLite/R2-style fakes.
+Current staged Cloud persistence behavior was locally executed using TypeScript/Node plus SQLite/R2-style fakes.
 
 Executed checks:
 
 - BREV golden vector and normal decode;
 - bad version / trailing bytes / reverse ordering rejection;
-- Android signed-Int epoch boundary rejection;
+- Android signed-Int epoch-bound rejection;
 - first persistence into D1/R2-style stores;
 - exact ACK after durable writes;
 - exact same-batch retry without another R2 write;
-- same durable records under a fresh batch UUID ACK without new `evidence_batches` row or raw object (`duplicateRecords:true`);
+- same durable records under fresh batch UUID ACK without new `evidence_batches` row or raw object (`duplicateRecords:true`);
 - record identity collision rejection;
 - accepted batch UUID reused with changed bytes rejection;
 - provider-health advancement by epoch/sequence despite regressed device wall clock;
@@ -57,17 +57,17 @@ Executed checks:
 - content-addressed R2 key containing exact `batchSha`;
 - simulated concurrent competing claim of the same batch UUID between preflight and D1 `batch()`;
 - hard D1 batch insert failure rolls back the losing transaction, leaving zero loser evidence records and zero loser batch links;
-- retry after the competing claim becomes `EvidenceConflict`.
+- retry after competing claim becomes `EvidenceConflict`.
 
-Observed current local result:
+Observed:
 
 `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
 
-This validates the current Phase 2 persistence/idempotency/concurrency design in the local transactional harness. It is not live Cloudflare D1/R2 proof.
+This validates the Phase 2 persistence/idempotency/concurrency design in the local transactional harness. It is not live Cloudflare D1/R2 proof.
 
 ## Current signed HTTP evidence-route harness
 
-The actual Phase 2 route logic was extracted to `src/evidence-route.ts`, with `worker-v7` delegating the evidence endpoint to that handler. A local route harness used a real generated Web Crypto P-256 keypair and the same device signature verification implementation.
+The actual Phase 2 route logic lives in `src/evidence-route.ts`, with `worker-v7` delegating the evidence endpoint to that handler. A local route harness used a real generated Web Crypto P-256 keypair and Brick's signature-verification implementation.
 
 Executed checks:
 
@@ -87,7 +87,7 @@ Executed checks:
 - revoked device returns 401 without persistence;
 - correctly signed malformed BREV payload returns 400 without persistence.
 
-Observed current local result:
+Observed:
 
 `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
 
@@ -104,7 +104,7 @@ Current Android staging includes instrumentation source for:
 - bounded adaptive sampling;
 - DB-owned sequence allocator surviving stale SharedPreferences and reopen;
 - no evidence retention before pairing;
-- canonical v4 device-ID requirement and corrupt/non-v4 rejection;
+- canonical lowercase v4/variant-2 device-ID requirement and corrupt/non-v4 rejection;
 - shared BREV golden vector.
 
 Current Android source also contains a dedicated network-constrained evidence WorkManager chain using `KEEP` for first scheduling and `APPEND_OR_REPLACE` for bounded follow-up catch-up, while Brick Core recovery stays first.
@@ -115,8 +115,8 @@ These are **source/test definitions**, not executed Android proof, because the c
 
 Latest checked run:
 
-- run: `41211811795`
-- Cloud head: `ea9a0dd8ede741c3f260ec1fe1a9d65357260d17`
+- run: `41212250461`
+- Cloud head: `a5c2d375d3e08c35d3674e8405663bf1483d2f4c`
 
 Observed jobs:
 
