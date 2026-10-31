@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
+    companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -17,7 +18,40 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
     data class Pending(val rowId: Long, val eventId: String, val kind: String, val payload: ByteArray, val priority: Int)
-    data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
+    data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
+
+    private fun hasQuarantinedEvidence(): Boolean = runCatching {
+        readableDatabase.rawQuery("SELECT 1 FROM safety_events WHERE acked=2 LIMIT 1", emptyArray()).use { it.moveToFirst() }
+    }.getOrDefault(true)
+
+    private fun noteHealthy(operationHealthy: Boolean) {
+        val now = System.currentTimeMillis()
+        val quarantined = hasQuarantinedEvidence()
+        val priorFailure = healthPrefs.getLong("lastSafetyOutboxWriteFailureWallMs", 0L)
+        val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
+        val currentFailure = !operationHealthy || quarantined
+        val healthy = !currentFailure && !freshPriorFailure
+        healthPrefs.edit()
+            .putBoolean("safetyOutboxWriteHealthy", healthy)
+            .apply {
+                if (currentFailure) putLong("lastSafetyOutboxWriteFailureWallMs", now)
+            }
+            .apply()
+    }
+
+    private fun quarantine(rowId: Long) {
+        runCatching {
+            writableDatabase.update(
+                "safety_events",
+                ContentValues().apply { put("acked", 2) },
+                "id=? AND acked=0",
+                arrayOf(rowId.toString())
+            )
+        }
+        // Quarantined encrypted safety evidence stays on-device and is never cleaned up as delivered.
+        // Later valid SOS/check-in events can continue to drain instead of being poisoned by one row.
+        noteHealthy(false)
+    }
 
     fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean {
         return try {
@@ -29,18 +63,10 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
                 put("priority", priority)
             }, SQLiteDatabase.CONFLICT_IGNORE)
             val durable = rowId != -1L || containsEvent(eventId)
-            healthPrefs.edit()
-                .putBoolean("safetyOutboxWriteHealthy", durable)
-                .apply {
-                    if (!durable) putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
-                }
-                .apply()
+            noteHealthy(durable)
             durable
         } catch (_: Throwable) {
-            healthPrefs.edit()
-                .putBoolean("safetyOutboxWriteHealthy", false)
-                .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
-                .apply()
+            noteHealthy(false)
             false
         }
     }
@@ -53,25 +79,53 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     }
 
     fun pending(limit: Int = 50): List<Pending> {
+        val safeLimit = limit.coerceIn(1, 1_000)
         val out = mutableListOf<Pending>()
         readableDatabase.rawQuery(
             "SELECT id,event_id,kind,payload,priority FROM safety_events WHERE acked=0 ORDER BY priority DESC,id ASC LIMIT ?",
-            arrayOf(limit.toString())
+            arrayOf((safeLimit + 32).toString())
         ).use { c ->
-            while (c.moveToNext()) out += Pending(c.getLong(0), c.getString(1), c.getString(2), JournalCipher.decrypt(c.getBlob(3)), c.getInt(4))
+            while (c.moveToNext() && out.size < safeLimit) {
+                val rowId = c.getLong(0)
+                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                    quarantine(rowId)
+                    continue
+                }
+                out += Pending(rowId, c.getString(1), c.getString(2), payload, c.getInt(4))
+            }
         }
         return out
     }
 
-    fun ack(eventId: String) {
-        writableDatabase.execSQL("UPDATE safety_events SET acked=1 WHERE event_id=?", arrayOf(eventId))
-        writableDatabase.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
+    fun ack(eventId: String): Boolean {
+        return try {
+            val changed = writableDatabase.update(
+                "safety_events",
+                ContentValues().apply { put("acked", 1) },
+                "event_id=? AND acked=0",
+                arrayOf(eventId)
+            )
+            if (changed != 1) return false
+            writableDatabase.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
+            noteHealthy(true)
+            true
+        } catch (_: Throwable) {
+            noteHealthy(false)
+            false
+        }
     }
 
     fun stats(): Stats {
-        readableDatabase.rawQuery("SELECT COUNT(*),MIN(created_ms) FROM safety_events WHERE acked=0", emptyArray()).use { c ->
+        readableDatabase.rawQuery(
+            "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END),MIN(CASE WHEN acked=0 THEN created_ms END),SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM safety_events",
+            emptyArray()
+        ).use { c ->
             c.moveToFirst()
-            return Stats(c.getInt(0), if (c.isNull(1)) null else c.getLong(1))
+            return Stats(
+                if (c.isNull(0)) 0 else c.getInt(0),
+                if (c.isNull(1)) null else c.getLong(1),
+                if (c.isNull(2)) 0 else c.getInt(2)
+            )
         }
     }
 }

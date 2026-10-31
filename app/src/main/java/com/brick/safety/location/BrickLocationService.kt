@@ -42,6 +42,11 @@ class BrickLocationService : Service() {
         private const val LOCATION_STALE_MS = 45_000L
         private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
+        private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
+        private const val BLE_SCAN_NORMAL_MS = 60_000L
+        private const val BLE_SCAN_DEGRADED_MS = 30_000L
+        private const val LOCATION_V2_BYTES = 90
+        private const val LOCATION_BATCH_SIZE = 50
     }
 
     private val networkIo = Executors.newSingleThreadExecutor()
@@ -58,6 +63,7 @@ class BrickLocationService : Service() {
     private lateinit var motionEngine: MotionEngine
     private lateinit var gnssMonitor: GnssQualityMonitor
     private lateinit var positionEngine: PositionEngine
+    private lateinit var bleAnchorEngine: BleAnchorEngine
 
     private val seq = AtomicLong()
     private var epoch: Int = 1
@@ -66,17 +72,22 @@ class BrickLocationService : Service() {
     @Volatile private var lastFallbackElapsed = 0L
     @Volatile private var lastAckElapsed = 0L
     @Volatile private var lastHealthElapsed = 0L
+    @Volatile private var lastBleScanElapsed = 0L
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
     @Volatile private var trackingIntervalMs = 3_000L
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            kickUploadPump()
+            if (networkAvailable()) kickUploadPump()
             lastHealthElapsed = 0L
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                kickUploadPump()
+            }
             lastHealthElapsed = 0L
         }
     }
@@ -92,6 +103,7 @@ class BrickLocationService : Service() {
         motionEngine = MotionEngine(this)
         gnssMonitor = GnssQualityMonitor(this)
         positionEngine = PositionEngine(this, motionEngine, gnssMonitor)
+        bleAnchorEngine = BleAnchorEngine(this) { config -> positionEngine.noteBleAnchor(config) }
 
         createChannel()
         startForeground(1001, notification("Safety active"))
@@ -102,7 +114,7 @@ class BrickLocationService : Service() {
         recoveryCount = prefs.getInt("recoveryCount", 0)
 
         runCatching { ManagedPolicy.apply(this) }
-        RecoveryScheduler.ensureScheduled(this)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { connectivity.registerDefaultNetworkCallback(networkCallback) }
         runCatching { activityEngine.start() }
         runCatching { motionEngine.start() }
@@ -124,6 +136,7 @@ class BrickLocationService : Service() {
         if (!locationSubscribed || desired != trackingIntervalMs) startTracking(desired)
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
+        maybeScanBleAnchors(SystemClock.elapsedRealtime())
         kickUploadPump()
         return START_STICKY
     }
@@ -175,33 +188,70 @@ class BrickLocationService : Service() {
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val packet = Protocol.encodePosition(epoch, sequence, sample, pct, bm.isCharging)
-        journal.append(epoch, sequence, packet)
-        kickUploadPump()
+        if (journal.append(epoch, sequence, packet)) kickUploadPump()
     }
 
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
             val now = SystemClock.elapsedRealtime()
+            val activity = activityEngine.snapshot()
             val threshold = if (isSosActive()) 2_000L else max(8_000L, trackingIntervalMs * 2 + 2_000L)
             if (lastLocationElapsed == 0L || now - lastLocationElapsed < threshold) return@scheduleWithFixedDelay
-            val minFallbackGap = if (isSosActive()) 1_000L else 5_000L
+            val minFallbackGap = when {
+                isSosActive() -> 1_000L
+                activity.mode == ActivityMode.STATIONARY -> max(60_000L, trackingIntervalMs)
+                else -> 5_000L
+            }
             if (now - lastFallbackElapsed < minFallbackGap) return@scheduleWithFixedDelay
-            val sample = positionEngine.fallback(activityEngine.snapshot()) ?: return@scheduleWithFixedDelay
+            val sample = positionEngine.fallback(activity) ?: return@scheduleWithFixedDelay
             lastFallbackElapsed = now
             recordSample(sample)
         }, 2, 1, TimeUnit.SECONDS)
     }
 
+    private fun isV2(p: Journal.Pending): Boolean = p.payload.size == LOCATION_V2_BYTES && p.payload.firstOrNull()?.toInt() == 2
+
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
         return try {
             val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
             if (ack != p.seq) throw IllegalStateException("ACK mismatch")
-            journal.ackExact(p.epoch, p.seq)
+            if (!journal.ackExact(p.epoch, p.seq)) throw IllegalStateException("local exact ACK failed")
             lastAckElapsed = SystemClock.elapsedRealtime()
             true
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
+        if (batch.isEmpty()) return true
+        return try {
+            val uploads = batch.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) }
+            val acked = BrickApi.sendLocationBatch(baseUrl, deviceId, uploads)
+            if (!journal.ackBatch(acked)) throw IllegalStateException("local batch ACK failed")
+            lastAckElapsed = SystemClock.elapsedRealtime()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun nextV2Batch(pending: List<Journal.Pending>): List<Journal.Pending> {
+        val out = ArrayList<Journal.Pending>(pending.size.coerceAtMost(LOCATION_BATCH_SIZE))
+        for (p in pending) {
+            if (out.size >= LOCATION_BATCH_SIZE || !isV2(p)) break
+            val previous = out.lastOrNull()
+            if (previous != null && !(p.epoch > previous.epoch || (p.epoch == previous.epoch && p.seq > previous.seq))) break
+            out += p
+        }
+        return out
+    }
+
+    private fun previewNewestIfBacklogged(baseUrl: String, deviceId: String, pendingCount: Int) {
+        if (pendingCount <= 1) return
+        val newest = runCatching { journal.latestPending() }.getOrNull() ?: return
+        if (!isV2(newest)) return
+        runCatching { BrickApi.sendLiveLocationPreview(baseUrl, deviceId, newest.payload) }
     }
 
     private fun drainCrashReports(baseUrl: String, deviceId: String) {
@@ -227,16 +277,15 @@ class BrickLocationService : Service() {
                 SafetyDispatcher.drain(this, 100)
                 if (SafetyDispatcher.pendingCount(this) > 0) return@execute
 
-                // Diagnostics are deliberately lower priority than safety packets and never block location delivery.
                 drainCrashReports(baseUrl, deviceId)
-
-                val newest = journal.latestPending()
-                if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
+                previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)
 
                 while (true) {
-                    val pending = journal.nextPending(100)
+                    val pending = journal.nextPending(LOCATION_BATCH_SIZE)
                     if (pending.isEmpty()) break
-                    for (p in pending) if (!sendOne(baseUrl, deviceId, p)) return@execute
+                    val batch = nextV2Batch(pending)
+                    val sent = if (batch.isNotEmpty()) sendBatch(baseUrl, deviceId, batch) else sendOne(baseUrl, deviceId, pending.first())
+                    if (!sent) return@execute
                 }
             } finally {
                 uploadPumpRunning.set(false)
@@ -280,9 +329,29 @@ class BrickLocationService : Service() {
             }
 
             checkBatterySafety()
+            maybeScanBleAnchors(now)
             if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0 || runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false))) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
+    }
+
+    private fun maybeScanBleAnchors(now: Long, force: Boolean = false) {
+        if (!::bleAnchorEngine.isInitialized || bleAnchorEngine.configuredCount() == 0 || !bleAnchorEngine.permissionGranted()) return
+        val activity = activityEngine.snapshot().mode
+        if (activity == ActivityMode.VEHICLE || activity == ActivityMode.BICYCLE || activity == ActivityMode.RUNNING) return
+        val locationDegraded = lastLocationElapsed == 0L || now - lastLocationElapsed > max(15_000L, trackingIntervalMs * 2)
+        val interval = if (locationDegraded) BLE_SCAN_DEGRADED_MS else BLE_SCAN_NORMAL_MS
+        if (!force && lastBleScanElapsed > 0L && now - lastBleScanElapsed < interval) return
+        lastBleScanElapsed = now
+        bleAnchorEngine.scanOnce()
+    }
+
+    private fun updateBleAnchorConfigs(configs: List<BrickApi.BleAnchorConfig>) {
+        val mapped = configs.map {
+            BleAnchorEngine.Config(it.geofenceId, it.name, it.beaconUuid, it.latitude, it.longitude, it.radiusM)
+        }
+        bleAnchorEngine.updateConfigs(mapped)
+        if (mapped.isNotEmpty()) maybeScanBleAnchors(SystemClock.elapsedRealtime(), force = true)
     }
 
     private fun checkBatterySafety() {
@@ -329,12 +398,16 @@ class BrickLocationService : Service() {
 
     private fun desiredIntervalMs(): Long {
         if (isSosActive()) return 1_000L
-        return when (activityEngine.snapshot().mode) {
+        val activity = activityEngine.snapshot()
+        return when (activity.mode) {
             ActivityMode.VEHICLE -> 3_000L
             ActivityMode.RUNNING -> 3_000L
             ActivityMode.BICYCLE -> 4_000L
             ActivityMode.WALKING -> 5_000L
-            ActivityMode.STATIONARY -> 60_000L
+            ActivityMode.STATIONARY -> {
+                val now = SystemClock.elapsedRealtime()
+                if (activity.modeSinceElapsedMs > 0L && activity.modeSinceElapsedMs <= now && now - activity.modeSinceElapsedMs >= DEEP_STATIONARY_AFTER_MS) 120_000L else 60_000L
+            }
             ActivityMode.UNKNOWN -> 8_000L
         }
     }
@@ -385,10 +458,18 @@ class BrickLocationService : Service() {
             health.put(key, evidence.get(key))
         }
 
-        healthIo.execute { runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) } }
+        healthIo.execute {
+            runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) }
+                .onSuccess(::updateBleAnchorConfigs)
+        }
     }
 
-    private fun networkAvailable(): Boolean = networkKind() != "offline"
+    private fun networkAvailable(): Boolean {
+        val network = connectivity.activeNetwork ?: return false
+        val caps = connectivity.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     private fun networkKind(): String {
         val network = connectivity.activeNetwork ?: return "offline"
@@ -417,8 +498,8 @@ class BrickLocationService : Service() {
         .build()
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        RecoveryScheduler.ensureScheduled(this)
-        RecoveryScheduler.scheduleSoon(this, 15)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
+        runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         super.onTaskRemoved(rootIntent)
     }
 
@@ -428,9 +509,10 @@ class BrickLocationService : Service() {
         runCatching { activityEngine.stop() }
         runCatching { motionEngine.stop() }
         runCatching { gnssMonitor.stop() }
+        runCatching { bleAnchorEngine.stop() }
         locationSubscribed = false
-        RecoveryScheduler.ensureScheduled(this)
-        RecoveryScheduler.scheduleSoon(this, 15)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
+        runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         fallbackTicker.shutdownNow()
         supervisor.shutdownNow()
         networkIo.shutdownNow()

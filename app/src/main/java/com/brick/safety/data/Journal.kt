@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
 class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", null, 1) {
+    companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -14,6 +15,39 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
         db.execSQL("CREATE INDEX idx_packets_pending ON packets(acked,id)")
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+
+    private fun hasQuarantinedEvidence(): Boolean = runCatching {
+        readableDatabase.rawQuery("SELECT 1 FROM packets WHERE acked=2 LIMIT 1", emptyArray()).use { it.moveToFirst() }
+    }.getOrDefault(true)
+
+    private fun noteJournalHealthy(operationHealthy: Boolean) {
+        val now = System.currentTimeMillis()
+        val quarantined = hasQuarantinedEvidence()
+        val priorFailure = healthPrefs.getLong("lastJournalWriteFailureWallMs", 0L)
+        val freshPriorFailure = priorFailure > 0L && now >= priorFailure && now - priorFailure < FAILURE_HOLD_MS
+        val currentFailure = !operationHealthy || quarantined
+        val healthy = !currentFailure && !freshPriorFailure
+        healthPrefs.edit()
+            .putBoolean("journalWriteHealthy", healthy)
+            .apply {
+                if (currentFailure) putLong("lastJournalWriteFailureWallMs", now)
+            }
+            .apply()
+    }
+
+    private fun quarantine(rowId: Long) {
+        runCatching {
+            writableDatabase.update(
+                "packets",
+                ContentValues().apply { put("acked", 2) },
+                "id=? AND acked=0",
+                arrayOf(rowId.toString())
+            )
+        }
+        // acked=2 is deliberately never deleted by delivered-row cleanup. The encrypted evidence is
+        // preserved locally, but it no longer blocks later valid backlog records from uploading.
+        noteJournalHealthy(false)
+    }
 
     fun append(epoch: Int, seq: Long, payload: ByteArray): Boolean {
         return try {
@@ -24,18 +58,10 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
                 put("created_ms", System.currentTimeMillis())
             }, SQLiteDatabase.CONFLICT_IGNORE)
             val ok = rowId != -1L
-            healthPrefs.edit()
-                .putBoolean("journalWriteHealthy", ok)
-                .apply {
-                    if (!ok) putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
-                }
-                .apply()
+            noteJournalHealthy(ok)
             ok
         } catch (_: Throwable) {
-            healthPrefs.edit()
-                .putBoolean("journalWriteHealthy", false)
-                .putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
-                .apply()
+            noteJournalHealthy(false)
             false
         }
     }
@@ -51,38 +77,89 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
     }
 
     data class Pending(val id: Long, val epoch: Int, val seq: Long, val payload: ByteArray)
-    data class Stats(val pendingCount: Int, val oldestPendingMs: Long?)
+    data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
 
     fun latestPending(): Pending? {
         readableDatabase.rawQuery(
-            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id DESC LIMIT 1",
+            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id DESC LIMIT 32",
             emptyArray()
         ).use { c ->
-            if (!c.moveToFirst()) return null
-            return Pending(c.getLong(0), c.getInt(1), c.getLong(2), JournalCipher.decrypt(c.getBlob(3)))
+            while (c.moveToNext()) {
+                val rowId = c.getLong(0)
+                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                    quarantine(rowId)
+                    continue
+                }
+                return Pending(rowId, c.getInt(1), c.getLong(2), payload)
+            }
         }
+        return null
     }
 
     fun nextPending(limit: Int = 100): List<Pending> {
+        val safeLimit = limit.coerceIn(1, 1_000)
         val out = mutableListOf<Pending>()
-        readableDatabase.rawQuery("SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?", arrayOf(limit.toString())).use { c ->
-            while (c.moveToNext()) out += Pending(c.getLong(0), c.getInt(1), c.getLong(2), JournalCipher.decrypt(c.getBlob(3)))
+        readableDatabase.rawQuery(
+            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?",
+            arrayOf((safeLimit + 32).toString())
+        ).use { c ->
+            while (c.moveToNext() && out.size < safeLimit) {
+                val rowId = c.getLong(0)
+                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                    quarantine(rowId)
+                    continue
+                }
+                out += Pending(rowId, c.getInt(1), c.getLong(2), payload)
+            }
         }
         return out
     }
 
     fun stats(): Stats {
         readableDatabase.rawQuery(
-            "SELECT COUNT(*), MIN(created_ms) FROM packets WHERE acked=0",
+            "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END), MIN(CASE WHEN acked=0 THEN created_ms END), SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM packets",
             emptyArray()
         ).use { c ->
             c.moveToFirst()
-            return Stats(c.getInt(0), if (c.isNull(1)) null else c.getLong(1))
+            return Stats(
+                if (c.isNull(0)) 0 else c.getInt(0),
+                if (c.isNull(1)) null else c.getLong(1),
+                if (c.isNull(2)) 0 else c.getInt(2)
+            )
         }
     }
 
-    fun ackExact(epoch: Int, seq: Long) {
-        writableDatabase.execSQL("UPDATE packets SET acked=1 WHERE epoch=? AND seq=?", arrayOf<Any>(epoch, seq))
-        writableDatabase.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
+    private fun cleanupDelivered(db: SQLiteDatabase) {
+        db.execSQL("DELETE FROM packets WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-500,0) FROM packets)")
+    }
+
+    fun ackExact(epoch: Int, seq: Long): Boolean = ackBatch(listOf(epoch to seq))
+
+    fun ackBatch(items: List<Pair<Int, Long>>): Boolean {
+        if (items.isEmpty()) return true
+        val unique = items.distinct()
+        if (unique.size != items.size) return false
+        val db = writableDatabase
+        return try {
+            db.beginTransaction()
+            for ((epoch, seq) in items) {
+                val changed = db.update(
+                    "packets",
+                    ContentValues().apply { put("acked", 1) },
+                    "epoch=? AND seq=? AND acked=0",
+                    arrayOf(epoch.toString(), seq.toString())
+                )
+                if (changed != 1) throw IllegalStateException("exact ACK did not match one pending row")
+            }
+            cleanupDelivered(db)
+            db.setTransactionSuccessful()
+            noteJournalHealthy(true)
+            true
+        } catch (_: Throwable) {
+            noteJournalHealthy(false)
+            false
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
+        }
     }
 }

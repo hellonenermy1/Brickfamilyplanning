@@ -20,6 +20,9 @@ import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.brick.safety.reliability.ServiceControl
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -40,9 +43,10 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
-        RecoveryScheduler.ensureScheduled(this)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { ManagedPolicy.apply(this) }
 
+        b.scanPairButton.setOnClickListener { scanPairingQr() }
         b.pairButton.setOnClickListener { pair() }
         b.fixButton.setOnClickListener { fixAttention() }
         b.safeButton.setOnClickListener { queueCheckIn() }
@@ -61,11 +65,49 @@ class MainActivity : AppCompatActivity() {
         refresh()
     }
 
+    private fun scanPairingQr() {
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom()
+            .build()
+        b.scanPairButton.isEnabled = false
+        b.status.text = "● Scan Brick pairing QR"
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { barcode ->
+                val raw = barcode.rawValue
+                val uri = raw?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                val api = uri?.getQueryParameter("api")
+                val token = uri?.getQueryParameter("token")
+                val valid = uri?.scheme == "brick" && uri.host == "pair" &&
+                    !api.isNullOrBlank() && api.startsWith("https://") &&
+                    !token.isNullOrBlank() && token.length in 16..256
+                if (!valid) {
+                    b.status.text = "● Invalid Brick pairing QR"
+                    b.scanPairButton.isEnabled = true
+                    return@addOnSuccessListener
+                }
+                b.serverUrl.setText(api)
+                b.pairingToken.setText(token)
+                b.scanPairButton.isEnabled = true
+                pair()
+            }
+            .addOnCanceledListener {
+                b.status.text = "● Setup required"
+                b.scanPairButton.isEnabled = true
+            }
+            .addOnFailureListener {
+                b.status.text = "● QR scan unavailable — use manual pairing"
+                b.scanPairButton.isEnabled = true
+            }
+    }
+
     private fun pair() {
         val base = b.serverUrl.text.toString().trim()
         val token = b.pairingToken.text.toString().trim()
         if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
-        b.pairButton.isEnabled = false; b.status.text = "● Pairing…"
+        b.scanPairButton.isEnabled = false
+        b.pairButton.isEnabled = false
+        b.status.text = "● Pairing…"
         io.execute {
             try {
                 val r = BrickApi.completePairing(base, token)
@@ -75,7 +117,11 @@ class MainActivity : AppCompatActivity() {
                     .apply()
                 runOnUiThread { requestPermissionsAndStart() }
             } catch (_: Exception) {
-                runOnUiThread { b.status.text = "● Pairing failed"; b.pairButton.isEnabled = true }
+                runOnUiThread {
+                    b.status.text = "● Pairing failed"
+                    b.scanPairButton.isEnabled = true
+                    b.pairButton.isEnabled = true
+                }
             }
         }
     }
@@ -146,7 +192,7 @@ class MainActivity : AppCompatActivity() {
             SafetyDispatcher.drain(this, 50)
             val pending = SafetyDispatcher.pendingCount(this) > 0
             runOnUiThread {
-                b.status.text = if (pending) "● SOS ACTIVE — alert saved, retrying" else "● SOS ACTIVE — parent alerted"
+                b.status.text = if (pending) "● SOS ACTIVE — alert saved, retrying" else "● SOS ACTIVE — alert sent"
                 renderSosState()
             }
         }
@@ -190,6 +236,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.BLUETOOTH_SCAN
+        }
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.POST_NOTIFICATIONS
@@ -218,10 +268,17 @@ class MainActivity : AppCompatActivity() {
     private fun backgroundGranted(): Boolean = Build.VERSION.SDK_INT < 29 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    private fun bleAnchorPermissionNeeded(): Boolean {
+        if (Build.VERSION.SDK_INT < 31) return false
+        val configured = getSharedPreferences("brick", MODE_PRIVATE).getInt("bleAnchorConfigCount", 0) > 0
+        return configured && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
+    }
+
     private fun attentionReason(): String? {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return "Location permission needs attention"
         if (!locationEnabled()) return "Location needs attention"
         if (!ManagedPolicy.isDeviceOwner(this) && !backgroundGranted()) return "Background location needs attention"
+        if (bleAnchorPermissionNeeded()) return "Nearby-device scan permission needs attention"
         return null
     }
 
@@ -232,6 +289,7 @@ class MainActivity : AppCompatActivity() {
             !ManagedPolicy.isDeviceOwner(this) && !backgroundGranted() -> startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
             )
+            bleAnchorPermissionNeeded() -> requestPermissionsAndStart()
             else -> refresh()
         }
     }
@@ -246,9 +304,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
+        b.scanPairButton.visibility = if (paired) View.GONE else View.VISIBLE
         b.serverUrl.visibility = if (paired) View.GONE else View.VISIBLE
         b.pairingToken.visibility = if (paired) View.GONE else View.VISIBLE
         b.pairButton.visibility = if (paired) View.GONE else View.VISIBLE
+        if (!paired) b.scanPairButton.isEnabled = true
         b.safeButton.isEnabled = paired
         b.sosButton.isEnabled = paired
 

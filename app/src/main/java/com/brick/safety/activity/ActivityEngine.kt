@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.ActivityRecognition
 import com.google.android.gms.location.ActivityTransition
@@ -14,6 +15,8 @@ import com.google.android.gms.location.ActivityTransitionRequest
 import com.google.android.gms.location.DetectedActivity
 
 class ActivityEngine(private val context: Context) {
+    companion object { private const val ACTIVITY_STALE_MS = 2 * 60_000L }
+
     private val client = ActivityRecognition.getClient(context)
 
     private val sampleIntent: PendingIntent by lazy {
@@ -34,7 +37,10 @@ class ActivityEngine(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun start() {
-        if (!hasPermission()) return
+        if (!hasPermission()) {
+            ActivityState.write(context, ActivityMode.UNKNOWN, 0)
+            return
+        }
         val types = intArrayOf(
             DetectedActivity.STILL,
             DetectedActivity.WALKING,
@@ -55,19 +61,25 @@ class ActivityEngine(private val context: Context) {
             client.requestActivityTransitionUpdates(ActivityTransitionRequest(transitions), transitionIntent)
             client.requestActivityUpdates(10_000L, sampleIntent)
         } catch (_: SecurityException) {
-            // Permission may be revoked between our check and the Play Services call.
             ActivityState.write(context, ActivityMode.UNKNOWN, 0)
         }
     }
 
     @SuppressLint("MissingPermission")
     fun stop() {
-        // Removal can also throw if permission was revoked while Brick was running.
         try { client.removeActivityUpdates(sampleIntent) } catch (_: SecurityException) {}
         try { client.removeActivityTransitionUpdates(transitionIntent) } catch (_: SecurityException) {}
     }
 
-    fun snapshot(): ActivitySnapshot = ActivityState.read(context)
+    fun snapshot(): ActivitySnapshot {
+        if (!hasPermission()) return ActivitySnapshot(ActivityMode.UNKNOWN, 0, 0L)
+        val current = ActivityState.read(context)
+        val now = SystemClock.elapsedRealtime()
+        if (current.updatedElapsedMs <= 0L || current.updatedElapsedMs > now || now - current.updatedElapsedMs > ACTIVITY_STALE_MS) {
+            return ActivitySnapshot(ActivityMode.UNKNOWN, 0, current.updatedElapsedMs)
+        }
+        return current
+    }
 
     private fun hasPermission(): Boolean = ContextCompat.checkSelfPermission(
         context, Manifest.permission.ACTIVITY_RECOGNITION
