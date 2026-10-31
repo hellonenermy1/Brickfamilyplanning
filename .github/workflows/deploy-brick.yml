@@ -98,6 +98,18 @@ jobs:
           npx esbuild src/history-codec.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-codec.mjs
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
 
+          # Production deployment must exercise the same Phase 6 durability/fallback gates as CI.
+          # In particular, never deploy a build that can ACK and discard a failed DLQ history item.
+          npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
+          npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-store.mjs
+          npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-v6.mjs
+          node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+          node scripts/test-route-history.mjs /tmp/brick-history-store.mjs
+          node scripts/test-dlq-recovery.mjs /tmp/brick-queue-v6.mjs
+
       - name: Provision and deploy Phase 6 cloud candidate
         run: npm run setup
 
