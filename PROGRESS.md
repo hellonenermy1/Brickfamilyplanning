@@ -23,15 +23,51 @@ Also make automatic Brick progress logging a standing project rule so Jayvian do
 - Moved default branch `main` from the older Phase 5B/cardless state onto the Phase 6 source line.
 - Rebuilt `main` as a Cloudflare/runtime branch containing backend source, schemas, setup scripts, private-map web assets and manual GitHub Actions dispatchers.
 - Kept a small `Brick — Build / Download APK` workflow on `main` because GitHub manual `workflow_dispatch` entries must be available from the default branch; that workflow always checks out `apk-download`.
+- Made the APK dispatcher robust to detached checkout state by relying on the hard-pinned `apk-download` ref and source SHA instead of `git branch --show-current`.
 - Added the standing rule that every future Brick task is logged here automatically.
 - Added `PROJECT_MEMORY.md` and `AUDIT_STATUS.md` as durable project records.
+- Rewrote the READMEs on all three canonical branches so their roles are explicit.
+- Archived and closed PR #5 so the old hardening PR cannot be mistaken for the current deployment path.
+
+### Final canonical heads after cleanup
+
+- `main`: `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad`
+- `apk-download`: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
+- `audit-progress`: this progress-finalization commit and later documentation-only updates.
+
+### Final branch contents
+
+`main` contains only:
+
+- Cloudflare/runtime source and web assets,
+- D1 schema and setup/verification scripts,
+- locked Node dependencies/config,
+- `Deploy Brick Phase 6 Candidate`,
+- `Brick — Build / Download APK` dispatcher.
+
+`apk-download` contains only:
+
+- Android `app/` source,
+- root Gradle configuration,
+- Android-focused README and `.gitignore`.
+
+`audit-progress` contains only:
+
+- `README.md`,
+- `PROJECT_MEMORY.md`,
+- `PROGRESS.md`,
+- `AUDIT_STATUS.md`,
+- retained `PHASE5C_AUDIT.md` historical audit.
 
 ### Evidence / verification
 
 - The pre-cleanup Phase 6 source head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had Git tree `b5f4ea6e97e9e2afef7a01c8386829f316b4af2e`, identical to fully validated commit `176d94f604eb562a59260ef380ee680a564acfcc`.
 - Before the branch split, GitHub compare reported zero file differences between those two source states.
-- `main` now points to an organization commit derived from the proven Phase 6 blobs rather than the old Phase 5B/cardless main branch.
-- `apk-download` and `audit-progress` were created before main was reorganized, preserving their intended source/evidence content.
+- `main` now points to an organization commit derived from the proven Phase 6 Cloudflare/runtime blobs rather than the old Phase 5B/cardless main branch.
+- `apk-download` retains the exact Android source tree from the proven baseline; only its branch README changed after separation.
+- `audit-progress` is documentation-only and no longer contains runtime source.
+- Main workflow inventory was reduced to exactly two manual workflows: Cloudflare deployment and APK build/download.
+- PR #5 is closed as `[ARCHIVED] Phase 6 final hardening — superseded by canonical branch split`.
 
 ### Limitations / blockers
 
