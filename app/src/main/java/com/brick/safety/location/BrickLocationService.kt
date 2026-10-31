@@ -156,16 +156,17 @@ class BrickLocationService : Service() {
             .setMinUpdateIntervalMillis(minInterval)
             .setMaxUpdateDelayMillis(maxDelay)
             .build()
+        locationSubscribed = false
+        val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }.getOrNull() ?: return
         locationSubscribed = true
-        fused.requestLocationUpdates(req, callback, mainLooper)
-            .addOnFailureListener { locationSubscribed = false }
+        registration.addOnFailureListener { locationSubscribed = false }
     }
 
     private fun requestFreshSosFix() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
         val token = CancellationTokenSource()
-        fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token)
-            .addOnSuccessListener { location -> if (location != null && isSosActive()) record(location) }
+        val request = runCatching { fused.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.token) }.getOrNull() ?: return
+        request.addOnSuccessListener { location -> if (location != null && isSosActive()) record(location) }
     }
 
     private val callback = object : LocationCallback() {
