@@ -42,6 +42,8 @@ class BrickLocationService : Service() {
         private const val LOCATION_STALE_MS = 45_000L
         private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
+        private const val LOCATION_V2_BYTES = 90
+        private const val LOCATION_BATCH_SIZE = 50
     }
 
     private val networkIo = Executors.newSingleThreadExecutor()
@@ -175,8 +177,7 @@ class BrickLocationService : Service() {
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val packet = Protocol.encodePosition(epoch, sequence, sample, pct, bm.isCharging)
-        journal.append(epoch, sequence, packet)
-        kickUploadPump()
+        if (journal.append(epoch, sequence, packet)) kickUploadPump()
     }
 
     private fun startFallbackTicker() {
@@ -192,16 +193,50 @@ class BrickLocationService : Service() {
         }, 2, 1, TimeUnit.SECONDS)
     }
 
+    private fun isV2(p: Journal.Pending): Boolean = p.payload.size == LOCATION_V2_BYTES && p.payload.firstOrNull()?.toInt() == 2
+
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
         return try {
             val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
             if (ack != p.seq) throw IllegalStateException("ACK mismatch")
-            journal.ackExact(p.epoch, p.seq)
+            if (!journal.ackExact(p.epoch, p.seq)) throw IllegalStateException("local exact ACK failed")
             lastAckElapsed = SystemClock.elapsedRealtime()
             true
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
+        if (batch.isEmpty()) return true
+        return try {
+            val uploads = batch.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) }
+            val acked = BrickApi.sendLocationBatch(baseUrl, deviceId, uploads)
+            if (!journal.ackBatch(acked)) throw IllegalStateException("local batch ACK failed")
+            lastAckElapsed = SystemClock.elapsedRealtime()
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun nextV2Batch(pending: List<Journal.Pending>): List<Journal.Pending> {
+        val out = ArrayList<Journal.Pending>(pending.size.coerceAtMost(LOCATION_BATCH_SIZE))
+        for (p in pending) {
+            if (out.size >= LOCATION_BATCH_SIZE || !isV2(p)) break
+            val previous = out.lastOrNull()
+            if (previous != null && !(p.epoch > previous.epoch || (p.epoch == previous.epoch && p.seq > previous.seq))) break
+            out += p
+        }
+        return out
+    }
+
+    private fun previewNewestIfBacklogged(baseUrl: String, deviceId: String, pendingCount: Int) {
+        if (pendingCount <= 1) return
+        val newest = runCatching { journal.latestPending() }.getOrNull() ?: return
+        if (!isV2(newest)) return
+        // Preview only updates realtime state. It never ACKs or deletes the durable journal record.
+        runCatching { BrickApi.sendLiveLocationPreview(baseUrl, deviceId, newest.payload) }
     }
 
     private fun drainCrashReports(baseUrl: String, deviceId: String) {
@@ -230,13 +265,14 @@ class BrickLocationService : Service() {
                 // Diagnostics are deliberately lower priority than safety packets and never block location delivery.
                 drainCrashReports(baseUrl, deviceId)
 
-                val newest = journal.latestPending()
-                if (newest != null && !sendOne(baseUrl, deviceId, newest)) return@execute
+                previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)
 
                 while (true) {
-                    val pending = journal.nextPending(100)
+                    val pending = journal.nextPending(LOCATION_BATCH_SIZE)
                     if (pending.isEmpty()) break
-                    for (p in pending) if (!sendOne(baseUrl, deviceId, p)) return@execute
+                    val batch = nextV2Batch(pending)
+                    val sent = if (batch.isNotEmpty()) sendBatch(baseUrl, deviceId, batch) else sendOne(baseUrl, deviceId, pending.first())
+                    if (!sent) return@execute
                 }
             } finally {
                 uploadPumpRunning.set(false)
