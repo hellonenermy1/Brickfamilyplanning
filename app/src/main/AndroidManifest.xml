@@ -16,8 +16,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:icon="@drawable/ic_brick_launcher"
-        android:label="@string/app_name"
+        android:label="Brick"
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
 
