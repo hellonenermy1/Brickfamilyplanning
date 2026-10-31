@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
-        RecoveryScheduler.ensureScheduled(this)
+        runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { ManagedPolicy.apply(this) }
 
         b.pairButton.setOnClickListener { pair() }
@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             SafetyDispatcher.drain(this, 50)
             val pending = SafetyDispatcher.pendingCount(this) > 0
             runOnUiThread {
-                b.status.text = if (pending) "● SOS ACTIVE — alert saved, retrying" else "● SOS ACTIVE — parent alerted"
+                b.status.text = if (pending) "● SOS ACTIVE — alert saved, retrying" else "● SOS ACTIVE — alert sent"
                 renderSosState()
             }
         }
