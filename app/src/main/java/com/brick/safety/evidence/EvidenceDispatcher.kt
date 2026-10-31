@@ -28,6 +28,10 @@ class EvidenceDispatcher(
 
     @Synchronized
     fun enqueue(observation: EvidenceObservation): Boolean {
+        // Follow the existing live-location behavior: do not accumulate unbound family-location
+        // evidence before this installation is paired to a Brick backend/device identity.
+        if (prefs.getString("deviceId", null).isNullOrBlank() || prefs.getString("apiBase", null).isNullOrBlank()) return false
+
         val epoch = prefs.getInt("epoch", 1).coerceAtLeast(0)
         val record = journal.appendNew(epoch, observation) ?: return false
         // Preference is only a cheap observable cache. The SQLite journal owns allocation and can
@@ -62,8 +66,8 @@ class EvidenceDispatcher(
      * but they must preserve this ordering invariant.
      */
     fun drainIfSafe(maxBatches: Int = 2): Int {
-        val deviceId = prefs.getString("deviceId", null) ?: return 0
-        val baseUrl = prefs.getString("apiBase", null) ?: return 0
+        val deviceId = prefs.getString("deviceId", null)?.takeIf { it.isNotBlank() } ?: return 0
+        val baseUrl = prefs.getString("apiBase", null)?.takeIf { it.isNotBlank() } ?: return 0
         if (coreBacklogPresent()) return 0
 
         var sent = 0
