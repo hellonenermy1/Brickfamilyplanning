@@ -31,6 +31,7 @@ export type DeviceHealth = {
   fineLocationPermission?: boolean;
   backgroundLocationPermission?: boolean;
   activityRecognitionPermission?: boolean;
+  bleAnchorConfigCount?: number;
   bluetoothScanPermission?: boolean;
   notificationPermission?: boolean;
   batteryOptimizationExempt?: boolean;
