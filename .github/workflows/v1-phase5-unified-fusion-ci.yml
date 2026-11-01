@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: d0ba08adc0f3f2472cca53bbac5ad4eb69f735b2
+  ANDROID_PHASE5_SHA: 80ce446692f7cf6c776add51fb16a3b6d0d2f028
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -166,6 +166,11 @@ jobs:
           grep -F 'WitnessMeshProvider(appContext)' app/src/main/java/com/brick/safety/atlas/Phase4AtlasController.kt >/dev/null
           grep -F 'testAliasIsStableInsideSlotAndRotatesAcrossSlots' app/src/androidTest/java/com/brick/safety/witness/Phase5WitnessAliasInstrumentedTest.kt >/dev/null
           grep -F 'testLegacyAdvertisementUsesOnlyNineByteBrickServicePayload' app/src/androidTest/java/com/brick/safety/witness/Phase5WitnessAliasInstrumentedTest.kt >/dev/null
+          grep -F 'data class AuthenticatedRangeConstraint' app/src/main/java/com/brick/safety/fusion/AuthenticatedRangeConstraint.kt >/dev/null
+          grep -F 'fun annulus()' app/src/main/java/com/brick/safety/fusion/AuthenticatedRangeConstraint.kt >/dev/null
+          grep -F 'fun likelihoodAt' app/src/main/java/com/brick/safety/fusion/AuthenticatedRangeConstraint.kt >/dev/null
+          grep -F 'testRangeCreatesAnnulusRatherThanExactPoint' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
+          grep -F 'testDistanceResidualDoesNotInventDirection' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
