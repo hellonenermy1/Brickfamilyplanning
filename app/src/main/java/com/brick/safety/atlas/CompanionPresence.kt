@@ -84,6 +84,29 @@ internal object CompanionPresenceStore {
     }
 }
 
+/**
+ * Process-local bookkeeping for presence subscriptions. Android owns the durable association; this
+ * registry only prevents duplicate startObserving calls while that association remains current.
+ * If an association disappears, its entry is forgotten so re-associating the same device can
+ * register presence again without requiring a Brick process restart.
+ */
+internal class CompanionObservationRegistry {
+    private val observedAddresses = linkedSetOf<String>()
+
+    @Synchronized
+    fun reconcile(validAddresses: Set<String>) {
+        observedAddresses.retainAll(validAddresses)
+    }
+
+    @Synchronized
+    fun markStartRequested(address: String): Boolean = observedAddresses.add(address)
+
+    @Synchronized
+    fun markStartFailed(address: String) {
+        observedAddresses.remove(address)
+    }
+}
+
 /** API 31-32 callback component. It never references API-33 AssociationInfo. */
 @Suppress("DEPRECATION")
 @RequiresApi(Build.VERSION_CODES.S)
@@ -147,7 +170,7 @@ internal class CompanionPresenceController(context: Context) {
         appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_COMPANION_DEVICE_SETUP)
     ) appContext.getSystemService(CompanionDeviceManager::class.java) else null
 
-    private val observedAddresses = linkedSetOf<String>()
+    private val observationRegistry = CompanionObservationRegistry()
 
     @Synchronized
     fun snapshotAndEnsureObserving(): CompanionAssociationSnapshot {
@@ -161,7 +184,7 @@ internal class CompanionPresenceController(context: Context) {
                 val associations = CompanionApi33.associations(cdm)
                 val validIds = associations.mapTo(linkedSetOf()) { it.id }
                 val addresses = associations.mapNotNull { it.address }
-                addresses.forEach { address -> ensureObservation(cdm, address) }
+                reconcileAndEnsureObservation(cdm, addresses)
                 CompanionPresenceStore.retainAssociations(appContext, validIds, emptySet())
                 val present = CompanionPresenceStore.presentAssociationIds(appContext)
                     .intersect(validIds)
@@ -179,7 +202,7 @@ internal class CompanionPresenceController(context: Context) {
                 val validLegacy = addresses.mapNotNull { raw ->
                     runCatching { AtlasPrivacyId.reduce("comp", "address:${raw.trim().lowercase()}") }.getOrNull()
                 }.toSet()
-                addresses.forEach { address -> ensureObservation(cdm, address) }
+                reconcileAndEnsureObservation(cdm, addresses)
                 CompanionPresenceStore.retainAssociations(appContext, emptySet(), validLegacy)
                 val present = CompanionPresenceStore.presentLegacyIds(appContext).intersect(validLegacy).sorted()
                 CompanionAssociationSnapshot(
@@ -196,9 +219,16 @@ internal class CompanionPresenceController(context: Context) {
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
+    private fun reconcileAndEnsureObservation(cdm: CompanionDeviceManager, addresses: Collection<String>) {
+        val validAddresses = addresses.toSet()
+        observationRegistry.reconcile(validAddresses)
+        validAddresses.forEach { address -> ensureObservation(cdm, address) }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun ensureObservation(cdm: CompanionDeviceManager, address: String) {
-        if (!observedAddresses.add(address)) return
+        if (!observationRegistry.markStartRequested(address)) return
         runCatching { CompanionApi31.startObserving(cdm, address) }
-            .onFailure { observedAddresses.remove(address) }
+            .onFailure { observationRegistry.markStartFailed(address) }
     }
 }
