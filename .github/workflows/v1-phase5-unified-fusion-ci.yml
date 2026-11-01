@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: 910a1c687f94fe7b0ff31813f16b619dc94a2486
+  ANDROID_PHASE5_SHA: edba1f1a0b6f6e53236f0bc78ce6aac686bdfb8f
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -191,6 +191,7 @@ jobs:
           grep -F 'fun likelihoodAt' app/src/main/java/com/brick/safety/fusion/AuthenticatedRangeConstraint.kt >/dev/null
           grep -F 'testRangeCreatesAnnulusRatherThanExactPoint' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
           grep -F 'testDistanceResidualDoesNotInventDirection' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
+          grep -F 'testRttDistanceReranksTrustedAtlasAreaWithoutManufacturingPrecision' app/src/androidTest/java/com/brick/safety/fusion/Phase5RttAtlasInstrumentedTest.kt >/dev/null
           grep -F 'class LearnedPlaceRegistry' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'owner != current' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'independenceGroup = "atlas.environment"' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
