@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: 5ab9868b03b5f7986ad45d1c626db68d2f4b4ec1
+  ANDROID_PHASE6_SHA: 8edb76c9a3892d402fe06541f4ef75451045a774
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -42,10 +42,25 @@ jobs:
           grep -F 'desired_enabled' src/phase6-location-control.ts >/dev/null
           grep -F 'crypto.randomUUID()' src/phase6-location-control.ts >/dev/null
           grep -F 'expiresAtMs' src/phase6-location-control.ts >/dev/null
+          grep -F 'device_location_control.issued_at + 1' src/phase6-location-control.ts >/dev/null
           grep -F 'same-origin request required' src/worker-v6.ts >/dev/null
           grep -F 'parentSetLocationControl' src/worker-v6.ts >/dev/null
           grep -F 'augmentHealthWithLocationControl' src/worker-v6.ts >/dev/null
+          grep -F 'GPS ON' src/parent-v6.ts >/dev/null
+          grep -F 'GPS OFF' src/parent-v6.ts >/dev/null
           ! grep -R -F 'remote shell' src/phase6-location-control.ts >/dev/null
+      - name: Render parent dashboard smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
+          node --input-type=module - <<'NODE'
+          const m = await import('file:///tmp/brick-parent-v6.mjs');
+          const html = m.parentV6Html();
+          for (const required of ['id="gpsOn"','id="gpsOff"','id="gpsDesired"','id="gpsActual"','/location-control']) {
+            if (!html.includes(required)) throw new Error('missing parent GPS control: '+required);
+          }
+          NODE
 
   android-build:
     name: Phase 6 Android build, lint and dependency lock
@@ -99,6 +114,8 @@ jobs:
           grep -F 'DesiredLocationState.OFF' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
           grep -F 'previousNonce == nonce' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
           grep -F 'expiresAtMs > nowMs' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'desiredValue !is Boolean' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
+          grep -F 'issuedAtMs > nowMs + MAX_COMMAND_FUTURE_SKEW_MS' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'ParentLocationStateStore.read(context)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'command.deviceId != deviceId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'locationControlMatches' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
