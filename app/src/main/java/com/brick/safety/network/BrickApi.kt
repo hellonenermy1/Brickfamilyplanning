@@ -64,6 +64,7 @@ object BrickApi {
     private const val MAX_LOCATION_DRAIN_GROUP = 50
     private const val MAX_LOCATION_HTTP_BATCH = 20
     private const val MAX_COMMAND_DELIVERY_MS = 10 * 60_000L
+    private const val MAX_COMMAND_FUTURE_SKEW_MS = 60_000L
     private val PLACE_ID_RE = Regex("[A-Za-z0-9._:-]{1,96}")
     private val COMMAND_ID_RE = Regex("[A-Za-z0-9._:-]{8,128}")
 
@@ -226,18 +227,20 @@ object BrickApi {
             val deviceId = j.optString("deviceId", "")
             val commandId = j.optString("commandId", "")
             val nonce = j.optString("nonce", "")
+            val desiredValue = j.opt("desiredEnabled")
             val issuedAtMs = j.optLong("issuedAtMs", -1L)
             val expiresAtMs = j.optLong("expiresAtMs", -1L)
             if (protocol != 1 || runCatching { UUID.fromString(deviceId) }.isFailure || !COMMAND_ID_RE.matches(commandId) ||
-                runCatching { UUID.fromString(nonce) }.isFailure || !j.has("desiredEnabled") || j.isNull("desiredEnabled") ||
-                issuedAtMs <= 0L || expiresAtMs <= nowMs || expiresAtMs - nowMs > MAX_COMMAND_DELIVERY_MS) {
+                runCatching { UUID.fromString(nonce) }.isFailure || desiredValue !is Boolean ||
+                issuedAtMs <= 0L || issuedAtMs > nowMs + MAX_COMMAND_FUTURE_SKEW_MS || expiresAtMs <= issuedAtMs ||
+                expiresAtMs <= nowMs || expiresAtMs - nowMs > MAX_COMMAND_DELIVERY_MS) {
                 null
             } else {
                 LocationControlCommand(
                     deviceId = deviceId,
                     commandId = commandId,
                     nonce = nonce,
-                    desiredEnabled = j.optBoolean("desiredEnabled"),
+                    desiredEnabled = desiredValue,
                     issuedAtMs = issuedAtMs,
                     expiresAtMs = expiresAtMs
                 )
