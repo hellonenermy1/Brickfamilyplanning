@@ -1,13 +1,15 @@
 package com.brick.safety.atlas
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.GnssStatus
 import android.location.LocationManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -65,17 +67,14 @@ class GnssSkyProvider(
         else latestStatus.takeIf { it.capability == ProviderCapability.SUPPORTED } ?: gate
     }
 
+    @SuppressLint("MissingPermission")
     override fun start(sink: EvidenceSink) {
         this.sink = sink
         val gate = capabilityStatus()
         latestStatus = gate
         if (gate.capability != ProviderCapability.SUPPORTED || registered) return
         registered = runCatching {
-            LocationManagerCompat.registerGnssStatusCallback(
-                locationManager,
-                ContextCompat.getMainExecutor(appContext),
-                callback
-            )
+            locationManager.registerGnssStatusCallback(callback, Handler(Looper.getMainLooper()))
         }.getOrDefault(false)
         if (!registered) latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.DEGRADED, "gnss_callback_registration_failed")
     }
@@ -147,7 +146,7 @@ class GnssSkyProvider(
     }
 
     override fun stop() {
-        if (registered) runCatching { LocationManagerCompat.unregisterGnssStatusCallback(locationManager, callback) }
+        if (registered) runCatching { locationManager.unregisterGnssStatusCallback(callback) }
         registered = false
         sink = null
     }
@@ -205,10 +204,10 @@ class GnssSkyProvider(
         val avg = if (cn0Count > 0) cn0Sum / cn0Count else null
         val total = status.satelliteCount.coerceIn(0, 96)
         val fingerprint = buildString {
-            append("c=").append(constellations.joinToString(",") { bucket(it) })
-            append("|a=").append(azimuth.joinToString(",") { bucket(it) })
-            append("|e=").append(elevation.joinToString(",") { bucket(it) })
-            append("|f=").append(carriers.joinToString(",") { bucket(it) })
+            append("c=").append(constellations.joinToString(",") { bucket(it).toString() })
+            append("|a=").append(azimuth.joinToString(",") { bucket(it).toString() })
+            append("|e=").append(elevation.joinToString(",") { bucket(it).toString() })
+            append("|f=").append(carriers.joinToString(",") { bucket(it).toString() })
             append("|u=").append(bucket(used))
             append("|n=").append(bucket(total))
             append("|q=").append(((avg ?: 0f) / 5f).roundToInt().coerceIn(0, 12))
