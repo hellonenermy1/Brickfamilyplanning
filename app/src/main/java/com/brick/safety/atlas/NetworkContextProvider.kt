@@ -44,8 +44,41 @@ class NetworkContextProvider(
             if (lastCollectElapsedMs > 0L && nowElapsed >= lastCollectElapsedMs && nowElapsed - lastCollectElapsedMs < interval) return
         }
         lastCollectElapsedMs = nowElapsed
+        val nowWall = System.currentTimeMillis()
         val network = connectivity.activeNetwork
         if (network == null) {
+            // Offline is useful transition evidence, not an exceptional absence of data. Recording
+            // it locally costs no network traffic and lets the existing durable journal backfill it
+            // after connectivity returns.
+            val signalId = AtlasPrivacyId.reduce("net", "offline")
+            val quality = 0.25f
+            onAtlasScan(AtlasScan(
+                nowElapsed,
+                nowWall,
+                quality,
+                listOf(AtlasSignalObservation(
+                    AtlasSignalKind.NETWORK_CONTEXT,
+                    signalId,
+                    "network.ctx",
+                    null,
+                    quality,
+                    sourceHealthy = true
+                ))
+            ))
+            emitContext(
+                elapsed = nowElapsed,
+                wall = nowWall,
+                signalId = signalId,
+                transport = "offline",
+                validated = false,
+                captive = false,
+                metered = false,
+                hasV4 = false,
+                hasV6 = false,
+                dnsIds = emptyList(),
+                quality = quality,
+                health = ProviderHealth.DEGRADED
+            )
             latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "offline")
             return
         }
@@ -84,7 +117,6 @@ class NetworkContextProvider(
             captive -> 0.25f
             else -> 0.35f
         }
-        val nowWall = System.currentTimeMillis()
         val observation = AtlasSignalObservation(
             AtlasSignalKind.NETWORK_CONTEXT,
             signalId,
@@ -94,7 +126,37 @@ class NetworkContextProvider(
             sourceHealthy = true
         )
         onAtlasScan(AtlasScan(nowElapsed, nowWall, quality, listOf(observation)))
+        emitContext(
+            nowElapsed,
+            nowWall,
+            signalId,
+            transport,
+            validated,
+            captive,
+            metered,
+            hasV4,
+            hasV6,
+            dnsIds,
+            quality,
+            ProviderHealth.HEALTHY
+        )
+        latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
+    }
 
+    private fun emitContext(
+        elapsed: Long,
+        wall: Long,
+        signalId: String,
+        transport: String,
+        validated: Boolean,
+        captive: Boolean,
+        metered: Boolean,
+        hasV4: Boolean,
+        hasV6: Boolean,
+        dnsIds: List<String>,
+        quality: Float,
+        health: ProviderHealth
+    ) {
         val payload = JSONObject()
             .put("v", 1)
             .put("id", signalId)
@@ -108,18 +170,17 @@ class NetworkContextProvider(
             .toString().toByteArray(Charsets.UTF_8)
         if (payload.size <= EvidenceProtocol.MAX_RECORD_PAYLOAD_BYTES) {
             sink?.emit(EvidenceObservation(
-                elapsedRealtimeMs = nowElapsed,
-                wallTimeMs = nowWall,
+                elapsedRealtimeMs = elapsed,
+                wallTimeMs = wall,
                 provider = EvidenceProviderId.NETWORK_CONTEXT,
                 family = EvidenceFamily.NETWORK,
                 independenceGroup = "network.ctx",
                 capability = ProviderCapability.SUPPORTED,
-                health = ProviderHealth.HEALTHY,
+                health = health,
                 quality = if (quality >= 0.55f) EvidenceQuality.MEDIUM else EvidenceQuality.LOW,
                 payload = payload
             ))
         }
-        latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
     }
 
     override fun stop() {
