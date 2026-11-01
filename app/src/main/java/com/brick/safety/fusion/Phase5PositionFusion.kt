@@ -90,7 +90,7 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
                 )
             }
 
-        return Phase5FusionSelection(
+        val selection = Phase5FusionSelection(
             result = result,
             speedMps = phase3?.position?.speedMps?.takeIf { it.isFinite() && it >= 0f },
             bearingDeg = phase3?.position?.headingDeg?.takeIf { it.isFinite() },
@@ -99,5 +99,9 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
             originalRealtimeHypothesisId = "realtime",
             storedHypotheses = hypotheses
         )
+        // Persistence is additive and fail-open. A journal failure cannot remove the fallback result;
+        // health telemetry already exposes evidence-journal failures independently.
+        Phase5HypothesisRuntime.record(selection)
+        return selection
     }
 }
