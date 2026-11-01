@@ -20,9 +20,10 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         atlas: AtlasRuntimeSnapshot?,
         anchor: Phase5AnchorInput?,
         lastKnown: Phase5LastKnownInput?,
-        learnedPlace: FusionConstraint? = null
+        learnedPlace: FusionConstraint? = null,
+        coarseNetwork: FusionConstraint? = null
     ): Phase5FusionSelection? {
-        val constraints = ArrayList<FusionConstraint>(5)
+        val constraints = ArrayList<FusionConstraint>(6)
         Phase5FusionAdapter.fromPhase3(phase3, nowElapsedMs)?.let(constraints::add)
         // Generic Atlas and a named learned-place interpretation deliberately share
         // `atlas.environment`; the central engine keeps only the strongest interpretation so a
@@ -32,6 +33,11 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         effectiveLearnedPlace?.let(constraints::add)
         Phase5FusionAdapter.fromAnchor(anchor, nowElapsedMs)?.let(constraints::add)
         Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
+        // IP-derived location is a last-resort coarse area. The runtime enforces a 50 km radius and
+        // COARSE state on-device, so it cannot become building/place truth even if server metadata
+        // is unexpectedly precise.
+        val effectiveCoarseNetwork = coarseNetwork ?: Phase5CoarseNetworkRuntime.constraint(nowElapsedMs)
+        effectiveCoarseNetwork?.let(constraints::add)
         if (constraints.isEmpty()) return null
 
         val result = engine.fuse(nowElapsedMs, constraints)
@@ -39,7 +45,7 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         val usedKinds = result.evidenceUsed.mapTo(linkedSetOf()) { it.kind }
         val source = when {
             usedKinds.size > 1 -> PositionSource.FUSION
-            usedKinds.any { it == FusionEvidenceKind.ATLAS || it == FusionEvidenceKind.LEARNED_PLACE || it == FusionEvidenceKind.RADIO_ROUTE || it == FusionEvidenceKind.WIFI_SEMANTIC || it == FusionEvidenceKind.WIFI_RTT || it == FusionEvidenceKind.WITNESS || it == FusionEvidenceKind.GROUND_RECEIVER || it == FusionEvidenceKind.FUTURE_RANGING } -> PositionSource.FUSION
+            usedKinds.any { it == FusionEvidenceKind.ATLAS || it == FusionEvidenceKind.LEARNED_PLACE || it == FusionEvidenceKind.RADIO_ROUTE || it == FusionEvidenceKind.WIFI_SEMANTIC || it == FusionEvidenceKind.WIFI_RTT || it == FusionEvidenceKind.WITNESS || it == FusionEvidenceKind.GROUND_RECEIVER || it == FusionEvidenceKind.FUTURE_RANGING || it == FusionEvidenceKind.COARSE_NETWORK } -> PositionSource.FUSION
             usedKinds.singleOrNull() == FusionEvidenceKind.BLE_ANCHOR -> PositionSource.BLE_ANCHOR
             usedKinds.singleOrNull() == FusionEvidenceKind.LAST_KNOWN -> PositionSource.LAST_KNOWN
             else -> PositionSource.INERTIAL
