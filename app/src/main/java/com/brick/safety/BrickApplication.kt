@@ -3,6 +3,7 @@ package com.brick.safety
 import android.app.Application
 import android.content.Context
 import com.brick.safety.data.Journal
+import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.RecoveryScheduler
 import kotlin.math.max
@@ -11,6 +12,7 @@ class BrickApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashReporter.install(this)
+        Phase5LearnedPlaceRuntime.initialize(this)
         recoverSequenceWatermark()
         // WorkManager is only a recovery backstop. A corrupt/unavailable WorkManager database must
         // never crash Brick before BootReceiver or the foreground tracking service can recover.
