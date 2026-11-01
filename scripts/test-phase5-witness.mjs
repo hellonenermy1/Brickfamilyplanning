@@ -82,17 +82,19 @@ row = db.prepare('SELECT * FROM witness_sightings WHERE record_id=?').get(selfSi
 assert.equal(row.child_device_id, null);
 assert.equal(row.authorised, 0);
 
-// Out-of-order/offline case: witness sighting lands before the child's alias registration.
+// Out-of-order/offline case: witness sighting lands before the child's alias registration. Advance
+// the simulated server clock with the future slot so this test never depends on CI's position inside
+// the current five-minute wall-clock slot.
 const nextSlot = slot + 1;
 const nextWall = nextSlot * slotMs + 10_000;
 const lateAlias = 'fedcba9876543210';
 const early = record(witness, { v:1,t:'s',a:lateAlias,latE7:13002000,lonE7:1038002000,accCm:1500,r:-72 }, nextWall, 5);
-await apply(witness, early);
+await apply(witness, early, nextWall);
 row = db.prepare('SELECT * FROM witness_sightings WHERE record_id=?').get(early.recordId);
 assert.equal(row.child_device_id, null);
 assert.equal(row.authorised, 0);
 
-await apply(child, record(child, { v:1,t:'a',aliases:[{a:lateAlias,s:nextSlot}] }, nextWall, 6));
+await apply(child, record(child, { v:1,t:'a',aliases:[{a:lateAlias,s:nextSlot}] }, nextWall, 6), nextWall);
 row = db.prepare('SELECT * FROM witness_sightings WHERE record_id=?').get(early.recordId);
 assert.equal(row.child_device_id, child, 'later alias registration must resolve an authorised pending sighting');
 assert.equal(row.authorised, 1);
@@ -102,9 +104,9 @@ db.prepare('UPDATE witness_authorizations SET enabled=0,updated_at=? WHERE devic
 const disabledSlot = slot + 2;
 const disabledWall = disabledSlot * slotMs + 10_000;
 const disabledAlias = '1111222233334444';
-await apply(child, record(child, { v:1,t:'a',aliases:[{a:disabledAlias,s:disabledSlot}] }, disabledWall, 7));
+await apply(child, record(child, { v:1,t:'a',aliases:[{a:disabledAlias,s:disabledSlot}] }, disabledWall, 7), disabledWall);
 const disabled = record(witness, { v:1,t:'s',a:disabledAlias,latE7:13003000,lonE7:1038003000,accCm:900,r:-52 }, disabledWall, 8);
-await apply(witness, disabled);
+await apply(witness, disabled, disabledWall);
 row = db.prepare('SELECT * FROM witness_sightings WHERE record_id=?').get(disabled.recordId);
 assert.equal(row.child_device_id, null);
 assert.equal(row.authorised, 0);
@@ -149,7 +151,7 @@ db.prepare('INSERT INTO witness_sightings(record_id,alias,witness_device_id,chil
   .run(oldSightingId, oldAlias, witness, null, now-40*86400000, 1.3, 103.8, 20, -60, null, 75, 95, 0, now-31*86400000);
 const cleanupSlot = slot + 3;
 const cleanupWall = cleanupSlot * slotMs + 20_000;
-await apply(child, record(child, { v:1,t:'a',aliases:[{a:'1234123412341234',s:cleanupSlot}] }, cleanupWall, 13));
+await apply(child, record(child, { v:1,t:'a',aliases:[{a:'1234123412341234',s:cleanupSlot}] }, cleanupWall, 13), cleanupWall);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM witness_aliases WHERE alias=?').get(oldAlias).n, 0);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM witness_sightings WHERE record_id=?').get(oldSightingId).n, 0);
 
