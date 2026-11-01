@@ -25,7 +25,8 @@ Record observed capability/health for:
 - LAN NSD;
 - GNSS sky;
 - network context;
-- charging/device context.
+- charging/device context;
+- Companion Device Manager association/presence observation.
 
 For every unsupported feature, capture actual platform/hardware evidence and mark `VERIFIED UNSUPPORTED`; never infer support from marketing specs.
 
@@ -158,7 +159,35 @@ Expected:
 - no active ping flood or needless network traffic;
 - network context remains weak evidence and never creates building-level coordinates.
 
-## K. Environmental/activity approach sequence
+## K. Trusted companion presence and self-healing
+
+Use only a device deliberately associated with Brick through Android Companion Device Manager. Keep at least one ordinary nearby/bonded but **unassociated** Bluetooth device available as a negative control.
+
+1. With no Brick companion association, place the unassociated/bonded device nearby and move it in/out of range.
+2. Create one explicit Android companion association through the intended setup path and record the association/presence capability the target OS actually exposes.
+3. Bring the associated companion into and out of presence range repeatedly while Brick remains open only through its normal foreground-service lifecycle.
+4. Confirm any persisted Brick identifier is privacy-reduced; no raw legacy Bluetooth MAC may appear in Brick long-lived state/evidence.
+5. While Brick's process stays alive, remove the Android companion association. Allow a normal Phase 4 collection cycle to observe the changed association set.
+6. Re-associate the same companion without restarting/reopening Brick, then repeat presence changes.
+7. If a controlled temporary presence-observation registration failure can be produced without damaging normal setup, restore the condition and verify a later normal collection retries automatically. Do not manufacture success by restarting Brick.
+8. Reboot the phone while the companion is physically present. After boot, verify the previous-boot presence bit is not trusted until Android reports current presence again.
+9. Repeat the cache-clearing behavior across an app update/package replacement using the intended update path.
+10. While companion presence is active, connect charging power and verify companion + charging still contribute only the single weak `device.context` independence group.
+
+Expected:
+- arbitrary nearby/bonded unassociated devices never become trusted companion evidence;
+- removing an association prunes stale Brick presence rather than leaving a permanent in-range signal;
+- after removal then re-association, Brick re-establishes observation automatically without process restart/manual sync;
+- a failed observation start is retryable rather than permanently stuck as already registered;
+- reboot/update clears only ephemeral presence state and does not destroy the Android-managed association;
+- raw legacy addresses are not persisted by Brick;
+- companion presence remains weak context and cannot by itself produce precise/exact location truth;
+- companion + charging cannot manufacture two independent confirmations;
+- any API/ColorOS limitation is recorded honestly as degraded/unsupported, never converted into fake positive presence.
+
+Record separately whether the target API exposes enough association addressing/presence information for Brick's current API 31–35 path. API 36 modernization is not considered device-verified by this Phase 4 test unless the actual tested device runs that API and the implementation has been updated accordingly.
+
+## L. Environmental/activity approach sequence
 
 Repeat a real approach/departure several times, such as vehicle → stationary → walking → stationary, together with normal environment changes.
 
@@ -169,7 +198,7 @@ Expected:
 - sequence alone cannot decide final location;
 - Phase 5 remains responsible for final fusion.
 
-## L. Replacement / poisoning matrix
+## M. Replacement / poisoning matrix
 
 Explicitly verify the Phase 4 exit cases:
 
@@ -179,7 +208,8 @@ Explicitly verify the Phase 4 exit cases:
 4. replaced router/AP;
 5. replaced BLE beacon/device;
 6. replaced LAN device/service;
-7. changed cellular environment.
+7. changed cellular environment;
+8. companion association removal/re-association.
 
 For every case record:
 - initial learned state;
@@ -189,9 +219,9 @@ For every case record:
 - whether incorrect relocation occurred;
 - whether manual intervention was required.
 
-Required result: **no case may incorrectly relocate the phone merely because the environmental signal changed/spoofed/moved.**
+Required result: **no case may incorrectly relocate the phone merely because the environmental signal changed/spoofed/moved, and no recoverable association/provider change may require routine Brick restart/manual sync.**
 
-## M. Lifecycle/recovery
+## N. Lifecycle/recovery
 
 Repeat selected Atlas tests across:
 - Brick process kill;
@@ -205,9 +235,10 @@ Repeat selected Atlas tests across:
 Expected:
 - valid Atlas state restores automatically;
 - corrupt state fails closed and relearns without poisoning Core;
+- provider state/re-subscriptions recover through supported lifecycle paths;
 - no recoverable case requires reopening Brick or manual sync.
 
-## N. Resource measurement
+## O. Resource measurement
 
 Measure real-device deltas with Phase 4 active:
 - 24-hour battery drain relative to accepted baseline;
