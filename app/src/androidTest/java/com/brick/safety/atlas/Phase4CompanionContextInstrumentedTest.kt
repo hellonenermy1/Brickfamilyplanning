@@ -24,6 +24,14 @@ class Phase4CompanionContextInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(CompanionPresenceStore.presentAssociationIds(context).isEmpty())
     }
 
+    fun testPresenceCacheCanBeClearedWithoutRemovingAndroidAssociation() {
+        val context = instrumentation.targetContext
+        CompanionPresenceStore.noteAssociation(context, 12, true)
+        assertEquals(setOf(12), CompanionPresenceStore.presentAssociationIds(context))
+        CompanionPresenceStore.clearPresence(context)
+        assertTrue(CompanionPresenceStore.presentAssociationIds(context).isEmpty())
+    }
+
     fun testLegacyCompanionAddressIsPrivacyReducedBeforePersistence() {
         val context = instrumentation.targetContext
         val raw = "AA:BB:CC:DD:EE:FF"
