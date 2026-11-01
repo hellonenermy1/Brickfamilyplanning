@@ -48,12 +48,24 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         val effectiveLearnedPlace = learnedPlace ?: Phase5LearnedPlaceRuntime.constraint(atlas, nowElapsedMs)
         effectiveLearnedPlace?.let(constraints::add)
         Phase5FusionAdapter.fromAnchor(anchor, nowElapsedMs)?.let(constraints::add)
-        Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
-        // IP-derived location is a last-resort coarse area. The runtime enforces a 50 km radius and
-        // COARSE state on-device, so it cannot become building/place truth even if server metadata
-        // is unexpectedly precise.
-        val effectiveCoarseNetwork = coarseNetwork ?: Phase5CoarseNetworkRuntime.constraint(nowElapsedMs)
-        effectiveCoarseNetwork?.let(constraints::add)
+
+        // IP geolocation is a *last-resort* area, not another vote. Even a tiny weak numerical
+        // weight could drag the centroid kilometres away if a mobile carrier exits in another city.
+        // Therefore current motion/Atlas/place/anchor evidence always wins the opportunity to fuse.
+        // If none exists, coarse network comes before last-known exactly as the V1 fallback order
+        // specifies; last-known is used only when coarse network is unavailable.
+        if (constraints.isEmpty()) {
+            val effectiveCoarseNetwork = coarseNetwork ?: Phase5CoarseNetworkRuntime.constraint(nowElapsedMs)
+            if (effectiveCoarseNetwork != null) {
+                constraints += effectiveCoarseNetwork
+            } else {
+                Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
+            }
+        } else {
+            // A recent verified position can still provide conservative consistency context while
+            // current degraded evidence exists. Coarse IP is deliberately excluded in this branch.
+            Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
+        }
         if (constraints.isEmpty()) return null
 
         val result = engine.fuse(nowElapsedMs, constraints)
@@ -77,9 +89,16 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
             storedEvidenceWeight = 1.0,
             source = "realtime_fusion"
         )
+        // Backward smoothing must be able to reconsider a plausible alternative that realtime
+        // fusion did not choose. Preserve used constraints first, then the strongest unused
+        // alternatives. These are candidates only; correlated evidence still cannot multiply the
+        // realtime fusion vote because the central engine has already enforced independence groups.
         constraints.asSequence()
-            .filter { it.id in usedIds }
-            .sortedByDescending { it.supportWeight * it.strength.multiplier }
+            .distinctBy { it.id }
+            .sortedWith(
+                compareByDescending<FusionConstraint> { it.id in usedIds }
+                    .thenByDescending { it.supportWeight * it.strength.multiplier }
+            )
             // The recorder uses compact JSON with a 2 KiB evidence payload cap. Five alternatives
             // plus the realtime selection stays safely bounded even with maximum legal IDs/source.
             .take(5)
