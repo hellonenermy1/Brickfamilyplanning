@@ -109,7 +109,22 @@ jobs:
           fi
           git diff --exit-code -- app/gradle.lockfile
       - name: Build and lint
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+        id: build_lint
+        shell: bash
+        run: |
+          set +e
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace 2>&1 | tee p6-build-lint.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit "$code"
+      - name: Preserve build/lint diagnostics
+        if: failure() && steps.build_lint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-build-lint-log
+          path: p6-build-lint.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Verify Phase 6 Android control source
         shell: bash
         run: |
