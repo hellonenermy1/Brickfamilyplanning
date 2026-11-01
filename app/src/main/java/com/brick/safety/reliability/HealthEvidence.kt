@@ -11,6 +11,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
+import com.brick.safety.atlas.Phase4AtlasRuntime
 import com.brick.safety.evidence.EvidenceJournal
 import org.json.JSONObject
 
@@ -21,6 +22,12 @@ object HealthEvidence {
         val activityManager = context.getSystemService(ActivityManager::class.java)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+
+        // Phase 4 uses the existing foreground-service health cadence as its first bounded runtime
+        // pulse. Provider-internal intervals still prevent oversampling. A provider failure must never
+        // fail the health heartbeat or Brick Core.
+        runCatching { Phase4AtlasRuntime.pulse(context) }
+
         val now = System.currentTimeMillis()
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
@@ -41,6 +48,9 @@ object HealthEvidence {
         val phase3RouteGraphFailureTotal = prefs.getLong("phase3RouteGraphFailureTotal", 0L).coerceAtLeast(0L)
         val lastPhase3ConsistencyReject = prefs.getLong("lastPhase3ConsistencyRejectWallMs", 0L)
         val phase3ConsistencyRejectTotal = prefs.getLong("phase3ConsistencyRejectTotal", 0L).coerceAtLeast(0L)
+
+        val lastAtlasStateFailure = prefs.getLong("lastAtlasStateFailureWallMs", 0L)
+        val atlasStateFailureTotal = prefs.getLong("atlasStateFailureTotal", 0L).coerceAtLeast(0L)
 
         val evidenceSnapshot = runCatching {
             EvidenceJournal(context).let { journal ->
@@ -84,6 +94,7 @@ object HealthEvidence {
             .put("activityRecognitionPermission", granted(Manifest.permission.ACTIVITY_RECOGNITION))
             .put("bleAnchorConfigCount", bleAnchorConfigCount)
             .put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))
+            .put("nearbyWifiPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.NEARBY_WIFI_DEVICES))
             .put("notificationPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
             .put("batteryOptimizationExempt", powerManager.isIgnoringBatteryOptimizations(context.packageName))
             .put("powerSaveMode", powerManager.isPowerSaveMode)
@@ -133,5 +144,15 @@ object HealthEvidence {
             .put("lastPhase3ConsistencyRejectAgeMs", ageSince(lastPhase3ConsistencyReject))
             .put("phase3ConsistencyRejectTotal", phase3ConsistencyRejectTotal)
             .put("lastPhase3ConsistencyRejectReason", optionalString("lastPhase3ConsistencyRejectReason"))
+            .put("atlasStateHealthy", prefs.getBoolean("atlasStateHealthy", true))
+            .put("lastAtlasStateFailureAgeMs", ageSince(lastAtlasStateFailure))
+            .put("atlasStateFailureTotal", atlasStateFailureTotal)
+            .put("atlasLabelCount", prefs.getInt("atlasLabelCount", 0).coerceAtLeast(0))
+            .put("atlasSignalCount", prefs.getInt("atlasSignalCount", 0).coerceAtLeast(0))
+            .put("atlasCandidateCount", prefs.getInt("atlasCandidateCount", 0).coerceAtLeast(0))
+            .put("atlasCandidateAmbiguous", optionalBoolean("atlasCandidateAmbiguous"))
+            .put("atlasCandidateUncertaintyM", optionalFloat("atlasCandidateUncertaintyM"))
+            .put("atlasWifiProviderHealthy", optionalBoolean("atlasWifiProviderHealthy"))
+            .put("atlasNetworkProviderHealthy", optionalBoolean("atlasNetworkProviderHealthy"))
     }
 }
