@@ -1,20 +1,14 @@
 package com.brick.safety.privileged
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
-import org.junit.Assert.assertTrue
-import org.junit.After
-import org.junit.Test
-import org.junit.runner.RunWith
+import com.brick.safety.testing.BrickInstrumentationTestCase
 
-@RunWith(AndroidJUnit4::class)
-class Phase6PrivilegedBridgeInstrumentedTest {
-    @After
-    fun reset() = PrivilegedBridgeRuntime.clear()
+class Phase6PrivilegedBridgeInstrumentedTest : BrickInstrumentationTestCase() {
+    override fun tearDown() {
+        PrivilegedBridgeRuntime.clear()
+        super.tearDown()
+    }
 
-    @Test
-    fun normalBrickHasSafeUnavailableFallback() {
+    fun testNormalBrickHasSafeUnavailableFallback() {
         PrivilegedBridgeRuntime.clear()
         val bridge = PrivilegedBridgeRuntime.current()
         val health = bridge.health()
@@ -32,8 +26,7 @@ class Phase6PrivilegedBridgeInstrumentedTest {
         assertTrue(bridge.attemptSosLocationEnable().isFailure)
     }
 
-    @Test
-    fun typedProviderCanControlLocationWithoutGenericShellSurface() {
+    fun testTypedProviderCanControlLocationWithoutGenericShellSurface() {
         var requested: Boolean? = null
         val fake = object : PrivilegedBridge {
             override fun health() = PrivilegedBridgeHealth(
@@ -57,8 +50,7 @@ class Phase6PrivilegedBridgeInstrumentedTest {
         assertTrue(fake.health().capabilities.contains(PrivilegedCapability.LOCATION_CONTROL))
     }
 
-    @Test
-    fun optionalProviderCanDisappearWithoutBreakingCoreRuntime() {
+    fun testOptionalProviderCanDisappearWithoutBreakingCoreRuntime() {
         val fake = object : PrivilegedBridge {
             override fun health() = PrivilegedBridgeHealth("test", true, true, true, setOf(PrivilegedCapability.WIFI_EVIDENCE))
             override fun setParentLocationState(enabled: Boolean) = Result.failure<Boolean>(UnsupportedOperationException())
