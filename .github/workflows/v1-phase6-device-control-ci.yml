@@ -1,0 +1,159 @@
+name: Brick V1 Phase 6 — Device Control CI
+
+on:
+  pull_request:
+    branches: [v1-p5b-closure-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PHASE6_SHA: b4f7678baf832c8f3e4ad70409b4c5bc0c7238e4
+  CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: brick-v1-phase6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Phase 6 Cloud typecheck and control guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CLOUD_PHASE6_SHA }}
+      - name: Verify exact Cloud candidate
+        run: test "$(git rev-parse HEAD)" = "$CLOUD_PHASE6_SHA"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Verify Phase 6 control boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'device_location_control' schema/011_v1_phase6_location_control.sql >/dev/null
+          grep -F 'desired_enabled' src/phase6-location-control.ts >/dev/null
+          grep -F 'crypto.randomUUID()' src/phase6-location-control.ts >/dev/null
+          grep -F 'expiresAtMs' src/phase6-location-control.ts >/dev/null
+          grep -F 'same-origin request required' src/worker-v6.ts >/dev/null
+          grep -F 'parentSetLocationControl' src/worker-v6.ts >/dev/null
+          grep -F 'augmentHealthWithLocationControl' src/worker-v6.ts >/dev/null
+          ! grep -R -F 'remote shell' src/phase6-location-control.ts >/dev/null
+
+  android-build:
+    name: Phase 6 Android build, lint and dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE6_SHA }}
+      - name: Verify exact Android candidate
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE6_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36'
+      - name: Verify dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Build and lint
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+      - name: Verify Phase 6 Android control source
+        shell: bash
+        run: |
+          grep -F 'DesiredLocationState.ON' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'DesiredLocationState.OFF' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'issuedAtMs <= previousIssuedAt' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'ParentLocationStateStore.read(context)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/managed/Phase6ParentLocationStateInstrumentedTest.kt
+
+  android-instrumentation:
+    name: Phase 2-6 cumulative Android instrumentation
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE6_SHA }}
+      - name: Verify exact Android candidate
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE6_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK and AVD
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p6-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+      - name: Install and boot emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | "$AVDMANAGER" create avd --force --name brick-p6 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p6 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p6-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+      - name: Run all retained Android tests
+        run: gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+      - name: Diagnostics
+        if: failure()
+        run: |
+          tail -n 400 /tmp/brick-p6-emulator.log || true
+          "$ADB" devices -l || true
