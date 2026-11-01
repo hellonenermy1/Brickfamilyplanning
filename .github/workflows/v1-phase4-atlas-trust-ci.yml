@@ -1,0 +1,151 @@
+name: Brick V1 Phase 4 — Atlas & Signal Trust CI
+
+on:
+  pull_request:
+    branches: [v1-p3-motion-positioning-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PHASE4_SHA: b5a9e307e50a810af53960bc57315a20c3d294c7
+
+concurrency:
+  group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Phase 4 wire contract + retained regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck and Phase 4 provider wire contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node --check scripts/test-phase4-provider-contract.mjs
+          npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
+          node scripts/test-phase4-provider-contract.mjs /tmp/brick-evidence-protocol.mjs
+      - name: Retain Phase 3 and Phase 2 Cloud regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/route-graph-data.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph-data.mjs
+          npx esbuild src/route-graph.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph.mjs
+          node scripts/test-phase3-route-graph.mjs /tmp/brick-route-graph-data.mjs /tmp/brick-route-graph.mjs
+          npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+
+  android-build:
+    name: Phase 4 Android compile / lint / dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE4_SHA }}
+      - name: Verify exact Android pair
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE4_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Install compile SDK explicitly
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-36'
+      - name: Verify dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Compile app tests and lint
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+      - name: Lock Phase 4 architecture invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
+          grep -F 'class EnvironmentalAtlas' app/src/main/java/com/brick/safety/atlas/EnvironmentalAtlas.kt >/dev/null
+          grep -F 'internal object SignalTrustEngine' app/src/main/java/com/brick/safety/atlas/SignalTrustEngine.kt >/dev/null
+          grep -F 'brick_atlas_hmac_v1' app/src/main/java/com/brick/safety/atlas/AtlasPrivacyId.kt >/dev/null
+          grep -F 'brick_atlas_v1.bin' app/src/main/java/com/brick/safety/atlas/AtlasStateStore.kt >/dev/null
+          grep -F 'sample.quality != PositionQuality.PRECISE && sample.quality != PositionQuality.ASSISTED' app/src/main/java/com/brick/safety/atlas/Phase4AtlasController.kt >/dev/null
+          grep -F 'groupContributions.size < 2' app/src/main/java/com/brick/safety/atlas/EnvironmentalAtlas.kt >/dev/null
+          grep -F 'negative >= 0.15' app/src/main/java/com/brick/safety/atlas/EnvironmentalAtlas.kt >/dev/null
+          grep -F 'semanticCommon' app/src/main/java/com/brick/safety/atlas/SignalTrustEngine.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("wifi"' app/src/main/java/com/brick/safety/atlas/WifiEnvironmentProvider.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("ble"' app/src/main/java/com/brick/safety/atlas/BleEnvironmentProvider.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("cell"' app/src/main/java/com/brick/safety/atlas/CellularEnvironmentProvider.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("lan"' app/src/main/java/com/brick/safety/atlas/LanEnvironmentProvider.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("gnss"' app/src/main/java/com/brick/safety/atlas/GnssSkyProvider.kt >/dev/null
+          grep -F 'testOneCorrelatedRadioFamilyCannotBecomePreciseLocationTruth' app/src/androidTest/java/com/brick/safety/atlas/Phase4AtlasCoreInstrumentedTest.kt >/dev/null
+
+  android-instrumentation:
+    name: Phase 4 Android instrumentation
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE4_SHA }}
+      - name: Verify exact Android pair
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE4_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Install Android SDK + emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | avdmanager create avd --force --name brick-p4 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+      - name: Boot emulator and run retained + Phase 4 instrumentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chmod 666 /dev/kvm || true
+          nohup "$ANDROID_HOME/emulator/emulator" -avd brick-p4 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p4-emulator.log 2>&1 &
+          adb wait-for-device
+          for i in $(seq 1 120); do
+            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+      - name: Emulator log on failure
+        if: failure()
+        run: tail -n 300 /tmp/brick-p4-emulator.log || true
