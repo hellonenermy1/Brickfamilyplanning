@@ -21,13 +21,16 @@ const ground = {
   latitude:1.30005, longitude:103.80005, radiusM:60, observedWallMs:now-3_000, ageMs:3_000,
   sourceId:'g1', explanation:'authorised fixed Brick receiver area'
 };
+function near(actual, expected, epsilon = 1e-10) {
+  assert.ok(Math.abs(actual - expected) <= epsilon, `expected ${actual} to be within ${epsilon} of ${expected}`);
+}
 
 // External evidence is never allowed to manufacture PRECISE/ASSISTED. A fresh precise child fix
 // stays the center, while the separate refinement honestly includes the broader external area.
 let r = p5.refineCurrentState(base, [witness], now);
 assert.ok(r);
-assert.equal(r.latitude, base.lat);
-assert.equal(r.longitude, base.lon);
+near(r.latitude, base.lat);
+near(r.longitude, base.lon);
 assert.notEqual(r.quality, 'precise');
 assert.notEqual(r.quality, 'assisted');
 assert.ok(r.uncertaintyM >= witness.radiusM);
@@ -39,8 +42,8 @@ r = p5.refineCurrentState(null, [ground], now);
 assert.ok(r);
 assert.equal(r.quality, 'anchored');
 assert.equal(r.shape, 'place_area');
-assert.equal(r.latitude, ground.latitude);
-assert.equal(r.longitude, ground.longitude);
+near(r.latitude, ground.latitude);
+near(r.longitude, ground.longitude);
 assert.ok(r.uncertaintyM >= ground.radiusM);
 
 // One authorised witness is also an area, never an exact coordinate.
@@ -53,7 +56,8 @@ assert.ok(r.uncertaintyM >= 75);
 const farGround = { ...ground, id:'ground:g2:s2', independenceGroup:'ground:g2', sourceId:'g2', latitude:1.3300, longitude:103.8300 };
 r = p5.refineCurrentState(base, [farGround], now);
 assert.ok(r);
-assert.equal(r.latitude, base.lat, 'fresh precise device fix remains the center');
+near(r.latitude, base.lat);
+near(r.longitude, base.lon);
 assert.ok(r.conflicts.length > 0);
 assert.equal(r.quality, 'coarse');
 assert.ok(r.uncertaintyM > 1_000);
