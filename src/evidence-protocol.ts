@@ -29,7 +29,8 @@ export type EvidenceBatch = {
   records: EvidenceRecord[];
 };
 
-const validProviders = new Set([...Array.from({ length: 21 }, (_, i) => i + 1), 255]);
+// Provider 22 is the Phase 5 durable degraded-hypothesis frame used only for backward smoothing.
+const validProviders = new Set([...Array.from({ length: 22 }, (_, i) => i + 1), 255]);
 const validFamilies = new Set([...Array.from({ length: 13 }, (_, i) => i + 1), 255]);
 
 function safeU64(view: DataView, offset: number, field: string): number {
