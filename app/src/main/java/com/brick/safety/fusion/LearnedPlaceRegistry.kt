@@ -90,11 +90,12 @@ class LearnedPlaceRegistry(context: Context) {
         private const val MAX_PLACES = 32
         private const val MAX_PLAIN_BYTES = 24_000
         private const val MAX_ENCRYPTED_BYTES = 32_000
+        internal const val FILE_NAME = "brick_learned_places_v1.bin"
     }
 
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
-    private val atomic = AtomicFile(File(appContext.filesDir, "brick_learned_places_v1.bin"))
+    private val atomic = AtomicFile(File(appContext.filesDir, FILE_NAME))
     private var ownerDeviceId: String? = null
     private var places: List<LearnedPlaceDefinition> = emptyList()
 
@@ -102,9 +103,10 @@ class LearnedPlaceRegistry(context: Context) {
 
     @Synchronized
     fun update(owner: String, definitions: Collection<LearnedPlaceDefinition>): Boolean {
-        if (owner.isBlank() || owner.length > 128) return false
+        val current = currentOwner() ?: return false
+        if (owner != current || owner.isBlank() || owner.length > 128) return false
         val normalized = definitions.distinctBy { it.id }.sortedBy { it.id }.take(MAX_PLACES)
-        ownerDeviceId = owner
+        ownerDeviceId = current
         places = normalized
         return persist()
     }
@@ -124,7 +126,12 @@ class LearnedPlaceRegistry(context: Context) {
         if (current == ownerDeviceId) return
         ownerDeviceId = current
         places = emptyList()
-        if (current == null) runCatching { atomic.delete() } else restoreForCurrentOwner()
+        if (current == null) {
+            runCatching { atomic.delete() }
+            prefs.edit().putInt("phase5LearnedPlaceCount", 0).apply()
+        } else {
+            restoreForCurrentOwner()
+        }
     }
 
     private fun restoreForCurrentOwner() {
@@ -163,6 +170,7 @@ class LearnedPlaceRegistry(context: Context) {
 
     private fun persist(): Boolean {
         val owner = ownerDeviceId ?: return false
+        if (owner != currentOwner()) return false
         return try {
             val array = JSONArray()
             for (place in places) {
