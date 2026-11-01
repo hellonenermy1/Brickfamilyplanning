@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   cloud:
-    name: Phase 5 fusion/witness/ground/places/smoothing + retained Cloud regressions
+    name: Phase 5 fusion/witness/ground/places/refinement + retained Cloud regressions
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -40,6 +40,8 @@ jobs:
           node --check scripts/test-phase5-places.mjs
           node --check scripts/test-phase5-smoothing.mjs
           node --check scripts/test-phase5-external-constraints.mjs
+          node --check scripts/test-phase5-current-refinement.mjs
+          node --check scripts/test-phase5-parent-live.mjs
           npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
           node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
           npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
@@ -52,6 +54,10 @@ jobs:
           node scripts/test-phase5-smoothing.mjs /tmp/brick-phase5-smoothing.mjs
           npx esbuild src/phase5-external-constraints.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-external-constraints.mjs
           node scripts/test-phase5-external-constraints.mjs /tmp/brick-phase5-external-constraints.mjs
+          npx esbuild src/phase5-current-refinement.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-current-refinement.mjs
+          node scripts/test-phase5-current-refinement.mjs /tmp/brick-phase5-current-refinement.mjs
+          npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
+          node scripts/test-phase5-parent-live.mjs /tmp/brick-parent-v6.mjs
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           grep -F 'X-Brick-Receiver-Signature' src/ground-receiver.ts >/dev/null
           grep -F 'configured.radius_m! + conservativeBleAllowanceM' src/ground-receiver.ts >/dev/null || grep -F 'receiverRadiusM + conservativeBleAllowanceM' src/ground-receiver.ts >/dev/null
@@ -59,6 +65,8 @@ jobs:
           grep -F 'augmentHealthWithLearnedPlaces' src/worker-v9.ts >/dev/null
           grep -F 'originalRealtimeHypothesisId' src/phase5-smoothing.ts >/dev/null
           grep -F 'listCurrentExternalConstraints' src/phase5-external-constraints.ts >/dev/null
+          grep -F 'augmentParentStateWithExternalRefinement' src/worker-v9.ts >/dev/null
+          grep -F 'refinedState' src/parent-v6.ts >/dev/null
       - name: Retain Phase 4 / 3 / 2 Cloud regressions
         shell: bash
         run: |
