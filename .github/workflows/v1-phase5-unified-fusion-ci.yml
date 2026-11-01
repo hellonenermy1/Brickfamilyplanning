@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: 5f5c8bab9187348ce6ad3cf1d701f337098098b8
+  ANDROID_PHASE5_SHA: 7de901f21cf2e1e19d11caba23565aaf02b33144
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   cloud:
-    name: Phase 5 protocol + retained Cloud regressions
+    name: Phase 5 fusion/witness + retained Cloud regressions
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -28,15 +28,18 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Typecheck and Phase 5 fusion protocol
+      - name: Typecheck and Phase 5 fusion / Witness semantics
         shell: bash
         run: |
           set -euo pipefail
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           node --check scripts/test-phase5-fusion-protocol.mjs
+          node --check scripts/test-phase5-witness.mjs
           npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
           node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
+          npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
+          node scripts/test-phase5-witness.mjs /tmp/brick-phase5-evidence.mjs
       - name: Retain Phase 4 / 3 / 2 Cloud regressions
         shell: bash
         run: |
@@ -144,6 +147,11 @@ jobs:
           grep -F 'Reliability fail-safe: Phase 5 is additive' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
           grep -F 'testCorrelatedEvidenceDoesNotMultiplyIndependence' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
           grep -F 'testConflictExpandsUncertaintyInsteadOfChoosingOneAnswer' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
+          grep -F 'class WitnessMeshProvider' app/src/main/java/com/brick/safety/witness/WitnessMeshProvider.kt >/dev/null
+          grep -F 'brick-witness-alias-hmac-v1' app/src/main/java/com/brick/safety/witness/WitnessAliasKey.kt >/dev/null
+          grep -F 'BLUETOOTH_ADVERTISE' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'WitnessMeshProvider(appContext)' app/src/main/java/com/brick/safety/atlas/Phase4AtlasController.kt >/dev/null
+          grep -F 'testAliasIsStableInsideSlotAndRotatesAcrossSlots' app/src/androidTest/java/com/brick/safety/witness/Phase5WitnessAliasInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
