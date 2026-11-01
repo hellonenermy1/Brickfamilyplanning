@@ -37,7 +37,8 @@ class Phase4AtlasController(context: Context) {
         CellularEnvironmentProvider(appContext) { noteProviderScan("cellular", it) },
         LanEnvironmentProvider(appContext) { noteProviderScan("lan", it) },
         GnssSkyProvider(appContext) { noteProviderScan("gnss", it) },
-        NetworkContextProvider(appContext) { noteProviderScan("network", it) }
+        NetworkContextProvider(appContext) { noteProviderScan("network", it) },
+        DeviceContextProvider(appContext) { noteProviderScan("device", it) }
     )
 
     private val sink = EvidenceSink { observation ->
@@ -239,6 +240,7 @@ class Phase4AtlasController(context: Context) {
         publishProvider(edit, "atlasLanProvider", status[EvidenceProviderId.LAN_ENVIRONMENT])
         publishProvider(edit, "atlasGnssProvider", status[EvidenceProviderId.GNSS_QUALITY])
         publishProvider(edit, "atlasNetworkProvider", status[EvidenceProviderId.NETWORK_CONTEXT])
+        publishProvider(edit, "atlasDeviceContextProvider", status[EvidenceProviderId.COMPANION])
         if (best?.uncertaintyM?.isFinite() == true) edit.putFloat("atlasCandidateUncertaintyM", best.uncertaintyM)
         else edit.remove("atlasCandidateUncertaintyM")
         edit.apply()
