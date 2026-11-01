@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-lock:
@@ -23,10 +23,17 @@ jobs:
           gradle-version: '8.13'
       - name: Generate exact Gradle lock
         run: gradle --no-daemon :app:dependencies --write-locks
-      - name: Upload generated lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase6-generated-gradle-lock
-          path: app/gradle.lockfile
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit exact generated lock
+        shell: bash
+        run: |
+          if git diff --quiet -- app/gradle.lockfile; then
+            echo "Gradle lock is already canonical."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/gradle.lockfile
+          git commit -m "build: refresh Phase 6 Gradle dependency lock"
+          git push origin HEAD:v1-p6-device-control-android
+      - name: Verify lock is clean after commit
+        run: git diff --exit-code -- app/gradle.lockfile
