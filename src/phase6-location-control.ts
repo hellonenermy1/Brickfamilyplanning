@@ -58,11 +58,20 @@ export async function parentSetLocationControl(req: Request, env: LocationContro
      ON CONFLICT(device_id) DO UPDATE SET
        desired_enabled=excluded.desired_enabled,
        command_id=excluded.command_id,
-       issued_at=excluded.issued_at,
+       issued_at=CASE
+         WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1
+         ELSE excluded.issued_at
+       END,
        updated_at=excluded.updated_at`
   ).bind(deviceId, body.enabled ? 1 : 0, commandId, now).run();
 
-  return json({ ok: true, deviceId, desiredEnabled: body.enabled, commandId, issuedAtMs: now });
+  // Read back this command's stored sequence time. If another parent command already superseded it,
+  // the phone will receive only that newer row; this response remains an acknowledgement of this tap.
+  const stored = await env.DB.prepare(
+    "SELECT issued_at FROM device_location_control WHERE device_id=?1 AND command_id=?2 LIMIT 1"
+  ).bind(deviceId, commandId).first<{ issued_at: number }>();
+
+  return json({ ok: true, deviceId, desiredEnabled: body.enabled, commandId, issuedAtMs: stored?.issued_at ?? now });
 }
 
 export async function parentGetLocationControl(env: LocationControlEnv, deviceId: string): Promise<Response> {
