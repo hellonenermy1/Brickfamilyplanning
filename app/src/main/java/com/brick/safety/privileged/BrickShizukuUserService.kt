@@ -1,11 +1,17 @@
 package com.brick.safety.privileged
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.net.wifi.ScanResult as WifiScanResult
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.telephony.CellIdentityCdma
 import android.telephony.CellIdentityGsm
@@ -18,6 +24,8 @@ import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -64,6 +72,25 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
         lastUseElapsed.set(android.os.SystemClock.elapsedRealtime())
     }
 
+    private fun hasPermission(context: Context, permission: String): Boolean =
+        context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun readAtMost(input: InputStream, maxBytes: Int): ByteArray {
+        require(maxBytes >= 0)
+        if (maxBytes == 0) return ByteArray(0)
+        val buffer = ByteArray(minOf(8 * 1024, maxBytes))
+        val output = ByteArrayOutputStream(minOf(8 * 1024, maxBytes))
+        var remaining = maxBytes
+        while (remaining > 0) {
+            val count = input.read(buffer, 0, minOf(buffer.size, remaining))
+            if (count < 0) break
+            if (count == 0) continue
+            output.write(buffer, 0, count)
+            remaining -= count
+        }
+        return output.toByteArray()
+    }
+
     private fun runFixed(vararg command: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): FixedResult {
         touch()
         require(command.isNotEmpty())
@@ -72,8 +99,58 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
             process.destroyForcibly()
             throw IllegalStateException("privileged operation timed out")
         }
-        val bytes = process.inputStream.use { it.readNBytes(MAX_OUTPUT_BYTES) }
+        val bytes = process.inputStream.use { readAtMost(it, MAX_OUTPUT_BYTES) }
         return FixedResult(process.exitValue(), bytes.toString(Charsets.UTF_8).trim())
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun wifiScanResultsOrNull(context: Context, manager: WifiManager): List<WifiScanResult>? {
+        // getScanResults() still requires fine location for apps targeting Android 10+.
+        if (!hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)) return null
+        return try {
+            manager.scanResults.orEmpty()
+        } catch (_: SecurityException) {
+            // Permission/location policy can change between the check and the platform call.
+            null
+        }
+    }
+
+    private fun hasBleScanPermission(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            hasPermission(context, Manifest.permission.BLUETOOTH_SCAN)
+        } else {
+            hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startBleScanSafely(
+        context: Context,
+        scanner: BluetoothLeScanner,
+        settings: ScanSettings,
+        callback: ScanCallback,
+    ): Boolean {
+        if (!hasBleScanPermission(context)) return false
+        return try {
+            scanner.startScan(null, settings, callback)
+            true
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun stopBleScanSafely(
+        context: Context,
+        scanner: BluetoothLeScanner,
+        callback: ScanCallback,
+    ) {
+        if (!hasBleScanPermission(context)) return
+        try {
+            scanner.stopScan(callback)
+        } catch (_: SecurityException) {
+            // Best effort: permission can be revoked while a scan is active.
+        }
     }
 
     private fun locationEnabled(): Boolean {
@@ -109,13 +186,16 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
     override fun wifiEvidence(): Bundle {
         touch()
         val out = Bundle()
-        val manager = serviceContext?.getSystemService(WifiManager::class.java)
+        val context = serviceContext
+            ?: return out.apply { putBoolean("supported", false); putString("error", "service context unavailable") }
+        val manager = context.getSystemService(WifiManager::class.java)
             ?: return out.apply { putBoolean("supported", false); putString("error", "wifi manager unavailable") }
+        val results = wifiScanResultsOrNull(context, manager)
+            ?: return out.apply { putBoolean("supported", false); putString("error", "wifi scan permission unavailable") }
         return try {
-            @Suppress("DEPRECATION")
-            val results = manager.scanResults.orEmpty().sortedByDescending { it.level }.take(MAX_ROWS)
-            val rows = ArrayList<Bundle>(results.size)
-            for (scan in results) {
+            val ranked = results.sortedByDescending { it.level }.take(MAX_ROWS)
+            val rows = ArrayList<Bundle>(ranked.size)
+            for (scan in ranked) {
                 val bssid = scan.BSSID?.takeIf { it.isNotBlank() }
                 @Suppress("DEPRECATION") val ssid = scan.SSID?.takeIf { it.isNotBlank() && it != "<unknown ssid>" }
                 if (bssid == null && ssid == null) continue
@@ -135,6 +215,11 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
     override fun bleEvidence(): Bundle {
         touch()
         val out = Bundle()
+        val context = serviceContext
+            ?: return out.apply { putBoolean("supported", false); putString("error", "service context unavailable") }
+        if (!hasBleScanPermission(context)) {
+            return out.apply { putBoolean("supported", false); putString("error", "ble scan permission unavailable") }
+        }
         val scanner = runCatching { BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner }.getOrNull()
             ?: return out.apply { putBoolean("supported", false); putString("error", "ble scanner unavailable") }
         val seen = ConcurrentHashMap<String, Int>()
@@ -150,16 +235,18 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
         }
         return try {
             val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build()
-            scanner.startScan(null, settings, callback)
+            if (!startBleScanSafely(context, scanner, settings, callback)) {
+                return out.apply { putBoolean("supported", false); putString("error", "ble scan permission unavailable") }
+            }
             CountDownLatch(1).await(BLE_SCAN_MS, TimeUnit.MILLISECONDS)
-            runCatching { scanner.stopScan(callback) }
+            stopBleScanSafely(context, scanner, callback)
             val rows = ArrayList<Bundle>()
             seen.entries.sortedByDescending { it.value }.take(MAX_ROWS).forEach { (id, rssi) ->
                 rows += Bundle().apply { putString("id", id); putInt("rssi", rssi) }
             }
             out.apply { putBoolean("supported", true); putParcelableArrayList("rows", rows) }
         } catch (_: Throwable) {
-            runCatching { scanner.stopScan(callback) }
+            stopBleScanSafely(context, scanner, callback)
             out.apply { putBoolean("supported", false); putString("error", "ble evidence unavailable") }
         }
     }
