@@ -45,12 +45,19 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         val effectivePhase3 = Phase5RadioRouteMatcher.rerank(phase3, atlas, nowElapsedMs)
         val constraints = ArrayList<FusionConstraint>(6)
         Phase5FusionAdapter.fromPhase3(effectivePhase3, nowElapsedMs)?.let(constraints::add)
-        // Generic Atlas and a named learned-place interpretation deliberately share
-        // `atlas.environment`; the central engine keeps only the strongest interpretation so a
-        // single environmental observation cannot vote twice.
-        Phase5FusionAdapter.fromAtlas(atlas, nowElapsedMs)?.let(constraints::add)
+
+        // A valid named learned-place interpretation is derived from the same environmental evidence
+        // as generic Atlas and deliberately uses the same `atlas.environment` independence group.
+        // Treat it as a semantic replacement, not a competing duplicate. Keeping both and then
+        // selecting whichever has the higher precision-weight can accidentally discard the safer,
+        // larger named-place area in favour of a small Atlas cell. The learned place is therefore
+        // preferred when present; otherwise the generic Atlas hypothesis remains available.
         val effectiveLearnedPlace = learnedPlace ?: Phase5LearnedPlaceRuntime.constraint(atlas, nowElapsedMs)
-        effectiveLearnedPlace?.let(constraints::add)
+        if (effectiveLearnedPlace != null) {
+            constraints += effectiveLearnedPlace
+        } else {
+            Phase5FusionAdapter.fromAtlas(atlas, nowElapsedMs)?.let(constraints::add)
+        }
         Phase5FusionAdapter.fromAnchor(anchor, nowElapsedMs)?.let(constraints::add)
 
         // IP geolocation is a *last-resort* area, not another vote. Even a tiny weak numerical
