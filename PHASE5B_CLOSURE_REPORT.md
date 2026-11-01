@@ -1,35 +1,39 @@
 # Brick V1 Phase 5B — Pre-Phase-6 Closure Report
 
 Date: 2026-11-01
-Status: **FINAL EXACT-PAIR CI IN PROGRESS / NOT AN OFFICIAL V1 PHASE / NOT PRODUCTION ACCEPTED**
+Status: **ASSISTANT-SIDE SOURCE + AUTOMATED CLOSURE PASS / NOT AN OFFICIAL V1 PHASE / NOT PRODUCTION ACCEPTED**
 
 ## Purpose
 
 Phase 5B is a closure checkpoint between official Phases 5 and 6. It does not change Brick's fixed nine-phase V1 plan. Its job is to finish every source, hosted-CI and audit task that can be completed without the physical OPPO/ColorOS phone, so Phase 6 does not inherit avoidable technical debt or fake proof.
 
-## Exact closure candidate
+## Final exact closure candidate
 
 - Android branch: `v1-p5b-closure-android`
 - Android SHA: `a09a273bf19e37e70d37077e3ac0ede6a69b2332`
+- Android draft PR: #15 `V1 Phase 5B Android — pre-Phase-6 closure`
 - Cloud/CI branch: `v1-p5b-closure-cloud`
 - Cloud/CI SHA: `507b17c262e9eb2c135b79b7b5cdf6ffc317b634`
-- Draft PR: #14 `V1 Phase 5B — pre-Phase-6 closure`
+- Cloud draft PR: #14 `V1 Phase 5B — pre-Phase-6 closure`
 - Exact-pair CI: `41295112045`
 
-At this report revision:
+Final hosted verification:
 - cumulative Phase 2-5 Cloud regressions: **PASS**;
 - exact Android checkout, dependency lock, debug APK build, instrumentation APK build, lint and cumulative source guards: **PASS**;
-- cumulative Android instrumentation: **IN PROGRESS**.
+- cumulative Android instrumentation: **PASS — 123/123 tests**;
+- final Gradle result: **BUILD SUCCESSFUL**.
+
+The instrumentation log explicitly records `Starting 123 tests` and `Finished 123 tests` on the pinned Android SHA.
 
 ## What 5B fixed or completed
 
 ### Hosted Android execution
 
-The earlier Phase 5 workflow installed Android platform tools but did not put `adb` on a usable path and created an AVD outside the emulator's search location. 5B now uses explicit `ADB`, `EMULATOR` and `ANDROID_AVD_HOME` paths, verifies the named AVD before boot and runs the full accumulated instrumentation suite.
+The earlier Phase 5 workflow installed Android platform tools but did not put `adb` on a usable path and created an AVD outside the emulator's search location. 5B now uses explicit `ADB`, `EMULATOR` and `ANDROID_AVD_HOME` paths, verifies the named AVD before boot and successfully runs the full accumulated instrumentation suite.
 
 ### Coarse IP last resort
 
-Brick now consumes Cloudflare request geolocation only as a short-lived, low-trust coarse area. Device-side fusion applies a conservative 50 km-class floor and `COARSE` upper state. Coarse IP is not mixed into better current motion/Atlas/place/anchor evidence and cannot become building-level location truth.
+Brick consumes Cloudflare request geolocation only as a short-lived, low-trust coarse area. Device-side fusion applies a conservative 50 km-class floor and `COARSE` upper state. Coarse IP is not mixed into better current motion/Atlas/place/anchor evidence and cannot become building-level location truth.
 
 ### Historical radio-route prior
 
@@ -45,18 +49,18 @@ Learned place definitions are owner-bound and encrypted on the child. A valid na
 
 ### Witness, Ground and ranging
 
-The current Phase 5 source line contains private rotating Witness identifiers, authorisation/revocation/freshness controls, conservative witness-area uncertainty, signed Ground receiver sightings, receiver-area rather than fake-range semantics, authenticated range constraints, and future-ranging capability abstractions. Unsupported target hardware is still `UNSUPPORTED` until measured on the real device.
+The current Phase 5 source line contains private rotating Witness identifiers, authorisation/revocation/freshness controls, conservative witness-area uncertainty, signed Ground receiver sightings, receiver-area rather than fake-range semantics, authenticated range constraints, and future-ranging capability abstractions. Unsupported target hardware remains `UNSUPPORTED` until measured on the real device.
 
 ## Real Android failure-driven hardening
 
 A prior 5B emulator run genuinely executed 117 tests. 113 passed and four failed. 5B did not hide or bypass them:
 
 1. **Learned place:** real fusion semantic-selection bug fixed; conservative named-place interpretation wins within the shared Atlas independence family.
-2. **Atlas repeated visits:** brittle `> 0.10` trust assertion replaced with proof that trusted repeat visits increase trust and reach `DISTINCTIVE_STATIC`; production trust weights were not inflated.
+2. **Atlas repeated visits:** brittle arbitrary trust threshold replaced with proof that trusted repeat visits increase trust and reach `DISTINCTIVE_STATIC`; production trust weights were not inflated.
 3. **Range annulus:** test now accepts the deliberate tiny uncertainty tail outside the ring and proves the measured annulus scores vastly higher; production uncertainty was not hard-clipped.
-4. **Wi-Fi RTT:** test strengthened so independent environmental evidence creates plausible nearby hypotheses and RTT only reranks them. The result must remain ambiguous/`ESTIMATED`, never a made-up precise point or direction.
+4. **Wi-Fi RTT:** test strengthened so independent environmental evidence creates plausible nearby hypotheses and RTT only reranks them. The result remains ambiguous/`ESTIMATED`, never a made-up precise point or direction.
 
-The current exact Android SHA contains all four repairs.
+The final exact Android SHA contains all four repairs and the 123-test cumulative suite passes.
 
 ## Deliberate partials kept honest
 
@@ -69,12 +73,12 @@ The current exact Android SHA contains all four repairs.
 - no assumption that RTT/UWB/Bluetooth Channel Sounding/NAN RTT is supported merely because an API exists;
 - no production deployment of the Phase 5B `worker-v9` candidate through the old Phase-2-specific deployment workflow.
 
-## What a green 5B run means
+## What the green 5B result means
 
-A fully green `41295112045` means the latest integrated Phase 2-5 source passes the cumulative Cloud gate, Android dependency/build/lint gates and full emulator instrumentation on one exact pinned pair. It is strong evidence that the assistant-side source/automated closure is complete.
+Run `41295112045` proves the latest integrated Phase 2-5 source passes the cumulative Cloud gate, Android dependency/build/lint gates and full emulator instrumentation on one exact pinned pair. This closes the known assistant-side source and hosted automated loose ends for Phases 2-5.
 
 It does **not** mean Phases 2-5 are formally accepted or Brick is production-ready. Physical OPPO/ColorOS behavior, real radios/sensors/background/reboot/endurance behavior, multi-device Witness/Ground cases where applicable, and controlled deployed-cloud checks remain separate evidence layers.
 
 ## Phase 6 start rule
 
-Phase 6 may begin after the assistant-side 5B closure gate is green without pretending the physical-device gates have already happened. Formal V1 acceptance continues to respect the dependency and device-verification chain.
+Phase 6 may now begin cleanly from this exact 5B baseline without pretending the physical-device gates have already happened. Formal V1 acceptance continues to respect the dependency and device-verification chain.
