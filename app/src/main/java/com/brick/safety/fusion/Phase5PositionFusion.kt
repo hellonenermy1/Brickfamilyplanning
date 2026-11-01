@@ -28,7 +28,8 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         // `atlas.environment`; the central engine keeps only the strongest interpretation so a
         // single environmental observation cannot vote twice.
         Phase5FusionAdapter.fromAtlas(atlas, nowElapsedMs)?.let(constraints::add)
-        learnedPlace?.let(constraints::add)
+        val effectiveLearnedPlace = learnedPlace ?: Phase5LearnedPlaceRuntime.constraint(atlas, nowElapsedMs)
+        effectiveLearnedPlace?.let(constraints::add)
         Phase5FusionAdapter.fromAnchor(anchor, nowElapsedMs)?.let(constraints::add)
         Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
         if (constraints.isEmpty()) return null
