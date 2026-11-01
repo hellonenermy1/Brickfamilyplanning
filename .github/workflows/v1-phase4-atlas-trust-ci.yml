@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: c6bb20268b22c4f0567773f70c3f5a3717218437
+  ANDROID_PHASE4_SHA: e0663f09d3c79e38a33920136f5dee833383d265
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -153,6 +153,8 @@ jobs:
           grep -F 'AtlasPrivacyId.reduce("gnss"' app/src/main/java/com/brick/safety/atlas/GnssSkyProvider.kt >/dev/null
           grep -F 'class CompanionPresenceController' app/src/main/java/com/brick/safety/atlas/CompanionPresence.kt >/dev/null
           grep -F 'REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'tools:targetApi="31"' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'tools:targetApi="33"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F '"device.context"' app/src/main/java/com/brick/safety/atlas/DeviceContextProvider.kt >/dev/null
           grep -F 'ATLAS_PULSE_MS = 5_000L' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'Phase4AtlasRuntime.stop()' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
