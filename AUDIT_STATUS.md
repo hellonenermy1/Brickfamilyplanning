@@ -10,7 +10,7 @@ Brick remains a **release candidate**, not production-qualified.
 - Version code: `6`
 - Package: `com.brick.safety`
 - Qualification: `candidate-not-real-device-qualified`
-- V1 program: **Phase 1 ACCEPTED; Phase 2 ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED; Phase 3 SOURCE-COMPLETE + ACCEPTANCE-READY / DEPENDENCY + HOSTED + DEVICE GATES PENDING / NOT ACCEPTED; Phase 4 SOURCE-HARDENED STAGING / EXACT-PAIR CI + DEPENDENCY + DEVICE GATES PENDING / NOT ACCEPTED; Phases 5–9 not accepted**
+- V1 program: **Phase 1 ACCEPTED; Phase 2 ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED; Phase 3 SOURCE-COMPLETE + ACCEPTANCE-READY / DEPENDENCY + HOSTED + DEVICE GATES PENDING / NOT ACCEPTED; Phase 4 SOURCE-HARDENED STAGING / FINAL EXACT-PAIR CI + DEPENDENCY + DEVICE GATES PENDING / NOT ACCEPTED; Phases 5–9 not accepted**
 
 No Phase 2, Phase 3 or Phase 4 runtime source is promoted to canonical `main` or `apk-download`.
 
@@ -40,6 +40,7 @@ Phase 4:
 - `PHASE4_REQUIREMENT_MATRIX.md`
 - `PHASE4_SOURCE_INVENTORY.md`
 - `PHASE4_TEST_EVIDENCE.md`
+- `PHASE4_DEVICE_VERIFICATION.md`
 - `PHASE4_REPORT.md`
 
 The duplicate source headings remain normalized as `23G-UI` and `23G-GROUND`.
@@ -59,10 +60,10 @@ Phase 3 staging:
 - Cloud `v1-p3-motion-positioning-cloud` / PR #9 / `3db7c6c54fcf4a6b35afa22e91076178fde29de9`
 - Android `v1-p3-motion-positioning-android` / PR #10 / `48423e5ba84dd6273315581f6c101141e5eae9ac`
 
-Phase 4 staging:
-- Cloud `v1-p4-atlas-trust-cloud` / PR #11 / `bfe99f59697944467b0ac11fc2253ca16b68fa0b`
-- Android `v1-p4-atlas-trust-android` / `f6cfcc178ee8a4e7799c176e350c5b967c56069d`
-- Exact-pair CI run `41267183265`
+Phase 4 final staging candidate:
+- Cloud `v1-p4-atlas-trust-cloud` / PR #11 / `6c66ba8735b3362255e29ca51e50fcb52dcc1dff`
+- Android `v1-p4-atlas-trust-android` / `93d7424d9d9f4a33c283c54411605a6f4871e799`
+- Final exact-pair CI run `41269624890`
 
 All staging PRs remain draft/unmerged. Later-phase staging does not override the acceptance dependency chain.
 
@@ -138,7 +139,7 @@ Phase 3 CI run `41254615824` on Cloud `3db7c6c54fcf4a6b35afa22e91076178fde29de9`
 
 ## Phase 4 source state
 
-Phase 4 now has a hardened Environmental Atlas and Signal Trust candidate on its staging branches. The source includes:
+Phase 4 now has a hardened Environmental Atlas and Signal Trust final staging candidate. The source includes:
 
 - trusted-position-only learning;
 - bounded encrypted/privacy-reduced environmental model;
@@ -148,14 +149,29 @@ Phase 4 now has a hardened Environmental Atlas and Signal Trust candidate on its
 - aggregate GNSS sky fingerprint/degradation evidence and snapshot dedupe;
 - scoped Android NSD LAN evidence where discovery failure cannot become absence;
 - passive network context plus loss/recovery transitions;
+- authorised weak companion presence from explicit Android Companion Device Manager associations only;
+- API-gated companion callback services for API 31–32 and API 33+;
+- privacy-reduced legacy companion identifiers with no raw MAC persisted by Brick;
+- stale companion presence clearing across reboot/package replacement while preserving the Android-managed association;
+- process-local companion observation reconciliation so a removed then later re-associated companion can be observed again without requiring a Brick process restart after the removal has been observed;
+- retryable companion observation registration after a failed start;
+- companion + charging forced into one weak `device.context` independence group;
 - broad activity/environment transition sequences and coarse zones;
 - geographic/stability/freshness/quality/health/spoof/correlation-aware Signal Trust;
 - cautious scoped negative evidence and automatic replacement/relearning;
 - anti-double-counting rules: provider cache trains once and derived evidence inherits source correlation group.
 
-Explicit Phase 4 partials remain recorded in `PHASE4_REQUIREMENT_MATRIX.md`: proper authorised trusted-companion presence, broader permission-sensitive LAN/gateway discovery, latency/packet-loss metrics without wasteful active probing, validated specific building/floor transitions, and persistent schedule priors. These are not silently relabelled complete.
+Explicit Phase 4 partials remain recorded in `PHASE4_REQUIREMENT_MATRIX.md`: broader permission-sensitive LAN discovery, latency/packet-loss metrics without wasteful active probing, validated specific building/floor transitions, and persistent schedule priors. Companion **source** support is no longer listed as an unimplemented gap; real association/presence behavior remains a physical-device verification gate.
 
-Current exact-pair run `41267183265` has passed the Cloud provider/wire + retained Phase 2/3 regression job and Android dependency lock. Android final compile/lint and instrumentation are still pending at this audit revision. Physical OPPO/ColorOS Phase 4 evidence has not been executed.
+Final exact-pair run `41269624890` currently has:
+- Phase 4 provider/wire + retained Phase 2/3 Cloud regressions — **PASS**;
+- exact Android checkout — **PASS**;
+- Android dependency lock — **PASS**;
+- Android debug/test APK compile + lint — **IN PROGRESS** at this audit revision;
+- Phase 4 architecture invariants — **PENDING behind compile/lint**;
+- Android instrumentation — **PENDING behind Android build**.
+
+No earlier SHA's PASS is substituted for this final pair. Physical OPPO/ColorOS Phase 4 evidence has not been executed.
 
 ## Phase 2 acceptance rule
 
@@ -186,8 +202,8 @@ Do **not** mark Phase 4 accepted or merge/promote PR #11 until:
 
 1. Phase 2 and Phase 3 acceptance dependencies close first;
 2. exact Phase 4 Cloud/Android pair executes and passes Cloud regressions, Android dependency lock, compile/lint and full retained + Phase 4 instrumentation;
-3. common/copied SSID, moving BLE, replaced router/beacon/LAN device and changing-cell environment exit cases are verified at the required evidence level;
-4. physical OPPO/ColorOS Wi-Fi/BLE/RTT/cellular/GNSS/background/relearning tests pass or capabilities are explicitly verified unsupported;
+3. common/copied SSID, moving BLE, replaced router/beacon/LAN device, changing-cell environment and companion association removal/re-association exit cases are verified at the required evidence level;
+4. physical OPPO/ColorOS Wi-Fi/BLE/RTT/cellular/GNSS/background/relearning/companion tests pass or capabilities are explicitly verified unsupported;
 5. Phase 4 partial requirements are completed, explicitly reassigned by the canonical phase plan or recorded as verified unsupported rather than silently omitted;
 6. no fix weakens uncertainty, independence, privacy, Core priority or the final-fusion Phase 5 boundary.
 
