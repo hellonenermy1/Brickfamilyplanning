@@ -1,5 +1,6 @@
 package com.brick.safety.fusion
 
+import com.brick.safety.activity.ActivityMode
 import com.brick.safety.atlas.AtlasRuntimeSnapshot
 import com.brick.safety.location.Phase3FallbackEstimate
 import com.brick.safety.location.PositionQuality
@@ -35,7 +36,8 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         anchor: Phase5AnchorInput?,
         lastKnown: Phase5LastKnownInput?,
         learnedPlace: FusionConstraint? = null,
-        coarseNetwork: FusionConstraint? = null
+        coarseNetwork: FusionConstraint? = null,
+        activityMode: ActivityMode = ActivityMode.UNKNOWN
     ): Phase5FusionSelection? {
         val constraints = ArrayList<FusionConstraint>(6)
         Phase5FusionAdapter.fromPhase3(phase3, nowElapsedMs)?.let(constraints::add)
@@ -65,7 +67,7 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
             else -> PositionSource.INERTIAL
         }
         val usedIds = result.evidenceUsed.mapTo(hashSetOf()) { it.id }
-        val hypotheses = ArrayList<Phase5StoredHypothesis>(1 + usedIds.size)
+        val hypotheses = ArrayList<Phase5StoredHypothesis>(6)
         hypotheses += Phase5StoredHypothesis(
             id = "realtime",
             latitude = result.latitude!!,
@@ -77,7 +79,10 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         )
         constraints.asSequence()
             .filter { it.id in usedIds }
-            .take(12)
+            .sortedByDescending { it.supportWeight * it.strength.multiplier }
+            // The recorder uses compact JSON with a 2 KiB evidence payload cap. Five alternatives
+            // plus the realtime selection stays safely bounded even with maximum legal IDs/source.
+            .take(5)
             .forEach { c ->
                 hypotheses += Phase5StoredHypothesis(
                     id = "c:${c.id}",
@@ -101,7 +106,7 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         )
         // Persistence is additive and fail-open. A journal failure cannot remove the fallback result;
         // health telemetry already exposes evidence-journal failures independently.
-        Phase5HypothesisRuntime.record(selection)
+        Phase5HypothesisRuntime.record(selection, activityMode)
         return selection
     }
 }
