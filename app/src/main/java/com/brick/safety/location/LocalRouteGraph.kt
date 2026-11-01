@@ -110,7 +110,7 @@ class LocalRouteGraph(private val maxSegments: Int = 768) {
 
     fun encode(nowWallMs: Long): String {
         pruneExpired(nowWallMs)
-        return segments.values.takeLast(maxSegments).joinToString(";") { s ->
+        return segments.values.toList().takeLast(maxSegments).joinToString(";") { s ->
             listOf(s.id, s.aLat, s.aLon, s.bLat, s.bLon, s.allowedModeMask, s.observations, s.lastSeenWallMs, s.source.ordinal).joinToString("|")
         }
     }
