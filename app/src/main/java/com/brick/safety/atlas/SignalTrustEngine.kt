@@ -99,5 +99,8 @@ internal object SignalTrustEngine {
         AtlasSignalKind.NETWORK_CONTEXT -> 0.28
         AtlasSignalKind.COMPANION -> 0.45
         AtlasSignalKind.CHARGING -> 0.18
+        // A transition is derived from other evidence. It can help recognise a repeated approach/exit
+        // pattern but must never be counted like a new independent physical sensor.
+        AtlasSignalKind.TRANSITION -> 0.24
     }
 }
