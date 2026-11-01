@@ -113,14 +113,15 @@ object PositionConsistencyGuard {
         val bearingAccuracy = candidate.bearingAccuracyDeg?.toDouble()?.takeIf { it.isFinite() && it >= 0.0 }
         val motionHeading = motion.headingDeg?.toDouble()?.takeIf { it.isFinite() }
         val headingFresh = motion.headingAgeMs != null && motion.headingAgeMs in 0L..2_500L
-        val priorHeadingAgreed = previousBearing != null && motionHeading != null &&
-            GeoMath.angularDifference(previousBearing, motionHeading) <= 45.0
-        if (accurateEnoughForMotionGate && motion.rotationHealthy && headingFresh && priorHeadingAgreed &&
+        val agreedMotionHeading = motionHeading?.takeIf { heading ->
+            previousBearing != null && GeoMath.angularDifference(previousBearing, heading) <= 45.0
+        }
+        if (accurateEnoughForMotionGate && motion.rotationHealthy && headingFresh && agreedMotionHeading != null &&
             motion.placement == MotionPlacement.HAND_LIKELY && motion.activityConfidence >= 70 &&
             (motion.mode == Phase3Mode.WALKING || motion.mode == Phase3Mode.RUNNING) &&
-            candidateBearing != null && bearingAccuracy != null && bearingAccuracy <= 20.0 && motionHeading != null &&
+            candidateBearing != null && bearingAccuracy != null && bearingAccuracy <= 20.0 &&
             effectiveDistance >= 18.0 && effectiveSpeed >= 1.0) {
-            val disagreement = GeoMath.angularDifference(candidateBearing, motionHeading)
+            val disagreement = GeoMath.angularDifference(candidateBearing, agreedMotionHeading)
             if (disagreement >= 145.0) {
                 return rejected(FixConsistencyReason.HEADING_CONTRADICTION, distance, effectiveDistance, effectiveSpeed)
             }
