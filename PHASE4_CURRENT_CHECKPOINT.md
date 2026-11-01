@@ -3,6 +3,13 @@
 Date: 2026-11-01
 Purpose: exact resume point for Phase 4. **Do not restart or rediscover Phase 4 from older staging SHAs.**
 
+## Real-device availability constraint
+
+- Jayvian can only perform physical OPPO/ColorOS testing on **Monday, 2 November 2026**.
+- Until then, do not treat missing OPPO evidence as something that can be completed today and do not ask for repeated physical-device checks.
+- Continue source, hosted CI, audit, Phase 5 staging/preparation and other non-device work where it is safe to do so.
+- Physical OPPO results remain required before any affected requirement is marked `DEVICE_VERIFIED` or `ACCEPTED`.
+
 ## Current exact candidate
 
 - Android branch: `v1-p4-atlas-trust-android`
