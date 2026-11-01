@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: b4f7678baf832c8f3e4ad70409b4c5bc0c7238e4
+  ANDROID_PHASE6_SHA: c298b72801e0c26784a47bafd128ef926f0016cf
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -94,11 +94,18 @@ jobs:
       - name: Verify Phase 6 Android control source
         shell: bash
         run: |
+          set -euo pipefail
           grep -F 'DesiredLocationState.ON' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
           grep -F 'DesiredLocationState.OFF' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
-          grep -F 'issuedAtMs <= previousIssuedAt' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'previousNonce == nonce' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
+          grep -F 'expiresAtMs > nowMs' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
           grep -F 'ParentLocationStateStore.read(context)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'command.deviceId != deviceId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'locationControlMatches' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'locationControlCommandId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F '.setSilent(true)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           test -f app/src/androidTest/java/com/brick/safety/managed/Phase6ParentLocationStateInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/network/Phase6LocationCommandInstrumentedTest.kt
 
   android-instrumentation:
     name: Phase 2-6 cumulative Android instrumentation
