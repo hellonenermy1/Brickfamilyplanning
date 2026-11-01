@@ -42,6 +42,7 @@ jobs:
           node --check scripts/test-phase5-external-constraints.mjs
           node --check scripts/test-phase5-current-refinement.mjs
           node --check scripts/test-phase5-parent-live.mjs
+          node --check scripts/test-phase5-live-state-order.mjs
           npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
           node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
           npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
@@ -56,6 +57,8 @@ jobs:
           node scripts/test-phase5-external-constraints.mjs /tmp/brick-phase5-external-constraints.mjs
           npx esbuild src/phase5-current-refinement.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-current-refinement.mjs
           node scripts/test-phase5-current-refinement.mjs /tmp/brick-phase5-current-refinement.mjs
+          npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-state-order.mjs
+          node scripts/test-phase5-live-state-order.mjs /tmp/brick-live-state-order.mjs
           npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
           node scripts/test-phase5-parent-live.mjs /tmp/brick-parent-v6.mjs
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
@@ -67,6 +70,8 @@ jobs:
           grep -F 'listCurrentExternalConstraints' src/phase5-external-constraints.ts >/dev/null
           grep -F 'augmentParentStateWithExternalRefinement' src/worker-v9.ts >/dev/null
           grep -F 'refinedState' src/parent-v6.ts >/dev/null
+          grep -F 'shouldAdvanceLiveState' src/device-do.ts >/dev/null
+          grep -F 'return true' src/device-do.ts >/dev/null
       - name: Retain Phase 4 / 3 / 2 Cloud regressions
         shell: bash
         run: |
