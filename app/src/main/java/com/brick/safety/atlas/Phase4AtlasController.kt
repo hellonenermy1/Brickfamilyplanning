@@ -33,6 +33,7 @@ class Phase4AtlasController(context: Context) {
 
     private val providers: List<EvidenceProvider> = listOf(
         WifiEnvironmentProvider(appContext) { noteProviderScan("wifi", it) },
+        CellularEnvironmentProvider(appContext) { noteProviderScan("cellular", it) },
         NetworkContextProvider(appContext) { noteProviderScan("network", it) }
     )
 
@@ -224,13 +225,20 @@ class Phase4AtlasController(context: Context) {
     private fun publishHealth() {
         val status = providerStatuses()
         val best = latestCandidates.firstOrNull()
+        val wifi = status[EvidenceProviderId.WIFI_ENVIRONMENT]
+        val cell = status[EvidenceProviderId.CELLULAR]
+        val network = status[EvidenceProviderId.NETWORK_CONTEXT]
         val edit = prefs.edit()
             .putInt("atlasLabelCount", atlas.labelCount())
             .putInt("atlasSignalCount", atlas.signalCount())
             .putInt("atlasCandidateCount", latestCandidates.size)
             .putBoolean("atlasCandidateAmbiguous", best?.ambiguous ?: false)
-            .putBoolean("atlasWifiProviderHealthy", status[EvidenceProviderId.WIFI_ENVIRONMENT]?.health == ProviderHealth.HEALTHY)
-            .putBoolean("atlasNetworkProviderHealthy", status[EvidenceProviderId.NETWORK_CONTEXT]?.health == ProviderHealth.HEALTHY)
+            .putString("atlasWifiProviderCapability", wifi?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
+            .putString("atlasWifiProviderHealth", wifi?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
+            .putString("atlasCellularProviderCapability", cell?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
+            .putString("atlasCellularProviderHealth", cell?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
+            .putString("atlasNetworkProviderCapability", network?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
+            .putString("atlasNetworkProviderHealth", network?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
         if (best?.uncertaintyM?.isFinite() == true) edit.putFloat("atlasCandidateUncertaintyM", best.uncertaintyM)
         else edit.remove("atlasCandidateUncertaintyM")
         edit.apply()
