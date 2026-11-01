@@ -33,7 +33,10 @@ class Phase4AtlasController(context: Context) {
 
     private val providers: List<EvidenceProvider> = listOf(
         WifiEnvironmentProvider(appContext) { noteProviderScan("wifi", it) },
+        BleEnvironmentProvider(appContext) { noteProviderScan("ble", it) },
         CellularEnvironmentProvider(appContext) { noteProviderScan("cellular", it) },
+        LanEnvironmentProvider(appContext) { noteProviderScan("lan", it) },
+        GnssSkyProvider(appContext) { noteProviderScan("gnss", it) },
         NetworkContextProvider(appContext) { noteProviderScan("network", it) }
     )
 
@@ -225,23 +228,25 @@ class Phase4AtlasController(context: Context) {
     private fun publishHealth() {
         val status = providerStatuses()
         val best = latestCandidates.firstOrNull()
-        val wifi = status[EvidenceProviderId.WIFI_ENVIRONMENT]
-        val cell = status[EvidenceProviderId.CELLULAR]
-        val network = status[EvidenceProviderId.NETWORK_CONTEXT]
         val edit = prefs.edit()
             .putInt("atlasLabelCount", atlas.labelCount())
             .putInt("atlasSignalCount", atlas.signalCount())
             .putInt("atlasCandidateCount", latestCandidates.size)
             .putBoolean("atlasCandidateAmbiguous", best?.ambiguous ?: false)
-            .putString("atlasWifiProviderCapability", wifi?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
-            .putString("atlasWifiProviderHealth", wifi?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
-            .putString("atlasCellularProviderCapability", cell?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
-            .putString("atlasCellularProviderHealth", cell?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
-            .putString("atlasNetworkProviderCapability", network?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
-            .putString("atlasNetworkProviderHealth", network?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
+        publishProvider(edit, "atlasWifiProvider", status[EvidenceProviderId.WIFI_ENVIRONMENT])
+        publishProvider(edit, "atlasBleProvider", status[EvidenceProviderId.BLE_ENVIRONMENT])
+        publishProvider(edit, "atlasCellularProvider", status[EvidenceProviderId.CELLULAR])
+        publishProvider(edit, "atlasLanProvider", status[EvidenceProviderId.LAN_ENVIRONMENT])
+        publishProvider(edit, "atlasGnssProvider", status[EvidenceProviderId.GNSS_QUALITY])
+        publishProvider(edit, "atlasNetworkProvider", status[EvidenceProviderId.NETWORK_CONTEXT])
         if (best?.uncertaintyM?.isFinite() == true) edit.putFloat("atlasCandidateUncertaintyM", best.uncertaintyM)
         else edit.remove("atlasCandidateUncertaintyM")
         edit.apply()
+    }
+
+    private fun publishProvider(edit: android.content.SharedPreferences.Editor, prefix: String, status: EvidenceProviderStatus?) {
+        edit.putString("${prefix}Capability", status?.capability?.name ?: ProviderCapability.TEMPORARILY_UNAVAILABLE.name)
+            .putString("${prefix}Health", status?.health?.name ?: ProviderHealth.UNAVAILABLE.name)
     }
 }
 
