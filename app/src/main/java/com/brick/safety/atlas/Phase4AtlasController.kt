@@ -25,6 +25,7 @@ class Phase4AtlasController(context: Context) {
     private val journal = EvidenceJournal(appContext)
     private var atlas = EnvironmentalAtlas()
     private val stateStore = AtlasStateStore(appContext)
+    private val transitionTracker = AtlasTransitionTracker()
     private val started = AtomicBoolean(false)
     private val recentScans = linkedMapOf<String, AtlasScan>()
     @Volatile private var trustedLabel: AtlasTrustedLabel? = null
@@ -66,6 +67,7 @@ class Phase4AtlasController(context: Context) {
         if (!started.compareAndSet(true, false)) return
         providers.forEach { provider -> runCatching { provider.stop() } }
         persist(force = true)
+        transitionTracker.resetRecent()
         runCatching { journal.close() }
     }
 
@@ -87,7 +89,8 @@ class Phase4AtlasController(context: Context) {
             lon,
             sample.uncertaintyM,
             sample.elapsedRealtimeMs,
-            sample.wallTimeMs
+            sample.wallTimeMs,
+            AtlasGrid.zoneFor(lat, lon)
         )
     }
 
@@ -117,7 +120,8 @@ class Phase4AtlasController(context: Context) {
             sos = prefs.getBoolean("sosActive", false),
             degradedPosition = degraded,
             activity = activity.mode,
-            deepStationary = deepStationary
+            deepStationary = deepStationary,
+            activityConfidence = activity.confidence
         )
     }
 
@@ -125,9 +129,18 @@ class Phase4AtlasController(context: Context) {
         sos: Boolean,
         degradedPosition: Boolean,
         activity: ActivityMode,
-        deepStationary: Boolean
+        deepStationary: Boolean,
+        activityConfidence: Int = 100
     ) {
         if (!started.get()) return
+        val nowElapsed = SystemClock.elapsedRealtime()
+        transitionTracker.activityTransition(
+            activity,
+            activityConfidence,
+            nowElapsed,
+            System.currentTimeMillis()
+        )?.let { noteProviderScan("activity", it, augmentTransitions = false) }
+
         val state = when {
             sos -> BrickEvidenceState.SOS
             degradedPosition -> BrickEvidenceState.DEGRADED_POSITION
@@ -148,19 +161,22 @@ class Phase4AtlasController(context: Context) {
     fun providerStatuses(): Map<EvidenceProviderId, EvidenceProviderStatus> = providers.associate { it.descriptor.provider to it.status() }
 
     @Synchronized
-    private fun noteProviderScan(source: String, scan: AtlasScan) {
+    private fun noteProviderScan(source: String, scan: AtlasScan, augmentTransitions: Boolean = true) {
         if (!started.get()) return
         val nowElapsed = SystemClock.elapsedRealtime()
         if (scan.elapsedRealtimeMs <= 0L || scan.elapsedRealtimeMs > nowElapsed) return
-        recentScans[source] = scan
+        val enriched = if (augmentTransitions) {
+            runCatching { transitionTracker.augmentSource(source, scan) }.getOrDefault(scan)
+        } else scan
+        recentScans[source] = enriched
         val keep = recentScans.filterValues { candidate ->
-            candidate.elapsedRealtimeMs <= scan.elapsedRealtimeMs && scan.elapsedRealtimeMs - candidate.elapsedRealtimeMs <= COMBINE_WINDOW_MS
+            candidate.elapsedRealtimeMs <= enriched.elapsedRealtimeMs && enriched.elapsedRealtimeMs - candidate.elapsedRealtimeMs <= COMBINE_WINDOW_MS
         }
         recentScans.keys.retainAll(keep.keys)
         val observations = keep.values.flatMap { it.observations }.take(128)
         if (observations.isEmpty()) return
         val quality = keep.values.map { it.quality }.average().toFloat().coerceIn(0f, 1f)
-        val combined = AtlasScan(scan.elapsedRealtimeMs, scan.wallTimeMs, quality, observations)
+        val combined = AtlasScan(enriched.elapsedRealtimeMs, enriched.wallTimeMs, quality, observations)
 
         val label = trustedLabel
         if (label != null) {
@@ -197,7 +213,15 @@ class Phase4AtlasController(context: Context) {
             trustedLabel = null
             return
         }
-        trustedLabel = AtlasTrustedLabel(AtlasGrid.labelFor(lat, lon), lat, lon, accuracy, savedElapsed, wall)
+        trustedLabel = AtlasTrustedLabel(
+            AtlasGrid.labelFor(lat, lon),
+            lat,
+            lon,
+            accuracy,
+            savedElapsed,
+            wall,
+            AtlasGrid.zoneFor(lat, lon)
+        )
     }
 
     @Synchronized
@@ -217,6 +241,7 @@ class Phase4AtlasController(context: Context) {
         trustedLabel = null
         latestCandidates = emptyList()
         recentScans.clear()
+        transitionTracker.resetRecent()
         val committed = prefs.edit().putString("atlasOwnerDeviceId", deviceId).commit()
         ownerInitialized = committed
         publishHealth()
