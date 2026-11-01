@@ -14,6 +14,10 @@ type LocationControlRow = {
   last_acked_command_id: string | null;
 };
 
+type JsonCloneRequest = {
+  clone(): { json<T>(): Promise<T> };
+};
+
 export type LocationControlEnv = { DB: D1Database };
 
 function json(data: unknown, status = 200) {
@@ -128,7 +132,7 @@ export async function augmentHealthWithLocationControl(response: Response, env: 
 }
 
 /** Record the phone's actual Location state and acknowledgement after the signed health request was accepted. */
-export async function noteLocationControlHealth(req: Request, env: LocationControlEnv, deviceId: string): Promise<void> {
+export async function noteLocationControlHealth(req: JsonCloneRequest, env: LocationControlEnv, deviceId: string): Promise<void> {
   if (!DEVICE_ID_RE.test(deviceId)) return;
   let body: Record<string, unknown>;
   try { body = await req.clone().json<Record<string, unknown>>(); }
