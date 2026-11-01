@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -33,7 +34,7 @@ class WifiRttEnvironmentProvider(
     private val wifi = appContext.getSystemService(WifiManager::class.java)
     private val locationManager = appContext.getSystemService(LocationManager::class.java)
     private val rtt = appContext.getSystemService(Context.WIFI_RTT_RANGING_SERVICE) as? WifiRttManager
-    private val executor = Executors.newSingleThreadExecutor()
+    @Volatile private var executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val inFlight = AtomicBoolean(false)
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var decision = EvidenceSamplingDecision(false, null)
@@ -55,6 +56,7 @@ class WifiRttEnvironmentProvider(
 
     override fun start(sink: EvidenceSink) {
         this.sink = sink
+        if (executor.isShutdown || executor.isTerminated) executor = Executors.newSingleThreadExecutor()
         latestStatus = capabilityStatus()
     }
 
@@ -100,15 +102,18 @@ class WifiRttEnvironmentProvider(
         }
         if (!inFlight.compareAndSet(false, true)) return
         lastCollectElapsedMs = nowElapsed
+        val callbackExecutor = if (executor.isShutdown || executor.isTerminated) {
+            Executors.newSingleThreadExecutor().also { executor = it }
+        } else executor
 
         runCatching {
-            manager.startRanging(request, executor, object : RangingResultCallback() {
+            manager.startRanging(request, callbackExecutor, object : RangingResultCallback() {
                 override fun onRangingFailure(code: Int) {
                     inFlight.set(false)
                     latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "ranging_failure_$code")
                 }
 
-                override fun onRangingResults(results: MutableList<RangingResult>) {
+                override fun onRangingResults(results: List<RangingResult>) {
                     try { process(results, byMac) }
                     finally { inFlight.set(false) }
                 }
@@ -121,6 +126,7 @@ class WifiRttEnvironmentProvider(
 
     override fun stop() {
         sink = null
+        inFlight.set(false)
         executor.shutdownNow()
     }
 
