@@ -11,10 +11,16 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
 import com.brick.safety.activity.ActivityMode
 import com.brick.safety.activity.ActivitySnapshot
+import com.brick.safety.atlas.Phase4AtlasRuntime
+import com.brick.safety.fusion.FusionEvidenceKind
+import com.brick.safety.fusion.Phase5AnchorInput
+import com.brick.safety.fusion.Phase5FusionSelection
+import com.brick.safety.fusion.Phase5LastKnownInput
+import com.brick.safety.fusion.Phase5PositionFusion
 import kotlin.math.*
 
 enum class PositionQuality(val code: Int) { PRECISE(1), ASSISTED(2), ANCHORED(3), ESTIMATED(4), COARSE(5), LAST_KNOWN(6), UNKNOWN(7) }
-enum class PositionSource(val code: Int) { FUSED(1), INERTIAL(2), LAST_KNOWN(3), BLE_ANCHOR(4), UNKNOWN(0) }
+enum class PositionSource(val code: Int) { FUSED(1), INERTIAL(2), LAST_KNOWN(3), BLE_ANCHOR(4), FUSION(6), UNKNOWN(0) }
 
 data class PositionSample(
     val rawLat: Double?, val rawLon: Double?, val rawAccuracyM: Float?,
@@ -40,10 +46,12 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
 
     companion object {
         private const val BLE_ANCHOR_MAX_AGE_MS = 90_000L
+        private const val LAST_KNOWN_MAX_AGE_MS = 10L * 60L * 1_000L
     }
 
     private val prefs = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
     private val phase3 = Phase3PositioningEngine(context, motion)
+    private val phase5 = Phase5PositionFusion()
     @Volatile private var lastTrusted: Anchor? = loadRecentAnchor()
     @Volatile private var lastBleAnchor: BleEvidence? = null
     @Volatile private var walkingStrideM = prefs.getFloat("walkingStrideM", 0.72f).coerceIn(0.45f, 1.10f)
@@ -188,9 +196,105 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
     }
 
     private fun buildBestFallback(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
+        val phase3Fallback = runCatching { phase3.fallback(activity, now) }.getOrNull()
+        val bleInput = currentBleAnchorInput(activity, now)
+        val lastInput = currentLastKnownInput(activity, now)
+        val selection = runCatching {
+            phase5.select(
+                nowElapsedMs = now,
+                phase3 = phase3Fallback,
+                atlas = Phase4AtlasRuntime.snapshot(),
+                anchor = bleInput,
+                lastKnown = lastInput
+            )
+        }.getOrNull()
+        if (selection != null) {
+            publishFusionHealth(selection)
+            return buildFromFusion(raw, activity, rawMock, now, selection)
+        }
+
+        // Reliability fail-safe: Phase 5 is additive. A bug in fusion must not remove the pre-existing
+        // conservative fallback path while the release candidate is still being qualified.
         return buildFromBleAnchor(raw, activity, rawMock, now)
-            ?: buildFromPhase3(raw, activity, rawMock, now)
+            ?: buildFromPhase3(raw, activity, rawMock, now, phase3Fallback)
             ?: buildFromAnchor(raw, activity, rawMock, now)
+    }
+
+    private fun currentBleAnchorInput(activity: ActivitySnapshot, now: Long): Phase5AnchorInput? {
+        val anchor = lastBleAnchor ?: return null
+        val age = now - anchor.seenElapsedMs
+        if (age !in 0..BLE_ANCHOR_MAX_AGE_MS) return null
+        if (activity.mode == ActivityMode.VEHICLE || activity.mode == ActivityMode.BICYCLE || activity.mode == ActivityMode.RUNNING) return null
+        return Phase5AnchorInput(
+            id = "ble-place-anchor",
+            latitude = anchor.latitude,
+            longitude = anchor.longitude,
+            radiusM = anchor.radiusM,
+            observedElapsedMs = anchor.seenElapsedMs,
+            maxAgeMs = BLE_ANCHOR_MAX_AGE_MS,
+            kind = FusionEvidenceKind.BLE_ANCHOR,
+            independenceGroup = "ble.trusted-anchor",
+            explanation = "trusted BLE place anchor"
+        )
+    }
+
+    private fun currentLastKnownInput(activity: ActivitySnapshot, now: Long): Phase5LastKnownInput? {
+        val a = lastTrusted ?: return null
+        if (now < a.elapsedMs || now - a.elapsedMs > LAST_KNOWN_MAX_AGE_MS) return null
+        val ageSec = (now - a.elapsedMs) / 1000.0
+        val growth = when (activity.mode) {
+            ActivityMode.STATIONARY -> 0.5
+            ActivityMode.WALKING -> 2.0
+            ActivityMode.RUNNING -> 3.0
+            ActivityMode.BICYCLE -> 5.0
+            ActivityMode.VEHICLE -> 8.0
+            ActivityMode.UNKNOWN -> 5.0
+        }
+        val uncertainty = (a.accuracyM + ageSec * growth).toFloat().coerceIn(20f, 10_000f)
+        return Phase5LastKnownInput(a.lat, a.lon, uncertainty, a.elapsedMs, LAST_KNOWN_MAX_AGE_MS)
+    }
+
+    private fun buildFromFusion(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long, selection: Phase5FusionSelection): PositionSample {
+        val result = selection.result
+        val wall = lastTrusted?.let { it.wallMs + (now - it.elapsedMs).coerceAtLeast(0L) } ?: System.currentTimeMillis()
+        return PositionSample(
+            raw?.latitude?.takeIf { it.isFinite() && it in -90.0..90.0 },
+            raw?.longitude?.takeIf { it.isFinite() && it in -180.0..180.0 },
+            raw?.accuracy?.takeIf { it.isFinite() && it >= 0f },
+            result.latitude,
+            result.longitude,
+            result.uncertaintyM.coerceIn(15f, 50_000f),
+            selection.speedMps,
+            null,
+            selection.bearingDeg?.let(::normalizeDegrees),
+            null,
+            null,
+            null,
+            false,
+            rawMock,
+            activity,
+            result.state,
+            selection.source,
+            gnss.snapshot(),
+            selection.stepDelta,
+            now,
+            wall
+        )
+    }
+
+    private fun publishFusionHealth(selection: Phase5FusionSelection) {
+        val result = selection.result
+        val health = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        health.edit()
+            .putString("phase5FusionState", result.state.name)
+            .putString("phase5FusionShape", result.shape.name)
+            .putString("phase5FusionConfidence", result.confidenceBand.name)
+            .putInt("phase5FusionIndependenceGroups", result.independenceGroups)
+            .putInt("phase5FusionConflictCount", result.conflicts.size)
+            .putFloat("phase5FusionUncertaintyM", result.uncertaintyM)
+            .putLong("phase5FusionElapsedMs", result.computedElapsedMs)
+            .putString("phase5FusionEvidenceKinds", result.evidenceUsed.map { it.kind.name }.distinct().joinToString(","))
+            .apply()
     }
 
     private fun buildFromBleAnchor(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
@@ -224,8 +328,14 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
         )
     }
 
-    private fun buildFromPhase3(raw: Location?, activity: ActivitySnapshot, rawMock: Boolean, now: Long): PositionSample? {
-        val fallback = runCatching { phase3.fallback(activity, now) }.getOrNull() ?: return null
+    private fun buildFromPhase3(
+        raw: Location?,
+        activity: ActivitySnapshot,
+        rawMock: Boolean,
+        now: Long,
+        suppliedFallback: Phase3FallbackEstimate? = null
+    ): PositionSample? {
+        val fallback = suppliedFallback ?: runCatching { phase3.fallback(activity, now) }.getOrNull() ?: return null
         val estimate = fallback.position
         if (estimate.expired || !estimate.lat.isFinite() || estimate.lat !in -90.0..90.0 || !estimate.lon.isFinite() || estimate.lon !in -180.0..180.0) return null
         val wall = lastTrusted?.let { it.wallMs + (now - it.elapsedMs).coerceAtLeast(0L) } ?: System.currentTimeMillis()

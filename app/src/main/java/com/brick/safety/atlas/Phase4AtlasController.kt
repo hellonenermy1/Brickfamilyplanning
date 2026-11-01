@@ -10,6 +10,12 @@ import com.brick.safety.location.PositionSample
 import com.brick.safety.reliability.RecoveryScheduler
 import java.util.concurrent.atomic.AtomicBoolean
 
+data class AtlasRuntimeSnapshot(
+    val candidates: List<AtlasMatchCandidate>,
+    val observedElapsedMs: Long,
+    val providerStatuses: Map<EvidenceProviderId, EvidenceProviderStatus>
+)
+
 class Phase4AtlasController(context: Context) {
     companion object {
         private const val COMBINE_WINDOW_MS = 15_000L
@@ -32,6 +38,7 @@ class Phase4AtlasController(context: Context) {
     @Volatile private var lastPersistElapsedMs = 0L
     @Volatile private var lastHealthPublishElapsedMs = 0L
     @Volatile private var latestCandidates: List<AtlasMatchCandidate> = emptyList()
+    @Volatile private var latestCandidateElapsedMs = 0L
     @Volatile private var ownerInitialized = false
 
     private val providers: List<EvidenceProvider> = listOf(
@@ -160,6 +167,12 @@ class Phase4AtlasController(context: Context) {
 
     fun providerStatuses(): Map<EvidenceProviderId, EvidenceProviderStatus> = providers.associate { it.descriptor.provider to it.status() }
 
+    fun snapshot(): AtlasRuntimeSnapshot = AtlasRuntimeSnapshot(
+        candidates = latestCandidates,
+        observedElapsedMs = latestCandidateElapsedMs,
+        providerStatuses = providerStatuses()
+    )
+
     @Synchronized
     private fun noteProviderScan(source: String, scan: AtlasScan, augmentTransitions: Boolean = true) {
         if (!started.get()) return
@@ -190,6 +203,7 @@ class Phase4AtlasController(context: Context) {
         }
         // Matching may combine fresh independent providers; training above deliberately does not.
         latestCandidates = runCatching { atlas.match(combined) }.getOrDefault(emptyList())
+        latestCandidateElapsedMs = combined.elapsedRealtimeMs
         publishHealth()
     }
 
@@ -244,6 +258,7 @@ class Phase4AtlasController(context: Context) {
         atlas = EnvironmentalAtlas()
         trustedLabel = null
         latestCandidates = emptyList()
+        latestCandidateElapsedMs = 0L
         recentScans.clear()
         transitionTracker.resetRecent()
         val committed = prefs.edit().putString("atlasOwnerDeviceId", deviceId).commit()
@@ -301,6 +316,8 @@ object Phase4AtlasRuntime {
         val current = controller ?: Phase4AtlasController(context.applicationContext).also { controller = it }
         current.pulseFromForeground()
     }
+
+    fun snapshot(): AtlasRuntimeSnapshot? = controller?.snapshot()
 
     @Synchronized
     fun stop() {
