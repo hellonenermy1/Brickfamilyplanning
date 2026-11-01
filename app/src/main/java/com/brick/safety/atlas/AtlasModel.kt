@@ -11,7 +11,9 @@ enum class AtlasSignalKind {
     GNSS_SKY,
     NETWORK_CONTEXT,
     COMPANION,
-    CHARGING
+    CHARGING,
+    /** Derived short-lived environmental/activity transition evidence. Never independent location truth. */
+    TRANSITION
 }
 
 enum class AtlasSignalClass {
@@ -106,13 +108,19 @@ data class AtlasMatchCandidate(
 
 object AtlasGrid {
     private const val CELL_DEG = 0.0005
+    /** Coarser learned environmental zone; this is not a named place and never implies a floor. */
+    private const val ZONE_DEG = 0.0015
 
-    fun labelFor(latitude: Double, longitude: Double): String {
+    fun labelFor(latitude: Double, longitude: Double): String = gridId("cell", CELL_DEG, latitude, longitude)
+
+    fun zoneFor(latitude: Double, longitude: Double): String = gridId("zone", ZONE_DEG, latitude, longitude)
+
+    private fun gridId(prefix: String, sizeDeg: Double, latitude: Double, longitude: Double): String {
         require(latitude.isFinite() && latitude in -90.0..90.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)
-        val y = floor((latitude + 90.0) / CELL_DEG).toLong()
-        val x = floor((longitude + 180.0) / CELL_DEG).toLong()
-        return "cell:$y:$x"
+        val y = floor((latitude + 90.0) / sizeDeg).toLong()
+        val x = floor((longitude + 180.0) / sizeDeg).toLong()
+        return "$prefix:$y:$x"
     }
 }
 
