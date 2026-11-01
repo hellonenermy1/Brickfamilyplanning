@@ -21,6 +21,7 @@ class WifiEnvironmentProvider(
         private const val MAX_ATLAS_APS = 32
         private const val MAX_EVIDENCE_APS = 12
         private const val MAX_ORDER_APS = 6
+        private const val MAX_METADATA_APS = 10
         private const val MAX_SCAN_AGE_MS = 120_000L
         private val COMMON_SSIDS = setOf(
             "wireless@sgx",
@@ -100,7 +101,7 @@ class WifiEnvironmentProvider(
             .toList()
         if (fresh.isEmpty()) return
 
-        val observations = ArrayList<AtlasSignalObservation>(fresh.size * 3)
+        val observations = ArrayList<AtlasSignalObservation>(128)
         for (ap in fresh) {
             observations += AtlasSignalObservation(
                 AtlasSignalKind.WIFI_AP,
@@ -123,6 +124,8 @@ class WifiEnvironmentProvider(
             }
         }
         observations += relativeOrderObservations(fresh)
+        observations += coOccurrenceObservations(fresh)
+        observations += metadataObservations(fresh)
 
         val scanQuality = (0.35f + fresh.size.coerceAtMost(12) / 20f).coerceAtMost(0.95f)
         val atlasScan = AtlasScan(nowElapsed, nowWall, scanQuality, observations.take(128))
@@ -171,6 +174,47 @@ class WifiEnvironmentProvider(
         return out.take(15)
     }
 
+    /** Cluster co-occurrence survives one AP being replaced better than a single-BSSID place rule. */
+    private fun coOccurrenceObservations(results: List<NormalizedAp>): List<AtlasSignalObservation> {
+        val strongest = results.take(MAX_ORDER_APS)
+        if (strongest.size < 2) return emptyList()
+        val out = ArrayList<AtlasSignalObservation>()
+        for (i in 0 until strongest.lastIndex) {
+            for (j in i + 1 until strongest.size) {
+                val pair = listOf(strongest[i].apId, strongest[j].apId).sorted().joinToString("+")
+                val id = AtlasPrivacyId.reduce("wco", pair)
+                out += AtlasSignalObservation(
+                    AtlasSignalKind.WIFI_AP,
+                    id,
+                    "wifi.scan",
+                    null,
+                    (minOf(strongest[i].quality, strongest[j].quality) * 0.62f).coerceIn(0.10f, 0.65f),
+                    sourceHealthy = true
+                )
+            }
+        }
+        return out.take(15)
+    }
+
+    /**
+     * Learn stable exposed AP characteristics as correlated sub-features. Exact raw metadata stays
+     * in the bounded evidence payload; the long-lived Atlas receives only a keyed reduced feature.
+     */
+    private fun metadataObservations(results: List<NormalizedAp>): List<AtlasSignalObservation> =
+        results.take(MAX_METADATA_APS).map { ap ->
+            val band = bandFor(ap.frequency)
+            val channel = channelFor(ap.frequency)
+            val raw = "${ap.apId}|b=$band|f=${ap.frequency}|c=$channel|w=${ap.channelWidth}|s=${ap.securityClass}"
+            AtlasSignalObservation(
+                AtlasSignalKind.WIFI_AP,
+                AtlasPrivacyId.reduce("wmeta", raw),
+                "wifi.scan",
+                ap.frequency.takeIf { it > 0 }?.toFloat(),
+                (ap.quality * 0.50f).coerceIn(0.10f, 0.55f),
+                sourceHealthy = true
+            )
+        }
+
     @SuppressLint("HardwareIds", "Deprecation")
     private fun normalized(result: ScanResult, nowElapsed: Long): NormalizedAp? {
         val bssid = result.BSSID?.lowercase()?.takeIf { it.matches(Regex("([0-9a-f]{2}:){5}[0-9a-f]{2}")) } ?: return null
@@ -195,6 +239,21 @@ class WifiEnvironmentProvider(
             security,
             (freshness * 0.55f + signalQuality * 0.45f).coerceIn(0.1f, 1f)
         )
+    }
+
+    private fun bandFor(frequency: Int): String = when (frequency) {
+        in 2_400..2_500 -> "2g"
+        in 4_900..5_900 -> "5g"
+        in 5_925..7_125 -> "6g"
+        else -> "other"
+    }
+
+    private fun channelFor(frequency: Int): Int = when {
+        frequency == 2_484 -> 14
+        frequency in 2_412..2_472 -> (frequency - 2_407) / 5
+        frequency in 5_000..5_900 -> (frequency - 5_000) / 5
+        frequency in 5_955..7_115 -> (frequency - 5_950) / 5
+        else -> 0
     }
 
     private fun securityClass(capabilities: String?): String {
@@ -223,6 +282,8 @@ class WifiEnvironmentProvider(
                         .put("c", ap.semanticCommon)
                         .put("r", ap.rssi)
                         .put("f", ap.frequency)
+                        .put("ch", channelFor(ap.frequency))
+                        .put("band", bandFor(ap.frequency))
                         .put("w", ap.channelWidth)
                         .put("sec", ap.securityClass))
                 }
