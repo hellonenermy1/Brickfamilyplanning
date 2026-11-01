@@ -2,15 +2,11 @@ package com.brick.safety.atlas
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.*
@@ -39,7 +35,6 @@ class WifiEnvironmentProvider(
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var decision = EvidenceSamplingDecision(false, null)
     @Volatile private var lastCollectElapsedMs = 0L
-    @Volatile private var registered = false
     @Volatile private var latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "not_started")
 
     override val descriptor = EvidenceProviderDescriptor(
@@ -49,13 +44,6 @@ class WifiEnvironmentProvider(
         "wifi.scan"
     )
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) return
-            consumeCurrentResults()
-        }
-    }
-
     override fun status(): EvidenceProviderStatus = capabilityStatus().let { current ->
         if (current.capability != ProviderCapability.SUPPORTED) current
         else latestStatus.takeIf { it.capability == ProviderCapability.SUPPORTED } ?: current
@@ -63,20 +51,6 @@ class WifiEnvironmentProvider(
 
     override fun start(sink: EvidenceSink) {
         this.sink = sink
-        if (!registered) {
-            runCatching {
-                val filter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
-                if (Build.VERSION.SDK_INT >= 33) {
-                    appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-                } else {
-                    @Suppress("DEPRECATION")
-                    appContext.registerReceiver(receiver, filter)
-                }
-                registered = true
-            }.onFailure {
-                latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.FAILED, "receiver_registration_failed")
-            }
-        }
         latestStatus = capabilityStatus()
     }
 
@@ -96,8 +70,8 @@ class WifiEnvironmentProvider(
         if (interval != null && lastCollectElapsedMs > 0L && now >= lastCollectElapsedMs && now - lastCollectElapsedMs < interval) return
         lastCollectElapsedMs = now
 
-        // Consume a fresh system cache first. Android may deliver scan broadcasts initiated by the
-        // system/other apps; this avoids forcing a new active scan when useful evidence already exists.
+        // Read only a fresh system cache at the scheduled Brick pulse, then request the next scan.
+        // Android may throttle startScan(); throttling is a degraded provider state, never a retry loop.
         consumeCurrentResults()
         val accepted = runCatching { wifi.startScan() }.getOrDefault(false)
         latestStatus = if (accepted) {
@@ -108,8 +82,6 @@ class WifiEnvironmentProvider(
     }
 
     override fun stop() {
-        if (registered) runCatching { appContext.unregisterReceiver(receiver) }
-        registered = false
         sink = null
     }
 
