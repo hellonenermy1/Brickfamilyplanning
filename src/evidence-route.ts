@@ -3,6 +3,11 @@ import { verifyDeviceSignature } from "./crypto";
 import { decodeEvidenceBatch, EVIDENCE_MAX_BATCH_BYTES, type EvidenceBatch } from "./evidence-protocol";
 import { EvidenceConflict, persistEvidenceBatch } from "./evidence-ingest";
 import { Phase5SemanticError, phase5EvidenceStatements } from "./phase5-evidence";
+import {
+  Phase5RefinedHistoryError,
+  persistHypothesisFrameIfPresent,
+  processRefinementsForDevice
+} from "./phase5-refined-history";
 
 export type EvidenceRateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 export type EvidenceRouteEnv = {
@@ -81,18 +86,26 @@ export async function handleEvidenceRequest(req: Request, env: EvidenceRouteEnv,
   catch (error) { return json({ error: String(error) }, 400); }
 
   try {
-    // Raw BREV is persisted first. Phase 5 semantic indexes are then committed before the response
-    // containing the exact ACK is returned. A transient semantic/index failure therefore causes the
-    // phone to retain/retry the already-durable record; idempotency makes that retry safe.
+    // Raw BREV is persisted first. Phase 5 semantic indexes and normalized smoothing inputs are then
+    // committed before the exact ACK is returned. A transient secondary-index failure therefore
+    // leaves the child record pending; retry is safe because raw and normalized objects are idempotent.
     const persisted = await persistEvidenceBatch(env, deviceId, body);
     const semantic: D1PreparedStatement[] = [];
     const now = Date.now();
-    for (const record of decoded.records) semantic.push(...await phase5EvidenceStatements(env.DB, deviceId, record, now));
+    let hypothesisFrameSeen = false;
+    for (const record of decoded.records) {
+      if (await persistHypothesisFrameIfPresent(env, deviceId, record, now)) hypothesisFrameSeen = true;
+      semantic.push(...await phase5EvidenceStatements(env.DB, deviceId, record, now));
+    }
     if (semantic.length) await env.DB.batch(semantic);
+    // Endpoint and hypothesis uploads may arrive in either order. Re-running this bounded operation
+    // on a hypothesis upload closes any interval whose precise endpoints are already available.
+    if (hypothesisFrameSeen) await processRefinementsForDevice(env, deviceId, now);
     return json(persisted);
   } catch (error) {
     if (error instanceof EvidenceConflict) return json({ error: error.message }, 409);
     if (error instanceof Phase5SemanticError) return json({ error: error.message }, 409);
+    if (error instanceof Phase5RefinedHistoryError) return json({ error: error.message }, 409);
     return json({ error: "evidence persistence unavailable" }, 503);
   }
 }
