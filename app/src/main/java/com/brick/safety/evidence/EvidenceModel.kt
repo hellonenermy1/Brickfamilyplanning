@@ -24,6 +24,7 @@ enum class EvidenceProviderId(val code: Int) {
     COMPANION(19),
     HISTORICAL_ROUTE(20),
     FUTURE_RANGING(21),
+    FUSION_HYPOTHESES(22),
     DUMMY_TEST(255);
 
     companion object { fun fromCode(code: Int) = entries.firstOrNull { it.code == code } }
