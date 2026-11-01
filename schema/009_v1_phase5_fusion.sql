@@ -46,22 +46,28 @@ CREATE TABLE IF NOT EXISTS ground_sightings (
   receiver_id TEXT NOT NULL,
   sighting_id TEXT NOT NULL,
   alias TEXT NOT NULL,
-  child_device_id TEXT NOT NULL,
+  child_device_id TEXT,
   observed_wall_ms INTEGER NOT NULL,
   receiver_latitude REAL NOT NULL,
   receiver_longitude REAL NOT NULL,
   receiver_radius_m REAL NOT NULL,
   rssi INTEGER,
+  tx_power INTEGER,
   proximity_allowance_m REAL NOT NULL,
   uncertainty_m REAL NOT NULL,
-  payload_sha256 TEXT NOT NULL,
+  resolved INTEGER NOT NULL DEFAULT 0,
+  payload_sha256 TEXT NOT NULL CHECK(length(payload_sha256)=64),
   received_at INTEGER NOT NULL,
   PRIMARY KEY(receiver_id, sighting_id),
   FOREIGN KEY(receiver_id) REFERENCES ground_receivers(id) ON DELETE CASCADE,
   FOREIGN KEY(child_device_id) REFERENCES devices(id) ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS idx_ground_sightings_alias_time
+  ON ground_sightings(alias, observed_wall_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_ground_sightings_child_time
-  ON ground_sightings(child_device_id, observed_wall_ms DESC);
+  ON ground_sightings(child_device_id, resolved, observed_wall_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_ground_sightings_received
+  ON ground_sightings(received_at);
 
 CREATE TABLE IF NOT EXISTS learned_place_models (
   device_id TEXT NOT NULL,

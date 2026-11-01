@@ -2,13 +2,13 @@ import type { EvidenceRecord } from "./evidence-protocol";
 
 const WITNESS_PROVIDER = 17;
 const WITNESS_FAMILY = 12;
-const SLOT_MS = 5 * 60_000;
+export const WITNESS_SLOT_MS = 5 * 60_000;
 const BACKLOG_WINDOW_MS = 14 * 24 * 60 * 60_000;
 const ALIAS_RETENTION_AFTER_SLOT_MS = 14 * 24 * 60 * 60_000;
 const SIGHTING_INDEX_RETENTION_MS = 30 * 24 * 60 * 60_000;
-const CLOCK_GRACE_MS = 2 * 60_000;
+export const WITNESS_CLOCK_GRACE_MS = 2 * 60_000;
 const CLEANUP_LIMIT = 200;
-const ALIAS_RE = /^[0-9a-f]{16}$/;
+export const WITNESS_ALIAS_RE = /^[0-9a-f]{16}$/;
 
 type AliasRow = { child_device_id: string; slot: number };
 type AuthorizationRow = { enabled: number };
@@ -46,7 +46,7 @@ function parseAliasPayload(value: unknown): AliasPayload | null {
   const seen = new Set<string>();
   const seenSlots = new Set<number>();
   for (const item of value.aliases) {
-    if (!isObject(item) || typeof item.a !== "string" || !ALIAS_RE.test(item.a) || !isInt(item.s) || item.s < 0) {
+    if (!isObject(item) || typeof item.a !== "string" || !WITNESS_ALIAS_RE.test(item.a) || !isInt(item.s) || item.s < 0) {
       throw new Phase5SemanticError("invalid witness alias entry");
     }
     if (seen.has(item.a)) throw new Phase5SemanticError("duplicate witness alias");
@@ -60,7 +60,7 @@ function parseAliasPayload(value: unknown): AliasPayload | null {
 
 function parseSightingPayload(value: unknown): SightingPayload | null {
   if (!isObject(value) || value.v !== 1 || value.t !== "s") return null;
-  if (typeof value.a !== "string" || !ALIAS_RE.test(value.a)) throw new Phase5SemanticError("invalid witness sighting alias");
+  if (typeof value.a !== "string" || !WITNESS_ALIAS_RE.test(value.a)) throw new Phase5SemanticError("invalid witness sighting alias");
   if (!isInt(value.latE7) || value.latE7 < -900_000_000 || value.latE7 > 900_000_000) throw new Phase5SemanticError("invalid witness latitude");
   if (!isInt(value.lonE7) || value.lonE7 < -1_800_000_000 || value.lonE7 > 1_800_000_000) throw new Phase5SemanticError("invalid witness longitude");
   if (!isInt(value.accCm) || value.accCm < 0 || value.accCm > 25_000) throw new Phase5SemanticError("invalid witness accuracy");
@@ -97,26 +97,30 @@ function validateRecordTime(record: EvidenceRecord, now: number) {
 
 /**
  * Raw BREV retention remains governed by the Phase 2 R2 lifecycle. These statements bound only the
- * fast semantic indexes that contain rotating aliases / witness coordinates. Small capped deletes
- * amortize cleanup over normal witness traffic without a separate maintenance dependency.
+ * fast semantic indexes containing rotating aliases and derived sighting constraints.
  */
-function cleanupStatements(db: D1Database, now: number): D1PreparedStatement[] {
+export function phase5CleanupStatements(db: D1Database, now: number, limit = CLEANUP_LIMIT): D1PreparedStatement[] {
   const sightingCutoff = now - SIGHTING_INDEX_RETENTION_MS;
+  const bounded = Math.max(1, Math.min(500, Math.trunc(limit)));
   return [
     db.prepare(
       "DELETE FROM witness_aliases WHERE alias IN (" +
       "SELECT alias FROM witness_aliases WHERE expires_at<?1 ORDER BY expires_at LIMIT ?2)"
-    ).bind(now, CLEANUP_LIMIT),
+    ).bind(now, bounded),
     db.prepare(
       "DELETE FROM witness_sightings WHERE record_id IN (" +
       "SELECT record_id FROM witness_sightings WHERE received_at<?1 ORDER BY received_at LIMIT ?2)"
-    ).bind(sightingCutoff, CLEANUP_LIMIT)
+    ).bind(sightingCutoff, bounded),
+    db.prepare(
+      "DELETE FROM ground_sightings WHERE rowid IN (" +
+      "SELECT rowid FROM ground_sightings WHERE received_at<?1 ORDER BY received_at LIMIT ?2)"
+    ).bind(sightingCutoff, bounded)
   ];
 }
 
 async function aliasStatements(db: D1Database, uploaderDeviceId: string, record: EvidenceRecord, payload: AliasPayload, now: number) {
   validateRecordTime(record, now);
-  const recordSlot = Math.floor(record.wallTimeMs / SLOT_MS);
+  const recordSlot = Math.floor(record.wallTimeMs / WITNESS_SLOT_MS);
   const out: D1PreparedStatement[] = [];
   for (const item of payload.aliases) {
     // Android currently publishes previous slot through +24 future slots. Leave a little clock/upgrade
@@ -128,8 +132,8 @@ async function aliasStatements(db: D1Database, uploaderDeviceId: string, record:
     if (existing && (existing.child_device_id !== uploaderDeviceId || existing.slot !== item.s)) {
       throw new Phase5SemanticError("witness alias identity collision");
     }
-    const validFrom = item.s * SLOT_MS;
-    const validTo = validFrom + SLOT_MS;
+    const validFrom = item.s * WITNESS_SLOT_MS;
+    const validTo = validFrom + WITNESS_SLOT_MS;
     if (!Number.isSafeInteger(validFrom) || !Number.isSafeInteger(validTo)) throw new Phase5SemanticError("witness alias time overflow");
     const expiresAt = validTo + ALIAS_RETENTION_AFTER_SLOT_MS;
     out.push(
@@ -139,17 +143,26 @@ async function aliasStatements(db: D1Database, uploaderDeviceId: string, record:
       ).bind(item.a, uploaderDeviceId, item.s, validFrom, validTo, record.recordId, now, expiresAt)
     );
     // A witness may upload first while the child is offline. Resolve later only when the reporter is
-    // explicitly authorised for this child and the sighting actually falls in this alias slot.
+    // explicitly authorised for this child and the sighting falls in this alias slot.
     out.push(
       db.prepare(
         "UPDATE witness_sightings SET child_device_id=?1,authorised=1 " +
         "WHERE alias=?2 AND child_device_id IS NULL AND observed_wall_ms BETWEEN ?3 AND ?4 " +
         "AND witness_device_id<>?1 AND EXISTS(" +
         "SELECT 1 FROM witness_authorizations a WHERE a.device_id=?1 AND a.witness_device_id=witness_sightings.witness_device_id AND a.enabled=1)"
-      ).bind(uploaderDeviceId, item.a, validFrom - CLOCK_GRACE_MS, validTo + CLOCK_GRACE_MS)
+      ).bind(uploaderDeviceId, item.a, validFrom - WITNESS_CLOCK_GRACE_MS, validTo + WITNESS_CLOCK_GRACE_MS)
+    );
+    // Fixed receivers are pre-bound to a child. Ground observations can also arrive first while the
+    // child is offline, so resolve them later only if that receiver remains enabled for this child.
+    out.push(
+      db.prepare(
+        "UPDATE ground_sightings SET child_device_id=?1,resolved=1 " +
+        "WHERE alias=?2 AND child_device_id IS NULL AND observed_wall_ms BETWEEN ?3 AND ?4 " +
+        "AND EXISTS(SELECT 1 FROM ground_receivers g WHERE g.id=ground_sightings.receiver_id AND g.device_id=?1 AND g.enabled=1)"
+      ).bind(uploaderDeviceId, item.a, validFrom - WITNESS_CLOCK_GRACE_MS, validTo + WITNESS_CLOCK_GRACE_MS)
     );
   }
-  out.push(...cleanupStatements(db, now));
+  out.push(...phase5CleanupStatements(db, now));
   return out;
 }
 
@@ -163,7 +176,7 @@ async function sightingStatements(db: D1Database, witnessDeviceId: string, recor
 
   const alias = await db.prepare(
     "SELECT child_device_id,slot FROM witness_aliases WHERE alias=?1 AND ?2 BETWEEN valid_from_ms-?3 AND valid_to_ms+?3 LIMIT 1"
-  ).bind(payload.a, record.wallTimeMs, CLOCK_GRACE_MS).first<AliasRow>();
+  ).bind(payload.a, record.wallTimeMs, WITNESS_CLOCK_GRACE_MS).first<AliasRow>();
 
   let childDeviceId: string | null = null;
   let authorised = 0;
@@ -188,7 +201,7 @@ async function sightingStatements(db: D1Database, witnessDeviceId: string, recor
       allowance, uncertainty, authorised, now
     )
   ];
-  out.push(...cleanupStatements(db, now));
+  out.push(...phase5CleanupStatements(db, now));
   return out;
 }
 
