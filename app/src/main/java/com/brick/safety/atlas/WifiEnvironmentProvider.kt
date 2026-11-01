@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.math.max
 
 class WifiEnvironmentProvider(
     context: Context,
@@ -58,7 +57,8 @@ class WifiEnvironmentProvider(
     }
 
     override fun status(): EvidenceProviderStatus = capabilityStatus().let { current ->
-        if (current.capability != ProviderCapability.SUPPORTED) current else latestStatus.takeIf { it.capability == ProviderCapability.SUPPORTED } ?: current
+        if (current.capability != ProviderCapability.SUPPORTED) current
+        else latestStatus.takeIf { it.capability == ProviderCapability.SUPPORTED } ?: current
     }
 
     override fun start(sink: EvidenceSink) {
@@ -66,8 +66,12 @@ class WifiEnvironmentProvider(
         if (!registered) {
             runCatching {
                 val filter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
-                if (Build.VERSION.SDK_INT >= 33) appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-                else @Suppress("DEPRECATION") appContext.registerReceiver(receiver, filter)
+                if (Build.VERSION.SDK_INT >= 33) {
+                    appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    @Suppress("DEPRECATION")
+                    appContext.registerReceiver(receiver, filter)
+                }
                 registered = true
             }.onFailure {
                 latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.FAILED, "receiver_registration_failed")
@@ -180,7 +184,7 @@ class WifiEnvironmentProvider(
         return NormalizedAp(
             AtlasPrivacyId.reduce("wifi", bssid),
             normalizedSsid?.let { AtlasPrivacyId.reduce("ssid", it) },
-            normalizedSsid in COMMON_SSIDS,
+            normalizedSsid != null && normalizedSsid in COMMON_SSIDS,
             rssi,
             result.frequency.coerceAtLeast(0),
             result.channelWidth.coerceAtLeast(0),
