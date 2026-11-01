@@ -18,9 +18,9 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         nowElapsedMs: Long,
         phase3: Phase3FallbackEstimate?,
         atlas: AtlasRuntimeSnapshot?,
-        learnedPlace: FusionConstraint?,
         anchor: Phase5AnchorInput?,
-        lastKnown: Phase5LastKnownInput?
+        lastKnown: Phase5LastKnownInput?,
+        learnedPlace: FusionConstraint? = null
     ): Phase5FusionSelection? {
         val constraints = ArrayList<FusionConstraint>(5)
         Phase5FusionAdapter.fromPhase3(phase3, nowElapsedMs)?.let(constraints::add)
