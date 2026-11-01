@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: 8edb76c9a3892d402fe06541f4ef75451045a774
+  ANDROID_PHASE6_SHA: 604d902e7516e440efd5e165fa1eb6381895a26d
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -102,7 +102,11 @@ jobs:
           before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
           gradle --no-daemon :app:dependencies --write-locks
           after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
-          test "$before" = "$after"
+          if [ "$before" != "$after" ]; then
+            echo 'Dependency lock drift detected; exact generated delta follows:'
+            git diff -- app/gradle.lockfile
+            exit 1
+          fi
           git diff --exit-code -- app/gradle.lockfile
       - name: Build and lint
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
@@ -117,12 +121,22 @@ jobs:
           grep -F 'desiredValue !is Boolean' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'issuedAtMs > nowMs + MAX_COMMAND_FUTURE_SKEW_MS' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'ParentLocationStateStore.read(context)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'setParentLocationState(desiredOn)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'attemptSosLocationEnable()' app/src/main/java/com/brick/safety/reliability/ServiceControl.kt >/dev/null
           grep -F 'command.deviceId != deviceId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'locationControlMatches' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'locationControlCommandId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F '.setSilent(true)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'dev.rikka.shizuku:api:13.1.5' app/build.gradle.kts >/dev/null
+          grep -F 'rikka.shizuku.ShizukuProvider' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'interface IBrickPrivilegedService' app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl >/dev/null
+          grep -F 'LOCATION_CONTROL' app/src/main/java/com/brick/safety/privileged/PrivilegedBridge.kt >/dev/null
+          grep -F 'class BrickShizukuUserService' app/src/main/java/com/brick/safety/privileged/BrickShizukuUserService.kt >/dev/null
+          grep -F 'AtlasPrivacyId.reduce("p6bssid"' app/src/main/java/com/brick/safety/privileged/ShizukuPrivilegedBridge.kt >/dev/null
+          ! grep -R -F 'newProcess(' app/src/main >/dev/null
           test -f app/src/androidTest/java/com/brick/safety/managed/Phase6ParentLocationStateInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/network/Phase6LocationCommandInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/privileged/Phase6PrivilegedBridgeInstrumentedTest.kt
 
   android-instrumentation:
     name: Phase 2-6 cumulative Android instrumentation
