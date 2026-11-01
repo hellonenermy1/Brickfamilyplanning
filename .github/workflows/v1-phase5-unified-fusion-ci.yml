@@ -142,8 +142,8 @@ jobs:
           grep -F 'upperState != PositionQuality.PRECISE' app/src/main/java/com/brick/safety/fusion/FusionModel.kt >/dev/null
           grep -F 'Phase4AtlasRuntime.snapshot()' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
           grep -F 'Reliability fail-safe: Phase 5 is additive' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
-          grep -F 'testCorrelatedEvidenceCannotMultiplyConfidence' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
-          grep -F 'testConflictExpandsUncertaintyInsteadOfPickingConvenientPoint' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
+          grep -F 'testCorrelatedEvidenceDoesNotMultiplyIndependence' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
+          grep -F 'testConflictExpandsUncertaintyInsteadOfChoosingOneAnswer' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
@@ -178,8 +178,6 @@ jobs:
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
           echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
-          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
-          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
       - name: Install Android SDK + emulator
         shell: bash
         run: |
