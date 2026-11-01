@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: f8284c0b4bc458298418d1c2116af1034dd0d274
+  ANDROID_PHASE5_SHA: 910a1c687f94fe7b0ff31813f16b619dc94a2486
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -186,9 +186,14 @@ jobs:
           grep -F 'class LearnedPlaceRegistry' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'owner != current' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'independenceGroup = "atlas.environment"' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
+          grep -F 'Phase5LearnedPlaceRuntime.initialize(this)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
+          grep -F 'Phase5LearnedPlaceRuntime.constraint(atlas, nowElapsedMs)' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
+          grep -F 'Phase5LearnedPlaceRuntime.update(deviceId, definitions)' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'testOverlappingConfiguredPlacesFailClosedInsteadOfGuessingName' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceInstrumentedTest.kt >/dev/null
           grep -F 'testNamedPlaceSharesAtlasIndependenceGroupToPreventDoubleVote' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceInstrumentedTest.kt >/dev/null
           grep -F 'testCacheIsEncryptedRestorableAndBoundToCurrentPairing' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceStoreInstrumentedTest.kt >/dev/null
+          grep -F 'testMissingLearnedPlacesMeansPreserveExistingEncryptedCache' app/src/androidTest/java/com/brick/safety/network/Phase5HealthConfigInstrumentedTest.kt >/dev/null
+          grep -F 'testSyncedLearnedPlaceActuallyFeedsUnifiedFusion' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceRuntimeInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
