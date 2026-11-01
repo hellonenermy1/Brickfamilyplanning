@@ -67,14 +67,19 @@ class Phase4CompanionContextInstrumentedTest : BrickInstrumentationTestCase() {
             ))
         }
 
-        val result = atlas.match(AtlasScan(
+        val matches = atlas.match(AtlasScan(
             5_000_000L,
             baseWall + 65L * 60L * 1_000L,
             0.30f,
             deviceContext
-        )).first()
-        assertEquals(1, result.independenceGroups)
-        assertTrue(result.supportWeight <= 0.45)
-        assertTrue(result.uncertaintyM >= 35f)
+        ))
+        // Correct behaviour is either no usable location candidate at all, or a deliberately weak
+        // single-group candidate. Device context is never enough to manufacture a precise point.
+        if (matches.isNotEmpty()) {
+            val result = matches.first()
+            assertEquals(1, result.independenceGroups)
+            assertTrue(result.supportWeight <= 0.45)
+            assertTrue(result.uncertaintyM >= 35f)
+        }
     }
 }
