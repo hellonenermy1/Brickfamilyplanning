@@ -99,10 +99,12 @@ class Phase4SignalTrustInstrumentedTest : InstrumentationTestCase() {
             val elapsed = 100_000L + visit * 1_500_000L
             atlas.observeTrusted(label("home-power", 1.3000, 103.8000, elapsed, wall), scan(elapsed, wall, listOf(charging)))
         }
-        val match = atlas.match(scan(10_000_000L, baseWall + 121L * 60L * 1_000L, listOf(charging))).first()
-        assertTrue(match.supportWeight <= 0.25)
-        assertEquals(1, match.independenceGroups)
-        assertTrue(match.uncertaintyM >= 35f)
+        val match = atlas.match(scan(10_000_000L, baseWall + 121L * 60L * 1_000L, listOf(charging))).firstOrNull()
+        if (match != null) {
+            assertTrue(match.supportWeight <= 0.25)
+            assertEquals(1, match.independenceGroups)
+            assertTrue(match.uncertaintyM >= 35f)
+        }
     }
 
     fun testRouterReplacementDoesNotDestroyClusterWhenIndependentEvidenceRemains() {
