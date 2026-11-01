@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: 4fbcc16cbe12ad74fdaf1c99081a3317ffd04fb7
+  ANDROID_PHASE5_SHA: f8284c0b4bc458298418d1c2116af1034dd0d274
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -39,6 +39,7 @@ jobs:
           node --check scripts/test-phase5-ground.mjs
           node --check scripts/test-phase5-places.mjs
           node --check scripts/test-phase5-smoothing.mjs
+          node --check scripts/test-phase5-external-constraints.mjs
           npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
           node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
           npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
@@ -49,13 +50,15 @@ jobs:
           node scripts/test-phase5-places.mjs /tmp/brick-phase5-places.mjs
           npx esbuild src/phase5-smoothing.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-smoothing.mjs
           node scripts/test-phase5-smoothing.mjs /tmp/brick-phase5-smoothing.mjs
+          npx esbuild src/phase5-external-constraints.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-external-constraints.mjs
+          node scripts/test-phase5-external-constraints.mjs /tmp/brick-phase5-external-constraints.mjs
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           grep -F 'X-Brick-Receiver-Signature' src/ground-receiver.ts >/dev/null
           grep -F 'configured.radius_m! + conservativeBleAllowanceM' src/ground-receiver.ts >/dev/null || grep -F 'receiverRadiusM + conservativeBleAllowanceM' src/ground-receiver.ts >/dev/null
           ! grep -F 'exactDistanceM' src/ground-receiver.ts >/dev/null
           grep -F 'augmentHealthWithLearnedPlaces' src/worker-v9.ts >/dev/null
           grep -F 'originalRealtimeHypothesisId' src/phase5-smoothing.ts >/dev/null
-          ! grep -F 'interpolat' src/phase5-smoothing.ts | grep -v -E 'never|not|no ' >/dev/null || true
+          grep -F 'listCurrentExternalConstraints' src/phase5-external-constraints.ts >/dev/null
       - name: Retain Phase 4 / 3 / 2 Cloud regressions
         shell: bash
         run: |
@@ -181,9 +184,11 @@ jobs:
           grep -F 'testRangeCreatesAnnulusRatherThanExactPoint' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
           grep -F 'testDistanceResidualDoesNotInventDirection' app/src/androidTest/java/com/brick/safety/fusion/Phase5RangingInstrumentedTest.kt >/dev/null
           grep -F 'class LearnedPlaceRegistry' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
+          grep -F 'owner != current' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'independenceGroup = "atlas.environment"' app/src/main/java/com/brick/safety/fusion/LearnedPlaceRegistry.kt >/dev/null
           grep -F 'testOverlappingConfiguredPlacesFailClosedInsteadOfGuessingName' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceInstrumentedTest.kt >/dev/null
           grep -F 'testNamedPlaceSharesAtlasIndependenceGroupToPreventDoubleVote' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceInstrumentedTest.kt >/dev/null
+          grep -F 'testCacheIsEncryptedRestorableAndBoundToCurrentPairing' app/src/androidTest/java/com/brick/safety/fusion/Phase5LearnedPlaceStoreInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
