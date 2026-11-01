@@ -171,6 +171,21 @@ export default {
       const life = await lifecycle(env, deviceId);
       if (!life) return json({ error: "device not found" }, 404);
 
+      // Revocation itself remains idempotent, but once revoked every other parent route is
+      // dispatched through the archived/read-only policy before any Phase 6 mutation handler.
+      if (suffix === "/revoke" && req.method === "POST") {
+        if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
+        const now = Date.now();
+        await env.DB.batch([
+          env.DB.prepare("UPDATE devices SET revoked_at=COALESCE(revoked_at,?1) WHERE id=?2").bind(now, deviceId),
+          env.DB.prepare("UPDATE trips SET state='cancelled',ended_at=COALESCE(ended_at,?1),stationary_since=NULL WHERE device_id=?2 AND state='active'").bind(now, deviceId)
+        ]);
+        ctx.waitUntil(recordAudit(env, "device_revoked", req, 200, { deviceId }));
+        return json({ ok: true, deviceId, revokedAt: life.revoked_at ?? now });
+      }
+
+      if (life.revoked_at !== null) return archivedRead(req, env, deviceId, suffix);
+
       if (suffix === "/location-control" && req.method === "GET") {
         return parentGetLocationControl(env, deviceId);
       }
@@ -195,19 +210,6 @@ export default {
         ctx.waitUntil(recordAudit(env, "ble_anchor_removed", req, response.status, { deviceId }));
         return response;
       }
-
-      if (suffix === "/revoke" && req.method === "POST") {
-        if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
-        const now = Date.now();
-        await env.DB.batch([
-          env.DB.prepare("UPDATE devices SET revoked_at=COALESCE(revoked_at,?1) WHERE id=?2").bind(now, deviceId),
-          env.DB.prepare("UPDATE trips SET state='cancelled',ended_at=COALESCE(ended_at,?1),stationary_since=NULL WHERE device_id=?2 AND state='active'").bind(now, deviceId)
-        ]);
-        ctx.waitUntil(recordAudit(env, "device_revoked", req, 200, { deviceId }));
-        return json({ ok: true, deviceId, revokedAt: life.revoked_at ?? now });
-      }
-
-      if (life.revoked_at !== null) return archivedRead(req, env, deviceId, suffix);
     }
 
     return base.fetch!(req, env, ctx);
