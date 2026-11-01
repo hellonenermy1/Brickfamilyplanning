@@ -203,7 +203,26 @@ class BleEnvironmentProvider(
 
     private fun processCompletedScan(copy: List<Aggregate>, nowElapsed: Long, nowWall: Long) {
         if (copy.isEmpty()) {
-            latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "no_identifiable_advertisements")
+            // This path is reached only after startScan succeeded and Brick's full burst completed.
+            // A single empty scan is still weak evidence; repeated trusted empty scans may teach that
+            // an old beacon moved/disappeared. The sentinel is semantic-common and cannot anchor.
+            val quality = 0.55f
+            onAtlasScan(AtlasScan(
+                nowElapsed,
+                nowWall,
+                quality,
+                listOf(AtlasSignalObservation(
+                    AtlasSignalKind.BLE_DEVICE,
+                    AtlasPrivacyId.reduce("bleempty", "completed"),
+                    "ble.scan",
+                    null,
+                    quality,
+                    semanticCommon = true,
+                    sourceHealthy = true
+                ))
+            ))
+            emitEvidence(emptyList(), nowElapsed, nowWall, quality)
+            latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY, "no_identifiable_advertisements")
             return
         }
         val observations = ArrayList<AtlasSignalObservation>(96)
@@ -229,7 +248,6 @@ class BleEnvironmentProvider(
         latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
     }
 
-    /** Tx power/SID/PHY and exposed service/manufacturer shape remain correlated BLE sub-features. */
     private fun metadataObservations(devices: List<Aggregate>): List<AtlasSignalObservation> =
         devices.take(MAX_METADATA_DEVICES).map { d ->
             val raw = buildString {
@@ -250,7 +268,6 @@ class BleEnvironmentProvider(
             )
         }
 
-    /** Multiple nearby advertisements form a place cluster; a single beacon never equals a place. */
     private fun coOccurrenceObservations(devices: List<Aggregate>): List<AtlasSignalObservation> {
         val strongest = devices.take(MAX_CLUSTER_DEVICES)
         if (strongest.size < 2) return emptyList()
