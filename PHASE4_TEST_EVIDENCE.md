@@ -25,16 +25,16 @@ This verifies the current Cloud head but does not prove Android framework or phy
 
 ## Android build gate
 
-Run `41267183265` at the time of this document creation:
+Run `41267183265` on exact Android `f6cfcc178ee8a4e7799c176e350c5b967c56069d`:
 
-- exact Android SHA checkout/verification — job reached the Android gate;
-- dependency lock — **RUNNING/PENDING FINAL RESULT**;
-- debug APK compile — pending;
-- instrumentation APK compile — pending;
-- Android lint — pending;
-- Phase 4 architecture invariant checks — pending.
+- exact Android SHA checkout/verification — **PASS**;
+- dependency lock — **PASS**;
+- debug APK compile — **PASS**;
+- instrumentation APK compile — **PASS**;
+- Android lint — **PASS**;
+- Phase 4 architecture invariant checks — **PASS**.
 
-The immediately preceding exact-pair checkpoint run `41266360856` passed dependency lock, debug/test APK compilation and lint on Android `cbd83c5d7caac36e60f941dc747abe93f3889a7d`, but that is not substituted for the newer final candidate.
+No newer Android source was pushed after this SHA was frozen for the run.
 
 ## Android instrumentation source scenarios on the final candidate
 
@@ -82,7 +82,7 @@ The immediately preceding exact-pair checkpoint run `41266360856` passed depende
 
 ### Retained Phase 2/3 Android tests
 
-The Phase 4 instrumentation job invokes `connectedDebugAndroidTest` against the complete candidate test APK, retaining Phase 2 evidence/journal tests and Phase 3 motion/positioning/route tests. Their final status for the exact Phase 4 candidate remains pending until run `41267183265` completes.
+The Phase 4 instrumentation job invokes `connectedDebugAndroidTest` against the complete candidate test APK, retaining Phase 2 evidence/journal tests and Phase 3 motion/positioning/route tests. Their final status for the exact Phase 4 candidate remains pending until the instrumentation job in run `41267183265` completes.
 
 ## Reliability invariants added to source/CI
 
@@ -114,7 +114,7 @@ No emulator/CI result may replace the target OPPO/ColorOS checks for:
 ## Current verdict
 
 Cloud/wire/regression job: **PASS**.
-Final Android compile/lint: **PENDING**.
-Final Android instrumentation: **PENDING**.
+Final Android dependency lock + compile/test-APK/lint/invariants: **PASS**.
+Final Android instrumentation: **IN PROGRESS**.
 Physical OPPO/ColorOS Phase 4: **NOT EXECUTED**.
 Phase 4 acceptance: **NO**.
