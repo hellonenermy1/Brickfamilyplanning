@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5B_SHA: 6e9210575fd20b21ca4f995b6eac7c7cc738e0ab
+  ANDROID_PHASE5B_SHA: 2a8797736c42f91c996953824c4bb87708140dfc
 
 concurrency:
   group: brick-v1-phase5b-${{ github.event.pull_request.number || github.ref }}
@@ -170,6 +170,7 @@ jobs:
           grep -F 'FUSION_HYPOTHESES' app/src/main/java/com/brick/safety/evidence/EvidenceModel.kt >/dev/null
           grep -F 'Phase5HypothesisRuntime.record' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
           grep -F 'if (constraints.isEmpty())' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
+          grep -F 'activityMode = activity.mode' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
 
   android-instrumentation:
     name: Phase 2-5 cumulative Android instrumentation
