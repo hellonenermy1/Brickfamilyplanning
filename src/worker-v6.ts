@@ -9,6 +9,7 @@ import { recordAudit } from "./phase5c";
 import { listBleAnchors, parentListBleAnchors, parentRemoveBleAnchor, parentSetBleAnchor } from "./ble-anchors";
 import { validateSafetyReplayWindow } from "./device-json-security";
 import { processDeadLetterBatch, processSafetyReceipts } from "./queue-v6";
+import { augmentHealthWithLocationControl, noteLocationControlHealth, parentGetLocationControl, parentSetLocationControl } from "./phase6-location-control";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -65,16 +66,21 @@ function finalParentResponse(baseResponse: Response, baseHtml: string) {
 }
 
 async function healthWithConfiguration(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext, deviceId: string) {
+  // Clone before the base handler consumes the signed body. The copy is only used after the base
+  // handler has accepted the request, so an unauthenticated body cannot update control status.
+  const healthCopy = req.clone();
   const response = await base.fetch!(req, env, ctx);
   if (!response.ok) return response;
+  try { await noteLocationControlHealth(healthCopy, env, deviceId); } catch { /* health ACK is best effort */ }
+  const anchors = await listBleAnchors(env, deviceId);
   let body: Record<string, unknown>;
   try { body = await response.json<Record<string, unknown>>(); }
   catch { return response; }
-  const anchors = await listBleAnchors(env, deviceId);
   const headers = new Headers(response.headers);
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("Cache-Control", "no-store");
-  return new Response(JSON.stringify({ ...body, bleAnchors: anchors }), { status: response.status, headers });
+  const withAnchors = new Response(JSON.stringify({ ...body, bleAnchors: anchors }), { status: response.status, headers });
+  return augmentHealthWithLocationControl(withAnchors, env, deviceId);
 }
 
 async function queueCriticalSafetyReceipt(req: Request, env: Env, deviceId: string): Promise<Response | null> {
@@ -165,6 +171,15 @@ export default {
       const life = await lifecycle(env, deviceId);
       if (!life) return json({ error: "device not found" }, 404);
 
+      if (suffix === "/location-control" && req.method === "GET") {
+        return parentGetLocationControl(env, deviceId);
+      }
+      if (suffix === "/location-control" && req.method === "POST") {
+        if (!sameOriginMutation(req)) return json({ error: "same-origin request required" }, 403);
+        const response = await parentSetLocationControl(req, env, deviceId);
+        ctx.waitUntil(recordAudit(env, "location_control_set", req, response.status, { deviceId }));
+        return response;
+      }
       if (suffix === "/battery-drain" && req.method === "GET") return batteryDrainTrend(env, deviceId);
       if (suffix === "/ble-anchors" && req.method === "GET") return parentListBleAnchors(env, deviceId);
       if (suffix === "/ble-anchors" && req.method === "POST") {
