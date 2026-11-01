@@ -14,6 +14,7 @@ import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class GnssSkyProvider(
     context: Context,
@@ -25,10 +26,13 @@ class GnssSkyProvider(
         val total: Int,
         val used: Int,
         val averageCn0: Float?,
+        val cn0StdDev: Float?,
+        val cn0Bands: List<Int>,
         val constellationCounts: List<Int>,
         val azimuthSectors: List<Int>,
         val elevationBands: List<Int>,
         val carrierBands: List<Int>,
+        val skyState: String,
         val quality: Float
     )
 
@@ -105,25 +109,40 @@ class GnssSkyProvider(
         }
         lastCollectElapsedMs = nowElapsed
         val nowWall = System.currentTimeMillis()
-        val observation = AtlasSignalObservation(
-            AtlasSignalKind.GNSS_SKY,
-            sky.signalId,
-            "gnss.sky",
-            sky.averageCn0,
-            sky.quality,
-            sourceHealthy = true
+        val observations = listOf(
+            AtlasSignalObservation(
+                AtlasSignalKind.GNSS_SKY,
+                sky.signalId,
+                "gnss.sky",
+                sky.averageCn0,
+                sky.quality,
+                sourceHealthy = true
+            ),
+            // Coarse state is derived from aggregate sky geometry/signal only. It is not satellite
+            // identity and remains in the same GNSS independence group.
+            AtlasSignalObservation(
+                AtlasSignalKind.GNSS_SKY,
+                AtlasPrivacyId.reduce("gnssstate", sky.skyState),
+                "gnss.sky",
+                sky.cn0StdDev,
+                (sky.quality * 0.55f).coerceIn(0.10f, 0.50f),
+                sourceHealthy = true
+            )
         )
-        onAtlasScan(AtlasScan(nowElapsed, nowWall, sky.quality, listOf(observation)))
+        onAtlasScan(AtlasScan(nowElapsed, nowWall, sky.quality, observations))
         val payload = JSONObject()
             .put("v", 1)
             .put("id", sky.signalId)
             .put("total", sky.total)
             .put("used", sky.used)
             .put("cn0", sky.averageCn0 ?: JSONObject.NULL)
+            .put("cn0sd", sky.cn0StdDev ?: JSONObject.NULL)
+            .put("cn0b", JSONArray(sky.cn0Bands))
             .put("const", JSONArray(sky.constellationCounts))
             .put("az", JSONArray(sky.azimuthSectors))
             .put("el", JSONArray(sky.elevationBands))
             .put("cf", JSONArray(sky.carrierBands))
+            .put("sky", sky.skyState)
             .toString().toByteArray(Charsets.UTF_8)
         if (payload.size <= EvidenceProtocol.MAX_RECORD_PAYLOAD_BYTES) {
             sink?.emit(EvidenceObservation(
@@ -156,14 +175,28 @@ class GnssSkyProvider(
         val azimuth = IntArray(8)
         val elevation = IntArray(4)
         val carriers = IntArray(4)
+        val cn0Bands = IntArray(5)
         var used = 0
         var cn0Sum = 0f
+        var cn0SquareSum = 0.0
         var cn0Count = 0
 
         for (i in 0 until status.satelliteCount.coerceAtMost(96)) {
             val cn0 = status.getCn0DbHz(i).takeIf { it.isFinite() && it >= 0f }
             if (status.usedInFix(i)) used += 1
-            cn0?.let { cn0Sum += it; cn0Count += 1 }
+            cn0?.let {
+                cn0Sum += it
+                cn0SquareSum += it.toDouble() * it
+                cn0Count += 1
+                val band = when {
+                    it < 15f -> 0
+                    it < 25f -> 1
+                    it < 35f -> 2
+                    it < 45f -> 3
+                    else -> 4
+                }
+                cn0Bands[band] += 1
+            }
 
             val constellation = status.getConstellationType(i)
             val cIndex = when (constellation) {
@@ -202,15 +235,22 @@ class GnssSkyProvider(
             }
         }
         val avg = if (cn0Count > 0) cn0Sum / cn0Count else null
+        val variance = if (cn0Count >= 2) {
+            (cn0SquareSum / cn0Count - (avg!!.toDouble() * avg)).coerceAtLeast(0.0)
+        } else null
+        val stdDev = variance?.let { sqrt(it).toFloat() }
         val total = status.satelliteCount.coerceIn(0, 96)
+        val skyState = skyState(total, used, avg, stdDev, elevation, azimuth)
         val fingerprint = buildString {
             append("c=").append(constellations.joinToString(",") { bucket(it).toString() })
             append("|a=").append(azimuth.joinToString(",") { bucket(it).toString() })
             append("|e=").append(elevation.joinToString(",") { bucket(it).toString() })
             append("|f=").append(carriers.joinToString(",") { bucket(it).toString() })
+            append("|b=").append(cn0Bands.joinToString(",") { bucket(it).toString() })
             append("|u=").append(bucket(used))
             append("|n=").append(bucket(total))
             append("|q=").append(((avg ?: 0f) / 5f).roundToInt().coerceIn(0, 12))
+            append("|s=").append(skyState)
         }
         val quality = ((used.coerceAtMost(8) / 10f) + (total.coerceAtMost(20) / 40f) + ((avg ?: 0f) / 100f)).coerceIn(0.15f, 0.90f)
         return SkySnapshot(
@@ -219,12 +259,40 @@ class GnssSkyProvider(
             total,
             used,
             avg,
+            stdDev,
+            cn0Bands.toList(),
             constellations.toList(),
             azimuth.toList(),
             elevation.toList(),
             carriers.toList(),
+            skyState,
             quality
         )
+    }
+
+    /**
+     * Coarse aggregate sky classification only. `degraded` means the observed sky is inconsistent/
+     * difficult; it does not claim multipath as a proven cause. This keeps the UI/algorithm honest.
+     */
+    private fun skyState(
+        total: Int,
+        used: Int,
+        avgCn0: Float?,
+        stdDevCn0: Float?,
+        elevation: IntArray,
+        azimuth: IntArray
+    ): String {
+        val avg = avgCn0 ?: 0f
+        val highElevation = elevation.getOrElse(3) { 0 }
+        val occupiedSectors = azimuth.count { it > 0 }
+        return when {
+            total <= 2 || avg < 12f -> "blocked"
+            total >= 12 && used >= 6 && avg >= 28f && highElevation >= 2 && occupiedSectors >= 5 -> "open"
+            total >= 8 && used <= 2 && avg >= 18f -> "degraded"
+            stdDevCn0 != null && stdDevCn0 > 13f && used < total / 2 -> "degraded"
+            occupiedSectors <= 3 || highElevation == 0 -> "constrained"
+            else -> "mixed"
+        }
     }
 
     private fun capabilityStatus(): EvidenceProviderStatus {
