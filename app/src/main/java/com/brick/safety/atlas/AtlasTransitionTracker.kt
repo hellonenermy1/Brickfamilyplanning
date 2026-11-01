@@ -66,12 +66,15 @@ internal class AtlasTransitionTracker(
         val additions = ArrayList<AtlasSignalObservation>(3)
         gradientObservation(normalizedSource, previous, current, scan)?.let { gradient ->
             additions += gradient
-            sequenceObservation(gradient.signalId, scan.elapsedRealtimeMs, gradient.quality)?.let(additions::add)
+            sequenceObservation(
+                gradient.signalId,
+                scan.elapsedRealtimeMs,
+                gradient.quality,
+                gradient.independenceGroup
+            )?.let(additions::add)
         }
 
         if (previous.signature != signature && setSimilarity(previous.keys, keys) < 0.55) {
-            // Ignore small set churn (for example one Wi-Fi AP momentarily disappearing). A source
-            // transition needs a material environmental change before it becomes learned evidence.
             val transitionId = AtlasPrivacyId.reduce("trans", "$normalizedSource|${previous.signature}>$signature")
             val group = scan.observations.firstOrNull { it.kind != AtlasSignalKind.TRANSITION }
                 ?.independenceGroup ?: "atlas.transition"
@@ -83,17 +86,12 @@ internal class AtlasTransitionTracker(
                 quality = quality,
                 sourceHealthy = true
             )
-            sequenceObservation(transitionId, scan.elapsedRealtimeMs, quality)?.let(additions::add)
+            sequenceObservation(transitionId, scan.elapsedRealtimeMs, quality, group)?.let(additions::add)
         }
 
         return if (additions.isEmpty()) scan else scan.copy(observations = (scan.observations + additions).take(128))
     }
 
-    /**
-     * Learn coarse Wi-Fi RSSI rise/fall patterns for repeated route gradients. Only stable reduced
-     * BSSID observations (`wifi:` namespace) participate; ordering/metadata/co-occurrence features
-     * are deliberately excluded. The gradient stays in `wifi.scan`, so it cannot double-count Wi-Fi.
-     */
     private fun gradientObservation(
         source: String,
         previous: SourceState,
@@ -154,15 +152,16 @@ internal class AtlasTransitionTracker(
 
         val transitionId = AtlasPrivacyId.reduce("trans", "activity|${previousMode.name}>${mode.name}")
         val transitionQuality = (min(previousQuality, quality) * 0.85f).coerceIn(0.15f, 0.60f)
+        val group = "activity.transition"
         val observations = ArrayList<AtlasSignalObservation>(2)
         observations += AtlasSignalObservation(
             kind = AtlasSignalKind.TRANSITION,
             signalId = transitionId,
-            independenceGroup = "activity.transition",
+            independenceGroup = group,
             quality = transitionQuality,
             sourceHealthy = true
         )
-        sequenceObservation(transitionId, elapsedMs, transitionQuality)?.let(observations::add)
+        sequenceObservation(transitionId, elapsedMs, transitionQuality, group)?.let(observations::add)
         return AtlasScan(elapsedMs, wallMs, transitionQuality, observations)
     }
 
@@ -175,7 +174,12 @@ internal class AtlasTransitionTracker(
         activityQuality = 0f
     }
 
-    private fun sequenceObservation(id: String, elapsedMs: Long, quality: Float): AtlasSignalObservation? {
+    private fun sequenceObservation(
+        id: String,
+        elapsedMs: Long,
+        quality: Float,
+        independenceGroup: String
+    ): AtlasSignalObservation? {
         while (recentTransitions.isNotEmpty() &&
             elapsedMs - (recentTransitions.peekFirst()?.elapsedMs ?: elapsedMs) > sequenceGapMs) {
             recentTransitions.removeFirst()
@@ -190,7 +194,7 @@ internal class AtlasTransitionTracker(
         return AtlasSignalObservation(
             kind = AtlasSignalKind.TRANSITION,
             signalId = sequenceId,
-            independenceGroup = "atlas.derived",
+            independenceGroup = independenceGroup,
             quality = sequenceQuality,
             sourceHealthy = true
         )
