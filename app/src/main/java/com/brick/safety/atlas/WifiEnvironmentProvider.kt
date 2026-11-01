@@ -2,7 +2,10 @@ package com.brick.safety.atlas
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.wifi.ScanResult
@@ -12,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
 
 class WifiEnvironmentProvider(
     context: Context,
@@ -34,10 +38,24 @@ class WifiEnvironmentProvider(
     private val appContext = context.applicationContext
     private val wifi = appContext.getSystemService(WifiManager::class.java)
     private val locationManager = appContext.getSystemService(LocationManager::class.java)
+    private val receiverRegistered = AtomicBoolean(false)
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var decision = EvidenceSamplingDecision(false, null)
     @Volatile private var lastCollectElapsedMs = 0L
+    @Volatile private var lastConsumedScanElapsedMs = 0L
     @Volatile private var latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "not_started")
+
+    private val scanReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION || sink == null || !decision.enabled) return
+            // Android 10+ can deliver this for scans performed by the platform or other apps. We
+            // consume the fresh system cache but never request an extra scan from this callback.
+            runCatching { consumeCurrentResults() }
+                .onFailure {
+                    latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "scan_result_read_failed")
+                }
+        }
+    }
 
     override val descriptor = EvidenceProviderDescriptor(
         EvidenceProviderId.WIFI_ENVIRONMENT,
@@ -54,6 +72,18 @@ class WifiEnvironmentProvider(
     override fun start(sink: EvidenceSink) {
         this.sink = sink
         latestStatus = capabilityStatus()
+        if (receiverRegistered.compareAndSet(false, true)) {
+            val registered = runCatching {
+                ContextCompat.registerReceiver(
+                    appContext,
+                    scanReceiver,
+                    IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+                true
+            }.getOrDefault(false)
+            if (!registered) receiverRegistered.set(false)
+        }
     }
 
     override fun applySampling(decision: EvidenceSamplingDecision) {
@@ -72,8 +102,9 @@ class WifiEnvironmentProvider(
         if (interval != null && lastCollectElapsedMs > 0L && now >= lastCollectElapsedMs && now - lastCollectElapsedMs < interval) return
         lastCollectElapsedMs = now
 
-        // Read only a fresh system cache at the scheduled Brick pulse, then request the next scan.
-        // Android may throttle startScan(); throttling is a degraded provider state, never a retry loop.
+        // Consume a platform scan if one already exists, then request at most the scheduled next
+        // scan. The broadcast receiver consumes its result immediately, even in deep-stationary
+        // mode where the next Brick pulse may be many minutes later.
         consumeCurrentResults()
         val accepted = runCatching { wifi.startScan() }.getOrDefault(false)
         latestStatus = if (accepted) {
@@ -84,10 +115,14 @@ class WifiEnvironmentProvider(
     }
 
     override fun stop() {
+        if (receiverRegistered.compareAndSet(true, false)) {
+            runCatching { appContext.unregisterReceiver(scanReceiver) }
+        }
         sink = null
     }
 
     @SuppressLint("MissingPermission", "HardwareIds", "Deprecation")
+    @Synchronized
     private fun consumeCurrentResults() {
         if (capabilityStatus().capability != ProviderCapability.SUPPORTED) return
         val nowElapsed = SystemClock.elapsedRealtime()
@@ -100,6 +135,9 @@ class WifiEnvironmentProvider(
             .take(MAX_ATLAS_APS)
             .toList()
         if (fresh.isEmpty()) return
+        val scanGenerationElapsed = fresh.maxOf { it.observedElapsedMs }
+        if (scanGenerationElapsed <= lastConsumedScanElapsedMs) return
+        lastConsumedScanElapsedMs = scanGenerationElapsed
 
         val observations = ArrayList<AtlasSignalObservation>(128)
         for (ap in fresh) {
@@ -142,7 +180,8 @@ class WifiEnvironmentProvider(
         val frequency: Int,
         val channelWidth: Int,
         val securityClass: String,
-        val quality: Float
+        val quality: Float,
+        val observedElapsedMs: Long
     )
 
     /**
@@ -159,7 +198,7 @@ class WifiEnvironmentProvider(
             for (j in i + 1 until strongest.size) {
                 val b = strongest[j]
                 val delta = a.rssi - b.rssi
-                if (delta < 3) continue // avoid unstable order when signals are nearly tied
+                if (delta < 3) continue
                 val orderId = AtlasPrivacyId.reduce("worder", "${a.apId}>${b.apId}")
                 out += AtlasSignalObservation(
                     AtlasSignalKind.WIFI_AP,
@@ -196,10 +235,6 @@ class WifiEnvironmentProvider(
         return out.take(15)
     }
 
-    /**
-     * Learn stable exposed AP characteristics as correlated sub-features. Exact raw metadata stays
-     * in the bounded evidence payload; the long-lived Atlas receives only a keyed reduced feature.
-     */
     private fun metadataObservations(results: List<NormalizedAp>): List<AtlasSignalObservation> =
         results.take(MAX_METADATA_APS).map { ap ->
             val band = bandFor(ap.frequency)
@@ -237,7 +272,8 @@ class WifiEnvironmentProvider(
             result.frequency.coerceAtLeast(0),
             result.channelWidth.coerceAtLeast(0),
             security,
-            (freshness * 0.55f + signalQuality * 0.45f).coerceIn(0.1f, 1f)
+            (freshness * 0.55f + signalQuality * 0.45f).coerceIn(0.1f, 1f),
+            resultElapsed
         )
     }
 
