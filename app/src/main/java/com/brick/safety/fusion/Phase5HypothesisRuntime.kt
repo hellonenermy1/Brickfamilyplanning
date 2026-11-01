@@ -12,6 +12,6 @@ object Phase5HypothesisRuntime {
         if (recorder == null) recorder = Phase5HypothesisRecorder(context.applicationContext)
     }
 
-    fun record(selection: Phase5FusionSelection): Boolean =
-        runCatching { recorder?.record(selection, ActivityMode.UNKNOWN) ?: false }.getOrDefault(false)
+    fun record(selection: Phase5FusionSelection, activityMode: ActivityMode): Boolean =
+        runCatching { recorder?.record(selection, activityMode) ?: false }.getOrDefault(false)
 }
