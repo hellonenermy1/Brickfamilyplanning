@@ -1,16 +1,9 @@
 package com.brick.safety.network
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import org.json.JSONObject
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import org.junit.runner.RunWith
 
-@RunWith(AndroidJUnit4::class)
-class Phase6LocationCommandInstrumentedTest {
+class Phase6LocationCommandInstrumentedTest : BrickInstrumentationTestCase() {
     private val now = 100_000L
     private val deviceId = "11111111-1111-4111-8111-111111111111"
     private val nonce = "22222222-2222-4222-8222-222222222222"
@@ -24,8 +17,7 @@ class Phase6LocationCommandInstrumentedTest {
         .put("issuedAtMs", 50_000L)
         .put("expiresAtMs", now + 300_000L)
 
-    @Test
-    fun validDeviceBoundCommandIsParsed() {
+    fun testValidDeviceBoundCommandIsParsed() {
         val parsed = BrickApi.parseHealthConfig(JSONObject().put("locationCommand", commandJson()), now).locationCommand
         requireNotNull(parsed)
         assertEquals(deviceId, parsed.deviceId)
@@ -36,8 +28,7 @@ class Phase6LocationCommandInstrumentedTest {
         assertEquals(now + 300_000L, parsed.expiresAtMs)
     }
 
-    @Test
-    fun malformedExpiredOrAmbiguousDeliveryIsRejected() {
+    fun testMalformedExpiredOrAmbiguousDeliveryIsRejected() {
         val expired = commandJson().put("expiresAtMs", now)
         assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", expired), now).locationCommand)
 
@@ -63,8 +54,7 @@ class Phase6LocationCommandInstrumentedTest {
         assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", futureIssued), now).locationCommand)
     }
 
-    @Test
-    fun missingCommandLeavesExistingHealthFamiliesUsable() {
+    fun testMissingCommandLeavesExistingHealthFamiliesUsable() {
         val parsed = BrickApi.parseHealthConfig(JSONObject(), now)
         assertNull(parsed.locationCommand)
         assertNull(parsed.bleAnchors)
