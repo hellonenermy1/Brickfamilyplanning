@@ -14,6 +14,7 @@ class Phase4AtlasController(context: Context) {
     companion object {
         private const val COMBINE_WINDOW_MS = 15_000L
         private const val PERSIST_MIN_GAP_MS = 30_000L
+        private const val HEALTH_PUBLISH_MIN_GAP_MS = 30_000L
         private const val DEGRADED_POSITION_AFTER_MS = 45_000L
         private const val DEEP_STATIONARY_AFTER_MS = 10L * 60L * 1_000L
     }
@@ -28,6 +29,7 @@ class Phase4AtlasController(context: Context) {
     private val recentScans = linkedMapOf<String, AtlasScan>()
     @Volatile private var trustedLabel: AtlasTrustedLabel? = null
     @Volatile private var lastPersistElapsedMs = 0L
+    @Volatile private var lastHealthPublishElapsedMs = 0L
     @Volatile private var latestCandidates: List<AtlasMatchCandidate> = emptyList()
     @Volatile private var ownerInitialized = false
 
@@ -64,7 +66,7 @@ class Phase4AtlasController(context: Context) {
         if (!started.compareAndSet(true, false)) return
         providers.forEach { provider -> runCatching { provider.stop() } }
         persist(force = true)
-        journal.close()
+        runCatching { journal.close() }
     }
 
     /** Only fresh PRECISE/ASSISTED trusted fused positions are allowed to label Atlas training. */
@@ -138,7 +140,7 @@ class Phase4AtlasController(context: Context) {
             runCatching { provider.applySampling(decision) }
             runCatching { provider.collectNow() }
         }
-        publishHealth()
+        publishHealthIfDue()
     }
 
     fun candidates(): List<AtlasMatchCandidate> = latestCandidates
@@ -147,6 +149,7 @@ class Phase4AtlasController(context: Context) {
 
     @Synchronized
     private fun noteProviderScan(source: String, scan: AtlasScan) {
+        if (!started.get()) return
         val nowElapsed = SystemClock.elapsedRealtime()
         if (scan.elapsedRealtimeMs <= 0L || scan.elapsedRealtimeMs > nowElapsed) return
         recentScans[source] = scan
@@ -227,6 +230,12 @@ class Phase4AtlasController(context: Context) {
         if (stateStore.write(atlas)) lastPersistElapsedMs = nowElapsed
     }
 
+    private fun publishHealthIfDue() {
+        val now = SystemClock.elapsedRealtime()
+        if (lastHealthPublishElapsedMs > 0L && now >= lastHealthPublishElapsedMs && now - lastHealthPublishElapsedMs < HEALTH_PUBLISH_MIN_GAP_MS) return
+        publishHealth()
+    }
+
     private fun publishHealth() {
         val status = providerStatuses()
         val best = latestCandidates.firstOrNull()
@@ -246,6 +255,7 @@ class Phase4AtlasController(context: Context) {
         if (best?.uncertaintyM?.isFinite() == true) edit.putFloat("atlasCandidateUncertaintyM", best.uncertaintyM)
         else edit.remove("atlasCandidateUncertaintyM")
         edit.apply()
+        lastHealthPublishElapsedMs = SystemClock.elapsedRealtime()
     }
 
     private fun publishProvider(edit: android.content.SharedPreferences.Editor, prefix: String, status: EvidenceProviderStatus?) {
@@ -257,10 +267,16 @@ class Phase4AtlasController(context: Context) {
 object Phase4AtlasRuntime {
     @Volatile private var controller: Phase4AtlasController? = null
 
+    @Synchronized
     fun pulse(context: Context) {
-        val current = controller ?: synchronized(this) {
-            controller ?: Phase4AtlasController(context.applicationContext).also { controller = it }
-        }
+        val current = controller ?: Phase4AtlasController(context.applicationContext).also { controller = it }
         current.pulseFromForeground()
+    }
+
+    @Synchronized
+    fun stop() {
+        val current = controller ?: return
+        controller = null
+        runCatching { current.stop() }
     }
 }
