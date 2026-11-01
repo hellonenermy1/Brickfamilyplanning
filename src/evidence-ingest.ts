@@ -22,7 +22,11 @@ export class EvidenceConflict extends Error {}
 
 async function sha256Hex(data: ArrayBuffer | Uint8Array): Promise<string> {
   const input = data instanceof Uint8Array ? data : new Uint8Array(data);
-  const digest = await crypto.subtle.digest("SHA-256", input);
+  // Newer TypeScript/WebCrypto declarations distinguish ArrayBuffer from ArrayBufferLike.
+  // Copy into an owned ArrayBuffer so SharedArrayBuffer-backed views can never cross this boundary.
+  const owned = new Uint8Array(input.byteLength);
+  owned.set(input);
+  const digest = await crypto.subtle.digest("SHA-256", owned.buffer);
   return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
@@ -93,18 +97,10 @@ async function persistEvidenceBatchAttempt(env: EvidenceEnv, deviceId: string, b
     if (exists) existingRecordCount += 1;
   }
 
-  // A transport retry may legitimately rebuild the same records under a fresh batch UUID after the
-  // original response was lost. Once every record identity and payload is already durable, ACK it
-  // directly instead of creating unlimited new batch rows/R2 objects. This is record-level replay
-  // protection as well as idempotency; the Android client only needs the exact ACK set.
   if (existingRecordCount === batch.records.length) {
     return { protocol: 1, batchId: batch.batchId, acked: exactAcks(batch), duplicateBatch: false, duplicateRecords: true };
   }
 
-  // Raw object paths use a one-way device key rather than a sanitized identifier. The batch hash is
-  // part of the object key as well: concurrent conflicting requests that reuse one batch UUID write
-  // different objects instead of racing to overwrite one raw object. Any unreferenced losing object
-  // expires under the bounded raw-evidence lifecycle rule.
   const deviceKey = await sha256Hex(new TextEncoder().encode(deviceId));
   const r2Key = `evidence/raw/${deviceKey}/${batch.batchId}-${batchSha}.brev`;
   await env.HISTORY.put(r2Key, buffer, {
@@ -119,8 +115,6 @@ async function persistEvidenceBatchAttempt(env: EvidenceEnv, deviceId: string, b
 
   const now = Date.now();
   const statements: D1PreparedStatement[] = [
-    // Hard batch-ID claim: a concurrent request that already owns this (device,batchId) makes the
-    // transactional D1 batch fail and roll back every later record/link/state write.
     env.DB.prepare(
       "INSERT INTO evidence_batches(device_id,batch_id,protocol,record_count,byte_length,payload_sha256,r2_key,received_at) VALUES(?1,?2,1,?3,?4,?5,?6,?7)"
     ).bind(deviceId, batch.batchId, batch.records.length, buffer.byteLength, batchSha, r2Key, now)
@@ -128,10 +122,6 @@ async function persistEvidenceBatchAttempt(env: EvidenceEnv, deviceId: string, b
 
   const latestByProvider = new Map<number, EvidenceRecord>();
   batch.records.forEach((record, index) => {
-    // Exact records observed during preflight are intentionally reused. Records that were absent
-    // must be hard-inserted, not INSERT OR IGNORE: if another signed request claims the same
-    // (epoch,sequence) or recordId between preflight and this transaction, the unique-constraint
-    // failure rolls back this whole batch instead of silently linking to the competitor's record.
     if (!recordAlreadyExists[index]) {
       statements.push(
         env.DB.prepare(
@@ -180,19 +170,12 @@ async function persistEvidenceBatchAttempt(env: EvidenceEnv, deviceId: string, b
   try {
     await env.DB.batch(statements);
   } catch (error) {
-    // Concurrency should converge, not masquerade as a storage outage. First check whether another
-    // request durably completed this exact batch while we were between preflight and transaction.
-    // A reused batchId with different bytes still throws EvidenceConflict here.
     const racedBatchAcks = await exactAcksForExistingBatch(env, deviceId, batch, batchSha, buffer.byteLength);
     if (racedBatchAcks) {
       return { protocol: 1, batchId: batch.batchId, acked: racedBatchAcks, duplicateBatch: true, raced: true };
     }
 
     if (allowRaceRetry) {
-      // A different batch may have claimed one or more exact record identities during the same
-      // window. Retry once only when D1 demonstrably changed since our preflight. The second pass
-      // revalidates every record and either reuses exact rows, rejects a conflict, or commits the
-      // remaining new rows. If nothing changed, preserve the original storage failure.
       let observedNewExactRecord = false;
       for (let i = 0; i < batch.records.length; i++) {
         const existing = await readExistingRecord(env, deviceId, batch.records[i]);
