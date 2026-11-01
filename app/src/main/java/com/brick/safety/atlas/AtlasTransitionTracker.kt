@@ -2,14 +2,16 @@ package com.brick.safety.atlas
 
 import com.brick.safety.activity.ActivityMode
 import java.util.ArrayDeque
+import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Learns short environmental/activity transitions without turning them into a second positioning
  * engine. Inputs are already privacy-reduced Atlas observations; this class HMAC-reduces state and
  * transition signatures again before they can enter long-lived Atlas state.
  *
- * Transition evidence is deliberately correlated with the source observation and low-trust in
+ * Transition and gradient evidence is deliberately correlated with its source and low-trust in
  * [SignalTrustEngine]. It can support repeated approach/departure recognition but can never decide
  * the child's location by itself. Final fusion remains Phase 5 work.
  */
@@ -19,6 +21,7 @@ internal class AtlasTransitionTracker(
 ) {
     private data class SourceState(
         val keys: Set<String>,
+        val measurements: Map<String, Float>,
         val signature: String,
         val elapsedMs: Long,
         val wallMs: Long,
@@ -41,39 +44,92 @@ internal class AtlasTransitionTracker(
     fun augmentSource(source: String, scan: AtlasScan): AtlasScan {
         val normalizedSource = source.lowercase().replace(Regex("[^a-z0-9._-]"), "_").take(24)
             .ifBlank { "source" }
-        val keys = scan.observations.asSequence()
+        val eligible = scan.observations.asSequence()
             .filter { it.kind != AtlasSignalKind.TRANSITION && it.quality >= 0.20f }
             .sortedByDescending { it.quality }
             .take(10)
-            .map { "${it.kind.ordinal}:${it.signalId}" }
-            .toSet()
+            .toList()
+        val keys = eligible.map { "${it.kind.ordinal}:${it.signalId}" }.toSet()
         if (keys.isEmpty()) return scan
+        val measurements = eligible.mapNotNull { observation ->
+            observation.measurement?.takeIf(Float::isFinite)?.let {
+                "${observation.kind.ordinal}:${observation.signalId}" to it
+            }
+        }.toMap()
 
         val signature = AtlasPrivacyId.reduce("state", "$normalizedSource|${keys.sorted().joinToString(",")}")
-        val current = SourceState(keys, signature, scan.elapsedRealtimeMs, scan.wallTimeMs, scan.quality)
+        val current = SourceState(keys, measurements, signature, scan.elapsedRealtimeMs, scan.wallTimeMs, scan.quality)
         val previous = sourceStates.put(normalizedSource, current) ?: return scan
         val delta = scan.elapsedRealtimeMs - previous.elapsedMs
-        if (delta !in 1..sourceGapMs || previous.signature == signature) return scan
+        if (delta !in 1..sourceGapMs) return scan
 
-        // Ignore small set churn (for example one Wi-Fi AP momentarily disappearing). A source
-        // transition needs a material environmental change before it becomes learned evidence.
-        if (setSimilarity(previous.keys, keys) >= 0.55) return scan
+        val additions = ArrayList<AtlasSignalObservation>(3)
+        gradientObservation(normalizedSource, previous, current, scan)?.let { gradient ->
+            additions += gradient
+            sequenceObservation(gradient.signalId, scan.elapsedRealtimeMs, gradient.quality)?.let(additions::add)
+        }
 
-        val transitionId = AtlasPrivacyId.reduce("trans", "$normalizedSource|${previous.signature}>$signature")
-        val group = scan.observations.firstOrNull { it.kind != AtlasSignalKind.TRANSITION }
-            ?.independenceGroup ?: "atlas.transition"
-        val quality = (min(previous.quality, scan.quality) * 0.65f).coerceIn(0.10f, 0.70f)
-        val transition = AtlasSignalObservation(
+        if (previous.signature != signature && setSimilarity(previous.keys, keys) < 0.55) {
+            // Ignore small set churn (for example one Wi-Fi AP momentarily disappearing). A source
+            // transition needs a material environmental change before it becomes learned evidence.
+            val transitionId = AtlasPrivacyId.reduce("trans", "$normalizedSource|${previous.signature}>$signature")
+            val group = scan.observations.firstOrNull { it.kind != AtlasSignalKind.TRANSITION }
+                ?.independenceGroup ?: "atlas.transition"
+            val quality = (min(previous.quality, scan.quality) * 0.65f).coerceIn(0.10f, 0.70f)
+            additions += AtlasSignalObservation(
+                kind = AtlasSignalKind.TRANSITION,
+                signalId = transitionId,
+                independenceGroup = group,
+                quality = quality,
+                sourceHealthy = true
+            )
+            sequenceObservation(transitionId, scan.elapsedRealtimeMs, quality)?.let(additions::add)
+        }
+
+        return if (additions.isEmpty()) scan else scan.copy(observations = (scan.observations + additions).take(128))
+    }
+
+    /**
+     * Learn coarse Wi-Fi RSSI rise/fall patterns for repeated route gradients. Only stable reduced
+     * BSSID observations (`wifi:` namespace) participate; ordering/metadata/co-occurrence features
+     * are deliberately excluded. The gradient stays in `wifi.scan`, so it cannot double-count Wi-Fi.
+     */
+    private fun gradientObservation(
+        source: String,
+        previous: SourceState,
+        current: SourceState,
+        scan: AtlasScan
+    ): AtlasSignalObservation? {
+        if (source != "wifi") return null
+        val changes = current.measurements.entries.mapNotNull { (key, value) ->
+            if (!key.substringAfter(':').startsWith("wifi:")) return@mapNotNull null
+            val before = previous.measurements[key] ?: return@mapNotNull null
+            val change = value - before
+            if (!change.isFinite() || abs(change) < 4f) return@mapNotNull null
+            key to change
+        }.sortedByDescending { abs(it.second) }.take(4)
+        if (changes.size < 2) return null
+
+        val meanAbs = changes.map { abs(it.second) }.average().toFloat()
+        if (meanAbs < 6f) return null
+        val pattern = changes.joinToString("|") { (key, change) ->
+            val direction = if (change > 0f) "+" else "-"
+            val bucket = (abs(change) / 5f).roundToInt().coerceIn(1, 8)
+            "$key:$direction$bucket"
+        }
+        val id = AtlasPrivacyId.reduce("grad", pattern)
+        val quality = (min(previous.quality, current.quality) * (0.35f + (meanAbs / 40f).coerceAtMost(0.25f)))
+            .coerceIn(0.12f, 0.55f)
+        val group = scan.observations.firstOrNull { it.signalId.startsWith("wifi:") }?.independenceGroup
+            ?: "wifi.scan"
+        return AtlasSignalObservation(
             kind = AtlasSignalKind.TRANSITION,
-            signalId = transitionId,
+            signalId = id,
             independenceGroup = group,
+            measurement = meanAbs,
             quality = quality,
             sourceHealthy = true
         )
-        val additions = ArrayList<AtlasSignalObservation>(2)
-        additions += transition
-        sequenceObservation(transitionId, scan.elapsedRealtimeMs, quality)?.let(additions::add)
-        return scan.copy(observations = (scan.observations + additions).take(128))
     }
 
     @Synchronized
