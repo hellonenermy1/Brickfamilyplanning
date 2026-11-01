@@ -1,6 +1,8 @@
 package com.brick.safety.network
 
 import com.brick.safety.crypto.DeviceKeys
+import com.brick.safety.fusion.LearnedPlaceDefinition
+import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -188,7 +190,19 @@ object BrickApi {
         return HealthConfig(bleAnchors = bleAnchors, learnedPlaces = learnedPlaces)
     }
 
-    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): HealthConfig {
+    private fun applyLearnedPlaceConfig(deviceId: String, config: HealthConfig) {
+        val places = config.learnedPlaces ?: return
+        val definitions = places.mapNotNull { place ->
+            runCatching {
+                LearnedPlaceDefinition(place.id, place.name, place.latitude, place.longitude, place.radiusM)
+            }.getOrNull()
+        }
+        // Empty is meaningful and clears an intentionally empty parent configuration. A missing
+        // learnedPlaces field never reaches this method, preserving the last encrypted cache.
+        Phase5LearnedPlaceRuntime.update(deviceId, definitions)
+    }
+
+    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): List<BleAnchorConfig> {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
         val url = endpoint(baseUrl, "/api/device/$deviceId/health")
         val c = connection(url)
@@ -198,7 +212,9 @@ object BrickApi {
         c.outputStream.use { it.write(payload) }
         val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
-        return parseHealthConfig(JSONObject(text))
+        val config = parseHealthConfig(JSONObject(text))
+        applyLearnedPlaceConfig(deviceId, config)
+        return config.bleAnchors ?: emptyList()
     }
 
     fun createSafetyEnvelope(kind: String, eventSequence: Long, detail: JSONObject = JSONObject(), latitude: Double? = null, longitude: Double? = null, accuracyM: Double? = null): SafetyEnvelope {
