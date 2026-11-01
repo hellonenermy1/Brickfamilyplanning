@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 
@@ -48,6 +49,7 @@ class BleEnvironmentProvider(
     private val appContext = context.applicationContext
     private val bluetoothManager = appContext.getSystemService(BluetoothManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
+    private val processing = Executors.newSingleThreadExecutor()
     private val scanning = AtomicBoolean(false)
     private val aggregates = linkedMapOf<String, Aggregate>()
     @Volatile private var sink: EvidenceSink? = null
@@ -98,7 +100,7 @@ class BleEnvironmentProvider(
         decision.intervalMs?.let { interval ->
             if (lastCollectElapsedMs > 0L && now >= lastCollectElapsedMs && now - lastCollectElapsedMs < interval) return
         }
-        val scanner = bluetoothManager.adapter?.bluetoothLeScanner ?: run {
+        val scanner = runCatching { bluetoothManager.adapter?.bluetoothLeScanner }.getOrNull() ?: run {
             latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "scanner_unavailable")
             return
         }
@@ -107,9 +109,10 @@ class BleEnvironmentProvider(
         scanStartElapsedMs = now
         synchronized(aggregates) { aggregates.clear() }
         val burst = (decision.maxBurstMs ?: 2_500L).coerceIn(1_000L, 4_000L)
+        val interval = decision.intervalMs
         val scanMode = when {
-            decision.intervalMs != null && decision.intervalMs!! <= 15_000L -> ScanSettings.SCAN_MODE_LOW_LATENCY
-            decision.intervalMs != null && decision.intervalMs!! <= 30_000L -> ScanSettings.SCAN_MODE_BALANCED
+            interval != null && interval <= 15_000L -> ScanSettings.SCAN_MODE_LOW_LATENCY
+            interval != null && interval <= 30_000L -> ScanSettings.SCAN_MODE_BALANCED
             else -> ScanSettings.SCAN_MODE_LOW_POWER
         }
         val settings = ScanSettings.Builder().setScanMode(scanMode).setReportDelay(0L).build()
@@ -131,6 +134,7 @@ class BleEnvironmentProvider(
             runCatching { bluetoothManager.adapter?.bluetoothLeScanner?.stopScan(callback) }
         }
         sink = null
+        processing.shutdownNow()
     }
 
     private fun consume(result: ScanResult) {
@@ -158,7 +162,7 @@ class BleEnvironmentProvider(
         val serviceIds: List<String>
     )
 
-    private fun fingerprint(record: android.bluetooth.le.ScanRecord): Fingerprint? {
+    private fun fingerprint(record: ScanRecord): Fingerprint? {
         val components = arrayListOf<String>()
         val manufacturers = arrayListOf<Int>()
         val manufacturerData = record.manufacturerSpecificData
@@ -192,6 +196,10 @@ class BleEnvironmentProvider(
             .filter { it.count > 0 }
             .sortedWith(compareByDescending<Aggregate> { it.strongestRssi }.thenByDescending { it.count })
             .take(MAX_ATLAS_DEVICES)
+        processing.execute { processCompletedScan(copy, nowElapsed, nowWall) }
+    }
+
+    private fun processCompletedScan(copy: List<Aggregate>, nowElapsed: Long, nowWall: Long) {
         if (copy.isEmpty()) {
             latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "no_identifiable_advertisements")
             return
@@ -262,9 +270,9 @@ class BleEnvironmentProvider(
             ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return EvidenceProviderStatus(ProviderCapability.PERMISSION_REQUIRED, ProviderHealth.UNAVAILABLE, "fine_location_permission")
         }
-        val adapter = bluetoothManager.adapter
-        if (adapter == null) return EvidenceProviderStatus(ProviderCapability.UNSUPPORTED, ProviderHealth.UNAVAILABLE, "no_bluetooth_adapter")
-        if (!adapter.isEnabled) return EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "bluetooth_off")
+        val scanner = runCatching { bluetoothManager.adapter?.bluetoothLeScanner }.getOrNull()
+            ?: return EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "scanner_unavailable")
+        @Suppress("UNUSED_VARIABLE") val keepReference = scanner
         return EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
     }
 
