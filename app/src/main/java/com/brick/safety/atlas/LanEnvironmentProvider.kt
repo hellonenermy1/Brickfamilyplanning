@@ -97,17 +97,17 @@ class LanEnvironmentProvider(
 
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
                 latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "discovery_start_$errorCode")
-                finishDiscovery(this, stopAgain = false)
+                finishDiscovery(this, category, completedScan = false, stopAgain = false)
             }
 
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
                 latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "discovery_stop_$errorCode")
-                finishDiscovery(this, stopAgain = false)
+                finishDiscovery(this, category, completedScan = false, stopAgain = false)
             }
         }
         currentListener = listener
         runCatching { nsd.discoverServices(type, NsdManager.PROTOCOL_DNS_SD, listener) }
-            .onSuccess { handler.postDelayed({ finishDiscovery(listener) }, DISCOVERY_WINDOW_MS) }
+            .onSuccess { handler.postDelayed({ finishDiscovery(listener, category, completedScan = true) }, DISCOVERY_WINDOW_MS) }
             .onFailure {
                 discovering.set(false)
                 currentListener = null
@@ -124,39 +124,58 @@ class LanEnvironmentProvider(
         processing.shutdownNow()
     }
 
-    private fun finishDiscovery(listener: NsdManager.DiscoveryListener, stopAgain: Boolean = true) {
+    private fun finishDiscovery(
+        listener: NsdManager.DiscoveryListener,
+        category: String,
+        completedScan: Boolean,
+        stopAgain: Boolean = true
+    ) {
         if (!discovering.compareAndSet(true, false)) return
         handler.removeCallbacksAndMessages(null)
         if (stopAgain) runCatching { nsd.stopServiceDiscovery(listener) }
         currentListener = null
+        if (!completedScan) return
         val snapshot = synchronized(found) { found.values.toList() }
         val nowElapsed = SystemClock.elapsedRealtime()
         val nowWall = System.currentTimeMillis()
-        processing.execute { process(snapshot, nowElapsed, nowWall) }
+        processing.execute { process(snapshot, category, nowElapsed, nowWall) }
     }
 
-    private fun process(snapshot: List<Pair<String, String>>, elapsed: Long, wall: Long) {
-        if (snapshot.isEmpty()) {
-            latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "no_services_seen")
-            return
-        }
-        val observations = snapshot.map { (id, _) ->
-            AtlasSignalObservation(
+    private fun process(snapshot: List<Pair<String, String>>, category: String, elapsed: Long, wall: Long) {
+        val atlasGroup = "lan.nsd.$category"
+        val quality = if (snapshot.isEmpty()) 0.55f
+            else (0.40f + snapshot.size.coerceAtMost(8) / 20f).coerceAtMost(0.75f)
+        val observations = if (snapshot.isEmpty()) {
+            // A successfully completed empty scan is weak evidence that *this service class* is
+            // absent. The marker is semantic-common so it can never become a place anchor itself.
+            listOf(AtlasSignalObservation(
                 AtlasSignalKind.LAN_SERVICE,
-                id,
-                "lan.nsd",
+                AtlasPrivacyId.reduce("lanempty", category),
+                atlasGroup,
                 null,
-                0.60f,
+                quality,
+                semanticCommon = true,
                 sourceHealthy = true
-            )
+            ))
+        } else {
+            snapshot.map { (id, _) ->
+                AtlasSignalObservation(
+                    AtlasSignalKind.LAN_SERVICE,
+                    id,
+                    atlasGroup,
+                    null,
+                    0.60f,
+                    sourceHealthy = true
+                )
+            }
         }
-        val quality = (0.40f + snapshot.size.coerceAtMost(8) / 20f).coerceAtMost(0.75f)
         onAtlasScan(AtlasScan(elapsed, wall, quality, observations))
         val payload = JSONObject()
             .put("v", 1)
+            .put("category", category)
             .put("services", JSONArray().also { array ->
-                snapshot.take(12).forEach { (id, category) ->
-                    array.put(JSONObject().put("id", id).put("cat", category))
+                snapshot.take(12).forEach { (id, foundCategory) ->
+                    array.put(JSONObject().put("id", id).put("cat", foundCategory))
                 }
             })
             .toString().toByteArray(Charsets.UTF_8)
@@ -169,18 +188,20 @@ class LanEnvironmentProvider(
                 independenceGroup = "lan.nsd",
                 capability = ProviderCapability.SUPPORTED,
                 health = ProviderHealth.HEALTHY,
-                quality = EvidenceQuality.MEDIUM,
+                quality = if (snapshot.isEmpty()) EvidenceQuality.LOW else EvidenceQuality.MEDIUM,
                 payload = payload
             ))
         }
-        latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
+        latestStatus = if (snapshot.isEmpty()) {
+            EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY, "no_${category}_services_seen")
+        } else {
+            EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
+        }
     }
 
     private fun localNetworkAvailable(): Boolean {
         val network = connectivity.activeNetwork ?: return false
         val caps = connectivity.getNetworkCapabilities(network) ?: return false
-        // A local-only Wi-Fi/Ethernet network can still expose stable NSD services even when it has
-        // no Internet validation. Do not incorrectly suppress LAN evidence in that state.
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
