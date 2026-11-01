@@ -4,6 +4,7 @@ import com.brick.safety.location.GeoMath
 import com.brick.safety.location.PositionQuality
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 /**
  * Central degraded-position fusion for Brick V1 Phase 5.
@@ -107,10 +108,11 @@ class ParallelEvidenceEngine {
             age <= c.maxAgeMs / 5 -> 1.0
             else -> (1.0 - age.toDouble() / c.maxAgeMs).coerceIn(0.15, 1.0)
         }
-        // Radius is a gentle penalty only. It must not let a possibly over-optimistic tiny radius
-        // dominate all other evidence, which is why this is linear and lower-bounded.
-        val radiusPenalty = 1.0 / max(25.0, c.radiusM.toDouble())
-        val effective = c.supportWeight * c.strength.multiplier * freshness * radiusPenalty
+        // Geometry/uncertainty affects informativeness, not source trust. A claimed tiny radius must
+        // never turn weak/spoofable evidence into a dominant vote, so precision only has a bounded
+        // square-root effect. Coverage/overlap below still uses the full reported radius honestly.
+        val precisionFactor = (1.0 / sqrt(max(25.0, c.radiusM.toDouble()) / 100.0)).coerceIn(0.55, 1.25)
+        val effective = c.supportWeight * c.strength.multiplier * freshness * precisionFactor
         if (!effective.isFinite() || effective <= 0.0) return null
         return Ranked(c, age, freshness, effective)
     }

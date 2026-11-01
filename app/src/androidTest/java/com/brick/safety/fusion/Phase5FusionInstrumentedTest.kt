@@ -1,5 +1,8 @@
 package com.brick.safety.fusion
 
+import com.brick.safety.atlas.AtlasMatchCandidate
+import com.brick.safety.atlas.AtlasRuntimeSnapshot
+import com.brick.safety.location.GeoMath
 import com.brick.safety.location.PositionQuality
 import com.brick.safety.testing.BrickInstrumentationTestCase
 
@@ -116,5 +119,55 @@ class Phase5FusionInstrumentedTest : BrickInstrumentationTestCase() {
         val result = engine.fuse(now, listOf(stale))
         assertEquals(PositionQuality.UNKNOWN, result.state)
         assertFalse(result.hasPosition)
+    }
+
+    fun testDistinctiveAtlasCandidateStillCannotBecomeNamedPlaceAnchor() {
+        val now = 1_000_000L
+        val snapshot = AtlasRuntimeSnapshot(
+            candidates = listOf(
+                AtlasMatchCandidate(
+                    labelId = "cell:100:200",
+                    latitude = 1.3000,
+                    longitude = 103.8000,
+                    uncertaintyM = 35f,
+                    supportWeight = 0.90,
+                    matchedSignals = 6,
+                    independenceGroups = 3,
+                    negativePenalty = 0.0,
+                    ambiguous = false
+                )
+            ),
+            observedElapsedMs = now - 1_000L,
+            providerStatuses = emptyMap()
+        )
+        val constraint = Phase5FusionAdapter.fromAtlas(snapshot, now)
+        assertNotNull(constraint)
+        assertEquals(FusionEvidenceKind.ATLAS, constraint!!.kind)
+        assertEquals(PositionQuality.ESTIMATED, constraint.upperState)
+        val result = engine.fuse(now, listOf(constraint))
+        assertEquals(PositionQuality.ESTIMATED, result.state)
+        assertTrue(result.state != PositionQuality.ANCHORED)
+    }
+
+    fun testTinyRadiusWeakEvidenceCannotOutvoteBroaderAuthoritativeArea() {
+        val now = 1_000_000L
+        val strongLat = 1.3000
+        val strongLon = 103.8000
+        val weakLat = 1.3100
+        val weakLon = 103.8100
+        val result = engine.fuse(now, listOf(
+            c("receiver", "ground.receiver", strongLat, strongLon, 250f, 1.0,
+                FusionStrength.AUTHORITATIVE_AREA, FusionEvidenceKind.GROUND_RECEIVER,
+                PositionQuality.ANCHORED, FusionShapeKind.RECEIVER_AREA, now),
+            c("tiny-weak", "wifi.semantic", weakLat, weakLon, 25f, 1.0,
+                FusionStrength.WEAK, FusionEvidenceKind.WIFI_SEMANTIC,
+                PositionQuality.ESTIMATED, FusionShapeKind.CIRCLE, now)
+        ))
+        assertTrue(result.hasPosition)
+        val dStrong = GeoMath.distanceMeters(result.latitude!!, result.longitude!!, strongLat, strongLon)
+        val dWeak = GeoMath.distanceMeters(result.latitude, result.longitude, weakLat, weakLon)
+        assertTrue(dStrong <= dWeak)
+        assertTrue(result.conflicts.isNotEmpty())
+        assertTrue(result.uncertaintyM >= 250f)
     }
 }

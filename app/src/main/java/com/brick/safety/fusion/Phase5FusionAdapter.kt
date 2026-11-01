@@ -91,21 +91,25 @@ object Phase5FusionAdapter {
             )
         }
 
-        val strong = top.independenceGroups >= 2 && top.matchedSignals >= 2 && top.supportWeight >= 0.65 && top.negativePenalty <= 0.08
+        // A distinctive Atlas grid is still only an environmental location hypothesis. It is not a
+        // named/validated Home/School/custom place merely because several signal families agree.
+        // Named learned places are a separate Phase 5 model and are the only Atlas-derived inputs
+        // allowed to claim LEARNED_PLACE/ANCHORED semantics.
+        val distinctive = top.independenceGroups >= 2 && top.matchedSignals >= 2 && top.supportWeight >= 0.65 && top.negativePenalty <= 0.08
         return FusionConstraint(
             id = "atlas-${top.labelId.takeLast(48).replace(Regex("[^A-Za-z0-9._:-]"), "_")}",
-            kind = if (strong) FusionEvidenceKind.LEARNED_PLACE else FusionEvidenceKind.ATLAS,
+            kind = FusionEvidenceKind.ATLAS,
             independenceGroup = "atlas.environment",
             observedElapsedMs = snapshot.observedElapsedMs,
             latitude = top.latitude,
             longitude = top.longitude,
-            radiusM = top.uncertaintyM.coerceAtLeast(if (strong) 35f else 60f),
+            radiusM = top.uncertaintyM.coerceAtLeast(if (distinctive) 45f else 60f),
             supportWeight = top.supportWeight.coerceIn(0.05, 0.92),
-            strength = if (strong) FusionStrength.STRONG else FusionStrength.MEDIUM,
-            upperState = if (strong) PositionQuality.ANCHORED else PositionQuality.ESTIMATED,
+            strength = if (distinctive) FusionStrength.STRONG else FusionStrength.MEDIUM,
+            upperState = PositionQuality.ESTIMATED,
             maxAgeMs = 45_000L,
-            shapeHint = if (strong) FusionShapeKind.PLACE_AREA else FusionShapeKind.POSSIBLE_AREA,
-            explanation = if (strong) "learned environmental place match" else "environmental fingerprint match"
+            shapeHint = FusionShapeKind.POSSIBLE_AREA,
+            explanation = if (distinctive) "distinctive environmental fingerprint match" else "environmental fingerprint match"
         )
     }
 
