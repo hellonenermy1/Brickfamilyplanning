@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { activityName, qualityName, sourceName, type LivePacket, type RouteCorridor } from "./protocol";
+import { shouldAdvanceLiveState } from "./live-state-order";
 
 type Env = Record<string, never>;
 
@@ -123,7 +124,25 @@ export class BrickDevice extends DurableObject<Env> {
     }
   }
 
-  async setLatest(packet: LivePacket) {
+  private async snapshotPayload() {
+    const [latest, health, networkEvidence, lastSafetyEvent] = await Promise.all([
+      this.ctx.storage.get<LatestState>("latest"),
+      this.ctx.storage.get<StoredHealth>("health"),
+      this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
+      this.ctx.storage.get<StoredSafetyEvent>("lastSafetyEvent")
+    ]);
+    return {
+      type: "snapshot",
+      latest: latest ?? null,
+      // Keep REST compatibility for older consumers that used the Durable Object field name.
+      state: latest ?? null,
+      health: health ?? null,
+      networkEvidence: networkEvidence ?? null,
+      lastSafetyEvent: lastSafetyEvent ?? null
+    };
+  }
+
+  async setLatest(packet: LivePacket): Promise<boolean> {
     const state: LatestState = {
       epoch: packet.epoch,
       sequence: packet.sequence,
@@ -155,8 +174,15 @@ export class BrickDevice extends DurableObject<Env> {
       wallTimeMs: packet.wallTimeMs,
       receivedAt: Date.now()
     };
-    await this.ctx.storage.put("latest", state);
-    await this.broadcast({ type: "state", state });
+    const advanced = await this.ctx.storage.transaction(async txn => {
+      const current = await txn.get<LatestState>("latest");
+      if (!shouldAdvanceLiveState(state, current)) return false;
+      await txn.put("latest", state);
+      return true;
+    });
+    if (!advanced) return false;
+    await this.broadcast({ type: "location", state });
+    return true;
   }
 
   async setHealth(health: DeviceHealth) {
@@ -167,13 +193,13 @@ export class BrickDevice extends DurableObject<Env> {
 
   async setNetworkEvidence(network: NetworkEvidence) {
     await this.ctx.storage.put("networkEvidence", network);
-    await this.broadcast({ type: "network", network });
+    await this.broadcast({ type: "networkEvidence", networkEvidence: network });
   }
 
   async pushSafetyEvent(event: RealtimeSafetyEvent) {
     const stored: StoredSafetyEvent = { ...event, receivedAt: Date.now() };
     await this.ctx.storage.put("lastSafetyEvent", stored);
-    await this.broadcast({ type: "safety", event: stored });
+    await this.broadcast({ type: "safety_event", event: stored });
   }
 
   async readSequenceHighWater(): Promise<SequenceHighWater | null> {
@@ -207,19 +233,26 @@ export class BrickDevice extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
     const u = new URL(req.url);
     if (u.pathname === "/state") {
-      const [state, health, network, lastSafetyEvent] = await Promise.all([
-        this.ctx.storage.get<LatestState>("latest"),
-        this.ctx.storage.get<StoredHealth>("health"),
-        this.ctx.storage.get<NetworkEvidence>("networkEvidence"),
-        this.ctx.storage.get<StoredSafetyEvent>("lastSafetyEvent")
-      ]);
-      return Response.json({ state: state ?? null, health: health ?? null, network: network ?? null, lastSafetyEvent: lastSafetyEvent ?? null });
+      const snapshot = await this.snapshotPayload();
+      return Response.json({
+        latest: snapshot.latest,
+        state: snapshot.state,
+        health: snapshot.health,
+        networkEvidence: snapshot.networkEvidence,
+        // Legacy alias retained while parent clients migrate.
+        network: snapshot.networkEvidence,
+        lastSafetyEvent: snapshot.lastSafetyEvent
+      });
     }
     if (u.pathname === "/ws") {
       const pair = new WebSocketPair();
       const client = pair[0], server = pair[1];
       this.ctx.acceptWebSocket(server);
       this.sockets.add(server);
+      // New parent tabs get an immediate state instead of waiting for the next location/health event.
+      this.ctx.waitUntil(this.snapshotPayload().then(snapshot => {
+        try { server.send(JSON.stringify(snapshot)); } catch { this.sockets.delete(server); }
+      }));
       return new Response(null, { status: 101, webSocket: client });
     }
     return new Response("Not found", { status: 404 });

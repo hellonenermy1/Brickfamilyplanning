@@ -1,7 +1,8 @@
 import { readBoundedBody } from "./bounded-body";
 import { verifyDeviceSignature } from "./crypto";
-import { decodeEvidenceBatch, EVIDENCE_MAX_BATCH_BYTES } from "./evidence-protocol";
+import { decodeEvidenceBatch, EVIDENCE_MAX_BATCH_BYTES, type EvidenceBatch } from "./evidence-protocol";
 import { EvidenceConflict, persistEvidenceBatch } from "./evidence-ingest";
+import { Phase5SemanticError, phase5EvidenceStatements } from "./phase5-evidence";
 
 export type EvidenceRateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 export type EvidenceRouteEnv = {
@@ -20,8 +21,6 @@ function json(data: unknown, status = 200) {
 export function decodeEvidenceDevicePath(raw: string): string | null {
   try {
     const decoded = decodeURIComponent(raw);
-    // Pairing creates device IDs with crypto.randomUUID(). Restrict evidence routes to that exact
-    // canonical v4 form so arbitrary path text never reaches D1 lookups, rate keys or object names.
     return DEVICE_ID_RE.test(decoded) ? decoded : null;
   } catch {
     return null;
@@ -34,9 +33,6 @@ async function authorizedDevice(env: EvidenceRouteEnv, id: string) {
 }
 
 function evidenceAttemptRateKey(req: Request) {
-  // On direct Cloudflare traffic CF-Connecting-IP is edge supplied. Invalid/unsigned traffic is
-  // limited by requester rather than claimed device ID, so learning an ID cannot exhaust the real
-  // phone's device bucket. The post-signature bucket separately bounds authenticated device traffic.
   const ip = (req.headers.get("CF-Connecting-IP") ?? "").trim();
   return `evidence-attempt:${ip && ip.length <= 64 ? ip : "unknown"}`;
 }
@@ -45,21 +41,15 @@ async function signedEvidenceBody(req: Request, device: DeviceRecord): Promise<A
   const contentType = (req.headers.get("Content-Type") ?? "").split(";", 1)[0].trim().toLowerCase();
   if (contentType !== "application/vnd.brick.evidence") return json({ error: "unsupported evidence content type" }, 415);
 
-  // Fast-reject a declared oversized body without reading it. A missing or dishonest Content-Length
-  // is still safe because readBoundedBody() enforces the same limit while streaming the actual body.
   const declaredRaw = req.headers.get("Content-Length");
   if (declaredRaw !== null) {
     const declared = Number(declaredRaw);
-    if (Number.isFinite(declared) && declared > EVIDENCE_MAX_BATCH_BYTES) {
-      return json({ error: "evidence payload too large" }, 413);
-    }
+    if (Number.isFinite(declared) && declared > EVIDENCE_MAX_BATCH_BYTES) return json({ error: "evidence payload too large" }, 413);
   }
 
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return json({ error: "missing or invalid signature" }, 401);
 
-  // Never call req.arrayBuffer() here. Chunked/no-length traffic must not make the Worker buffer an
-  // arbitrarily large body before discovering that BREV v1 is capped at 65,536 bytes.
   const bounded = await readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES);
   if (!bounded.ok) {
     return bounded.reason === "too_large"
@@ -83,19 +73,26 @@ export async function handleEvidenceRequest(req: Request, env: EvidenceRouteEnv,
   const body = await signedEvidenceBody(req, device);
   if (body instanceof Response) return body;
 
-  // Only a request that proves possession of this device's key can consume the device-scoped
-  // evidence budget. Unsigned traffic can therefore never starve the actual phone's upload path.
   const deviceRate = await env.DEVICE_RATE.limit({ key: `evidence-device:${deviceId}` });
   if (!deviceRate.success) return json({ error: "rate limited" }, 429);
 
-  // Malformed signed client payloads are 400s; storage failures never receive an ACK.
-  try { decodeEvidenceBatch(body); }
+  let decoded: EvidenceBatch;
+  try { decoded = decodeEvidenceBatch(body); }
   catch (error) { return json({ error: String(error) }, 400); }
 
   try {
-    return json(await persistEvidenceBatch(env, deviceId, body));
+    // Raw BREV is persisted first. Phase 5 semantic indexes are then committed before the response
+    // containing the exact ACK is returned. A transient semantic/index failure therefore causes the
+    // phone to retain/retry the already-durable record; idempotency makes that retry safe.
+    const persisted = await persistEvidenceBatch(env, deviceId, body);
+    const semantic: D1PreparedStatement[] = [];
+    const now = Date.now();
+    for (const record of decoded.records) semantic.push(...await phase5EvidenceStatements(env.DB, deviceId, record, now));
+    if (semantic.length) await env.DB.batch(semantic);
+    return json(persisted);
   } catch (error) {
     if (error instanceof EvidenceConflict) return json({ error: error.message }, 409);
+    if (error instanceof Phase5SemanticError) return json({ error: error.message }, 409);
     return json({ error: "evidence persistence unavailable" }, 503);
   }
 }
