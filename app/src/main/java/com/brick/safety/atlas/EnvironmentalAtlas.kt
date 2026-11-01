@@ -38,9 +38,9 @@ class EnvironmentalAtlas(
     }
 
     /**
-     * eligibleScans starts when this signal is first learned at the label. Using the label's entire
-     * lifetime as the denominator would unfairly suppress a replacement router/beacon introduced
-     * months later and would make automatic relearning unnecessarily slow.
+     * eligibleScans starts when this signal is first learned at the label. absenceGroup records the
+     * exact observation domain allowed to teach disappearance; a printer discovery must not make a
+     * missing TV count as negative evidence merely because both are LAN signals.
      */
     private data class LabelSignal(
         var seenScans: Int = 0,
@@ -50,6 +50,7 @@ class EnvironmentalAtlas(
         var totalTrustedMisses: Int = 0,
         var lastSeenWallMs: Long = 0L,
         var lastMissingWallMs: Long = 0L,
+        var absenceGroup: String = "",
         val measurement: RunningValue = RunningValue()
     )
 
@@ -114,16 +115,16 @@ class EnvironmentalAtlas(
 
         val observedKeys = observations.mapTo(hashSetOf()) { key(it.kind, it.signalId) }
         val observedKinds = observations.mapTo(hashSetOf()) { it.kind }
+        val observedGroups = observations.mapTo(hashSetOf()) { it.independenceGroup }
         val retire = arrayListOf<String>()
         for ((signalKey, local) in lp.signals) {
             val global = signals[signalKey] ?: continue
-            if (!evidenceFamilyObserved(global.kind, observedKinds)) continue
+            if (!absenceScopeObserved(local, global.kind, observedGroups, observedKinds)) continue
             local.eligibleScans = (local.eligibleScans + 1).coerceAtMost(1_000_000)
             if (signalKey in observedKeys) {
                 local.consecutiveTrustedMisses = 0
                 continue
             }
-            // One ordinary miss remains weak. Only good trusted scans teach persistent absence.
             if (scan.quality >= 0.55f) {
                 local.consecutiveTrustedMisses = (local.consecutiveTrustedMisses + 1).coerceAtMost(REPLACEMENT_RETIRE_MISSES)
                 local.totalTrustedMisses = (local.totalTrustedMisses + 1).coerceAtMost(1_000_000)
@@ -149,9 +150,13 @@ class EnvironmentalAtlas(
             obs.measurement?.let { sp.measurement.add(it.toDouble()) }
             sp.labelIds += lp.id
 
-            val ls = lp.signals[signalKey] ?: LabelSignal(eligibleScans = 1).also { lp.signals[signalKey] = it }
+            val ls = lp.signals[signalKey] ?: LabelSignal(
+                eligibleScans = 1,
+                absenceGroup = obs.independenceGroup
+            ).also { lp.signals[signalKey] = it }
             ls.seenScans += 1
             ls.consecutiveTrustedMisses = 0
+            ls.absenceGroup = obs.independenceGroup
             if (newVisit) ls.seenVisits += 1
             ls.lastSeenWallMs = max(ls.lastSeenWallMs, scan.wallTimeMs)
             obs.measurement?.let { ls.measurement.add(it.toDouble()) }
@@ -169,6 +174,7 @@ class EnvironmentalAtlas(
         if (observations.isEmpty()) return emptyList()
         val observedByKey = observations.associateBy { key(it.kind, it.signalId) }
         val observedKinds = observations.mapTo(hashSetOf()) { it.kind }
+        val observedGroups = observations.mapTo(hashSetOf()) { it.independenceGroup }
         val candidates = ArrayList<AtlasMatchCandidate>()
 
         for (label in labels.values) {
@@ -200,8 +206,6 @@ class EnvironmentalAtlas(
             var groupTotal = 0.0
             for (values in groupContributions.values) {
                 val strongest = values.sortedDescending().take(4)
-                // Correlated observations inside one independence group have a hard cap. Ten APs
-                // from one Wi-Fi scan do not become ten independent confirmations.
                 groupTotal += strongest.sum().coerceAtMost(0.95)
             }
             var positive = (1.0 - exp(-groupTotal)).coerceIn(0.0, 0.92)
@@ -211,7 +215,7 @@ class EnvironmentalAtlas(
                 for ((signalKey, local) in label.signals) {
                     if (signalKey in observedByKey) continue
                     val global = signals[signalKey] ?: continue
-                    if (!evidenceFamilyObserved(global.kind, observedKinds)) continue // unavailable provider is not negative evidence
+                    if (!absenceScopeObserved(local, global.kind, observedGroups, observedKinds)) continue
                     if (local.seenScans < 4 || local.seenVisits < 2 || presence(local) < 0.45) continue
                     val stats = stats(global, scan.wallTimeMs)
                     val classification = SignalTrustEngine.classify(stats, scan.wallTimeMs)
@@ -221,8 +225,6 @@ class EnvironmentalAtlas(
                     val learnedAbsence = if (local.eligibleScans > 0) {
                         (local.totalTrustedMisses.toDouble() / local.eligibleScans).coerceIn(0.0, 1.0)
                     } else 0.0
-                    // A first miss is intentionally tiny; repeated trusted disappearance can become
-                    // stronger, but total negative evidence remains hard-capped below positive truth.
                     negative += (0.012 + 0.018 * repeatedMiss + 0.008 * learnedAbsence) * trust
                     if (negative >= 0.15) { negative = 0.15; break }
                 }
@@ -302,7 +304,6 @@ class EnvironmentalAtlas(
         }
     }
 
-    /** Compact line codec for encrypted local persistence; all text fields are validation-limited. */
     @Synchronized
     fun encode(nowWallMs: Long): String {
         prune(nowWallMs)
@@ -316,7 +317,8 @@ class EnvironmentalAtlas(
                     .append(s.seenVisits).append('|').append(s.lastSeenWallMs).append('|').append(s.measurement.count).append('|')
                     .append(s.measurement.mean).append('|').append(s.measurement.m2).append('|')
                     .append(s.eligibleScans).append('|').append(s.consecutiveTrustedMisses).append('|')
-                    .append(s.totalTrustedMisses).append('|').append(s.lastMissingWallMs).append('\n')
+                    .append(s.totalTrustedMisses).append('|').append(s.lastMissingWallMs).append('|')
+                    .append(s.absenceGroup).append('\n')
             }
         }
         signals.values.sortedBy { it.key }.forEach { s ->
@@ -381,29 +383,37 @@ class EnvironmentalAtlas(
                 }
             }
             for (p in relationLines) {
-                if (p.size != 9 && p.size != 13) continue
+                if (p.size != 9 && p.size != 13 && p.size != 14) continue
                 val label = labels[p[1]] ?: continue
                 val signalKey = p[2]
-                if (signalKey !in signals) continue
+                val signal = signals[signalKey] ?: continue
                 val scans = p[3].toIntOrNull()?.takeIf { it in 1..label.scanCount } ?: continue
                 val visits = p[4].toIntOrNull()?.takeIf { it in 0..label.visitCount } ?: continue
                 val last = validWall(p[5], nowWallMs) ?: continue
                 val mCount = p[6].toIntOrNull()?.takeIf { it in 0..scans } ?: continue
                 val mean = p[7].toDoubleOrNull()?.takeIf { it.isFinite() } ?: continue
                 val m2 = p[8].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 } ?: continue
-                val eligible = if (p.size == 13) {
+                val hasAbsenceHistory = p.size >= 13
+                val eligible = if (hasAbsenceHistory) {
                     p[9].toIntOrNull()?.takeIf { it in scans..label.scanCount } ?: continue
                 } else label.scanCount.coerceAtLeast(scans)
-                val consecutiveMisses = if (p.size == 13) {
+                val consecutiveMisses = if (hasAbsenceHistory) {
                     p[10].toIntOrNull()?.takeIf { it in 0..eligible } ?: continue
                 } else 0
-                val totalMisses = if (p.size == 13) {
+                val totalMisses = if (hasAbsenceHistory) {
                     p[11].toIntOrNull()?.takeIf { it in 0..eligible } ?: continue
                 } else 0
-                val lastMissing = if (p.size == 13) {
+                val lastMissing = if (hasAbsenceHistory) {
                     val raw = p[12].toLongOrNull() ?: continue
                     if (raw == 0L) 0L else validWall(p[12], nowWallMs) ?: continue
                 } else 0L
+                val absenceGroup = if (p.size == 14) {
+                    p[13].takeIf { it.matches(Regex("[A-Za-z0-9._:-]{1,64}")) } ?: ""
+                } else {
+                    // Existing persisted LAN relations predate scoped discovery. Fail conservative:
+                    // they cannot teach absence until re-observed under a concrete lan.nsd.* group.
+                    if (signal.kind == AtlasSignalKind.LAN_SERVICE) "" else defaultAbsenceGroup(signal.kind)
+                }
                 val local = LabelSignal(
                     seenScans = scans,
                     eligibleScans = eligible,
@@ -411,11 +421,12 @@ class EnvironmentalAtlas(
                     consecutiveTrustedMisses = consecutiveMisses,
                     totalTrustedMisses = totalMisses,
                     lastSeenWallMs = last,
-                    lastMissingWallMs = lastMissing
+                    lastMissingWallMs = lastMissing,
+                    absenceGroup = absenceGroup
                 )
                 local.measurement.count = mCount; local.measurement.mean = mean; local.measurement.m2 = m2
                 label.signals[signalKey] = local
-                signals[signalKey]?.labelIds?.add(label.id)
+                signal.labelIds.add(label.id)
             }
             prune(nowWallMs)
             trimBounds()
@@ -479,6 +490,29 @@ class EnvironmentalAtlas(
 
     private fun presence(local: LabelSignal): Double =
         (local.seenScans.toDouble() / local.eligibleScans.coerceAtLeast(1)).coerceIn(0.0, 1.0)
+
+    private fun absenceScopeObserved(
+        local: LabelSignal,
+        kind: AtlasSignalKind,
+        observedGroups: Set<String>,
+        observedKinds: Set<AtlasSignalKind>
+    ): Boolean {
+        if (local.absenceGroup.isNotBlank()) return local.absenceGroup in observedGroups
+        if (kind == AtlasSignalKind.LAN_SERVICE) return false
+        return evidenceFamilyObserved(kind, observedKinds)
+    }
+
+    private fun defaultAbsenceGroup(kind: AtlasSignalKind): String = when (kind) {
+        AtlasSignalKind.WIFI_AP, AtlasSignalKind.WIFI_SSID_HINT -> "wifi.scan"
+        AtlasSignalKind.BLE_DEVICE -> "ble.scan"
+        AtlasSignalKind.LAN_SERVICE -> ""
+        AtlasSignalKind.CELLULAR -> "cell.env"
+        AtlasSignalKind.GNSS_SKY -> "gnss.sky"
+        AtlasSignalKind.NETWORK_CONTEXT -> "network.ctx"
+        AtlasSignalKind.COMPANION -> "companion.presence"
+        AtlasSignalKind.CHARGING -> "device.power"
+        AtlasSignalKind.TRANSITION -> ""
+    }
 
     private fun evidenceFamilyObserved(kind: AtlasSignalKind, observedKinds: Set<AtlasSignalKind>): Boolean = when (kind) {
         AtlasSignalKind.WIFI_AP, AtlasSignalKind.WIFI_SSID_HINT ->
