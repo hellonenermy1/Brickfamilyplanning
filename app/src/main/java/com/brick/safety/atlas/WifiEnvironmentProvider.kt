@@ -20,6 +20,7 @@ class WifiEnvironmentProvider(
     companion object {
         private const val MAX_ATLAS_APS = 32
         private const val MAX_EVIDENCE_APS = 12
+        private const val MAX_ORDER_APS = 6
         private const val MAX_SCAN_AGE_MS = 120_000L
         private val COMMON_SSIDS = setOf(
             "wireless@sgx",
@@ -99,7 +100,7 @@ class WifiEnvironmentProvider(
             .toList()
         if (fresh.isEmpty()) return
 
-        val observations = ArrayList<AtlasSignalObservation>(fresh.size * 2)
+        val observations = ArrayList<AtlasSignalObservation>(fresh.size * 3)
         for (ap in fresh) {
             observations += AtlasSignalObservation(
                 AtlasSignalKind.WIFI_AP,
@@ -121,6 +122,8 @@ class WifiEnvironmentProvider(
                 )
             }
         }
+        observations += relativeOrderObservations(fresh)
+
         val scanQuality = (0.35f + fresh.size.coerceAtMost(12) / 20f).coerceAtMost(0.95f)
         val atlasScan = AtlasScan(nowElapsed, nowWall, scanQuality, observations.take(128))
         onAtlasScan(atlasScan)
@@ -138,6 +141,35 @@ class WifiEnvironmentProvider(
         val securityClass: String,
         val quality: Float
     )
+
+    /**
+     * Relative AP ordering is more robust than absolute RSSI when handset orientation or gain
+     * changes. It remains in the same `wifi.scan` independence group, so it cannot multiply Wi-Fi
+     * confidence as if it were a separate sensor family.
+     */
+    private fun relativeOrderObservations(results: List<NormalizedAp>): List<AtlasSignalObservation> {
+        val strongest = results.take(MAX_ORDER_APS)
+        if (strongest.size < 2) return emptyList()
+        val out = ArrayList<AtlasSignalObservation>()
+        for (i in 0 until strongest.lastIndex) {
+            val a = strongest[i]
+            for (j in i + 1 until strongest.size) {
+                val b = strongest[j]
+                val delta = a.rssi - b.rssi
+                if (delta < 3) continue // avoid unstable order when signals are nearly tied
+                val orderId = AtlasPrivacyId.reduce("worder", "${a.apId}>${b.apId}")
+                out += AtlasSignalObservation(
+                    AtlasSignalKind.WIFI_AP,
+                    orderId,
+                    "wifi.scan",
+                    delta.toFloat(),
+                    minOf(a.quality, b.quality) * 0.70f,
+                    sourceHealthy = true
+                )
+            }
+        }
+        return out.take(15)
+    }
 
     @SuppressLint("HardwareIds", "Deprecation")
     private fun normalized(result: ScanResult, nowElapsed: Long): NormalizedAp? {
