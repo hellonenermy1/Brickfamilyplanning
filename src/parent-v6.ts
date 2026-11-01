@@ -3,6 +3,29 @@ import { parentV5BHtml } from "./parent-v5b";
 export function parentV6Html() {
   let html = parentV5BHtml();
 
+  // Phase 5 parent display compatibility: the child-reported latest state remains primary when it is
+  // PRECISE/ASSISTED. A separate server refinedState may replace only degraded/absent display
+  // coordinates; speed/activity/battery continue to come from the child snapshot where available.
+  const renderHeadNeedle = "function renderSnapshot(x){if(!x)return;snapshot=x;const l=x.latest,h=x.health,d=x.derived||{};";
+  const renderHeadPatch = "function renderSnapshot(x){if(!x)return;snapshot=x;const base=x.latest||x.state||null,rr=x.refinedState||null,bq=String(base?.quality||'').toLowerCase(),useRefined=!!(rr&&rr.latitude!=null&&rr.longitude!=null&&(!base||(bq!=='precise'&&bq!=='assisted'))),l=useRefined?{...(base||{}),lat:rr.latitude,lon:rr.longitude,uncertaintyM:rr.uncertaintyM,quality:rr.quality,fallback:true,refined:true,refinedShape:rr.shape,receivedAt:rr.computedAt||Date.now(),speedKph:base?.speedKph??null,speedAccuracyKph:base?.speedAccuracyKph??null,activity:base?.activity||'unknown',activityConfidence:base?.activityConfidence,batteryPct:base?.batteryPct??h?.batteryPct??'—',charging:base?.charging??h?.charging??false}:base,h=x.health,d=x.derived||{};";
+  if (!html.includes(renderHeadNeedle)) throw new Error("Phase 5 refined-state render target missing");
+  html = html.replace(renderHeadNeedle, renderHeadPatch);
+
+  const qualityNeedle = "text('#quality',(l.quality||'—')+(l.fallback?' · estimated':''));";
+  const qualityPatch = "text('#quality',(l.quality||'—')+(l.refined?' · external refinement':l.fallback?' · estimated':''));";
+  if (!html.includes(qualityNeedle)) throw new Error("Phase 5 refined quality target missing");
+  html = html.replace(qualityNeedle, qualityPatch);
+
+  const globalsNeedle = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0;";
+  const globalsPatch = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0,phase5StateTimer=null;";
+  if (!html.includes(globalsNeedle)) throw new Error("Phase 5 parent state timer target missing");
+  html = html.replace(globalsNeedle, globalsPatch);
+
+  const connectNeedle = "function connect(id){currentDevice=id;if(ws)ws.close();ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/parent/api/device/'+encodeURIComponent(id)+'/ws');ws.onmessage=e=>{try{wsMessage(JSON.parse(e.data))}catch{}};ws.onclose=()=>{if(currentDevice===id)setTimeout(()=>connect(id),1500)}}";
+  const connectPatch = "async function refreshPhase5State(id){if(currentDevice!==id)return;try{renderSnapshot(await api('/parent/api/device/'+encodeURIComponent(id)+'/state'))}catch{}}function connect(id){currentDevice=id;if(ws)ws.close();if(phase5StateTimer){clearInterval(phase5StateTimer);phase5StateTimer=null}ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/parent/api/device/'+encodeURIComponent(id)+'/ws');ws.onopen=()=>refreshPhase5State(id);ws.onmessage=e=>{try{wsMessage(JSON.parse(e.data))}catch{}};phase5StateTimer=setInterval(()=>refreshPhase5State(id),10000);ws.onclose=()=>{if(phase5StateTimer){clearInterval(phase5StateTimer);phase5StateTimer=null}if(currentDevice===id)setTimeout(()=>connect(id),1500)}}";
+  if (!html.includes(connectNeedle)) throw new Error("Phase 5 parent WebSocket refresh target missing");
+  html = html.replace(connectNeedle, connectPatch);
+
   const moduleNeedle = "import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
   const modulePatch = moduleNeedle + "import { pairingQrDataUrl } from '/brick-pair.mjs';";
   if (!html.includes(moduleNeedle)) throw new Error("Phase 6 pairing module import target missing");
@@ -14,7 +37,7 @@ export function parentV6Html() {
   html = html.replace(deviceNeedle, devicePatch);
 
   const selectNeedle = "async function selectDevice(id){currentDevice=id;text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadRetention()])}";
-  const selectPatch = "async function selectDevice(id){const changed=currentDevice!==id;if(changed){if(marker){marker.remove();marker=null}markerPopup=null;lastMarkerPoint=null;localMapResolveKey='';localMapPlace=privateMapInstalled?'Resolving local map context':'Private basemap not installed'}currentDevice=id;const revoked=$('#devices').selectedOptions[0]?.dataset.revoked==='1';text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');if(ws){ws.close();ws=null}if(revoked){try{renderSnapshot(await api('/parent/api/device/'+encodeURIComponent(id)+'/state'))}catch{snapshot=null;renderHealthChecks()}}else connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadBatteryTrend(),loadRetention()]);const rb=$('#revokeDevice');if(rb){rb.disabled=revoked;rb.textContent=revoked?'Device revoked':'Revoke selected phone'}}";
+  const selectPatch = "async function selectDevice(id){const changed=currentDevice!==id;if(changed){if(marker){marker.remove();marker=null}markerPopup=null;lastMarkerPoint=null;localMapResolveKey='';localMapPlace=privateMapInstalled?'Resolving local map context':'Private basemap not installed'}currentDevice=id;const revoked=$('#devices').selectedOptions[0]?.dataset.revoked==='1';text('#deviceName',$('#devices').selectedOptions[0]?.textContent||'Device');text('#mapName',$('#devices').selectedOptions[0]?.textContent||'Device');if(ws){ws.close();ws=null}if(phase5StateTimer){clearInterval(phase5StateTimer);phase5StateTimer=null}if(revoked){try{renderSnapshot(await api('/parent/api/device/'+encodeURIComponent(id)+'/state'))}catch{snapshot=null;renderHealthChecks()}}else connect(id);await Promise.all([loadEvents(),loadPlaces(),loadTrips(),loadHealthOps(),loadPhase5C(),loadBatteryTrend(),loadRetention()]);const rb=$('#revokeDevice');if(rb){rb.disabled=revoked;rb.textContent=revoked?'Device revoked':'Revoke selected phone'}}";
   if (!html.includes(selectNeedle)) throw new Error("Phase 6 device-select UI patch target missing");
   html = html.replace(selectNeedle, selectPatch);
 
@@ -41,7 +64,7 @@ export function parentV6Html() {
   html = html.replaceAll("Promise.all([loadHealthOps(),loadPhase5C()])", "Promise.all([loadHealthOps(),loadPhase5C(),loadBatteryTrend()])");
 
   const renderTailNeedle = "if(h)text('#network',h.network||'—');renderHealthChecks();renderLiveNotice()}";
-  const renderTailPatch = "if(h)text('#network',h.network||'—');renderRouteCorridor(l);const ne=x.networkEvidence||{},coarse=[ne.city,ne.region,ne.country].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' · ');if(l?.routeCorridor?.candidates?.length){text('#mapDetail','Estimated along '+l.routeCorridor.candidates.length+' plausible corridor'+(l.routeCorridor.candidates.length===1?'':'s')+' · ±'+Math.round(l.routeCorridor.radiusM)+' m')}else if(coarse&&(!l||l.lat==null||l.lon==null)){text('#mapPlace','Coarse network · '+coarse);text('#mapDetail','No trustworthy coordinate · network context only');text('#quality','coarse network context');text('#accuracy','—');text('#speed','—')}else if(coarse&&d.positionStatus==='unavailable'){text('#mapDetail',($('#mapDetail').textContent||'Last known position')+' · network context '+coarse)}renderHealthChecks();renderLiveNotice()}";
+  const renderTailPatch = "if(h)text('#network',h.network||'—');renderRouteCorridor(l);const ne=x.networkEvidence||{},coarse=[ne.city,ne.region,ne.country].filter((v,i,a)=>v&&a.indexOf(v)===i).join(' · ');if(l?.refined){text('#mapDetail','Externally refined '+String(l.quality||'estimated')+' area · ±'+Math.round(l.uncertaintyM)+' m')}else if(l?.routeCorridor?.candidates?.length){text('#mapDetail','Estimated along '+l.routeCorridor.candidates.length+' plausible corridor'+(l.routeCorridor.candidates.length===1?'':'s')+' · ±'+Math.round(l.routeCorridor.radiusM)+' m')}else if(coarse&&(!l||l.lat==null||l.lon==null)){text('#mapPlace','Coarse network · '+coarse);text('#mapDetail','No trustworthy coordinate · network context only');text('#quality','coarse network context');text('#accuracy','—');text('#speed','—')}else if(coarse&&d.positionStatus==='unavailable'){text('#mapDetail',($('#mapDetail').textContent||'Last known position')+' · network context '+coarse)}renderHealthChecks();renderLiveNotice()}";
   if (!html.includes(renderTailNeedle)) throw new Error("Phase 6 network/corridor UI patch target missing");
   html = html.replace(renderTailNeedle, renderTailPatch);
 
