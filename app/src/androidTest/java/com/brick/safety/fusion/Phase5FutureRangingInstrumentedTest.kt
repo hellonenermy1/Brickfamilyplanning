@@ -82,13 +82,17 @@ class Phase5FutureRangingInstrumentedTest : BrickInstrumentationTestCase() {
             maxAgeMs = 30_000L,
             authenticated = true
         )
-        assertFailsWith<IllegalArgumentException> {
+        var rejected = false
+        try {
             AuthenticatedRangingSnapshot(
                 RangeTechnology.UWB,
                 RangeCapability.TEMPORARILY_UNAVAILABLE,
                 ranges = listOf(range)
             )
+        } catch (_: IllegalArgumentException) {
+            rejected = true
         }
+        assertTrue(rejected)
     }
 
     private fun direction(
