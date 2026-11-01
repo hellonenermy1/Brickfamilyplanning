@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: f3a96b206392020ee62300d56276428e041c30d3
+  ANDROID_PHASE6_SHA: 1dc7c815deedd9de05330f4812a5f6abbacd571d
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   cloud:
-    name: Phase 6 Cloud typecheck and control guards
+    name: Phase 2-6 cumulative Cloud regression and control guards
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with:
@@ -31,9 +31,10 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --no-audit --no-fund
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run cumulative Cloud security, recovery and positioning regressions
+        run: bash scripts/phase6-cloud-regression.sh
       - name: Verify Phase 6 control boundaries
         shell: bash
         run: |
@@ -53,9 +54,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
+          npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6-smoke.mjs
           node --input-type=module - <<'NODE'
-          const m = await import('file:///tmp/brick-parent-v6.mjs');
+          const m = await import('file:///tmp/brick-parent-v6-smoke.mjs');
           const html = m.parentV6Html();
           for (const required of ['id="gpsOn"','id="gpsOff"','id="gpsDesired"','id="gpsActual"','/location-control']) {
             if (!html.includes(required)) throw new Error('missing parent GPS control: '+required);
