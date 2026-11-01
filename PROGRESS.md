@@ -2,6 +2,104 @@
 
 This file is append-only in spirit: add new entries at the top or bottom, but do not rewrite history to make results look better. Corrections should be explicit.
 
+## 2026-11-01 — Brick V1 Phase 3: motion intelligence, learned odometry and particle positioning
+
+### User request
+
+Continue Phase 3 from the existing work without restarting, try to complete it, do not compromise reliability and do not hallucinate results. User cannot perform the real OPPO qualification until Monday; a Monday-afternoon Singapore-time reminder was created for the Phase 2 real-device qualification.
+
+### Resume point preserved
+
+Phase 3 was developed on top of the exact Phase 2 staging branches rather than bypassing the still-open Phase 2 acceptance gate.
+
+Final frozen Phase 3 pair:
+
+- Cloud `v1-p3-motion-positioning-cloud`: `3db7c6c54fcf4a6b35afa22e91076178fde29de9`, draft PR #9, base `v1-p2-evidence-cloud`.
+- Android `v1-p3-motion-positioning-android`: `48423e5ba84dd6273315581f6c101141e5eae9ac`, draft PR #10, base `v1-p2-evidence-android`.
+
+Neither PR was merged into canonical `main` or `apk-download`.
+
+### Android Phase 3 implementation completed
+
+- Added pure Kotlin geometry, motion feature, learned odometry, local route graph, magnetic/landmark sequence and particle/hypothesis modules.
+- Expanded `MotionEngine` from steps/rotation only to bounded linear acceleration/accelerometer+gravity, gyro, magnetometer, rotation vector, step, light/proximity capture with LOW_POWER/NORMAL/DEGRADED/SOS profiles.
+- Learned walking/running stride only from good trusted fixes, with separate motion/placement models where measurable.
+- Added zero-velocity correction and conservative separate stationary/walking/running/bicycle/vehicle/unknown propagation.
+- Added deterministic 96-particle positioning with monotonic uncertainty, resampling, honest expiry, clean trusted-fix recentring and no continuous inertial restore across reboot monotonic-clock reset.
+- Added bounded learned paths and authenticated private-map path cache.
+- Added repeated orientation-corrected magnetic sequence matching and repeated multi-event physical-landmark sequence matching. Single magnetic readings/bumps/turns never locate the child.
+- Added conservative fused-fix consistency gate before trusted state/model training. Weak sensors fail open; speed metadata alone cannot reject a good coordinate; phone orientation alone is not assumed to be travel direction; rejected raw GPS remains preserved.
+- Added encrypted/atomic/bounded `brick_phase3_state.bin` using existing Keystore-backed `JournalCipher` + `AtomicFile`.
+- Added privacy-safe Phase 3 health fields only: state/count/uncertainty/age/provider health, with no route coordinates, raw IMU, magnetic fingerprints or particle cloud.
+
+### Anti-overconfidence defects found and repaired during review
+
+1. **CI stale Android pin.** Phase 3 Cloud workflow originally pointed to an older Android SHA; it now pins the exact frozen Android head.
+2. **Server-clock route freshness.** Route cache freshness previously inherited server generation time. It now uses phone receipt time so server/client clock skew cannot keep geometry fresh forever.
+3. **Stationary road attraction.** Stationary particles could previously be softly pulled toward nearby road geometry. Route constraints are now completely disabled for `STATIONARY` mode.
+4. **Immortal route evidence.** Private-map and learned route segments now expire: private map 7 days, one-off learned path 45 days, repeated learned path 180 days. Badly future-skewed route timestamps are rejected.
+5. **Immortal magnetic/landmark fingerprints.** Both sequence model families now expire after 90 days and must relearn.
+6. **Over-aggressive acceleration rejection.** A bad speed field alone could have rejected a good coordinate. Acceleration rejection now requires coordinate displacement to independently support the high reported speed.
+7. **Phone-heading overreach.** Heading contradiction now requires the previous trusted travel bearing to already agree with the fresh hand-held phone heading before a sudden high-quality GPS reversal can reject.
+8. **Route-response state poisoning.** Android now rejects serialization-unsafe route IDs, unknown mode bits and segments outside the declared local route radius.
+9. **Unknown map detail coverage hole.** Cloud route classification now prefers a recognized detailed class but safely falls back to a recognized broad road class when detail is unfamiliar; unknown/non-road broad classes remain excluded.
+
+### Important non-claim
+
+Phase 3 has actual route/path geometry, not universal building-wall polygons. Missing graph coverage is never interpreted as a wall. Brick therefore does **not** claim that walking particles can never cross indoor walls where no wall geometry exists. ODO-006 is only implemented to the extent supported by real available path/private-map geometry.
+
+### Tests and executed evidence
+
+Android instrumentation source now covers:
+
+- learned odometry/ZVC;
+- particle uncertainty, route elimination, persistence, reboot refusal, expiry and trusted-fix recovery;
+- stationary route isolation;
+- route TTLs;
+- repeated magnetic/landmark requirements and 90-day expiry;
+- normal and adversarial fused-fix consistency plus weak-sensor/speed-only fail-open cases;
+- encrypted state round-trip, plaintext absence, corrupt fail-closed and oversize rejection;
+- private route response center/radius/ID/locality/mode-mask validation.
+
+Cloud test source covers signed/bounded private route requests, rate ordering, fixed radius, revoked device, movement classes/broad fallback and retained Phase 2/route regressions.
+
+Executed evidence retained:
+
+- `PHASE3_PURE_CORE_ACCEPTANCE_PASS` from the earlier pure-core checkpoint: learned odometry/ZVC, route behavior, repeated sequence support, particle persistence, uncertainty growth, route elimination, long-outage expiry and trusted-fix recovery.
+- Focused latest `PositionConsistencyGuard` Kotlin/JVM scenarios passed normal walking, stationary contradiction, no-step contradiction, coordinate-supported acceleration contradiction, speed-only fail-open, plausible vehicle change, calibrated reversal contradiction, weak-sensor fail-open and hard teleport rejection.
+- Android's current documentation was checked for rotation-vector reference axes; the Phase 3 Earth-relative East/North/Up assumption matches the documented frame.
+
+Evidence boundary: later route/sequence TTL, state-store, route-parser and health hardening has source tests but has not received full Android framework/emulator execution because hosted jobs still fail before a runner/source step starts.
+
+### Hosted CI blocker
+
+Exact Phase 3 run: `41254615824`.
+
+Observed:
+
+- Phase 3 Cloud + retained regressions: failure with no step data/source execution;
+- Phase 3 Android compile/lint/dependency-lock: same;
+- Phase 3 Android instrumentation: skipped.
+
+This is the same external runner pattern as Phase 2 and is neither a source pass nor evidence of a source defect.
+
+### Permanent records updated
+
+- Added `PHASE3_REPORT.md` with exact architecture, requirement scope, non-claims, executed evidence and Monday physical-device test list.
+- Updated `AUDIT_STATUS.md`.
+- Updated `PROJECT_MEMORY.md` with exact Phase 2/3 current pairs and permanent Phase 3 architecture/anti-overconfidence decisions.
+- Opened draft PR #9 and PR #10 with exact staging bases and no-merge gates.
+
+### Current Phase 3 result
+
+**SOURCE-COMPLETE + ACCEPTANCE-READY / PHASE 2 DEPENDENCY + HOSTED ANDROID/CLOUD + REAL OPPO GATES PENDING / NOT ACCEPTED.**
+
+### Next required action
+
+On Monday, close Phase 2's real OPPO/ColorOS qualification first. Then run the Phase 3 device checks in `PHASE3_REPORT.md`: actual sensor availability/health, hand/pocket walking, running, stationary ZVC, GNSS-loss walk with growing uncertainty, turns/hypothesis elimination, private-map offline cache, provider failure, >30-second process gap, same-boot state recovery, reboot behavior, precise-fix return/recentring, weak-sensor fail-open and measured battery/CPU impact. Hosted exact-pair CI must also genuinely execute before either Phase 3 PR can merge or Phase 3 can be marked accepted.
+
+---
+
 ## 2026-10-31 — Brick V1 Phase 2 continuation: final paired durability/retry/health hardening checkpoint
 
 ### User request
