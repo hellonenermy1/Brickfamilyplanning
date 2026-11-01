@@ -24,6 +24,8 @@ class BleEnvironmentProvider(
     companion object {
         private const val MAX_ATLAS_DEVICES = 32
         private const val MAX_EVIDENCE_DEVICES = 10
+        private const val MAX_CLUSTER_DEVICES = 6
+        private const val MAX_METADATA_DEVICES = 10
     }
 
     private data class Aggregate(
@@ -204,22 +206,70 @@ class BleEnvironmentProvider(
             latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "no_identifiable_advertisements")
             return
         }
-        val observations = copy.map { device ->
+        val observations = ArrayList<AtlasSignalObservation>(96)
+        copy.forEach { device ->
             val repeated = (device.count / 3f).coerceIn(0.35f, 1f)
             val signal = ((device.strongestRssi + 100) / 60f).coerceIn(0.20f, 1f)
-            AtlasSignalObservation(
+            val quality = (repeated * 0.45f + signal * 0.55f).coerceIn(0.15f, 0.9f)
+            observations += AtlasSignalObservation(
                 AtlasSignalKind.BLE_DEVICE,
                 device.id,
                 "ble.scan",
                 device.meanRssi().toFloat(),
-                (repeated * 0.45f + signal * 0.55f).coerceIn(0.15f, 0.9f),
+                quality,
                 sourceHealthy = true
             )
         }
+        observations += metadataObservations(copy)
+        observations += coOccurrenceObservations(copy)
+
         val scanQuality = (0.35f + copy.size.coerceAtMost(12) / 24f).coerceAtMost(0.85f)
-        onAtlasScan(AtlasScan(nowElapsed, nowWall, scanQuality, observations))
+        onAtlasScan(AtlasScan(nowElapsed, nowWall, scanQuality, observations.take(128)))
         emitEvidence(copy, nowElapsed, nowWall, scanQuality)
         latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
+    }
+
+    /** Tx power/SID/PHY and exposed service/manufacturer shape remain correlated BLE sub-features. */
+    private fun metadataObservations(devices: List<Aggregate>): List<AtlasSignalObservation> =
+        devices.take(MAX_METADATA_DEVICES).map { d ->
+            val raw = buildString {
+                append(d.id).append("|tx=").append(d.txPower ?: "x")
+                append("|sid=").append(d.advertisingSid ?: "x")
+                append("|phy=").append(d.primaryPhy).append(':').append(d.secondaryPhy)
+                append("|m=").append(d.manufacturerIds.joinToString(","))
+                append("|s=").append(d.serviceIds.joinToString(","))
+            }
+            val repeated = (d.count / 3f).coerceIn(0.30f, 1f)
+            AtlasSignalObservation(
+                AtlasSignalKind.BLE_DEVICE,
+                AtlasPrivacyId.reduce("blemeta", raw),
+                "ble.scan",
+                d.txPower?.toFloat(),
+                (repeated * 0.48f).coerceIn(0.12f, 0.48f),
+                sourceHealthy = true
+            )
+        }
+
+    /** Multiple nearby advertisements form a place cluster; a single beacon never equals a place. */
+    private fun coOccurrenceObservations(devices: List<Aggregate>): List<AtlasSignalObservation> {
+        val strongest = devices.take(MAX_CLUSTER_DEVICES)
+        if (strongest.size < 2) return emptyList()
+        val out = ArrayList<AtlasSignalObservation>()
+        for (i in 0 until strongest.lastIndex) {
+            for (j in i + 1 until strongest.size) {
+                val pair = listOf(strongest[i].id, strongest[j].id).sorted().joinToString("+")
+                val repeated = minOf(strongest[i].count, strongest[j].count) / 3f
+                out += AtlasSignalObservation(
+                    AtlasSignalKind.BLE_DEVICE,
+                    AtlasPrivacyId.reduce("bleco", pair),
+                    "ble.scan",
+                    null,
+                    (0.28f + repeated.coerceIn(0f, 1f) * 0.32f).coerceAtMost(0.60f),
+                    sourceHealthy = true
+                )
+            }
+        }
+        return out.take(15)
     }
 
     private fun emitEvidence(devices: List<Aggregate>, elapsed: Long, wall: Long, quality: Float) {
