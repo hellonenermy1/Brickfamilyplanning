@@ -38,22 +38,34 @@ import kotlin.math.roundToInt
 /**
  * Private Brick Witness Mesh radio provider.
  *
- * A stable Brick service UUID is used only as a scan filter. The public payload is a short HMAC-derived
- * alias that rotates every five minutes. No permanent child identifier or device ID is advertised.
- * RSSI is uploaded only as proximity evidence; server policy computes a conservative area and never
- * converts RSSI into an exact distance.
+ * A stable Brick 128-bit service-data UUID is used only as a scan filter namespace. The public
+ * service-data payload is a short HMAC-derived alias that rotates every five minutes. The UUID is
+ * deliberately NOT duplicated into the legacy service-UUID list: one 128-bit Service Data field +
+ * the 9-byte Brick payload fits the 31-byte legacy advertisement budget, whereas advertising both
+ * structures can exceed it on otherwise compatible phones.
+ *
+ * No permanent child identifier or device ID is advertised. RSSI is uploaded only as proximity
+ * evidence; server policy computes a conservative area and never converts RSSI into exact distance.
  */
 class WitnessMeshProvider(context: Context) : EvidenceProvider {
     companion object {
         val SERVICE_UUID: UUID = UUID.fromString("5f9b1d60-f7b3-4e1b-a1a2-1e73b1475c01")
         private val SERVICE_PARCEL = ParcelUuid(SERVICE_UUID)
-        private const val AD_PAYLOAD_VERSION: Byte = 1
+        internal const val AD_PAYLOAD_VERSION: Byte = 1
         private const val REPORT_COOLDOWN_MS = 60_000L
         private const val OWN_POSITION_MAX_AGE_MS = 30_000L
         private const val OWN_POSITION_MAX_ACCURACY_M = 100f
         private const val ALIAS_AHEAD_TARGET_SLOTS = 24L
         private const val ALIAS_AHEAD_REFILL_SLOTS = 18L
         private const val MAX_ALIASES_PER_RECORD = 24
+
+        internal fun serviceDataPayload(token: ByteArray): ByteArray {
+            require(token.size == WitnessAliasKey.TOKEN_BYTES)
+            return ByteArray(1 + token.size).also {
+                it[0] = AD_PAYLOAD_VERSION
+                token.copyInto(it, destinationOffset = 1)
+            }
+        }
     }
 
     private val appContext = context.applicationContext
@@ -143,7 +155,11 @@ class WitnessMeshProvider(context: Context) : EvidenceProvider {
             decision.intervalMs != null && decision.intervalMs!! <= 30_000L -> ScanSettings.SCAN_MODE_BALANCED
             else -> ScanSettings.SCAN_MODE_LOW_POWER
         }
-        val filter = ScanFilter.Builder().setServiceUuid(SERVICE_PARCEL).build()
+        // Filter directly on Brick's Service Data namespace/version. This remains a filtered scan
+        // without requiring the UUID to also consume bytes in the advertised service-UUID list.
+        val filter = ScanFilter.Builder()
+            .setServiceData(SERVICE_PARCEL, byteArrayOf(AD_PAYLOAD_VERSION), byteArrayOf(0xff.toByte()))
+            .build()
         val settings = ScanSettings.Builder().setScanMode(mode).setReportDelay(0L).build()
         runCatching { scanner.startScan(listOf(filter), settings, scanCallback) }
             .onSuccess {
@@ -199,14 +215,10 @@ class WitnessMeshProvider(context: Context) : EvidenceProvider {
             publishHealth()
             return
         }
-        val serviceData = ByteArray(1 + token.size).also {
-            it[0] = AD_PAYLOAD_VERSION
-            token.copyInto(it, destinationOffset = 1)
-        }
+        val serviceData = serviceDataPayload(token)
         val data = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
             .setIncludeTxPowerLevel(false)
-            .addServiceUuid(SERVICE_PARCEL)
             .addServiceData(SERVICE_PARCEL, serviceData)
             .build()
         val settings = AdvertiseSettings.Builder()
