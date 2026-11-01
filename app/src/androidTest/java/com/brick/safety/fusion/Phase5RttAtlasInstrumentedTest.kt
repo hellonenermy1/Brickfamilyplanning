@@ -23,7 +23,14 @@ class Phase5RttAtlasInstrumentedTest : BrickInstrumentationTestCase() {
     private val farLon = 103.8000
     private val rttId = "rtt:aaaaaaaaaaaaaaaaaaaaaaaa"
     private val networkId = "net:bbbbbbbbbbbbbbbbbbbbbbbb"
+    private val cellId = "cell:cccccccccccccccccccccccc"
+    private val skyId = "sky:dddddddddddddddddddddddd"
 
+    /**
+     * The non-RTT observations deliberately provide enough weak, independent environmental context
+     * for both nearby Atlas cells to remain plausible. The varying RTT measurement may then rerank
+     * those pre-existing hypotheses; it is not allowed to be the reason a coordinate exists.
+     */
     private fun observations(rangeM: Float) = listOf(
         AtlasSignalObservation(
             kind = AtlasSignalKind.WIFI_AP,
@@ -38,6 +45,20 @@ class Phase5RttAtlasInstrumentedTest : BrickInstrumentationTestCase() {
             independenceGroup = "network.ctx",
             measurement = null,
             quality = 0.80f
+        ),
+        AtlasSignalObservation(
+            kind = AtlasSignalKind.CELLULAR,
+            signalId = cellId,
+            independenceGroup = "cell.env",
+            measurement = null,
+            quality = 0.90f
+        ),
+        AtlasSignalObservation(
+            kind = AtlasSignalKind.GNSS_SKY,
+            signalId = skyId,
+            independenceGroup = "gnss.sky",
+            measurement = null,
+            quality = 0.90f
         )
     )
 
@@ -71,14 +92,23 @@ class Phase5RttAtlasInstrumentedTest : BrickInstrumentationTestCase() {
         val nowWall = wall0 + 4L * 40L * 60L * 1_000L + 1_000L
         val current = AtlasScan(nowElapsed, nowWall, 0.95f, observations(6f))
         val candidates = atlas.match(current)
-        assertTrue(candidates.isNotEmpty())
+
+        // Both places must exist from the independent background context. RTT can prefer the
+        // near-trained hypothesis, but the small score difference remains ambiguous and therefore
+        // cannot manufacture a precise point/direction.
+        assertTrue(candidates.size >= 2)
         assertEquals(AtlasGrid.labelFor(nearLat, nearLon), candidates.first().labelId)
+        val far = candidates.firstOrNull { it.labelId == AtlasGrid.labelFor(farLat, farLon) }
+        assertNotNull(far)
+        assertTrue(candidates.first().supportWeight > far!!.supportWeight)
+        assertTrue(candidates.first().ambiguous)
 
         val snapshot = AtlasRuntimeSnapshot(candidates, nowElapsed, emptyMap())
         val constraint = Phase5FusionAdapter.fromAtlas(snapshot, nowElapsed + 500L)
         assertNotNull(constraint)
         assertEquals(FusionEvidenceKind.ATLAS, constraint!!.kind)
         assertEquals(PositionQuality.ESTIMATED, constraint.upperState)
+        assertTrue(constraint.radiusM >= 60f)
 
         val result = ParallelEvidenceEngine().fuse(nowElapsed + 500L, listOf(constraint))
         assertTrue(result.hasPosition)
