@@ -17,6 +17,8 @@ class EnvironmentalAtlas(
         private const val VISIT_GAP_MS = 15L * 60L * 1_000L
         private const val DAY_MS = 24L * 60L * 60L * 1_000L
         private const val MODEL_RETENTION_MS = 180L * DAY_MS
+        private const val FUTURE_TOLERANCE_MS = 24L * 60L * 60L * 1_000L
+        private const val CODEC_VERSION = 1
     }
 
     private data class RunningValue(
@@ -87,7 +89,6 @@ class EnvironmentalAtlas(
             zoneId = label.zoneId
         ).also { labels[label.labelId] = it }
 
-        val priorScans = lp.scanCount
         lp.scanCount += 1
         val alpha = 1.0 / lp.scanCount.coerceAtMost(20)
         lp.latitude = lp.latitude * (1.0 - alpha) + label.latitude * alpha
@@ -102,8 +103,8 @@ class EnvironmentalAtlas(
         lp.lastScanWallMs = max(lp.lastScanWallMs, scan.wallTimeMs)
 
         for (obs in observations) {
-            val key = key(obs.kind, obs.signalId)
-            val sp = signals[key] ?: SignalProfile(key, obs.kind, obs.signalId).also { signals[key] = it }
+            val signalKey = key(obs.kind, obs.signalId)
+            val sp = signals[signalKey] ?: SignalProfile(signalKey, obs.kind, obs.signalId).also { signals[signalKey] = it }
             sp.observationCount += 1
             if (obs.sourceHealthy) sp.healthyCount += 1
             sp.qualitySum += obs.quality
@@ -114,16 +115,13 @@ class EnvironmentalAtlas(
             obs.measurement?.let { sp.measurement.add(it.toDouble()) }
             sp.labelIds += lp.id
 
-            val ls = lp.signals[key] ?: LabelSignal().also { lp.signals[key] = it }
+            val ls = lp.signals[signalKey] ?: LabelSignal().also { lp.signals[signalKey] = it }
             ls.seenScans += 1
             if (newVisit) ls.seenVisits += 1
             ls.lastSeenWallMs = max(ls.lastSeenWallMs, scan.wallTimeMs)
             obs.measurement?.let { ls.measurement.add(it.toDouble()) }
         }
 
-        // A label may have existed before this scan; intentionally do not treat every absence as
-        // negative training. Presence ratios emerge over repeated complete scans instead.
-        if (priorScans == 0) lp.lastVisitWallMs = scan.wallTimeMs
         trimBounds()
         return true
     }
@@ -144,9 +142,9 @@ class EnvironmentalAtlas(
             var matchedSignals = 0
 
             for (obs in observations) {
-                val k = key(obs.kind, obs.signalId)
-                val local = label.signals[k] ?: continue
-                val global = signals[k] ?: continue
+                val signalKey = key(obs.kind, obs.signalId)
+                val local = label.signals[signalKey] ?: continue
+                val global = signals[signalKey] ?: continue
                 val stats = stats(global, scan.wallTimeMs)
                 val classification = SignalTrustEngine.classify(stats, scan.wallTimeMs)
                 val trust = SignalTrustEngine.weight(stats, classification, scan.wallTimeMs)
@@ -175,10 +173,10 @@ class EnvironmentalAtlas(
 
             var negative = 0.0
             if (scan.quality >= 0.55f) {
-                for ((k, local) in label.signals) {
-                    if (k in observedByKey) continue
-                    val global = signals[k] ?: continue
-                    if (global.kind !in observedKinds) continue // provider absent/unavailable is not negative evidence
+                for ((signalKey, local) in label.signals) {
+                    if (signalKey in observedByKey) continue
+                    val global = signals[signalKey] ?: continue
+                    if (global.kind !in observedKinds) continue // unavailable provider is not negative evidence
                     val presence = local.seenScans.toDouble() / label.scanCount.coerceAtLeast(1)
                     if (presence < 0.75 || local.seenScans < 4) continue
                     val stats = stats(global, scan.wallTimeMs)
@@ -258,9 +256,109 @@ class EnvironmentalAtlas(
         staleLabels.forEach(::removeLabel)
 
         val staleSignals = signals.values.filter { it.lastSeenWallMs in 1 until cutoff }.map { it.key }
-        staleSignals.forEach { k ->
-            signals.remove(k)
-            labels.values.forEach { it.signals.remove(k) }
+        staleSignals.forEach { signalKey ->
+            signals.remove(signalKey)
+            labels.values.forEach { it.signals.remove(signalKey) }
+        }
+    }
+
+    /** Compact line codec for encrypted local persistence; all text fields are validation-limited. */
+    @Synchronized
+    fun encode(nowWallMs: Long): String {
+        prune(nowWallMs)
+        val out = StringBuilder("A|$CODEC_VERSION\n")
+        labels.values.sortedBy { it.id }.forEach { l ->
+            out.append("L|").append(l.id).append('|').append(l.latitude).append('|').append(l.longitude).append('|')
+                .append(l.accuracyMean).append('|').append(l.scanCount).append('|').append(l.visitCount).append('|')
+                .append(l.lastScanWallMs).append('|').append(l.lastVisitWallMs).append('|').append(l.zoneId ?: "").append('\n')
+            l.signals.entries.sortedBy { it.key }.forEach { (signalKey, s) ->
+                out.append("R|").append(l.id).append('|').append(signalKey).append('|').append(s.seenScans).append('|')
+                    .append(s.seenVisits).append('|').append(s.lastSeenWallMs).append('|').append(s.measurement.count).append('|')
+                    .append(s.measurement.mean).append('|').append(s.measurement.m2).append('\n')
+            }
+        }
+        signals.values.sortedBy { it.key }.forEach { s ->
+            out.append("S|").append(s.kind.ordinal).append('|').append(s.signalId).append('|').append(s.observationCount).append('|')
+                .append(s.healthyCount).append('|').append(s.qualitySum).append('|').append(s.firstSeenWallMs).append('|')
+                .append(s.lastSeenWallMs).append('|').append(if (s.semanticCommon) 1 else 0).append('|')
+                .append(if (s.trustedAnchor) 1 else 0).append('|').append(s.measurement.count).append('|')
+                .append(s.measurement.mean).append('|').append(s.measurement.m2).append('|')
+                .append(s.labelIds.sorted().joinToString(",")).append('\n')
+        }
+        return out.toString()
+    }
+
+    @Synchronized
+    fun restore(encoded: String?, nowWallMs: Long): Boolean {
+        labels.clear(); signals.clear()
+        if (encoded.isNullOrBlank()) return true
+        return try {
+            val lines = encoded.lineSequence().filter { it.isNotBlank() }.toList()
+            require(lines.firstOrNull() == "A|$CODEC_VERSION")
+            require(lines.size <= 20_000)
+            val relationLines = ArrayList<List<String>>()
+            for (line in lines.drop(1)) {
+                val p = line.split('|')
+                when (p.firstOrNull()) {
+                    "L" -> {
+                        if (p.size != 10) continue
+                        val id = p[1].takeIf { it.matches(Regex("[A-Za-z0-9._:-]{3,96}")) } ?: continue
+                        val lat = p[2].toDoubleOrNull()?.takeIf { it.isFinite() && it in -90.0..90.0 } ?: continue
+                        val lon = p[3].toDoubleOrNull()?.takeIf { it.isFinite() && it in -180.0..180.0 } ?: continue
+                        val acc = p[4].toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..5_000.0 } ?: continue
+                        val scans = p[5].toIntOrNull()?.takeIf { it in 1..1_000_000 } ?: continue
+                        val visits = p[6].toIntOrNull()?.takeIf { it in 1..1_000_000 } ?: continue
+                        val lastScan = validWall(p[7], nowWallMs) ?: continue
+                        val lastVisit = validWall(p[8], nowWallMs) ?: continue
+                        val zone = p[9].takeIf { it.isNotBlank() && it.matches(Regex("[A-Za-z0-9._:-]{1,64}")) }
+                        labels[id] = LabelProfile(id, lat, lon, acc, scans, visits, lastScan, lastVisit, zone)
+                    }
+                    "S" -> {
+                        if (p.size != 14) continue
+                        val kind = AtlasSignalKind.entries.getOrNull(p[1].toIntOrNull() ?: -1) ?: continue
+                        val id = p[2].takeIf { it.matches(Regex("[A-Za-z0-9._:-]{6,96}")) } ?: continue
+                        val signalKey = key(kind, id)
+                        val count = p[3].toIntOrNull()?.takeIf { it in 1..10_000_000 } ?: continue
+                        val healthy = p[4].toIntOrNull()?.takeIf { it in 0..count } ?: continue
+                        val quality = p[5].toDoubleOrNull()?.takeIf { it.isFinite() && it in 0.0..count.toDouble() } ?: continue
+                        val first = validWall(p[6], nowWallMs) ?: continue
+                        val last = validWall(p[7], nowWallMs) ?: continue
+                        if (last < first) continue
+                        val semantic = p[8] == "1"
+                        val anchor = p[9] == "1"
+                        val mCount = p[10].toIntOrNull()?.takeIf { it in 0..count } ?: continue
+                        val mean = p[11].toDoubleOrNull()?.takeIf { it.isFinite() } ?: continue
+                        val m2 = p[12].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 } ?: continue
+                        val labelIds = p[13].split(',').filter { it.matches(Regex("[A-Za-z0-9._:-]{3,96}")) }.take(maxLabels)
+                        val profile = SignalProfile(signalKey, kind, id, count, healthy, quality, first, last, semantic, anchor)
+                        profile.measurement.count = mCount; profile.measurement.mean = mean; profile.measurement.m2 = m2
+                        profile.labelIds += labelIds
+                        signals[signalKey] = profile
+                    }
+                    "R" -> relationLines += p
+                }
+            }
+            for (p in relationLines) {
+                if (p.size != 9) continue
+                val label = labels[p[1]] ?: continue
+                val signalKey = p[2]
+                if (signalKey !in signals) continue
+                val scans = p[3].toIntOrNull()?.takeIf { it in 1..label.scanCount } ?: continue
+                val visits = p[4].toIntOrNull()?.takeIf { it in 0..label.visitCount } ?: continue
+                val last = validWall(p[5], nowWallMs) ?: continue
+                val mCount = p[6].toIntOrNull()?.takeIf { it in 0..scans } ?: continue
+                val mean = p[7].toDoubleOrNull()?.takeIf { it.isFinite() } ?: continue
+                val m2 = p[8].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 } ?: continue
+                val local = LabelSignal(scans, visits, last)
+                local.measurement.count = mCount; local.measurement.mean = mean; local.measurement.m2 = m2
+                label.signals[signalKey] = local
+                signals[signalKey]?.labelIds?.add(label.id)
+            }
+            prune(nowWallMs)
+            trimBounds()
+            true
+        } catch (_: Throwable) {
+            labels.clear(); signals.clear(); false
         }
     }
 
@@ -275,9 +373,9 @@ class EnvironmentalAtlas(
     private fun normalized(input: List<AtlasSignalObservation>): List<AtlasSignalObservation> {
         val byKey = linkedMapOf<String, AtlasSignalObservation>()
         for (obs in input.take(128)) {
-            val k = key(obs.kind, obs.signalId)
-            val prior = byKey[k]
-            if (prior == null || obs.quality > prior.quality) byKey[k] = obs
+            val signalKey = key(obs.kind, obs.signalId)
+            val prior = byKey[signalKey]
+            if (prior == null || obs.quality > prior.quality) byKey[signalKey] = obs
         }
         return byKey.values.toList()
     }
@@ -326,20 +424,24 @@ class EnvironmentalAtlas(
                 .sortedWith(compareBy<SignalProfile> { it.trustedAnchor }.thenBy { it.lastSeenWallMs }.thenBy { it.observationCount })
                 .take(signals.size - maxSignals)
                 .map { it.key }
-            for (k in drop) {
-                signals.remove(k)
-                labels.values.forEach { it.signals.remove(k) }
+            for (signalKey in drop) {
+                signals.remove(signalKey)
+                labels.values.forEach { it.signals.remove(signalKey) }
             }
         }
     }
 
     private fun removeLabel(labelId: String) {
         val removed = labels.remove(labelId) ?: return
-        for (k in removed.signals.keys) {
-            val sp = signals[k] ?: continue
+        for (signalKey in removed.signals.keys) {
+            val sp = signals[signalKey] ?: continue
             sp.labelIds.remove(labelId)
-            if (sp.labelIds.isEmpty()) signals.remove(k)
+            if (sp.labelIds.isEmpty()) signals.remove(signalKey)
         }
+    }
+
+    private fun validWall(raw: String, nowWallMs: Long): Long? = raw.toLongOrNull()?.takeIf {
+        it > 0L && (nowWallMs <= 0L || it <= nowWallMs + FUTURE_TOLERANCE_MS)
     }
 
     private fun key(kind: AtlasSignalKind, signalId: String) = "${kind.ordinal}:$signalId"
