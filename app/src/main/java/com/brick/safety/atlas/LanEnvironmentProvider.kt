@@ -47,7 +47,7 @@ class LanEnvironmentProvider(
 
     override val descriptor = EvidenceProviderDescriptor(
         EvidenceProviderId.LAN_ENVIRONMENT,
-        EvidenceFamily.LAN,
+        EvidenceFamily.NETWORK,
         EvidenceSamplingClass.NETWORK_CONTEXT,
         "lan.nsd"
     )
@@ -165,7 +165,7 @@ class LanEnvironmentProvider(
                 elapsedRealtimeMs = elapsed,
                 wallTimeMs = wall,
                 provider = EvidenceProviderId.LAN_ENVIRONMENT,
-                family = EvidenceFamily.LAN,
+                family = EvidenceFamily.NETWORK,
                 independenceGroup = "lan.nsd",
                 capability = ProviderCapability.SUPPORTED,
                 health = ProviderHealth.HEALTHY,
