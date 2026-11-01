@@ -212,9 +212,10 @@ class WifiRttEnvironmentProvider(
     }
 
     private fun capabilityStatus(): EvidenceProviderStatus {
-        if (!appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_RTT) || rtt == null) {
+        if (!appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_RTT)) {
             return EvidenceProviderStatus(ProviderCapability.UNSUPPORTED, ProviderHealth.UNAVAILABLE, "no_wifi_rtt")
         }
+        val manager = rtt ?: return EvidenceProviderStatus(ProviderCapability.UNSUPPORTED, ProviderHealth.UNAVAILABLE, "no_wifi_rtt")
         if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return EvidenceProviderStatus(ProviderCapability.PERMISSION_REQUIRED, ProviderHealth.UNAVAILABLE, "fine_location_permission")
         }
@@ -225,7 +226,7 @@ class WifiRttEnvironmentProvider(
         if (!runCatching { locationManager.isLocationEnabled }.getOrDefault(false)) {
             return EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "location_services_off")
         }
-        if (!runCatching { rtt.isAvailable }.getOrDefault(false)) {
+        if (!runCatching { manager.isAvailable }.getOrDefault(false)) {
             return EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "rtt_unavailable")
         }
         return EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
