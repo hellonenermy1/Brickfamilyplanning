@@ -45,7 +45,6 @@ class Phase4TransitionInstrumentedTest : BrickInstrumentationTestCase() {
         )
         assertFalse(first.observations.any { it.kind == AtlasSignalKind.TRANSITION })
 
-        // Same two APs plus one transient AP has high overlap and is ignored as ordinary scan churn.
         val minor = tracker.augmentSource(
             "wifi",
             wifiScan(
@@ -88,7 +87,7 @@ class Phase4TransitionInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue((gradient.measurement ?: 0f) >= 6f)
     }
 
-    fun testActivityApproachSequenceStaysDerivedAndLowTrust() {
+    fun testActivityApproachSequenceStaysDerivedLowTrustAndCorrelated() {
         val tracker = AtlasTransitionTracker()
         assertNull(tracker.activityTransition(ActivityMode.VEHICLE, 90, 10_000L, wall + 10_000L))
 
@@ -100,7 +99,10 @@ class Phase4TransitionInstrumentedTest : BrickInstrumentationTestCase() {
         val walking = tracker.activityTransition(ActivityMode.WALKING, 85, 30_000L, wall + 30_000L)
         assertNotNull(walking)
         assertTrue(walking!!.observations.count { it.kind == AtlasSignalKind.TRANSITION } >= 2)
-        assertTrue(walking.observations.any { it.signalId.startsWith("seq:") })
+        val sequence = walking.observations.firstOrNull { it.signalId.startsWith("seq:") }
+        assertNotNull(sequence)
+        assertEquals("activity.transition", sequence!!.independenceGroup)
+        assertTrue(walking.observations.all { it.independenceGroup == "activity.transition" })
         assertTrue(walking.observations.all { it.quality <= 0.60f })
     }
 
