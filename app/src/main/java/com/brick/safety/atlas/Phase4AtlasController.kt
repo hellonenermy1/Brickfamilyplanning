@@ -180,11 +180,15 @@ class Phase4AtlasController(context: Context) {
 
         val label = trustedLabel
         if (label != null) {
-            val elapsedDelta = kotlin.math.abs(combined.elapsedRealtimeMs - label.elapsedRealtimeMs)
-            if (elapsedDelta <= COMBINE_WINDOW_MS && runCatching { atlas.observeTrusted(label, combined) }.getOrDefault(false)) {
+            // Learn only the newly arrived provider scan. Re-learning the 15-second combined cache
+            // on every provider callback would inflate observation/repeat counts and replacement
+            // history without any new physical measurement.
+            val elapsedDelta = kotlin.math.abs(enriched.elapsedRealtimeMs - label.elapsedRealtimeMs)
+            if (elapsedDelta <= COMBINE_WINDOW_MS && runCatching { atlas.observeTrusted(label, enriched) }.getOrDefault(false)) {
                 persist(force = false)
             }
         }
+        // Matching may combine fresh independent providers; training above deliberately does not.
         latestCandidates = runCatching { atlas.match(combined) }.getOrDefault(emptyList())
         publishHealth()
     }
