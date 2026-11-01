@@ -5,12 +5,26 @@ import com.brick.safety.location.Phase3FallbackEstimate
 import com.brick.safety.location.PositionQuality
 import com.brick.safety.location.PositionSource
 
+data class Phase5StoredHypothesis(
+    val id: String,
+    val latitude: Double,
+    val longitude: Double,
+    val uncertaintyM: Float,
+    /** Internal relative ordering weight, never a calibrated probability. */
+    val realtimeWeight: Double,
+    /** Retained evidence ordering weight for later endpoint reranking. */
+    val storedEvidenceWeight: Double,
+    val source: String
+)
+
 data class Phase5FusionSelection(
     val result: FusionResult,
     val speedMps: Float?,
     val bearingDeg: Float?,
     val stepDelta: Int,
-    val source: PositionSource
+    val source: PositionSource,
+    val originalRealtimeHypothesisId: String,
+    val storedHypotheses: List<Phase5StoredHypothesis>
 )
 
 class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = ParallelEvidenceEngine()) {
@@ -50,12 +64,40 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
             usedKinds.singleOrNull() == FusionEvidenceKind.LAST_KNOWN -> PositionSource.LAST_KNOWN
             else -> PositionSource.INERTIAL
         }
+        val usedIds = result.evidenceUsed.mapTo(hashSetOf()) { it.id }
+        val hypotheses = ArrayList<Phase5StoredHypothesis>(1 + usedIds.size)
+        hypotheses += Phase5StoredHypothesis(
+            id = "realtime",
+            latitude = result.latitude!!,
+            longitude = result.longitude!!,
+            uncertaintyM = result.uncertaintyM,
+            realtimeWeight = 1.0,
+            storedEvidenceWeight = 1.0,
+            source = "realtime_fusion"
+        )
+        constraints.asSequence()
+            .filter { it.id in usedIds }
+            .take(12)
+            .forEach { c ->
+                hypotheses += Phase5StoredHypothesis(
+                    id = "c:${c.id}",
+                    latitude = c.latitude,
+                    longitude = c.longitude,
+                    uncertaintyM = c.radiusM,
+                    realtimeWeight = (c.supportWeight * c.strength.multiplier).coerceIn(0.0, 1.0),
+                    storedEvidenceWeight = c.supportWeight.coerceIn(0.0, 1.0),
+                    source = c.kind.name.lowercase()
+                )
+            }
+
         return Phase5FusionSelection(
             result = result,
             speedMps = phase3?.position?.speedMps?.takeIf { it.isFinite() && it >= 0f },
             bearingDeg = phase3?.position?.headingDeg?.takeIf { it.isFinite() },
             stepDelta = phase3?.stepDelta ?: 0,
-            source = source
+            source = source,
+            originalRealtimeHypothesisId = "realtime",
+            storedHypotheses = hypotheses
         )
     }
 }
