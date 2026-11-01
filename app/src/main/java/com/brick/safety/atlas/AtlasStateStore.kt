@@ -64,6 +64,22 @@ internal class AtlasStateStore(context: Context) {
         }
     }
 
+    fun clear(): Boolean = runCatching {
+        atomic.delete()
+        prefs.edit()
+            .putBoolean("atlasStateHealthy", true)
+            .putInt("atlasLabelCount", 0)
+            .putInt("atlasSignalCount", 0)
+            .putInt("atlasCandidateCount", 0)
+            .remove("atlasCandidateUncertaintyM")
+            .putBoolean("atlasCandidateAmbiguous", false)
+            .apply()
+        true
+    }.getOrElse {
+        markFailure()
+        false
+    }
+
     private fun markHealthy() {
         prefs.edit().putBoolean("atlasStateHealthy", true).apply()
     }
