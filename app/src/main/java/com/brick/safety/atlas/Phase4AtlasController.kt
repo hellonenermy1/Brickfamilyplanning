@@ -33,6 +33,7 @@ class Phase4AtlasController(context: Context) {
 
     private val providers: List<EvidenceProvider> = listOf(
         WifiEnvironmentProvider(appContext) { noteProviderScan("wifi", it) },
+        WifiRttEnvironmentProvider(appContext) { noteProviderScan("wifi-rtt", it) },
         BleEnvironmentProvider(appContext) { noteProviderScan("ble", it) },
         CellularEnvironmentProvider(appContext) { noteProviderScan("cellular", it) },
         LanEnvironmentProvider(appContext) { noteProviderScan("lan", it) },
@@ -235,6 +236,7 @@ class Phase4AtlasController(context: Context) {
             .putInt("atlasCandidateCount", latestCandidates.size)
             .putBoolean("atlasCandidateAmbiguous", best?.ambiguous ?: false)
         publishProvider(edit, "atlasWifiProvider", status[EvidenceProviderId.WIFI_ENVIRONMENT])
+        publishProvider(edit, "atlasRttProvider", status[EvidenceProviderId.WIFI_RTT])
         publishProvider(edit, "atlasBleProvider", status[EvidenceProviderId.BLE_ENVIRONMENT])
         publishProvider(edit, "atlasCellularProvider", status[EvidenceProviderId.CELLULAR])
         publishProvider(edit, "atlasLanProvider", status[EvidenceProviderId.LAN_ENVIRONMENT])
