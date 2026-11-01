@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
+import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
@@ -22,7 +23,9 @@ import com.brick.safety.atlas.Phase4AtlasRuntime
 import com.brick.safety.data.CrashOutbox
 import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
+import com.brick.safety.managed.DesiredLocationState
 import com.brick.safety.managed.ManagedPolicy
+import com.brick.safety.managed.ParentLocationStateStore
 import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.HealthEvidence
 import com.brick.safety.reliability.RecoveryScheduler
@@ -109,7 +112,7 @@ class BrickLocationService : Service() {
         bleAnchorEngine = BleAnchorEngine(this) { config -> positionEngine.noteBleAnchor(config) }
 
         createChannel()
-        startForeground(1001, notification("Safety active"))
+        startForeground(1001, notification(locationNotificationText()))
 
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         epoch = prefs.getInt("epoch", 1)
@@ -123,7 +126,7 @@ class BrickLocationService : Service() {
         runCatching { motionEngine.start() }
         runCatching { gnssMonitor.start() }
 
-        startTracking(desiredIntervalMs())
+        if (androidLocationEnabled()) startTracking(desiredIntervalMs())
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
         kickUploadPump()
@@ -136,7 +139,7 @@ class BrickLocationService : Service() {
         runCatching { motionEngine.start() }
         runCatching { gnssMonitor.start() }
         val desired = desiredIntervalMs()
-        if (!locationSubscribed || desired != trackingIntervalMs) startTracking(desired)
+        if (androidLocationEnabled() && (!locationSubscribed || desired != trackingIntervalMs)) startTracking(desired)
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
         maybeScanBleAnchors(SystemClock.elapsedRealtime())
@@ -315,14 +318,24 @@ class BrickLocationService : Service() {
             .apply()
     }
 
+    private fun androidLocationEnabled(): Boolean {
+        val lm = getSystemService(LocationManager::class.java)
+        return runCatching { lm.isLocationEnabled }.getOrDefault(false)
+    }
+
     private fun startSupervisor() {
         supervisor.scheduleWithFixedDelay({
             val now = SystemClock.elapsedRealtime()
-            val lm = getSystemService(LocationManager::class.java)
-            val locationEnabled = runCatching { lm.isLocationEnabled }.getOrDefault(false)
+            val locationEnabled = androidLocationEnabled()
+            val locationState = ParentLocationStateStore.read(this)
+            val desiredLocationEnabled = locationState.desired == DesiredLocationState.ON
 
-            if (ManagedPolicy.isDeviceOwner(this) && !locationEnabled) {
+            if (ManagedPolicy.isDeviceOwner(this) && locationEnabled != desiredLocationEnabled) {
                 runCatching { ManagedPolicy.apply(this) }
+            }
+            if (!locationEnabled && locationSubscribed) {
+                runCatching { fused.removeLocationUpdates(callback) }
+                locationSubscribed = false
             }
 
             val desired = desiredIntervalMs()
@@ -361,6 +374,25 @@ class BrickLocationService : Service() {
         }
         bleAnchorEngine.updateConfigs(mapped)
         if (mapped.isNotEmpty()) maybeScanBleAnchors(SystemClock.elapsedRealtime(), force = true)
+    }
+
+    private fun applyLocationCommand(deviceId: String, command: BrickApi.LocationControlCommand?) {
+        if (command == null || command.deviceId != deviceId) return
+        val desired = if (command.desiredEnabled) DesiredLocationState.ON else DesiredLocationState.OFF
+        val changed = runCatching {
+            ParentLocationStateStore.applyVerified(
+                this,
+                desired,
+                command.commandId,
+                command.nonce,
+                command.issuedAtMs,
+                command.expiresAtMs
+            )
+        }.getOrDefault(false)
+        if (!changed) return
+        runCatching { ManagedPolicy.apply(this) }
+        refreshNotification()
+        lastHealthElapsed = 0L
     }
 
     private fun checkBatterySafety() {
@@ -422,7 +454,12 @@ class BrickLocationService : Service() {
     }
 
     private fun appVersionName(): String = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }
     }.getOrNull() ?: "unknown"
 
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
@@ -435,6 +472,8 @@ class BrickLocationService : Service() {
         val gnss = gnssMonitor.snapshot()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val batteryPct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
+        val locationState = ParentLocationStateStore.read(this)
+        val desiredLocationEnabled = locationState.desired == DesiredLocationState.ON
         val health = JSONObject()
             .put("protocol", 1)
             .put("elapsedRealtimeMs", now)
@@ -446,6 +485,9 @@ class BrickLocationService : Service() {
             .put("oldestPendingAgeMs", stats.oldestPendingMs?.let { System.currentTimeMillis() - it } ?: JSONObject.NULL)
             .put("network", networkKind())
             .put("locationEnabled", locationEnabled)
+            .put("locationDesiredEnabled", desiredLocationEnabled)
+            .put("locationControlMatches", locationEnabled == desiredLocationEnabled)
+            .put("locationControlCommandId", locationState.commandId ?: JSONObject.NULL)
             .put("locationSubscribed", locationSubscribed)
             .put("managed", ManagedPolicy.isDeviceOwner(this))
             .put("recoveryCount", recoveryCount)
@@ -469,7 +511,10 @@ class BrickLocationService : Service() {
 
         healthIo.execute {
             runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) }
-                .onSuccess(::updateBleAnchorConfigs)
+                .onSuccess { sync ->
+                    updateBleAnchorConfigs(sync.bleAnchors)
+                    applyLocationCommand(deviceId, sync.locationCommand)
+                }
         }
     }
 
@@ -498,12 +543,19 @@ class BrickLocationService : Service() {
         })
     }
 
+    private fun locationNotificationText(): String = if (androidLocationEnabled()) "GPS on" else "GPS off"
+
+    private fun refreshNotification() {
+        getSystemService(NotificationManager::class.java).notify(1001, notification(locationNotificationText()))
+    }
+
     private fun notification(text: String): Notification = NotificationCompat.Builder(this, "brick_tracking")
         .setSmallIcon(android.R.drawable.ic_menu_mylocation)
         .setContentTitle("Brick")
         .setContentText(text)
         .setOngoing(true)
         .setPriority(NotificationCompat.PRIORITY_LOW)
+        .setSilent(true)
         .build()
 
     override fun onTaskRemoved(rootIntent: Intent?) {

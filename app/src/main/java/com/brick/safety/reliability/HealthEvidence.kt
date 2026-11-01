@@ -12,6 +12,8 @@ import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.brick.safety.evidence.EvidenceJournal
+import com.brick.safety.privileged.PrivilegedBridgeRuntime
+import org.json.JSONArray
 import org.json.JSONObject
 
 object HealthEvidence {
@@ -72,6 +74,7 @@ object HealthEvidence {
         val activeNetwork = connectivity.activeNetwork
         val caps = activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
         val networkValidated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+        val privileged = runCatching { PrivilegedBridgeRuntime.current().health() }.getOrNull()
 
         fun granted(permission: String): Boolean =
             ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
@@ -98,6 +101,12 @@ object HealthEvidence {
             .put("rotationVectorAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null)
             .put("stepCounterAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null)
             .put("stepDetectorAvailable", sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) != null)
+            .put("privilegedProvider", privileged?.provider ?: "none")
+            .put("privilegedAvailable", privileged?.available ?: false)
+            .put("privilegedConnected", privileged?.connected ?: false)
+            .put("privilegedPermissionGranted", privileged?.permissionGranted ?: false)
+            .put("privilegedCapabilities", JSONArray((privileged?.capabilities ?: emptySet()).map { it.name.lowercase() }.sorted()))
+            .put("privilegedLastError", privileged?.lastError?.take(120) ?: JSONObject.NULL)
             .put("lastSelfRecoveryAgeMs", ageSince(lastRecovery))
             .put("journalWriteHealthy", prefs.getBoolean("journalWriteHealthy", true))
             .put("lastJournalWriteFailureAgeMs", ageSince(lastJournalFailure))

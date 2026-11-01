@@ -1,22 +1,45 @@
 package com.brick.safety
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import com.brick.safety.data.Journal
 import com.brick.safety.fusion.Phase5CoarseNetworkRuntime
 import com.brick.safety.fusion.Phase5HypothesisRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
+import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.RecoveryScheduler
 import kotlin.math.max
 
 class BrickApplication : Application() {
+    private var startedActivities = 0
+
     override fun onCreate() {
         super.onCreate()
         CrashReporter.install(this)
         Phase5LearnedPlaceRuntime.initialize(this)
         Phase5CoarseNetworkRuntime.initialize(this)
         Phase5HypothesisRuntime.initialize(this)
+        runCatching { ShizukuBridgeController.initialize(this) }
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: Activity) {
+                startedActivities += 1
+                if (startedActivities == 1) runCatching { ShizukuBridgeController.onAppForegroundChanged(true) }
+            }
+
+            override fun onActivityStopped(activity: Activity) {
+                startedActivities = (startedActivities - 1).coerceAtLeast(0)
+                if (startedActivities == 0) runCatching { ShizukuBridgeController.onAppForegroundChanged(false) }
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
         recoverSequenceWatermark()
         // WorkManager is only a recovery backstop. A corrupt/unavailable WorkManager database must
         // never crash Brick before BootReceiver or the foreground tracking service can recover.

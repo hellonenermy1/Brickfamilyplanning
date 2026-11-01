@@ -36,7 +36,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildFeatures { viewBinding = true }
+    buildFeatures {
+        viewBinding = true
+        aidl = true
+    }
 
     signingConfigs {
         if (releaseSigningAvailable) {
@@ -56,8 +59,12 @@ android {
     buildTypes {
         getByName("release") {
             isDebuggable = false
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("brickRelease")
         }
     }
@@ -81,6 +88,11 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+
+    // Phase 6 optional privileged bridge. UserService keeps the exposed surface typed; Brick Core
+    // remains fully functional when Shizuku/Sui is absent, stopped or denied.
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     // Maintained instrumentation runner. Brick's test methods remain JUnit3-style TestCase tests,
     // which AndroidJUnitRunner supports, while avoiding deprecated android.test framework classes.
