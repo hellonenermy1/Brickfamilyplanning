@@ -18,6 +18,7 @@ class EnvironmentalAtlas(
         private const val DAY_MS = 24L * 60L * 60L * 1_000L
         private const val MODEL_RETENTION_MS = 180L * DAY_MS
         private const val FUTURE_TOLERANCE_MS = 24L * 60L * 60L * 1_000L
+        private const val REPLACEMENT_RETIRE_MISSES = 12
         private const val CODEC_VERSION = 1
     }
 
@@ -36,10 +37,19 @@ class EnvironmentalAtlas(
         fun variance(): Double? = if (count >= 2) (m2 / (count - 1)).coerceAtLeast(0.0) else null
     }
 
+    /**
+     * eligibleScans starts when this signal is first learned at the label. Using the label's entire
+     * lifetime as the denominator would unfairly suppress a replacement router/beacon introduced
+     * months later and would make automatic relearning unnecessarily slow.
+     */
     private data class LabelSignal(
         var seenScans: Int = 0,
+        var eligibleScans: Int = 0,
         var seenVisits: Int = 0,
+        var consecutiveTrustedMisses: Int = 0,
+        var totalTrustedMisses: Int = 0,
         var lastSeenWallMs: Long = 0L,
+        var lastMissingWallMs: Long = 0L,
         val measurement: RunningValue = RunningValue()
     )
 
@@ -102,6 +112,30 @@ class EnvironmentalAtlas(
         }
         lp.lastScanWallMs = max(lp.lastScanWallMs, scan.wallTimeMs)
 
+        val observedKeys = observations.mapTo(hashSetOf()) { key(it.kind, it.signalId) }
+        val observedKinds = observations.mapTo(hashSetOf()) { it.kind }
+        val retire = arrayListOf<String>()
+        for ((signalKey, local) in lp.signals) {
+            val global = signals[signalKey] ?: continue
+            if (!evidenceFamilyObserved(global.kind, observedKinds)) continue
+            local.eligibleScans = (local.eligibleScans + 1).coerceAtMost(1_000_000)
+            if (signalKey in observedKeys) {
+                local.consecutiveTrustedMisses = 0
+                continue
+            }
+            // One ordinary miss remains weak. Only good trusted scans teach persistent absence.
+            if (scan.quality >= 0.55f) {
+                local.consecutiveTrustedMisses = (local.consecutiveTrustedMisses + 1).coerceAtMost(REPLACEMENT_RETIRE_MISSES)
+                local.totalTrustedMisses = (local.totalTrustedMisses + 1).coerceAtMost(1_000_000)
+                local.lastMissingWallMs = scan.wallTimeMs
+                if (local.seenScans >= 4 && local.seenVisits >= 2 &&
+                    local.consecutiveTrustedMisses >= REPLACEMENT_RETIRE_MISSES) {
+                    retire += signalKey
+                }
+            }
+        }
+        retire.forEach { retireRelation(lp, it) }
+
         for (obs in observations) {
             val signalKey = key(obs.kind, obs.signalId)
             val sp = signals[signalKey] ?: SignalProfile(signalKey, obs.kind, obs.signalId).also { signals[signalKey] = it }
@@ -115,8 +149,9 @@ class EnvironmentalAtlas(
             obs.measurement?.let { sp.measurement.add(it.toDouble()) }
             sp.labelIds += lp.id
 
-            val ls = lp.signals[signalKey] ?: LabelSignal().also { lp.signals[signalKey] = it }
+            val ls = lp.signals[signalKey] ?: LabelSignal(eligibleScans = 1).also { lp.signals[signalKey] = it }
             ls.seenScans += 1
+            ls.consecutiveTrustedMisses = 0
             if (newVisit) ls.seenVisits += 1
             ls.lastSeenWallMs = max(ls.lastSeenWallMs, scan.wallTimeMs)
             obs.measurement?.let { ls.measurement.add(it.toDouble()) }
@@ -149,7 +184,7 @@ class EnvironmentalAtlas(
                 val classification = SignalTrustEngine.classify(stats, scan.wallTimeMs)
                 val trust = SignalTrustEngine.weight(stats, classification, scan.wallTimeMs)
                 if (trust <= 0.01) continue
-                val presence = (local.seenScans.toDouble() / label.scanCount.coerceAtLeast(1)).coerceIn(0.0, 1.0)
+                val presence = presence(local)
                 val similarity = SignalTrustEngine.measurementSimilarity(
                     obs.measurement,
                     local.measurement.mean.takeIf { local.measurement.count > 0 }?.toFloat(),
@@ -176,14 +211,19 @@ class EnvironmentalAtlas(
                 for ((signalKey, local) in label.signals) {
                     if (signalKey in observedByKey) continue
                     val global = signals[signalKey] ?: continue
-                    if (global.kind !in observedKinds) continue // unavailable provider is not negative evidence
-                    val presence = local.seenScans.toDouble() / label.scanCount.coerceAtLeast(1)
-                    if (presence < 0.75 || local.seenScans < 4) continue
+                    if (!evidenceFamilyObserved(global.kind, observedKinds)) continue // unavailable provider is not negative evidence
+                    if (local.seenScans < 4 || local.seenVisits < 2 || presence(local) < 0.45) continue
                     val stats = stats(global, scan.wallTimeMs)
                     val classification = SignalTrustEngine.classify(stats, scan.wallTimeMs)
                     val trust = SignalTrustEngine.weight(stats, classification, scan.wallTimeMs)
                     if (trust < 0.50) continue
-                    negative += 0.025 * trust
+                    val repeatedMiss = (local.consecutiveTrustedMisses.coerceAtMost(6) / 6.0).coerceIn(0.0, 1.0)
+                    val learnedAbsence = if (local.eligibleScans > 0) {
+                        (local.totalTrustedMisses.toDouble() / local.eligibleScans).coerceIn(0.0, 1.0)
+                    } else 0.0
+                    // A first miss is intentionally tiny; repeated trusted disappearance can become
+                    // stronger, but total negative evidence remains hard-capped below positive truth.
+                    negative += (0.012 + 0.018 * repeatedMiss + 0.008 * learnedAbsence) * trust
                     if (negative >= 0.15) { negative = 0.15; break }
                 }
             }
@@ -274,7 +314,9 @@ class EnvironmentalAtlas(
             l.signals.entries.sortedBy { it.key }.forEach { (signalKey, s) ->
                 out.append("R|").append(l.id).append('|').append(signalKey).append('|').append(s.seenScans).append('|')
                     .append(s.seenVisits).append('|').append(s.lastSeenWallMs).append('|').append(s.measurement.count).append('|')
-                    .append(s.measurement.mean).append('|').append(s.measurement.m2).append('\n')
+                    .append(s.measurement.mean).append('|').append(s.measurement.m2).append('|')
+                    .append(s.eligibleScans).append('|').append(s.consecutiveTrustedMisses).append('|')
+                    .append(s.totalTrustedMisses).append('|').append(s.lastMissingWallMs).append('\n')
             }
         }
         signals.values.sortedBy { it.key }.forEach { s ->
@@ -339,7 +381,7 @@ class EnvironmentalAtlas(
                 }
             }
             for (p in relationLines) {
-                if (p.size != 9) continue
+                if (p.size != 9 && p.size != 13) continue
                 val label = labels[p[1]] ?: continue
                 val signalKey = p[2]
                 if (signalKey !in signals) continue
@@ -349,7 +391,28 @@ class EnvironmentalAtlas(
                 val mCount = p[6].toIntOrNull()?.takeIf { it in 0..scans } ?: continue
                 val mean = p[7].toDoubleOrNull()?.takeIf { it.isFinite() } ?: continue
                 val m2 = p[8].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 } ?: continue
-                val local = LabelSignal(scans, visits, last)
+                val eligible = if (p.size == 13) {
+                    p[9].toIntOrNull()?.takeIf { it in scans..label.scanCount } ?: continue
+                } else label.scanCount.coerceAtLeast(scans)
+                val consecutiveMisses = if (p.size == 13) {
+                    p[10].toIntOrNull()?.takeIf { it in 0..eligible } ?: continue
+                } else 0
+                val totalMisses = if (p.size == 13) {
+                    p[11].toIntOrNull()?.takeIf { it in 0..eligible } ?: continue
+                } else 0
+                val lastMissing = if (p.size == 13) {
+                    val raw = p[12].toLongOrNull() ?: continue
+                    if (raw == 0L) 0L else validWall(p[12], nowWallMs) ?: continue
+                } else 0L
+                val local = LabelSignal(
+                    seenScans = scans,
+                    eligibleScans = eligible,
+                    seenVisits = visits,
+                    consecutiveTrustedMisses = consecutiveMisses,
+                    totalTrustedMisses = totalMisses,
+                    lastSeenWallMs = last,
+                    lastMissingWallMs = lastMissing
+                )
                 local.measurement.count = mCount; local.measurement.mean = mean; local.measurement.m2 = m2
                 label.signals[signalKey] = local
                 signals[signalKey]?.labelIds?.add(label.id)
@@ -391,7 +454,7 @@ class EnvironmentalAtlas(
         var trustedVisits = 0
         for (label in labelProfiles) {
             val local = label.signals[profile.key] ?: continue
-            strongestPresence = max(strongestPresence, (local.seenScans.toFloat() / label.scanCount.coerceAtLeast(1)).coerceIn(0f, 1f))
+            strongestPresence = max(strongestPresence, presence(local).toFloat())
             trustedVisits = max(trustedVisits, local.seenVisits)
         }
         return AtlasSignalStats(
@@ -412,6 +475,22 @@ class EnvironmentalAtlas(
             profile.semanticCommon,
             profile.trustedAnchor
         )
+    }
+
+    private fun presence(local: LabelSignal): Double =
+        (local.seenScans.toDouble() / local.eligibleScans.coerceAtLeast(1)).coerceIn(0.0, 1.0)
+
+    private fun evidenceFamilyObserved(kind: AtlasSignalKind, observedKinds: Set<AtlasSignalKind>): Boolean = when (kind) {
+        AtlasSignalKind.WIFI_AP, AtlasSignalKind.WIFI_SSID_HINT ->
+            AtlasSignalKind.WIFI_AP in observedKinds || AtlasSignalKind.WIFI_SSID_HINT in observedKinds
+        else -> kind in observedKinds
+    }
+
+    private fun retireRelation(label: LabelProfile, signalKey: String) {
+        label.signals.remove(signalKey) ?: return
+        val profile = signals[signalKey] ?: return
+        profile.labelIds.remove(label.id)
+        if (profile.labelIds.isEmpty()) signals.remove(signalKey)
     }
 
     private fun trimBounds() {
