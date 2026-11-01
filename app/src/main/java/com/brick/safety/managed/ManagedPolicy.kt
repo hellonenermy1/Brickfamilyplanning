@@ -32,7 +32,10 @@ object ManagedPolicy {
             Manifest.permission.ACTIVITY_RECOGNITION
         )
         if (Build.VERSION.SDK_INT >= 31) permissions += Manifest.permission.BLUETOOTH_SCAN
-        if (Build.VERSION.SDK_INT >= 33) permissions += Manifest.permission.POST_NOTIFICATIONS
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
 
         permissions.forEach { permission ->
             runCatching {
