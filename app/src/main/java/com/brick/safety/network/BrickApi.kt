@@ -149,9 +149,9 @@ object BrickApi {
     }
 
     internal fun parseHealthConfig(response: JSONObject): HealthConfig {
-        val bleAnchors = if (response.has("bleAnchors") && !response.isNull("bleAnchors")) {
+        val bleAnchors: List<BleAnchorConfig>? = if (response.has("bleAnchors") && !response.isNull("bleAnchors")) {
             val array = response.optJSONArray("bleAnchors")
-            if (array == null) emptyList() else buildList {
+            if (array == null) emptyList() else buildList<BleAnchorConfig> {
                 for (i in 0 until minOf(array.length(), 8)) {
                     val j = array.optJSONObject(i) ?: continue
                     val uuid = j.optString("beaconUuid", "").lowercase()
@@ -168,9 +168,9 @@ object BrickApi {
             }
         } else null
 
-        val learnedPlaces = if (response.has("learnedPlaces") && !response.isNull("learnedPlaces")) {
+        val learnedPlaces: List<LearnedPlaceConfig>? = if (response.has("learnedPlaces") && !response.isNull("learnedPlaces")) {
             val array = response.optJSONArray("learnedPlaces")
-            if (array == null) emptyList() else buildList {
+            if (array == null) emptyList() else buildList<LearnedPlaceConfig> {
                 val seen = HashSet<String>()
                 for (i in 0 until minOf(array.length(), 32)) {
                     val j = array.optJSONObject(i) ?: continue
