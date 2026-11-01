@@ -11,8 +11,8 @@ assert.ok(html.includes("const h=x.health,base=x.latest||x.state||null,rr=x.refi
 assert.ok(html.includes("bq!=='precise'&&bq!=='assisted'"), 'fresh precise/assisted display must remain primary');
 assert.ok(html.includes("external refinement"));
 assert.ok(html.includes("refreshPhase5State"));
-assert.ok(html.includes("setInterval(()=>refreshPhase5State(id),10000)"));
-assert.ok(html.includes("ws.onopen=()=>refreshPhase5State(id)"));
+assert.ok(html.includes("phase5StateTimer=setInterval(()=>Promise.all([refreshPhase5State(id),loadLocationControl()]),10000)"), 'Phase 6 must retain the 10-second state refresh while refreshing GPS-control status in the same cycle');
+assert.ok(html.includes("ws.onopen=()=>Promise.all([refreshPhase5State(id),loadLocationControl()])"), 'WebSocket open must immediately refresh both state and GPS-control status');
 assert.ok(html.includes("Externally refined "));
 
 // The generated script must not contain the known TDZ form where h was declared only after the
