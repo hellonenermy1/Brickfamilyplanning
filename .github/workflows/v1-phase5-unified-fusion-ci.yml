@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5_SHA: 7de901f21cf2e1e19d11caba23565aaf02b33144
+  ANDROID_PHASE5_SHA: d0ba08adc0f3f2472cca53bbac5ad4eb69f735b2
 
 concurrency:
   group: brick-v1-phase5-${{ github.event.pull_request.number || github.ref }}
@@ -142,16 +142,23 @@ jobs:
           grep -F 'class ParallelEvidenceEngine' app/src/main/java/com/brick/safety/fusion/ParallelEvidenceEngine.kt >/dev/null
           grep -F 'groupBy { it.c.independenceGroup }' app/src/main/java/com/brick/safety/fusion/ParallelEvidenceEngine.kt >/dev/null
           grep -F 'conflicts expand uncertainty' app/src/main/java/com/brick/safety/fusion/ParallelEvidenceEngine.kt >/dev/null
+          grep -F 'precisionFactor' app/src/main/java/com/brick/safety/fusion/ParallelEvidenceEngine.kt >/dev/null
           grep -F 'upperState != PositionQuality.PRECISE' app/src/main/java/com/brick/safety/fusion/FusionModel.kt >/dev/null
           grep -F 'Phase4AtlasRuntime.snapshot()' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
           grep -F 'Reliability fail-safe: Phase 5 is additive' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
           grep -F 'testCorrelatedEvidenceDoesNotMultiplyIndependence' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
           grep -F 'testConflictExpandsUncertaintyInsteadOfChoosingOneAnswer' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
+          grep -F 'testDistinctiveAtlasCandidateStillCannotBecomeNamedPlaceAnchor' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
+          grep -F 'testTinyRadiusWeakEvidenceCannotOutvoteBroaderAuthoritativeArea' app/src/androidTest/java/com/brick/safety/fusion/Phase5FusionInstrumentedTest.kt >/dev/null
           grep -F 'class WitnessMeshProvider' app/src/main/java/com/brick/safety/witness/WitnessMeshProvider.kt >/dev/null
           grep -F 'brick-witness-alias-hmac-v1' app/src/main/java/com/brick/safety/witness/WitnessAliasKey.kt >/dev/null
-          grep -F 'BLUETOOTH_ADVERTISE' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'FOREGROUND_SERVICE_CONNECTED_DEVICE' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'foregroundServiceType="location|connectedDevice"' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F '.setServiceData(SERVICE_PARCEL' app/src/main/java/com/brick/safety/witness/WitnessMeshProvider.kt >/dev/null
+          ! grep -F '.addServiceUuid(SERVICE_PARCEL)' app/src/main/java/com/brick/safety/witness/WitnessMeshProvider.kt >/dev/null
           grep -F 'WitnessMeshProvider(appContext)' app/src/main/java/com/brick/safety/atlas/Phase4AtlasController.kt >/dev/null
           grep -F 'testAliasIsStableInsideSlotAndRotatesAcrossSlots' app/src/androidTest/java/com/brick/safety/witness/Phase5WitnessAliasInstrumentedTest.kt >/dev/null
+          grep -F 'testLegacyAdvertisementUsesOnlyNineByteBrickServicePayload' app/src/androidTest/java/com/brick/safety/witness/Phase5WitnessAliasInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 5 Android instrumentation
