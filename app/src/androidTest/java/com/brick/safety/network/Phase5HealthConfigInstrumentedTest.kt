@@ -10,6 +10,7 @@ class Phase5HealthConfigInstrumentedTest : BrickInstrumentationTestCase() {
         assertNotNull(config.bleAnchors)
         assertTrue(config.bleAnchors!!.isEmpty())
         assertNull(config.learnedPlaces)
+        assertNull(config.coarseNetwork)
     }
 
     fun testExplicitEmptyLearnedPlacesMeansIntentionalClear() {
@@ -17,6 +18,7 @@ class Phase5HealthConfigInstrumentedTest : BrickInstrumentationTestCase() {
         assertNotNull(config.learnedPlaces)
         assertTrue(config.learnedPlaces!!.isEmpty())
         assertNull(config.bleAnchors)
+        assertNull(config.coarseNetwork)
     }
 
     fun testLearnedPlacesAreBoundedValidatedAndDeduplicated() {
@@ -41,5 +43,34 @@ class Phase5HealthConfigInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(config.learnedPlaces!!.isEmpty())
         assertNotNull(config.bleAnchors)
         assertTrue(config.bleAnchors!!.isEmpty())
+        assertNull(config.coarseNetwork)
+    }
+
+    fun testCoarseNetworkAcceptsOnlyValidCoordinatesAndDoesNotTrustServerRadius() {
+        val config = BrickApi.parseHealthConfig(
+            JSONObject().put(
+                "coarseNetwork",
+                JSONObject()
+                    .put("latitude", 1.3521)
+                    .put("longitude", 103.8198)
+                    .put("radiusM", 1)
+            )
+        )
+        assertNotNull(config.coarseNetwork)
+        assertEquals(1.3521, config.coarseNetwork!!.latitude)
+        assertEquals(103.8198, config.coarseNetwork!!.longitude)
+    }
+
+    fun testMalformedCoarseNetworkIsDiscarded() {
+        assertNull(
+            BrickApi.parseHealthConfig(
+                JSONObject().put("coarseNetwork", JSONObject().put("latitude", 91).put("longitude", 103.8))
+            ).coarseNetwork
+        )
+        assertNull(
+            BrickApi.parseHealthConfig(
+                JSONObject().put("coarseNetwork", JSONObject().put("latitude", 1.3).put("longitude", 181))
+            ).coarseNetwork
+        )
     }
 }

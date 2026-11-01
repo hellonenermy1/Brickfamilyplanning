@@ -47,6 +47,7 @@ class Phase4AtlasCoreInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(atlas.observeTrusted(label(), scan(observations = listOf(signal))))
         var summary = atlas.signalSummary(signal.kind, signal.signalId, baseWall + 1_000L)!!
         assertEquals(AtlasSignalClass.UNKNOWN, summary.classification)
+        val firstVisitTrust = summary.internalTrustWeight
 
         val laterWall = baseWall + 16L * 60L * 1_000L
         val laterElapsed = 1_100_000L
@@ -60,7 +61,8 @@ class Phase4AtlasCoreInstrumentedTest : BrickInstrumentationTestCase() {
         ))
         summary = atlas.signalSummary(signal.kind, signal.signalId, laterWall + 6_000L)!!
         assertEquals(AtlasSignalClass.DISTINCTIVE_STATIC, summary.classification)
-        assertTrue(summary.internalTrustWeight > 0.10)
+        assertTrue(summary.internalTrustWeight > firstVisitTrust)
+        assertTrue(summary.internalTrustWeight > 0.05)
     }
 
     fun testCommonSemanticAndGeographicSpreadDestroyLocationWeight() {

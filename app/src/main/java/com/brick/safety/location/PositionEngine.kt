@@ -205,7 +205,8 @@ class PositionEngine(private val context: Context, private val motion: MotionEng
                 phase3 = phase3Fallback,
                 atlas = Phase4AtlasRuntime.snapshot(),
                 anchor = bleInput,
-                lastKnown = lastInput
+                lastKnown = lastInput,
+                activityMode = activity.mode
             )
         }.getOrNull()
         if (selection != null) {

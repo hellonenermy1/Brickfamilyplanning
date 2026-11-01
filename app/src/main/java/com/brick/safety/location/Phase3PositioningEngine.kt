@@ -9,7 +9,9 @@ import kotlin.math.max
 data class Phase3FallbackEstimate(
     val position: ParticleEstimate,
     val stepDelta: Int,
-    val zeroVelocityApplied: Boolean
+    val zeroVelocityApplied: Boolean,
+    /** Geometry for only the bounded route candidates already selected by the particle engine. */
+    val routeHypotheses: List<LocalRouteSegment> = emptyList()
 )
 
 data class Phase3PositioningHealth(
@@ -113,7 +115,9 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
         if (dtMs == 0L) {
             val current = particles.estimate(nowElapsedMs) ?: return null
             publishHealth(nowElapsedMs)
-            return current.takeUnless { it.expired }?.let { Phase3FallbackEstimate(it, 0, false) }
+            return current.takeUnless { it.expired }?.let {
+                Phase3FallbackEstimate(it, 0, false, routeHypothesesFor(it.routeCandidateIds))
+            }
         }
 
         val snapshot = motion.phase3Snapshot()
@@ -181,7 +185,9 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
         val estimate = particles.propagate(nowElapsedMs, delta, mode, routeGraph, magneticSupport, landmarkSupport) ?: return null
         lastMotionStepTotal = snapshot.totalSteps
         persist(force = false)
-        return estimate.takeUnless { it.expired }?.let { Phase3FallbackEstimate(it, rawStepDelta, delta.zeroVelocityApplied) }
+        return estimate.takeUnless { it.expired }?.let {
+            Phase3FallbackEstimate(it, rawStepDelta, delta.zeroVelocityApplied, routeHypothesesFor(it.routeCandidateIds))
+        }
     }
 
     @Synchronized
@@ -218,6 +224,12 @@ class Phase3PositioningEngine(context: Context, private val motion: MotionEngine
             routeConstrained = estimate?.routeConstrained == true,
             stateHealthy = healthPrefs.getBoolean("phase3StateHealthy", true)
         )
+    }
+
+    private fun routeHypothesesFor(ids: List<String>): List<LocalRouteSegment> {
+        if (ids.isEmpty()) return emptyList()
+        val byId = routeGraph.all().associateBy { it.id }
+        return ids.asSequence().mapNotNull(byId::get).take(8).toList()
     }
 
     private fun restore() {

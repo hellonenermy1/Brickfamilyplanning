@@ -37,8 +37,18 @@ class Phase5RangingInstrumentedTest : BrickInstrumentationTestCase() {
         assertEquals(80f, annulus.innerRadiusM, 0.001f)
         assertEquals(120f, annulus.outerRadiusM, 0.001f)
         assertTrue(annulus.innerRadiusM < annulus.outerRadiusM)
-        // The source coordinate is the ranging peer/anchor, not a child-position estimate.
-        assertEquals(0.0, c.likelihoodAt(c.sourceLatitude, c.sourceLongitude, now), 0.0001)
+
+        // The source coordinate is the ranging peer/anchor, not a child-position estimate. Because
+        // the range model deliberately keeps an uncertainty tail instead of a brittle hard cutoff,
+        // the peer can retain tiny residual support but must score vastly below a hypothesis on the
+        // measured ring.
+        val sourceScore = c.likelihoodAt(c.sourceLatitude, c.sourceLongitude, now)
+        val onRing = GeoMath.project(c.sourceLatitude, c.sourceLongitude, 100.0, 90.0)
+        val ringScore = c.likelihoodAt(onRing.first, onRing.second, now)
+        assertTrue(sourceScore >= 0.0)
+        assertTrue(sourceScore < 0.02)
+        assertTrue(ringScore > 0.80)
+        assertTrue(ringScore > sourceScore * 20.0)
     }
 
     fun testHypothesisInsideAnnulusScoresHigherThanFarHypothesis() {

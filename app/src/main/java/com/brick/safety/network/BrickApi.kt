@@ -2,6 +2,7 @@ package com.brick.safety.network
 
 import com.brick.safety.crypto.DeviceKeys
 import com.brick.safety.fusion.LearnedPlaceDefinition
+import com.brick.safety.fusion.Phase5CoarseNetworkRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -29,14 +30,20 @@ object BrickApi {
         val longitude: Double,
         val radiusM: Float
     )
+    data class CoarseNetworkConfig(
+        val latitude: Double,
+        val longitude: Double
+    )
     /**
      * Null means the server intentionally omitted that configuration family, usually because its
-     * backing query failed. Empty means the authenticated server successfully returned zero items.
-     * Callers must preserve their last durable cache on null and clear it on empty.
+     * backing query/source was unavailable. Empty means the authenticated server successfully
+     * returned zero items. Callers preserve their last durable cache on null and clear it on empty.
+     * Coarse network is process-local/short-lived rather than durable.
      */
     data class HealthConfig(
         val bleAnchors: List<BleAnchorConfig>?,
-        val learnedPlaces: List<LearnedPlaceConfig>?
+        val learnedPlaces: List<LearnedPlaceConfig>?,
+        val coarseNetwork: CoarseNetworkConfig?
     )
 
     private const val LOCATION_V2_BYTES = 90
@@ -187,7 +194,19 @@ object BrickApi {
             }
         } else null
 
-        return HealthConfig(bleAnchors = bleAnchors, learnedPlaces = learnedPlaces)
+        val coarseNetwork = if (response.has("coarseNetwork") && !response.isNull("coarseNetwork")) {
+            response.optJSONObject("coarseNetwork")?.let { j ->
+                val lat = j.optDouble("latitude", Double.NaN)
+                val lon = j.optDouble("longitude", Double.NaN)
+                if (lat.isFinite() && lat in -90.0..90.0 && lon.isFinite() && lon in -180.0..180.0) {
+                    // Radius is intentionally not trusted from the server. Android enforces the
+                    // fixed 50 km honesty floor inside Phase5CoarseNetworkRuntime.
+                    CoarseNetworkConfig(lat, lon)
+                } else null
+            }
+        } else null
+
+        return HealthConfig(bleAnchors = bleAnchors, learnedPlaces = learnedPlaces, coarseNetwork = coarseNetwork)
     }
 
     private fun applyLearnedPlaceConfig(deviceId: String, config: HealthConfig) {
@@ -202,6 +221,11 @@ object BrickApi {
         Phase5LearnedPlaceRuntime.update(deviceId, definitions)
     }
 
+    private fun applyCoarseNetworkConfig(deviceId: String, config: HealthConfig) {
+        val coarse = config.coarseNetwork ?: return
+        Phase5CoarseNetworkRuntime.update(deviceId, coarse.latitude, coarse.longitude)
+    }
+
     fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): List<BleAnchorConfig> {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
         val url = endpoint(baseUrl, "/api/device/$deviceId/health")
@@ -214,6 +238,7 @@ object BrickApi {
         if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
         val config = parseHealthConfig(JSONObject(text))
         applyLearnedPlaceConfig(deviceId, config)
+        applyCoarseNetworkConfig(deviceId, config)
         return config.bleAnchors ?: emptyList()
     }
 
