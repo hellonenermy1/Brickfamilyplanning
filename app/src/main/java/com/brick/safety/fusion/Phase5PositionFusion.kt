@@ -39,8 +39,12 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         coarseNetwork: FusionConstraint? = null,
         activityMode: ActivityMode = ActivityMode.UNKNOWN
     ): Phase5FusionSelection? {
+        // Environmental context may reorder only the already-plausible Phase 3 route IDs. The
+        // matcher does not change the numerical Phase 3 position/uncertainty and Atlas still enters
+        // the central engine only once below, preserving anti-double-counting.
+        val effectivePhase3 = Phase5RadioRouteMatcher.rerank(phase3, atlas, nowElapsedMs)
         val constraints = ArrayList<FusionConstraint>(6)
-        Phase5FusionAdapter.fromPhase3(phase3, nowElapsedMs)?.let(constraints::add)
+        Phase5FusionAdapter.fromPhase3(effectivePhase3, nowElapsedMs)?.let(constraints::add)
         // Generic Atlas and a named learned-place interpretation deliberately share
         // `atlas.environment`; the central engine keeps only the strongest interpretation so a
         // single environmental observation cannot vote twice.
@@ -116,9 +120,9 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
 
         val selection = Phase5FusionSelection(
             result = result,
-            speedMps = phase3?.position?.speedMps?.takeIf { it.isFinite() && it >= 0f },
-            bearingDeg = phase3?.position?.headingDeg?.takeIf { it.isFinite() },
-            stepDelta = phase3?.stepDelta ?: 0,
+            speedMps = effectivePhase3?.position?.speedMps?.takeIf { it.isFinite() && it >= 0f },
+            bearingDeg = effectivePhase3?.position?.headingDeg?.takeIf { it.isFinite() },
+            stepDelta = effectivePhase3?.stepDelta ?: 0,
             source = source,
             originalRealtimeHypothesisId = "realtime",
             storedHypotheses = hypotheses
