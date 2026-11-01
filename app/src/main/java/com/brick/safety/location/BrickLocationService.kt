@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.brick.safety.R
 import com.brick.safety.activity.ActivityEngine
 import com.brick.safety.activity.ActivityMode
+import com.brick.safety.atlas.Phase4AtlasRuntime
 import com.brick.safety.data.CrashOutbox
 import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
@@ -42,6 +43,7 @@ class BrickLocationService : Service() {
         private const val LOCATION_STALE_MS = 45_000L
         private const val FIRST_FIX_TIMEOUT_MS = 60_000L
         private const val HEALTH_INTERVAL_MS = 30_000L
+        private const val ATLAS_PULSE_MS = 5_000L
         private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
         private const val BLE_SCAN_NORMAL_MS = 60_000L
         private const val BLE_SCAN_DEGRADED_MS = 30_000L
@@ -73,6 +75,7 @@ class BrickLocationService : Service() {
     @Volatile private var lastAckElapsed = 0L
     @Volatile private var lastHealthElapsed = 0L
     @Volatile private var lastBleScanElapsed = 0L
+    @Volatile private var lastAtlasPulseElapsed = 0L
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
     @Volatile private var trackingIntervalMs = 3_000L
@@ -195,6 +198,11 @@ class BrickLocationService : Service() {
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
             val now = SystemClock.elapsedRealtime()
+            if (lastAtlasPulseElapsed <= 0L || now < lastAtlasPulseElapsed || now - lastAtlasPulseElapsed >= ATLAS_PULSE_MS) {
+                lastAtlasPulseElapsed = now
+                runCatching { Phase4AtlasRuntime.pulse(this) }
+            }
+
             val activity = activityEngine.snapshot()
             val threshold = if (isSosActive()) 2_000L else max(8_000L, trackingIntervalMs * 2 + 2_000L)
             if (lastLocationElapsed == 0L || now - lastLocationElapsed < threshold) return@scheduleWithFixedDelay
@@ -511,6 +519,7 @@ class BrickLocationService : Service() {
         runCatching { motionEngine.stop() }
         runCatching { gnssMonitor.stop() }
         runCatching { bleAnchorEngine.stop() }
+        runCatching { Phase4AtlasRuntime.stop() }
         locationSubscribed = false
         runCatching { RecoveryScheduler.ensureScheduled(this) }
         runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
