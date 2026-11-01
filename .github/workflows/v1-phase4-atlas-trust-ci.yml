@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: f6cfcc178ee8a4e7799c176e350c5b967c56069d
+  ANDROID_PHASE4_SHA: 29a6530d60cc041299b3818ebc9781fb9ea2e34b
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -151,6 +151,9 @@ jobs:
           grep -F 'AtlasPrivacyId.reduce("cell"' app/src/main/java/com/brick/safety/atlas/CellularEnvironmentProvider.kt >/dev/null
           grep -F 'AtlasPrivacyId.reduce("lan"' app/src/main/java/com/brick/safety/atlas/LanEnvironmentProvider.kt >/dev/null
           grep -F 'AtlasPrivacyId.reduce("gnss"' app/src/main/java/com/brick/safety/atlas/GnssSkyProvider.kt >/dev/null
+          grep -F 'class CompanionPresenceController' app/src/main/java/com/brick/safety/atlas/CompanionPresence.kt >/dev/null
+          grep -F 'REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F '"device.context"' app/src/main/java/com/brick/safety/atlas/DeviceContextProvider.kt >/dev/null
           grep -F 'ATLAS_PULSE_MS = 5_000L' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'Phase4AtlasRuntime.stop()' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'class AtlasTransitionTracker' app/src/main/java/com/brick/safety/atlas/AtlasTransitionTracker.kt >/dev/null
@@ -159,6 +162,7 @@ jobs:
           grep -F 'testCopiedSsidAcrossDistantPlacesCannotBecomeAnAnchor' app/src/androidTest/java/com/brick/safety/atlas/Phase4SignalTrustInstrumentedTest.kt >/dev/null
           grep -F 'testLanAbsenceOnlyCountsInsideSameDiscoveryCategory' app/src/androidTest/java/com/brick/safety/atlas/Phase4SignalTrustInstrumentedTest.kt >/dev/null
           grep -F 'testWifiRouteGradientNeedsRepeatedStableApsAndStaysCorrelated' app/src/androidTest/java/com/brick/safety/atlas/Phase4TransitionInstrumentedTest.kt >/dev/null
+          grep -F 'testCompanionAndChargingCannotManufactureIndependentConfirmations' app/src/androidTest/java/com/brick/safety/atlas/Phase4CompanionContextInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 4 Android instrumentation
