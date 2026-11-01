@@ -16,7 +16,9 @@ class FakePrepared {
 class FakeD1 { constructor(db) { this.db = db; } prepare(sql) { return new FakePrepared(this.db, sql); } }
 
 const db = new DatabaseSync(':memory:');
-for (const file of ['schema/001_init.sql','schema/003_phase4_safety.sql','schema/004_phase5_operations.sql','schema/009_v1_phase5_fusion.sql']) {
+// Mirror the real dependency order: Phase 2 evidence creates witness_authorizations and the fixed
+// ground_receivers registry that Phase 5 sightings reference.
+for (const file of ['schema/001_init.sql','schema/003_phase4_safety.sql','schema/004_phase5_operations.sql','schema/008_v1_phase2_evidence.sql','schema/009_v1_phase5_fusion.sql']) {
   db.exec(fs.readFileSync(file, 'utf8'));
 }
 const child = '11111111-1111-4111-8111-111111111111';
