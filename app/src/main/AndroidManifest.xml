@@ -46,10 +46,21 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
-        <!-- Only Android may bind this service. It receives presence for devices explicitly
-             associated with Brick; it is not a generic exported Bluetooth endpoint. -->
+        <!-- Exactly one of these system-only companion callbacks is enabled for a given Android
+             version. This prevents a newer framework type from being loaded on an older phone. -->
         <service
-            android:name=".atlas.BrickCompanionDeviceService"
+            android:name=".atlas.BrickCompanionLegacyService"
+            android:enabled="@bool/brick_companion_legacy_service_enabled"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".atlas.BrickCompanionAssociationService"
+            android:enabled="@bool/brick_companion_association_service_enabled"
             android:exported="true"
             android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
             <intent-filter>
