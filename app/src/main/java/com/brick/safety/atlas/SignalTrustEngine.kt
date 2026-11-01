@@ -25,7 +25,7 @@ internal data class AtlasSignalStats(
     val trustedAnchor: Boolean
 )
 
-object SignalTrustEngine {
+internal object SignalTrustEngine {
     private const val DAY_MS = 24L * 60L * 60L * 1_000L
     private const val STALE_MS = 90L * DAY_MS
 
