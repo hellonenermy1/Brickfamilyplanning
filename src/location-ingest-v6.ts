@@ -4,10 +4,12 @@ import type { BrickDevice } from "./device-do";
 import { decodeLivePacket, V1_BYTES, V2_BYTES, type LivePacket } from "./protocol";
 import { constrainFallbackToRoute } from "./route-constraint";
 import { evaluateSafetyBatchV6 } from "./safety-batch-v6";
+import { preciseEndpointStatements, processRefinementsForDevice } from "./phase5-refined-history";
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 export type LocationIngestEnv = {
   DB: D1Database;
+  HISTORY: R2Bucket;
   MAPS: R2Bucket;
   EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
@@ -82,7 +84,10 @@ async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets
   const advance = env.DB.prepare(
     "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
   ).bind(highest.epoch, highest.sequence, now, deviceId);
-  const [insertResult, advanceResult] = await env.DB.batch([insert, advance]);
+  const endpointStatements = preciseEndpointStatements(env.DB, deviceId, packets, now);
+  // Endpoint indexing is part of the durable DB write before ACK. The heavier R2 smoothing pass is
+  // intentionally not: a temporary refinement failure must never hold up live safety/location ACKs.
+  const [insertResult, advanceResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
   const liveAdvanced = (advanceResult?.meta.changes ?? 0) > 0;
   if (liveAdvanced) {
     await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
@@ -90,8 +95,16 @@ async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets
   return {
     liveAdvanced,
     insertedCount: insertResult?.meta.changes ?? 0,
+    preciseEndpointCount: endpointStatements.length,
     accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence }))
   };
+}
+
+async function tryRefineAfterPreciseEndpoint(env: LocationIngestEnv, deviceId: string, preciseEndpointCount: number) {
+  if (preciseEndpointCount <= 0) return;
+  // Endpoint metadata and hypothesis frames remain durable if this optional R2 pass fails. A future
+  // endpoint/frame or scheduled maintenance can retry; the child ACK must not depend on smoothing.
+  try { await processRefinementsForDevice(env, deviceId, Date.now()); } catch { /* retry later */ }
 }
 
 export async function ingestLocationV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -110,6 +123,7 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   await queueLocations(env, deviceId, [{ packet, rawPacket }]);
   const persisted = await persistAccepted(env, deviceId, [packet]);
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
+  await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({
     ack: packet.sequence,
     duplicate: persisted.insertedCount === 0,
@@ -152,6 +166,7 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
   await queueLocations(env, deviceId, packets.map((packet, i) => ({ packet, rawPacket: rawPackets[i] })));
   const persisted = await persistAccepted(env, deviceId, packets);
   await evaluateSafetyBatchV6(env, deviceId, packets);
+  await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({
     acked: persisted.accepted,
     count: persisted.accepted.length,
