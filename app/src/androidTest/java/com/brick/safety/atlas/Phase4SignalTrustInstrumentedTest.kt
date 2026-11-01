@@ -139,4 +139,123 @@ class Phase4SignalTrustInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(after.supportWeight > 0.30)
         assertTrue(after.negativePenalty <= 0.15)
     }
+
+    fun testCopiedSsidAcrossDistantPlacesCannotBecomeAnAnchor() {
+        val atlas = EnvironmentalAtlas()
+        val copied = obs(
+            "ssid:copiednetwork000000000000",
+            AtlasSignalKind.WIFI_SSID_HINT,
+            "wifi.scan",
+            null
+        )
+        val places = listOf(
+            Triple("copied-a", 1.3000, 103.8000),
+            Triple("copied-b", 1.3500, 103.8500),
+            Triple("copied-c", 1.4000, 103.9000)
+        )
+        places.forEachIndexed { index, place ->
+            repeat(2) { visit ->
+                val wall = baseWall + (index * 50L + visit * 20L) * 60_000L
+                val elapsed = 1_000_000L + index * 4_000_000L + visit * 1_500_000L
+                assertTrue(atlas.observeTrusted(
+                    label(place.first, place.second, place.third, elapsed, wall),
+                    scan(elapsed, wall, listOf(copied))
+                ))
+            }
+        }
+        val summary = atlas.signalSummary(
+            copied.kind,
+            copied.signalId,
+            baseWall + 150L * 60_000L
+        )!!
+        assertEquals(AtlasSignalClass.GLOBAL_COMMON, summary.classification)
+        assertTrue(summary.internalTrustWeight <= 0.02)
+        assertTrue(atlas.match(scan(20_000_000L, baseWall + 151L * 60_000L, listOf(copied))).isEmpty())
+    }
+
+    fun testRepeatedTrustedDisappearanceRetiresReplacedBeaconAndLanDevice() {
+        val atlas = EnvironmentalAtlas()
+        val wifi = obs("wifi:stablehome00000000000000", measurement = -50f)
+        val oldBle = obs("ble:oldbeacon000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -58f)
+        val newBle = obs("ble:newbeacon000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -57f)
+        val oldLan = obs("lan:olddevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd", null)
+        val newLan = obs("lan:newdevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd", null)
+
+        repeat(4) { visit ->
+            val wall = baseWall + visit * 20L * 60_000L
+            val elapsed = 100_000L + visit * 1_500_000L
+            assertTrue(atlas.observeTrusted(
+                label("replacement-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(wifi, oldBle, oldLan))
+            ))
+        }
+
+        // One trusted miss is intentionally not enough to erase a device.
+        run {
+            val wall = baseWall + 90L * 60_000L
+            val elapsed = 8_000_000L
+            assertTrue(atlas.observeTrusted(
+                label("replacement-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(wifi, newBle, newLan))
+            ))
+            assertNotNull(atlas.signalSummary(oldBle.kind, oldBle.signalId, wall + 1_000L))
+            assertNotNull(atlas.signalSummary(oldLan.kind, oldLan.signalId, wall + 1_000L))
+        }
+
+        repeat(11) { n ->
+            val wall = baseWall + (91L + n) * 60_000L
+            val elapsed = 8_100_000L + n * 70_000L
+            assertTrue(atlas.observeTrusted(
+                label("replacement-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(wifi, newBle, newLan))
+            ))
+        }
+        assertNull(atlas.signalSummary(oldBle.kind, oldBle.signalId, baseWall + 103L * 60_000L))
+        assertNull(atlas.signalSummary(oldLan.kind, oldLan.signalId, baseWall + 103L * 60_000L))
+
+        // A later visit lets the stable replacements gain normal repeated-visit status.
+        val finalWall = baseWall + 125L * 60_000L
+        val finalElapsed = 10_000_000L
+        assertTrue(atlas.observeTrusted(
+            label("replacement-home", 1.3000, 103.8000, finalElapsed, finalWall),
+            scan(finalElapsed, finalWall, listOf(wifi, newBle, newLan))
+        ))
+        assertNotNull(atlas.signalSummary(newBle.kind, newBle.signalId, finalWall + 1_000L))
+        assertNotNull(atlas.signalSummary(newLan.kind, newLan.signalId, finalWall + 1_000L))
+    }
+
+    fun testChangingCellularEnvironmentCannotRelocatePhoneAgainstIndependentEvidence() {
+        val atlas = EnvironmentalAtlas()
+        val homeWifi = obs("wifi:homewifi0000000000000000", measurement = -50f)
+        val homeBle = obs("ble:homeble00000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -60f)
+        val oldCell = obs("cell:homecell000000000000000", AtlasSignalKind.CELLULAR, "cell.env", -92f)
+        val newCell = obs("cell:newcell0000000000000000", AtlasSignalKind.CELLULAR, "cell.env", -88f)
+        val schoolWifi = obs("wifi:schoolwifi00000000000000", measurement = -52f)
+        val schoolBle = obs("ble:schoolble000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -62f)
+        val schoolCell = obs("cell:schoolcell0000000000000", AtlasSignalKind.CELLULAR, "cell.env", -90f)
+
+        repeat(4) { visit ->
+            val wall = baseWall + visit * 20L * 60_000L
+            val elapsed = 100_000L + visit * 1_500_000L
+            atlas.observeTrusted(
+                label("cell-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(homeWifi, homeBle, oldCell))
+            )
+        }
+        repeat(4) { visit ->
+            val wall = baseWall + (100L + visit * 20L) * 60_000L
+            val elapsed = 10_000_000L + visit * 1_500_000L
+            atlas.observeTrusted(
+                label("cell-school", 1.3600, 103.8600, elapsed, wall),
+                scan(elapsed, wall, listOf(schoolWifi, schoolBle, schoolCell))
+            )
+        }
+
+        val result = atlas.match(
+            scan(20_000_000L, baseWall + 181L * 60_000L, listOf(homeWifi, homeBle, newCell))
+        ).first()
+        assertEquals("cell-home", result.labelId)
+        assertTrue(result.independenceGroups >= 2)
+        assertTrue(result.negativePenalty <= 0.15)
+    }
 }
