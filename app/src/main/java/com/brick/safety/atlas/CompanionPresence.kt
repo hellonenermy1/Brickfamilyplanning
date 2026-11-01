@@ -6,6 +6,7 @@ import android.companion.CompanionDeviceService
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.RequiresApi
 
 /**
  * Presence state for devices explicitly associated with Brick through Android's Companion Device
@@ -77,16 +78,10 @@ internal object CompanionPresenceStore {
     }
 }
 
-/**
- * System-bound callback only. Presence is supplied by Android for an association the user/admin has
- * explicitly approved. Brick does not run a second continuous Bluetooth scanner for companions.
- *
- * The deprecated callback overloads are intentionally retained because Brick currently supports
- * Android versions below API 36. They remain the safe common denominator for API 31-35 and avoid
- * making this service class reference API-36-only types when loaded on an older phone.
- */
+/** API 31-32 callback component. It never references API-33 AssociationInfo. */
 @Suppress("DEPRECATION")
-class BrickCompanionDeviceService : CompanionDeviceService() {
+@RequiresApi(Build.VERSION_CODES.S)
+class BrickCompanionLegacyService : CompanionDeviceService() {
     override fun onDeviceAppeared(address: String) {
         CompanionPresenceStore.noteLegacyAddress(this, address, true)
     }
@@ -94,7 +89,12 @@ class BrickCompanionDeviceService : CompanionDeviceService() {
     override fun onDeviceDisappeared(address: String) {
         CompanionPresenceStore.noteLegacyAddress(this, address, false)
     }
+}
 
+/** API 33+ callback component. Manifest resource gating keeps this class unloaded on API 31-32. */
+@Suppress("DEPRECATION")
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+class BrickCompanionAssociationService : CompanionDeviceService() {
     override fun onDeviceAppeared(associationInfo: AssociationInfo) {
         CompanionPresenceStore.noteAssociation(this, associationInfo.id, true)
     }
@@ -109,6 +109,17 @@ internal data class CompanionAssociationSnapshot(
     val presentSignalIds: List<String>,
     val capabilityDetail: String
 )
+
+private data class CompanionAssociationDescriptor(val id: Int, val address: String?)
+
+/** Newer framework references stay isolated from the controller class loaded on older Android. */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private object CompanionApi33 {
+    fun associations(manager: CompanionDeviceManager): List<CompanionAssociationDescriptor> =
+        manager.myAssociations.map { info ->
+            CompanionAssociationDescriptor(info.id, info.deviceMacAddress?.toString())
+        }
+}
 
 /**
  * Registers only existing CompanionDeviceManager associations for presence callbacks. Association
@@ -132,9 +143,9 @@ internal class CompanionPresenceController(context: Context) {
 
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val associations = cdm.myAssociations
+                val associations = CompanionApi33.associations(cdm)
                 val validIds = associations.mapTo(linkedSetOf()) { it.id }
-                val addresses = associations.mapNotNull { info -> info.deviceMacAddress?.toString() }
+                val addresses = associations.mapNotNull { it.address }
                 addresses.forEach { address -> ensureLegacyObservation(cdm, address) }
                 CompanionPresenceStore.retainAssociations(appContext, validIds, emptySet())
                 val present = CompanionPresenceStore.presentAssociationIds(appContext)
