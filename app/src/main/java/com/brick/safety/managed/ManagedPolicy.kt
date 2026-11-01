@@ -6,29 +6,58 @@ import android.content.ComponentName
 import android.content.Context
 import android.location.LocationManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.UserManager
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
+import java.util.concurrent.atomic.AtomicBoolean
 
 object ManagedPolicy {
+    private const val RECONCILE_RETRY_MS = 15_000L
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val reconcileScheduled = AtomicBoolean(false)
+    @Volatile private var reconcileContext: Context? = null
+
+    private val reconcileRunnable = Runnable {
+        reconcileScheduled.set(false)
+        reconcileContext?.let { context -> runCatching { apply(context) } }
+    }
+
     fun isDeviceOwner(context: Context): Boolean {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
         return runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
     }
 
+    private fun scheduleReconcile(context: Context) {
+        reconcileContext = context.applicationContext
+        if (reconcileScheduled.compareAndSet(false, true)) {
+            mainHandler.postDelayed(reconcileRunnable, RECONCILE_RETRY_MS)
+        }
+    }
+
+    private fun clearReconcile() {
+        reconcileContext = null
+        if (reconcileScheduled.getAndSet(false)) {
+            mainHandler.removeCallbacks(reconcileRunnable)
+        }
+    }
+
     /**
      * Device Owner is always the first control path. If the OEM accepts the call but the actual
      * Android Location state still does not match the authenticated parent request, Phase 6 may use
-     * the optional typed privileged bridge as a fallback. Failure of either path never prevents
-     * Brick's foreground tracker from starting/recovering.
+     * the optional typed privileged bridge as a fallback. A remaining mismatch is retried every
+     * 15 seconds while this process is alive, so a temporary Shizuku outage/permission transition
+     * can self-heal without waiting for another parent command or manual restart.
      *
      * The return value intentionally preserves the pre-Phase-6 meaning: true only when Brick is
      * Device Owner. Actual desired-vs-observed Location state is reported separately in health.
      */
     @Suppress("DEPRECATION")
     fun apply(context: Context): Boolean {
-        val dpm = context.getSystemService(DevicePolicyManager::class.java)
-        val owner = runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
-        val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
+        val appContext = context.applicationContext
+        val dpm = appContext.getSystemService(DevicePolicyManager::class.java)
+        val owner = runCatching { dpm.isDeviceOwnerApp(appContext.packageName) }.getOrDefault(false)
+        val admin = ComponentName(appContext, BrickDeviceAdminReceiver::class.java)
 
         if (owner) {
             val permissions = mutableListOf(
@@ -47,7 +76,7 @@ object ManagedPolicy {
                 runCatching {
                     dpm.setPermissionGrantState(
                         admin,
-                        context.packageName,
+                        appContext.packageName,
                         permission,
                         DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
                     )
@@ -64,19 +93,24 @@ object ManagedPolicy {
             }
         }
 
-        val desiredOn = ParentLocationStateStore.read(context).desired == DesiredLocationState.ON
+        val desiredOn = ParentLocationStateStore.read(appContext).desired == DesiredLocationState.ON
         if (owner && Build.VERSION.SDK_INT >= 30) {
             runCatching { dpm.setLocationEnabled(admin, desiredOn) }
             runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
         }
 
-        // Never assume a policy call worked: verify the real system state and use Shizuku only as
-        // a bounded fallback when it still mismatches. The bridge itself verifies state after write.
-        val locationManager = context.getSystemService(LocationManager::class.java)
-        val actualOn = runCatching { locationManager.isLocationEnabled }.getOrNull()
-        if (actualOn != null && actualOn != desiredOn) {
-            runCatching { PrivilegedBridgeRuntime.current().setParentLocationState(desiredOn) }
+        // Never assume a policy call worked. Verify the real system state, use Shizuku only as a
+        // bounded fallback when needed, then verify again. Any remaining mismatch is retried later.
+        val locationManager = appContext.getSystemService(LocationManager::class.java)
+        val before = runCatching { locationManager.isLocationEnabled }.getOrNull()
+        if (before != null && before != desiredOn) {
+            runCatching {
+                PrivilegedBridgeRuntime.current().setParentLocationState(desiredOn).getOrDefault(false)
+            }
         }
+
+        val after = runCatching { locationManager.isLocationEnabled }.getOrNull()
+        if (after == desiredOn) clearReconcile() else scheduleReconcile(appContext)
         return owner
     }
 }
