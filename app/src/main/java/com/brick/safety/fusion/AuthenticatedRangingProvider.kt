@@ -76,7 +76,7 @@ interface AuthenticatedRangingProvider {
     fun snapshot(nowElapsedMs: Long): AuthenticatedRangingSnapshot
 }
 
-/** Runtime capability registry. Missing provider means VERIFIED-IN-SOURCE unsupported, not failure. */
+/** Missing provider is reported as UNSUPPORTED for this runtime, never silently assumed available. */
 object AuthenticatedRangingCapabilities {
     fun snapshot(
         providers: Collection<AuthenticatedRangingProvider>,
