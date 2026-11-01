@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: 59782442bf8e242acece6a28497f75367c6c1fb5
+  ANDROID_PHASE4_SHA: 004d778356f7632990c658c80b3132762a3e1092
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -114,7 +114,6 @@ jobs:
           else
             status=$?
           fi
-
           echo "::group::Phase 4 Gradle compiler/lint diagnostics"
           grep -nE '(^e: |^.*error:|Unresolved reference|Type mismatch|Cannot access|None of the following|Overload resolution ambiguity|FAILURE:|What went wrong:|Execution failed for task|A failure occurred while executing|Lint found|[0-9]+ errors?, [0-9]+ warnings?)' "$LOG" | head -n 300 || true
           echo "--- final Gradle context ---"
