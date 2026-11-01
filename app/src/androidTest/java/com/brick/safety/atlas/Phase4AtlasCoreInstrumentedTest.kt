@@ -68,9 +68,9 @@ class Phase4AtlasCoreInstrumentedTest : InstrumentationTestCase() {
         val common = obs("ssid:333333333333333333333333", AtlasSignalKind.WIFI_SSID_HINT, common = true)
         val mobile = obs("ble:444444444444444444444444", AtlasSignalKind.BLE_DEVICE, group = "ble.scan")
         val points = listOf(
-            Triple("p1", 1.3000, 103.8000),
-            Triple("p2", 1.3150, 103.8150),
-            Triple("p3", 1.3300, 103.8300)
+            Triple("pt1", 1.3000, 103.8000),
+            Triple("pt2", 1.3150, 103.8150),
+            Triple("pt3", 1.3300, 103.8300)
         )
         points.forEachIndexed { index, point ->
             val wall = baseWall + index * 20L * 60L * 1_000L
