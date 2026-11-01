@@ -5,14 +5,16 @@ const modulePath = process.argv[2];
 if (!modulePath) throw new Error('usage: test-phase4-provider-contract.mjs <evidence-protocol-module>');
 const protocol = await import(pathToFileURL(modulePath).href + `?v=${Date.now()}`);
 
+// These codes intentionally mirror EvidenceModel.kt. This is a cross-platform wire contract test,
+// not merely a decoder-range test, so changing either side requires changing this table deliberately.
 const PROVIDERS = [
   { provider: 11, family: 7, group: 'wifi.scan', payload: '{"v":1,"aps":[]}' },
   // RTT intentionally shares wifi.scan: range + RSSI are correlated observations of one RF environment.
-  { provider: 16, family: 10, group: 'wifi.scan', payload: '{"v":1,"ranges":[]}' },
+  { provider: 16, family: 11, group: 'wifi.scan', payload: '{"v":1,"ranges":[]}' },
   { provider: 12, family: 8, group: 'ble.scan', payload: '{"v":1,"dev":[]}' },
   { provider: 9, family: 6, group: 'cell.env', payload: '{"v":1,"cells":[]}' },
   { provider: 13, family: 5, group: 'lan.nsd', payload: '{"v":1,"services":[]}' },
-  { provider: 1, family: 1, group: 'gnss.sky', payload: '{"v":1,"const":[]}' },
+  { provider: 2, family: 1, group: 'gnss.sky', payload: '{"v":1,"const":[]}' },
   { provider: 8, family: 5, group: 'network.ctx', payload: '{"v":1,"t":"wifi"}' },
   { provider: 19, family: 13, group: 'device.power', payload: '{"v":1,"charging":true}' }
 ];
@@ -72,6 +74,8 @@ for (let i = 0; i < PROVIDERS.length; i++) {
 }
 assert.equal(new Set(decoded.records.map(r => r.independenceGroup)).size, 7, 'RTT must remain correlated with Wi-Fi while other Atlas contexts stay distinct');
 assert.equal(decoded.records[0].independenceGroup, decoded.records[1].independenceGroup, 'Wi-Fi RSSI and RTT must not become independent confidence multipliers');
+assert.equal(decoded.records[1].family, 11, 'Wi-Fi RTT must stay in RANGE family');
+assert.equal(decoded.records[5].provider, 2, 'GNSS sky must use GNSS_QUALITY provider code');
 
 const badProvider = PROVIDERS.map((row, i) => i === 0 ? { ...row, provider: 22 } : row);
 assert.throws(() => protocol.decodeEvidenceBatch(encode(badProvider)), /unknown evidence provider/);
