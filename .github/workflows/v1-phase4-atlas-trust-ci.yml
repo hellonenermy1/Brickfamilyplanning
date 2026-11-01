@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: 004d778356f7632990c658c80b3132762a3e1092
+  ANDROID_PHASE4_SHA: cbd83c5d7caac36e60f941dc747abe93f3889a7d
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -149,6 +149,10 @@ jobs:
           grep -F 'ATLAS_PULSE_MS = 5_000L' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'Phase4AtlasRuntime.stop()' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'testOneCorrelatedRadioFamilyCannotBecomePreciseLocationTruth' app/src/androidTest/java/com/brick/safety/atlas/Phase4AtlasCoreInstrumentedTest.kt >/dev/null
+          grep -F 'class AtlasTransitionTracker' app/src/main/java/com/brick/safety/atlas/AtlasTransitionTracker.kt >/dev/null
+          grep -F 'REPLACEMENT_RETIRE_MISSES' app/src/main/java/com/brick/safety/atlas/EnvironmentalAtlas.kt >/dev/null
+          grep -F 'testCopiedSsidAcrossDistantPlacesCannotBecomeAnAnchor' app/src/androidTest/java/com/brick/safety/atlas/Phase4SignalTrustInstrumentedTest.kt >/dev/null
+          grep -F 'Phase4TransitionInstrumentedTest' app/src/androidTest/java/com/brick/safety/atlas/Phase4TransitionInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 4 Android instrumentation
