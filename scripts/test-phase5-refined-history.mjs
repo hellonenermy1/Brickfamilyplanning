@@ -98,7 +98,9 @@ const db = new FakeDB();
 const r2 = new FakeR2();
 const env = { DB:db, HISTORY:r2 };
 const deviceId = uuid(99);
-const startMs = 1_800_000_000_000;
+// Keep the fixture in the recent past so the production 30-day retention and future-time guards
+// are genuinely exercised without the test expiring as the calendar advances.
+const startMs = Date.now() - 5 * 60_000;
 const frameMs = startMs + 60_000;
 const endMs = startMs + 120_000;
 
