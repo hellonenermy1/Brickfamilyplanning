@@ -24,6 +24,7 @@ import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
+import androidx.annotation.Keep
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -36,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong
  * fixed AIDL operations in IBrickPrivilegedService. runFixed() is private and every caller supplies
  * a hard-coded command family; normal Brick code can never submit arbitrary shell text.
  */
+@Keep
 class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
     companion object {
         private const val BRICK_PACKAGE = "com.brick.safety"
