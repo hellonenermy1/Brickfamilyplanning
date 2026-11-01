@@ -23,9 +23,9 @@ object HealthEvidence {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
-        // Phase 4 uses the existing foreground-service health cadence as its first bounded runtime
-        // pulse. Provider-internal intervals still prevent oversampling. A provider failure must never
-        // fail the health heartbeat or Brick Core.
+        // First Phase 4 runtime slice reuses the existing foreground health cadence. Providers apply
+        // their own adaptive minimum interval and fail independently; a Phase 4 exception cannot fail
+        // the health heartbeat or Brick Core.
         runCatching { Phase4AtlasRuntime.pulse(context) }
 
         val now = System.currentTimeMillis()
@@ -55,9 +55,6 @@ object HealthEvidence {
         val evidenceSnapshot = runCatching {
             EvidenceJournal(context).let { journal ->
                 try {
-                    // refreshHealth() may perform due quarantine maintenance. Read stats afterward so
-                    // this health packet describes the post-maintenance journal state, not a stale
-                    // count that disappears only on the next heartbeat.
                     val healthy = journal.refreshHealth()
                     journal.stats() to healthy
                 } finally {
@@ -152,7 +149,17 @@ object HealthEvidence {
             .put("atlasCandidateCount", prefs.getInt("atlasCandidateCount", 0).coerceAtLeast(0))
             .put("atlasCandidateAmbiguous", optionalBoolean("atlasCandidateAmbiguous"))
             .put("atlasCandidateUncertaintyM", optionalFloat("atlasCandidateUncertaintyM"))
-            .put("atlasWifiProviderHealthy", optionalBoolean("atlasWifiProviderHealthy"))
-            .put("atlasNetworkProviderHealthy", optionalBoolean("atlasNetworkProviderHealthy"))
+            .put("atlasWifiProviderCapability", optionalString("atlasWifiProviderCapability"))
+            .put("atlasWifiProviderHealth", optionalString("atlasWifiProviderHealth"))
+            .put("atlasBleProviderCapability", optionalString("atlasBleProviderCapability"))
+            .put("atlasBleProviderHealth", optionalString("atlasBleProviderHealth"))
+            .put("atlasCellularProviderCapability", optionalString("atlasCellularProviderCapability"))
+            .put("atlasCellularProviderHealth", optionalString("atlasCellularProviderHealth"))
+            .put("atlasLanProviderCapability", optionalString("atlasLanProviderCapability"))
+            .put("atlasLanProviderHealth", optionalString("atlasLanProviderHealth"))
+            .put("atlasGnssProviderCapability", optionalString("atlasGnssProviderCapability"))
+            .put("atlasGnssProviderHealth", optionalString("atlasGnssProviderHealth"))
+            .put("atlasNetworkProviderCapability", optionalString("atlasNetworkProviderCapability"))
+            .put("atlasNetworkProviderHealth", optionalString("atlasNetworkProviderHealth"))
     }
 }
