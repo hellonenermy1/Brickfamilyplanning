@@ -93,7 +93,9 @@ assert.equal(response.status, 401, 'bad receiver signature must be rejected');
 // Out-of-order/offline: Ground observes an alias before the child registration reaches Cloudflare.
 const lateAlias = 'fedcba9876543210';
 const nextSlot = slot + 1;
-const nextWall = nextSlot * p5.WITNESS_SLOT_MS + 10_000;
+// Exact slot boundary is always <5 minutes ahead of `now`. Adding an arbitrary offset can cross
+// the production +5 minute clock-skew limit when CI happens just after a slot boundary.
+const nextWall = nextSlot * p5.WITNESS_SLOT_MS;
 const pendingId = randomUUID();
 response = await ground.handleGroundReceiverRequest(await signedRequest({ protocol:1,sightingId:pendingId,alias:lateAlias,observedWallMs:nextWall,rssi:-72,txPower:null }), env, receiverId);
 assert.equal(response.status, 200);
