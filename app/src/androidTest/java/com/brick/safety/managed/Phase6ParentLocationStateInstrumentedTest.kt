@@ -1,27 +1,17 @@
 package com.brick.safety.managed
 
-import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Test
-import org.junit.runner.RunWith
+import com.brick.safety.testing.BrickInstrumentationTestCase
 
-@RunWith(AndroidJUnit4::class)
-class Phase6ParentLocationStateInstrumentedTest {
-    private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+class Phase6ParentLocationStateInstrumentedTest : BrickInstrumentationTestCase() {
+    private val context get() = instrumentation.targetContext
 
-    @Before
-    fun reset() {
+    override fun setUp() {
+        super.setUp()
         context.getSharedPreferences("brick_parent_location", android.content.Context.MODE_PRIVATE)
             .edit().clear().commit()
     }
 
-    @Test
-    fun defaultsToOnForBackwardSafeUpgrade() {
+    fun testDefaultsToOnForBackwardSafeUpgrade() {
         val state = ParentLocationStateStore.read(context)
         assertEquals(DesiredLocationState.ON, state.desired)
         assertNull(state.commandId)
@@ -29,8 +19,7 @@ class Phase6ParentLocationStateInstrumentedTest {
         assertEquals(0L, state.issuedAtMs)
     }
 
-    @Test
-    fun verifiedCommandsPersistAndRejectDuplicateReplayOlderAndExpiredState() {
+    fun testVerifiedCommandsPersistAndRejectDuplicateReplayOlderAndExpiredState() {
         val now = 10_000L
         val nonce1 = "11111111-1111-4111-8111-111111111111"
         val nonce2 = "22222222-2222-4222-8222-222222222222"
@@ -45,31 +34,24 @@ class Phase6ParentLocationStateInstrumentedTest {
         )
         assertEquals(DesiredLocationState.OFF, ParentLocationStateStore.read(context).desired)
 
-        // Same command ID is a duplicate even if the delivery nonce is fresh.
         assertFalse(
             ParentLocationStateStore.applyVerified(
                 context, DesiredLocationState.ON, "cmd-location-0001", nonce2,
                 issuedAtMs = 2_000L, expiresAtMs = now + 300_000L, nowMs = now
             )
         )
-
-        // Reusing an already consumed nonce is a replay.
         assertFalse(
             ParentLocationStateStore.applyVerified(
                 context, DesiredLocationState.ON, "cmd-location-0002", nonce1,
                 issuedAtMs = 2_000L, expiresAtMs = now + 300_000L, nowMs = now
             )
         )
-
-        // A command older than the accepted parent state cannot roll the phone back.
         assertFalse(
             ParentLocationStateStore.applyVerified(
                 context, DesiredLocationState.ON, "cmd-location-0002", nonce2,
                 issuedAtMs = 999L, expiresAtMs = now + 300_000L, nowMs = now
             )
         )
-
-        // Expired deliveries are rejected before they can change durable state.
         assertTrue(
             runCatching {
                 ParentLocationStateStore.applyVerified(
