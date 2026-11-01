@@ -46,6 +46,31 @@ class Phase4CompanionContextInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(CompanionPresenceStore.presentLegacyIds(context).isEmpty())
     }
 
+    fun testObservationRegistryAllowsSameDeviceAfterRemovalAndReassociation() {
+        val registry = CompanionObservationRegistry()
+        val address = "AA:BB:CC:DD:EE:FF"
+
+        registry.reconcile(setOf(address))
+        assertTrue(registry.markStartRequested(address))
+        assertFalse(registry.markStartRequested(address))
+
+        // Android no longer reports this association. Forget only Brick's process-local subscription
+        // bookkeeping so the same explicitly authorised device can be re-associated later.
+        registry.reconcile(emptySet())
+        registry.reconcile(setOf(address))
+        assertTrue(registry.markStartRequested(address))
+    }
+
+    fun testObservationRegistryRetriesAfterStartFailure() {
+        val registry = CompanionObservationRegistry()
+        val address = "11:22:33:44:55:66"
+
+        registry.reconcile(setOf(address))
+        assertTrue(registry.markStartRequested(address))
+        registry.markStartFailed(address)
+        assertTrue(registry.markStartRequested(address))
+    }
+
     fun testCompanionAndChargingCannotManufactureIndependentConfirmations() {
         val atlas = EnvironmentalAtlas()
         val label = AtlasTrustedLabel("home-zone", 1.3000, 103.8000, 8f, 100_000L, baseWall)
