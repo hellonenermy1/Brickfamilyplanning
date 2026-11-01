@@ -23,6 +23,7 @@ class Phase6PrivilegedBridgeInstrumentedTest {
         assertFalse(health.connected)
         assertFalse(health.permissionGranted)
         assertTrue(health.capabilities.isEmpty())
+        assertTrue(bridge.setParentLocationState(true).isFailure)
         assertTrue(bridge.wifiEvidence().isFailure)
         assertTrue(bridge.bleEvidence().isFailure)
         assertTrue(bridge.cellEvidence().isFailure)
@@ -32,9 +33,35 @@ class Phase6PrivilegedBridgeInstrumentedTest {
     }
 
     @Test
+    fun typedProviderCanControlLocationWithoutGenericShellSurface() {
+        var requested: Boolean? = null
+        val fake = object : PrivilegedBridge {
+            override fun health() = PrivilegedBridgeHealth(
+                "test", true, true, true,
+                setOf(PrivilegedCapability.LOCATION_CONTROL, PrivilegedCapability.WIFI_EVIDENCE)
+            )
+            override fun setParentLocationState(enabled: Boolean): Result<Boolean> {
+                requested = enabled
+                return Result.success(true)
+            }
+            override fun wifiEvidence() = Result.success(emptyList<PrivilegedWifiEvidence>())
+            override fun bleEvidence() = Result.failure<List<PrivilegedBleEvidence>>(UnsupportedOperationException())
+            override fun cellEvidence() = Result.failure<List<PrivilegedCellEvidence>>(UnsupportedOperationException())
+            override fun powerDiagnostics() = Result.failure<PrivilegedPowerDiagnostics>(UnsupportedOperationException())
+            override fun requestPowerRepair() = Result.failure<Boolean>(UnsupportedOperationException())
+            override fun attemptSosLocationEnable() = Result.failure<Boolean>(UnsupportedOperationException())
+        }
+        PrivilegedBridgeRuntime.install(fake)
+        assertTrue(PrivilegedBridgeRuntime.current().setParentLocationState(false).getOrThrow())
+        assertFalse(requested ?: true)
+        assertTrue(fake.health().capabilities.contains(PrivilegedCapability.LOCATION_CONTROL))
+    }
+
+    @Test
     fun optionalProviderCanDisappearWithoutBreakingCoreRuntime() {
         val fake = object : PrivilegedBridge {
             override fun health() = PrivilegedBridgeHealth("test", true, true, true, setOf(PrivilegedCapability.WIFI_EVIDENCE))
+            override fun setParentLocationState(enabled: Boolean) = Result.failure<Boolean>(UnsupportedOperationException())
             override fun wifiEvidence() = Result.success(emptyList<PrivilegedWifiEvidence>())
             override fun bleEvidence() = Result.failure<List<PrivilegedBleEvidence>>(UnsupportedOperationException())
             override fun cellEvidence() = Result.failure<List<PrivilegedCellEvidence>>(UnsupportedOperationException())

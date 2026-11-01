@@ -5,6 +5,7 @@ package com.brick.safety.privileged
  * There is no generic shell/command API here.
  */
 enum class PrivilegedCapability {
+    LOCATION_CONTROL,
     WIFI_EVIDENCE,
     BLE_EVIDENCE,
     CELL_EVIDENCE,
@@ -48,6 +49,7 @@ data class PrivilegedPowerDiagnostics(
 
 interface PrivilegedBridge {
     fun health(): PrivilegedBridgeHealth
+    fun setParentLocationState(enabled: Boolean): Result<Boolean>
     fun wifiEvidence(): Result<List<PrivilegedWifiEvidence>>
     fun bleEvidence(): Result<List<PrivilegedBleEvidence>>
     fun cellEvidence(): Result<List<PrivilegedCellEvidence>>
@@ -68,6 +70,7 @@ object NoPrivilegedBridge : PrivilegedBridge {
         capabilities = emptySet()
     )
 
+    override fun setParentLocationState(enabled: Boolean): Result<Boolean> = unavailable()
     override fun wifiEvidence(): Result<List<PrivilegedWifiEvidence>> = unavailable()
     override fun bleEvidence(): Result<List<PrivilegedBleEvidence>> = unavailable()
     override fun cellEvidence(): Result<List<PrivilegedCellEvidence>> = unavailable()
@@ -78,7 +81,7 @@ object NoPrivilegedBridge : PrivilegedBridge {
 
 /**
  * Runtime indirection keeps Brick Core independent from Shizuku. If the optional provider dies,
- * callers can immediately fall back to normal Android APIs by resetting this to NoPrivilegedBridge.
+ * callers immediately receive a failure and Brick continues with normal Android APIs.
  */
 object PrivilegedBridgeRuntime {
     @Volatile private var bridge: PrivilegedBridge = NoPrivilegedBridge
