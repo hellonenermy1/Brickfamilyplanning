@@ -47,12 +47,13 @@ function validTime(observedWallMs: number, now: number, maxAgeMs: number) {
 }
 
 /**
- * Return only fresh, already-authorised/resolved external constraints for a child. The newest
+ * Return only fresh, currently-authorised/resolved external constraints for a child. The newest
  * sighting from each witness/receiver is retained; repeated reports from the same physical source
  * do not multiply confidence as independent evidence.
  *
- * This is a Phase 5 constraint layer, not the parent current-state UI. Phase 7 may feed these into
- * Cloud fusion/current-state processing without reinterpreting RSSI or exposing rotating aliases.
+ * Authorization is re-checked at read time, not trusted from the historical sighting row alone.
+ * Revoking a witness or disabling a receiver therefore stops its influence immediately even if a
+ * still-fresh sighting was stored while it was authorised.
  */
 export async function listCurrentExternalConstraints(
   db: D1Database,
@@ -63,15 +64,17 @@ export async function listCurrentExternalConstraints(
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error("invalid constraint time");
 
   const witness = await db.prepare(
-    "SELECT record_id,witness_device_id,observed_wall_ms,witness_latitude,witness_longitude,uncertainty_m " +
-    "FROM witness_sightings WHERE child_device_id=?1 AND authorised=1 AND observed_wall_ms>=?2 " +
-    "ORDER BY observed_wall_ms DESC,record_id DESC LIMIT ?3"
+    "SELECT s.record_id,s.witness_device_id,s.observed_wall_ms,s.witness_latitude,s.witness_longitude,s.uncertainty_m " +
+    "FROM witness_sightings s WHERE s.child_device_id=?1 AND s.authorised=1 AND s.observed_wall_ms>=?2 " +
+    "AND EXISTS(SELECT 1 FROM witness_authorizations a WHERE a.device_id=?1 AND a.witness_device_id=s.witness_device_id AND a.enabled=1) " +
+    "ORDER BY s.observed_wall_ms DESC,s.record_id DESC LIMIT ?3"
   ).bind(childDeviceId, now - WITNESS_MAX_AGE_MS, MAX_ROWS).all<WitnessRow>();
 
   const ground = await db.prepare(
-    "SELECT receiver_id,sighting_id,observed_wall_ms,receiver_latitude,receiver_longitude,uncertainty_m " +
-    "FROM ground_sightings WHERE child_device_id=?1 AND resolved=1 AND observed_wall_ms>=?2 " +
-    "ORDER BY observed_wall_ms DESC,receiver_id,sighting_id DESC LIMIT ?3"
+    "SELECT s.receiver_id,s.sighting_id,s.observed_wall_ms,s.receiver_latitude,s.receiver_longitude,s.uncertainty_m " +
+    "FROM ground_sightings s WHERE s.child_device_id=?1 AND s.resolved=1 AND s.observed_wall_ms>=?2 " +
+    "AND EXISTS(SELECT 1 FROM ground_receivers g WHERE g.id=s.receiver_id AND g.device_id=?1 AND g.enabled=1) " +
+    "ORDER BY s.observed_wall_ms DESC,s.receiver_id,s.sighting_id DESC LIMIT ?3"
   ).bind(childDeviceId, now - GROUND_MAX_AGE_MS, MAX_ROWS).all<GroundRow>();
 
   const out: ExternalConstraint[] = [];

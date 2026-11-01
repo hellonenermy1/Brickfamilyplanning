@@ -77,7 +77,7 @@ assert.equal(decoded.records[0].independenceGroup, decoded.records[1].independen
 assert.equal(decoded.records[1].family, 11, 'Wi-Fi RTT must stay in RANGE family');
 assert.equal(decoded.records[5].provider, 2, 'GNSS sky must use GNSS_QUALITY provider code');
 
-const badProvider = PROVIDERS.map((row, i) => i === 0 ? { ...row, provider: 22 } : row);
+const badProvider = PROVIDERS.map((row, i) => i === 0 ? { ...row, provider: 23 } : row);
 assert.throws(() => protocol.decodeEvidenceBatch(encode(badProvider)), /unknown evidence provider/);
 const badFamily = PROVIDERS.map((row, i) => i === 0 ? { ...row, family: 14 } : row);
 assert.throws(() => protocol.decodeEvidenceBatch(encode(badFamily)), /unknown evidence family/);

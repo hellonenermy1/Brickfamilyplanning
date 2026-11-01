@@ -1,0 +1,264 @@
+name: Brick V1 Phase 5B — Pre-Phase-6 Closure CI
+
+on:
+  pull_request:
+    branches: [v1-p5-unified-fusion-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PHASE5B_SHA: 055ef0b2990bb810a6dac24309f980285f8777b5
+  CLOUD_PHASE5B_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: brick-v1-phase5b-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud:
+    name: Phase 2-5 cumulative Cloud regression gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CLOUD_PHASE5B_SHA }}
+      - name: Verify exact Cloud candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CLOUD_PHASE5B_SHA"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck all Cloud/browser source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+      - name: Phase 5 semantics and security regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/test-phase5-fusion-protocol.mjs
+          node --check scripts/test-phase5-witness.mjs
+          node --check scripts/test-phase5-ground.mjs
+          node --check scripts/test-phase5-places.mjs
+          node --check scripts/test-phase5-smoothing.mjs
+          node --check scripts/test-phase5-external-constraints.mjs
+          node --check scripts/test-phase5-current-refinement.mjs
+          node --check scripts/test-phase5-parent-live.mjs
+          node --check scripts/test-phase5-live-state-order.mjs
+          node --check scripts/test-phase5-coarse-network.mjs
+          node --check scripts/test-phase5-refined-history.mjs
+          npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
+          npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
+          npx esbuild src/ground-receiver.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-ground-receiver.mjs
+          npx esbuild src/phase5-places.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-places.mjs
+          npx esbuild src/phase5-smoothing.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-smoothing.mjs
+          npx esbuild src/phase5-external-constraints.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-external-constraints.mjs
+          npx esbuild src/phase5-current-refinement.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-current-refinement.mjs
+          npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-state-order.mjs
+          npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
+          npx esbuild src/phase5-coarse-network.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-coarse-network.mjs
+          npx esbuild src/phase5-refined-history.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-refined-history.mjs
+          node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
+          node scripts/test-phase5-witness.mjs /tmp/brick-phase5-evidence.mjs
+          node scripts/test-phase5-ground.mjs /tmp/brick-ground-receiver.mjs /tmp/brick-phase5-evidence.mjs
+          node scripts/test-phase5-places.mjs /tmp/brick-phase5-places.mjs
+          node scripts/test-phase5-smoothing.mjs /tmp/brick-phase5-smoothing.mjs
+          node scripts/test-phase5-external-constraints.mjs /tmp/brick-phase5-external-constraints.mjs
+          node scripts/test-phase5-current-refinement.mjs /tmp/brick-phase5-current-refinement.mjs
+          node scripts/test-phase5-live-state-order.mjs /tmp/brick-live-state-order.mjs
+          node scripts/test-phase5-parent-live.mjs /tmp/brick-parent-v6.mjs
+          node scripts/test-phase5-coarse-network.mjs /tmp/brick-phase5-coarse-network.mjs
+          node scripts/test-phase5-refined-history.mjs /tmp/brick-phase5-refined-history.mjs
+      - name: Retain Phase 4 / 3 / 2 Cloud regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/test-phase4-provider-contract.mjs
+          npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
+          node scripts/test-phase4-provider-contract.mjs /tmp/brick-evidence-protocol.mjs
+          npx esbuild src/route-graph-data.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph-data.mjs
+          npx esbuild src/route-graph.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-graph.mjs
+          node scripts/test-phase3-route-graph.mjs /tmp/brick-route-graph-data.mjs /tmp/brick-route-graph.mjs
+          npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
+          npx esbuild src/route-constraint.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-route-constraint.mjs
+          node scripts/test-route-constraint.mjs /tmp/brick-route-constraint.mjs
+      - name: Phase 5B architecture closure invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'listCurrentExternalConstraints' src/phase5-external-constraints.ts >/dev/null
+          grep -F 'originalRealtimeHypothesisId' src/phase5-smoothing.ts >/dev/null
+          grep -F 'shouldAdvanceLiveState' src/device-do.ts >/dev/null
+          ! grep -F 'exactDistanceM' src/ground-receiver.ts >/dev/null
+          grep -F 'coarseNetworkFromCf' src/phase5-coarse-network.ts >/dev/null
+          grep -F 'history/refined/' src/phase5-refined-history.ts >/dev/null
+          grep -F 'phase5_hypothesis_frames' schema/010_phase5b_closure.sql >/dev/null
+          grep -F 'phase5_precise_endpoints' schema/010_phase5b_closure.sql >/dev/null
+          grep -F 'persistHypothesisFrameIfPresent' src/evidence-route.ts >/dev/null
+          grep -F 'preciseEndpointStatements' src/location-ingest-v6.ts >/dev/null
+
+  android-build:
+    name: Phase 2-5 cumulative Android build / lint / dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE5B_SHA }}
+      - name: Verify exact Android candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE5B_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -d "$SDK_ROOT"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+      - name: Install compile SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36'
+          test -x "$ANDROID_SDK_ROOT/platform-tools/adb"
+      - name: Verify dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Compile app + instrumentation APK + lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+      - name: Verify cumulative Phase 2-5 test source is present
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app/src/androidTest -type f -name '*Test.kt' -print | sort
+          test -n "$(find app/src/androidTest -type f -name '*Phase2*Test.kt' -o -name 'Phase2*Test.kt' 2>/dev/null || true)" || grep -R -l 'Phase2' app/src/androidTest >/dev/null
+          grep -R -l 'Phase3' app/src/androidTest >/dev/null
+          grep -R -l 'Phase4' app/src/androidTest >/dev/null
+          grep -R -l 'Phase5' app/src/androidTest >/dev/null
+          grep -F 'testCoarseNetworkCannotPullBetterCurrentEvidence' app/src/androidTest/java/com/brick/safety/fusion/Phase5CoarseNetworkInstrumentedTest.kt >/dev/null
+          grep -F 'testHypothesisFrameIsEncryptedJournalEvidenceAndKeepsAlternatives' app/src/androidTest/java/com/brick/safety/fusion/Phase5HypothesisRecorderInstrumentedTest.kt >/dev/null
+          grep -F 'testStrongAtlasCanRerankExistingRoutesWithoutMovingPositionTruth' app/src/androidTest/java/com/brick/safety/fusion/Phase5RadioRouteInstrumentedTest.kt >/dev/null
+          grep -F 'testHistoricalFrequencyCannotBecomeTruthWithoutStrongCurrentEnvironment' app/src/androidTest/java/com/brick/safety/fusion/Phase5RadioRouteInstrumentedTest.kt >/dev/null
+          grep -F 'FUSION_HYPOTHESES' app/src/main/java/com/brick/safety/evidence/EvidenceModel.kt >/dev/null
+          grep -F 'Phase5HypothesisRuntime.record' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
+          grep -F 'Phase5RadioRouteMatcher.rerank' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
+          grep -F 'Metadata-only update' app/src/main/java/com/brick/safety/fusion/Phase5RadioRouteMatcher.kt >/dev/null
+          grep -F 'activityMode = activity.mode' app/src/main/java/com/brick/safety/location/PositionEngine.kt >/dev/null
+
+  android-instrumentation:
+    name: Phase 2-5 cumulative Android instrumentation
+    needs: android-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE5B_SHA }}
+      - name: Verify exact Android candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE5B_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK and fixed AVD home
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -d "$SDK_ROOT"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          test -n "$AVDMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          AVD_HOME="$RUNNER_TEMP/brick-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
+      - name: Install SDK, create and verify emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          test -x "$ADB"
+          test -x "$EMULATOR"
+          echo no | "$AVDMANAGER" create avd --force --name brick-p5b --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          echo 'Available AVDs:'
+          "$EMULATOR" -list-avds
+          "$EMULATOR" -list-avds | grep -Fx 'brick-p5b'
+      - name: Boot emulator and run every retained Android instrumentation test
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p5b -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p5b-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            if [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; then
+              break
+            fi
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          "$ADB" shell settings put global window_animation_scale 0 || true
+          "$ADB" shell settings put global transition_animation_scale 0 || true
+          "$ADB" shell settings put global animator_duration_scale 0 || true
+          gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+      - name: Diagnostics on instrumentation failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- emulator log ---'
+          tail -n 400 /tmp/brick-p5b-emulator.log || true
+          echo '--- adb devices ---'
+          "$ADB" devices -l || true
+          echo '--- instrumentation result files ---'
+          find app/build -path '*androidTest-results*' -o -path '*reports/androidTests*' 2>/dev/null | head -n 200 || true

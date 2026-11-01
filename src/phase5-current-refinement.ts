@@ -66,8 +66,6 @@ function distanceM(aLat: number, aLon: number, bLat: number, bLon: number) {
 }
 
 function weightedCenter(areas: Area[]): [number, number] {
-  // Local equirectangular weighting is sufficient for Brick's bounded current-state areas and avoids
-  // longitude wrap artifacts by unwrapping relative to the strongest/reference area.
   const ref = areas[0].longitude;
   let lat = 0, lon = 0, total = 0;
   for (const area of areas) {
@@ -130,8 +128,8 @@ function externalArea(c: ExternalConstraint): Area | null {
  * Build a separate parent-facing refinement from the child current state + authorised external
  * areas. This never mutates the Durable Object's child state and never creates PRECISE/ASSISTED.
  * A fresh precise/assisted child fix remains the center; contradictory external evidence can only
- * widen the separate refined uncertainty. Degraded/absent child state may be anchored by a fresh
- * fixed receiver or authorised witness area.
+ * widen the separate refined uncertainty. Degraded/absent child state may be anchored by fresh
+ * fixed receivers or an authorised witness area.
  */
 export function refineCurrentState(
   state: ParentCurrentState | null,
@@ -140,22 +138,51 @@ export function refineCurrentState(
 ): CurrentRefinedState | null {
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error("invalid refinement time");
   const base = baseArea(state, now);
-  const ext = external.map(externalArea).filter((x): x is Area => x !== null).slice(0, 16);
+
+  // Defence in depth: the DB reader already returns one newest constraint per physical source, but
+  // the pure refinement function independently refuses to count the same independence group twice.
+  const seenGroups = new Set<string>();
+  const ext: Area[] = [];
+  for (const constraint of external.slice(0, 32)) {
+    if (!constraint.independenceGroup || seenGroups.has(constraint.independenceGroup)) continue;
+    const area = externalArea(constraint);
+    if (!area) continue;
+    seenGroups.add(constraint.independenceGroup);
+    ext.push(area);
+    if (ext.length >= 16) break;
+  }
   if (ext.length === 0) return null;
 
   const preciseBase = base !== null && (state!.quality.toLowerCase() === "precise" || state!.quality.toLowerCase() === "assisted") && base.ageMs <= PRECISE_BASE_MAX_AGE_MS;
   const areas = base ? [base, ...ext] : ext;
   const clash = conflicts(areas);
+  const groundAreas = ext.filter(a => a.kind === "ground_receiver");
+
+  // Several independent fixed receivers are stronger as an overlapping zone than as a union. To
+  // stay conservative, Brick never invents a tiny geometric intersection: when at least two fresh
+  // receiver areas agree and nothing else conflicts, use the smallest *already verified* receiver
+  // area as the bound. The true intersection is a subset of every contributing receiver area, so
+  // this can narrow a broad union without claiming precision beyond any single receiver's radius.
+  const canNarrowToReceiverArea = !preciseBase && groundAreas.length >= 2 && clash.length === 0;
 
   let center: [number, number];
-  if (preciseBase) center = [base!.latitude, base!.longitude];
-  else center = weightedCenter(areas);
-
-  // The refined area must contain every contributing uncertainty region. This deliberately does
-  // not intersect circles into an unrealistically tiny point; external BLE evidence is area truth.
-  let radius = 25;
-  for (const area of areas) {
-    radius = Math.max(radius, distanceM(center[0], center[1], area.latitude, area.longitude) + area.radiusM);
+  let radius: number;
+  if (preciseBase) {
+    center = [base!.latitude, base!.longitude];
+    radius = 25;
+    for (const area of areas) {
+      radius = Math.max(radius, distanceM(center[0], center[1], area.latitude, area.longitude) + area.radiusM);
+    }
+  } else if (canNarrowToReceiverArea) {
+    const smallest = groundAreas.reduce((a, b) => a.radiusM <= b.radiusM ? a : b);
+    center = [smallest.latitude, smallest.longitude];
+    radius = Math.max(35, smallest.radiusM);
+  } else {
+    center = weightedCenter(areas);
+    radius = 25;
+    for (const area of areas) {
+      radius = Math.max(radius, distanceM(center[0], center[1], area.latitude, area.longitude) + area.radiusM);
+    }
   }
   if (clash.length > 0) radius = Math.max(radius, ...clash.map(c => c.separationM + 50));
   radius = Math.min(MAX_RADIUS_M, radius);
@@ -165,6 +192,9 @@ export function refineCurrentState(
   if (clash.length > 0 || radius >= 2_500) {
     quality = "coarse";
     shape = "possible_area";
+  } else if (canNarrowToReceiverArea) {
+    quality = "anchored";
+    shape = "place_area";
   } else if (!base && ext.length === 1) {
     quality = "anchored";
     shape = "place_area";
