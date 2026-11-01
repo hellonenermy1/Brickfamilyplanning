@@ -76,6 +76,12 @@ internal object CompanionPresenceStore {
         }
         edit.apply()
     }
+
+    /** Presence is ephemeral. Associations survive reboot; a previous-boot 'present' bit must not. */
+    @Synchronized
+    fun clearPresence(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
 }
 
 /** API 31-32 callback component. It never references API-33 AssociationInfo. */
@@ -112,7 +118,16 @@ internal data class CompanionAssociationSnapshot(
 
 private data class CompanionAssociationDescriptor(val id: Int, val address: String?)
 
-/** Newer framework references stay isolated from the controller class loaded on older Android. */
+/** API-31-only method references stay outside the controller loaded on API 29-30. */
+@RequiresApi(Build.VERSION_CODES.S)
+private object CompanionApi31 {
+    @Suppress("DEPRECATION")
+    fun startObserving(manager: CompanionDeviceManager, address: String) {
+        manager.startObservingDevicePresence(address)
+    }
+}
+
+/** API-33-only framework references stay outside the controller loaded on older Android. */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private object CompanionApi33 {
     fun associations(manager: CompanionDeviceManager): List<CompanionAssociationDescriptor> =
@@ -146,7 +161,7 @@ internal class CompanionPresenceController(context: Context) {
                 val associations = CompanionApi33.associations(cdm)
                 val validIds = associations.mapTo(linkedSetOf()) { it.id }
                 val addresses = associations.mapNotNull { it.address }
-                addresses.forEach { address -> ensureLegacyObservation(cdm, address) }
+                addresses.forEach { address -> ensureObservation(cdm, address) }
                 CompanionPresenceStore.retainAssociations(appContext, validIds, emptySet())
                 val present = CompanionPresenceStore.presentAssociationIds(appContext)
                     .intersect(validIds)
@@ -164,7 +179,7 @@ internal class CompanionPresenceController(context: Context) {
                 val validLegacy = addresses.mapNotNull { raw ->
                     runCatching { AtlasPrivacyId.reduce("comp", "address:${raw.trim().lowercase()}") }.getOrNull()
                 }.toSet()
-                addresses.forEach { address -> ensureLegacyObservation(cdm, address) }
+                addresses.forEach { address -> ensureObservation(cdm, address) }
                 CompanionPresenceStore.retainAssociations(appContext, emptySet(), validLegacy)
                 val present = CompanionPresenceStore.presentLegacyIds(appContext).intersect(validLegacy).sorted()
                 CompanionAssociationSnapshot(
@@ -180,10 +195,10 @@ internal class CompanionPresenceController(context: Context) {
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun ensureLegacyObservation(cdm: CompanionDeviceManager, address: String) {
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun ensureObservation(cdm: CompanionDeviceManager, address: String) {
         if (!observedAddresses.add(address)) return
-        runCatching { cdm.startObservingDevicePresence(address) }
+        runCatching { CompanionApi31.startObserving(cdm, address) }
             .onFailure { observedAddresses.remove(address) }
     }
 }
