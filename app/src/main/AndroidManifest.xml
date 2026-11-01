@@ -10,10 +10,16 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <!-- Brick uses nearby Wi-Fi/BLE observations for location context, so neverForLocation is intentionally NOT declared. -->
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Optional: charging context still works when Companion Device Manager is unavailable. -->
+    <uses-feature
+        android:name="android.software.companion_device_setup"
+        android:required="false" />
 
     <application
         android:name=".BrickApplication"
@@ -39,6 +45,17 @@
             android:name=".location.BrickLocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Only Android may bind this service. It receives presence for devices explicitly
+             associated with Brick; it is not a generic exported Bluetooth endpoint. -->
+        <service
+            android:name=".atlas.BrickCompanionDeviceService"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".activity.ActivityReceiver"
