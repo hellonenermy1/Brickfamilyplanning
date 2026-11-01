@@ -6,7 +6,7 @@ import com.brick.safety.atlas.AtlasRuntimeSnapshot
 /**
  * Process-local access point for the encrypted owner-bound learned-place registry.
  *
- * The safety service owns initialization/config synchronization. Fusion only reads constraints.
+ * BrickApplication owns initialization/config synchronization. Fusion only reads constraints.
  * Failure or absence is intentionally equivalent to "no learned-place evidence" so this optional
  * provider can never take down the pre-existing fallback path.
  */
@@ -18,13 +18,16 @@ object Phase5LearnedPlaceRuntime {
         if (registry == null) registry = LearnedPlaceRegistry(context.applicationContext)
     }
 
+    fun update(ownerDeviceId: String, definitions: Collection<LearnedPlaceDefinition>): Boolean =
+        runCatching { registry?.update(ownerDeviceId, definitions) == true }.getOrDefault(false)
+
     fun update(
         context: Context,
         ownerDeviceId: String,
         definitions: Collection<LearnedPlaceDefinition>
     ): Boolean {
         initialize(context)
-        return runCatching { registry?.update(ownerDeviceId, definitions) == true }.getOrDefault(false)
+        return update(ownerDeviceId, definitions)
     }
 
     fun constraint(atlas: AtlasRuntimeSnapshot?, nowElapsedMs: Long): FusionConstraint? =
