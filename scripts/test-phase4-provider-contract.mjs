@@ -7,11 +7,14 @@ const protocol = await import(pathToFileURL(modulePath).href + `?v=${Date.now()}
 
 const PROVIDERS = [
   { provider: 11, family: 7, group: 'wifi.scan', payload: '{"v":1,"aps":[]}' },
+  // RTT intentionally shares wifi.scan: range + RSSI are correlated observations of one RF environment.
+  { provider: 16, family: 10, group: 'wifi.scan', payload: '{"v":1,"ranges":[]}' },
   { provider: 12, family: 8, group: 'ble.scan', payload: '{"v":1,"dev":[]}' },
   { provider: 9, family: 6, group: 'cell.env', payload: '{"v":1,"cells":[]}' },
   { provider: 13, family: 5, group: 'lan.nsd', payload: '{"v":1,"services":[]}' },
   { provider: 1, family: 1, group: 'gnss.sky', payload: '{"v":1,"const":[]}' },
-  { provider: 8, family: 5, group: 'network.ctx', payload: '{"v":1,"t":"wifi"}' }
+  { provider: 8, family: 5, group: 'network.ctx', payload: '{"v":1,"t":"wifi"}' },
+  { provider: 19, family: 13, group: 'device.power', payload: '{"v":1,"charging":true}' }
 ];
 
 function uuidBytes(seed) {
@@ -67,7 +70,8 @@ for (let i = 0; i < PROVIDERS.length; i++) {
   assert.equal(decoded.records[i].independenceGroup, PROVIDERS[i].group);
   assert.equal(new TextDecoder().decode(decoded.records[i].payload), PROVIDERS[i].payload);
 }
-assert.equal(new Set(decoded.records.map(r => r.independenceGroup)).size, 6, 'independent Atlas families must remain distinct on wire');
+assert.equal(new Set(decoded.records.map(r => r.independenceGroup)).size, 7, 'RTT must remain correlated with Wi-Fi while other Atlas contexts stay distinct');
+assert.equal(decoded.records[0].independenceGroup, decoded.records[1].independenceGroup, 'Wi-Fi RSSI and RTT must not become independent confidence multipliers');
 
 const badProvider = PROVIDERS.map((row, i) => i === 0 ? { ...row, provider: 22 } : row);
 assert.throws(() => protocol.decodeEvidenceBatch(encode(badProvider)), /unknown evidence provider/);
