@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { activityName, qualityName, sourceName, type LivePacket, type RouteCorridor } from "./protocol";
+import { shouldAdvanceLiveState } from "./live-state-order";
 
 type Env = Record<string, never>;
 
@@ -141,7 +142,7 @@ export class BrickDevice extends DurableObject<Env> {
     };
   }
 
-  async setLatest(packet: LivePacket) {
+  async setLatest(packet: LivePacket): Promise<boolean> {
     const state: LatestState = {
       epoch: packet.epoch,
       sequence: packet.sequence,
@@ -173,8 +174,15 @@ export class BrickDevice extends DurableObject<Env> {
       wallTimeMs: packet.wallTimeMs,
       receivedAt: Date.now()
     };
-    await this.ctx.storage.put("latest", state);
+    const advanced = await this.ctx.storage.transaction(async txn => {
+      const current = await txn.get<LatestState>("latest");
+      if (!shouldAdvanceLiveState(state, current)) return false;
+      await txn.put("latest", state);
+      return true;
+    });
+    if (!advanced) return false;
     await this.broadcast({ type: "location", state });
+    return true;
   }
 
   async setHealth(health: DeviceHealth) {
