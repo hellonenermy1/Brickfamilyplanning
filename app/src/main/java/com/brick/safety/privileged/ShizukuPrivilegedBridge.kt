@@ -67,25 +67,31 @@ object ShizukuBridgeController {
         }
     }
 
-    private val binderReceived = Shizuku.OnBinderReceivedListener {
-        lastError = null
-        if (hasPermission()) bindNow() else maybeRequestPermission()
-    }
-
-    private val binderDead = Shizuku.OnBinderDeadListener {
-        binding = false
-        service = null
-        capabilities = emptySet()
-        lastError = "Shizuku binder unavailable"
-    }
-
-    private val permissionResult = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        if (requestCode != REQUEST_CODE) return@OnRequestPermissionResultListener
-        if (grantResult == PackageManager.PERMISSION_GRANTED) {
+    private val binderReceived = object : Shizuku.OnBinderReceivedListener {
+        override fun onBinderReceived() {
             lastError = null
-            bindNow()
-        } else {
-            lastError = "Shizuku permission not granted"
+            if (hasPermission()) bindNow() else maybeRequestPermission()
+        }
+    }
+
+    private val binderDead = object : Shizuku.OnBinderDeadListener {
+        override fun onBinderDead() {
+            binding = false
+            service = null
+            capabilities = emptySet()
+            lastError = "Shizuku binder unavailable"
+        }
+    }
+
+    private val permissionResult = object : Shizuku.OnRequestPermissionResultListener {
+        override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+            if (requestCode != REQUEST_CODE) return
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                lastError = null
+                bindNow()
+            } else {
+                lastError = "Shizuku permission not granted"
+            }
         }
     }
 
