@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6B_SHA: 1dc7c815deedd9de05330f4812a5f6abbacd571d
+  ANDROID_PHASE6B_SHA: db921847ad8155c0cfb1ae18a00cd110a2506beb
   CLOUD_PHASE6B_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
