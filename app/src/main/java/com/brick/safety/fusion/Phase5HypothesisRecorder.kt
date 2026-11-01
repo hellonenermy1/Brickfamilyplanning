@@ -95,6 +95,8 @@ class Phase5HypothesisRecorder(context: Context) {
         ActivityMode.RUNNING -> 8
         ActivityMode.BICYCLE -> 18
         ActivityMode.VEHICLE -> 60
-        ActivityMode.UNKNOWN -> 35
+        // No activity is passed through the pure fusion boundary yet. Use the broad vehicle-safe
+        // envelope rather than risk smoothing away a physically possible candidate.
+        ActivityMode.UNKNOWN -> 60
     }
 }
