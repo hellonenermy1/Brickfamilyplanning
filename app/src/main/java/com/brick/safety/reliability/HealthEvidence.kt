@@ -11,7 +11,6 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
-import com.brick.safety.atlas.Phase4AtlasRuntime
 import com.brick.safety.evidence.EvidenceJournal
 import org.json.JSONObject
 
@@ -22,11 +21,6 @@ object HealthEvidence {
         val activityManager = context.getSystemService(ActivityManager::class.java)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
-
-        // First Phase 4 runtime slice reuses the existing foreground health cadence. Providers apply
-        // their own adaptive minimum interval and fail independently; a Phase 4 exception cannot fail
-        // the health heartbeat or Brick Core.
-        runCatching { Phase4AtlasRuntime.pulse(context) }
 
         val now = System.currentTimeMillis()
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
