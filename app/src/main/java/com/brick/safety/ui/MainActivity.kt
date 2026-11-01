@@ -240,6 +240,11 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.BLUETOOTH_SCAN
         }
+        if (Build.VERSION.SDK_INT >= 31 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+            // Optional Phase 5 private Witness Mesh. Denial degrades Witness only, never Brick Core.
+            permissions += Manifest.permission.BLUETOOTH_ADVERTISE
+        }
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
             // Optional Wi-Fi RTT capability on supported hardware. Denial never blocks Brick Core.

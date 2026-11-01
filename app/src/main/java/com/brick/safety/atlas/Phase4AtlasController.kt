@@ -8,6 +8,7 @@ import com.brick.safety.evidence.*
 import com.brick.safety.location.PositionQuality
 import com.brick.safety.location.PositionSample
 import com.brick.safety.reliability.RecoveryScheduler
+import com.brick.safety.witness.WitnessMeshProvider
 import java.util.concurrent.atomic.AtomicBoolean
 
 data class AtlasRuntimeSnapshot(
@@ -49,7 +50,10 @@ class Phase4AtlasController(context: Context) {
         LanEnvironmentProvider(appContext) { noteProviderScan("lan", it) },
         GnssSkyProvider(appContext) { noteProviderScan("gnss", it) },
         NetworkContextProvider(appContext) { noteProviderScan("network", it) },
-        DeviceContextProvider(appContext) { noteProviderScan("device", it) }
+        DeviceContextProvider(appContext) { noteProviderScan("device", it) },
+        // Phase 5: uses the same adaptive provider pulse + durable EvidenceJournal. Witness data is
+        // intentionally NOT fed into Atlas learning; it is a separately authenticated external constraint.
+        WitnessMeshProvider(appContext)
     )
 
     private val sink = EvidenceSink { observation ->
@@ -296,6 +300,7 @@ class Phase4AtlasController(context: Context) {
         publishProvider(edit, "atlasGnssProvider", status[EvidenceProviderId.GNSS_QUALITY])
         publishProvider(edit, "atlasNetworkProvider", status[EvidenceProviderId.NETWORK_CONTEXT])
         publishProvider(edit, "atlasDeviceContextProvider", status[EvidenceProviderId.COMPANION])
+        publishProvider(edit, "witnessMeshProvider", status[EvidenceProviderId.WITNESS])
         if (best?.uncertaintyM?.isFinite() == true) edit.putFloat("atlasCandidateUncertaintyM", best.uncertaintyM)
         else edit.remove("atlasCandidateUncertaintyM")
         edit.apply()
