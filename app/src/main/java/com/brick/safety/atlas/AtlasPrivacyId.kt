@@ -15,8 +15,8 @@ object AtlasPrivacyId {
     private const val KEYSTORE = "AndroidKeyStore"
     private const val ALIAS = "brick_atlas_hmac_v1"
     private const val OUTPUT_BYTES = 12
+    @Volatile private var cachedKey: SecretKey? = null
 
-    @Synchronized
     fun reduce(namespace: String, raw: String): String {
         require(namespace.matches(Regex("[a-z0-9._-]{2,24}")))
         require(raw.isNotBlank() && raw.length <= 512)
@@ -28,14 +28,21 @@ object AtlasPrivacyId {
     }
 
     private fun key(): SecretKey {
-        val store = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (store.getKey(ALIAS, null) as? SecretKey)?.let { return it }
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_HMAC_SHA256, KEYSTORE)
-        generator.init(
-            KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
-                .setDigests(KeyProperties.DIGEST_SHA256)
-                .build()
-        )
-        return generator.generateKey()
+        cachedKey?.let { return it }
+        return synchronized(this) {
+            cachedKey?.let { return@synchronized it }
+            val store = KeyStore.getInstance(KEYSTORE).apply { load(null) }
+            val key = (store.getKey(ALIAS, null) as? SecretKey) ?: run {
+                val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_HMAC_SHA256, KEYSTORE)
+                generator.init(
+                    KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
+                        .setDigests(KeyProperties.DIGEST_SHA256)
+                        .build()
+                )
+                generator.generateKey()
+            }
+            cachedKey = key
+            key
+        }
     }
 }
