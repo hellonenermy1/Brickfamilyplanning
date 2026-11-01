@@ -18,12 +18,17 @@ class Phase5PositionFusion(private val engine: ParallelEvidenceEngine = Parallel
         nowElapsedMs: Long,
         phase3: Phase3FallbackEstimate?,
         atlas: AtlasRuntimeSnapshot?,
+        learnedPlace: FusionConstraint?,
         anchor: Phase5AnchorInput?,
         lastKnown: Phase5LastKnownInput?
     ): Phase5FusionSelection? {
-        val constraints = ArrayList<FusionConstraint>(4)
+        val constraints = ArrayList<FusionConstraint>(5)
         Phase5FusionAdapter.fromPhase3(phase3, nowElapsedMs)?.let(constraints::add)
+        // Generic Atlas and a named learned-place interpretation deliberately share
+        // `atlas.environment`; the central engine keeps only the strongest interpretation so a
+        // single environmental observation cannot vote twice.
         Phase5FusionAdapter.fromAtlas(atlas, nowElapsedMs)?.let(constraints::add)
+        learnedPlace?.let(constraints::add)
         Phase5FusionAdapter.fromAnchor(anchor, nowElapsedMs)?.let(constraints::add)
         Phase5FusionAdapter.fromLastKnown(lastKnown, nowElapsedMs)?.let(constraints::add)
         if (constraints.isEmpty()) return null
