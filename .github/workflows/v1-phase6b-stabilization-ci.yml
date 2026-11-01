@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6B_SHA: db921847ad8155c0cfb1ae18a00cd110a2506beb
+  ANDROID_PHASE6B_SHA: 74cab5c8c7289f27d7dd004daa0864d73ebda13a
   CLOUD_PHASE6B_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -98,7 +98,7 @@ jobs:
         run: |
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
-      - name: Prepare optional stable release signing
+      - name: Prepare release signing for qualification
         id: signing
         shell: bash
         env:
@@ -108,18 +108,37 @@ jobs:
           KEY_PASSWORD: ${{ secrets.BRICK_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
+          keyfile="$RUNNER_TEMP/brick-p6b-release.jks"
           if [[ -n "${KEYSTORE_B64:-}" && -n "${KEYSTORE_PASSWORD:-}" && -n "${KEY_ALIAS:-}" && -n "${KEY_PASSWORD:-}" ]]; then
-            keyfile="$RUNNER_TEMP/brick-release.jks"
             printf '%s' "$KEYSTORE_B64" | base64 --decode > "$keyfile"
             chmod 600 "$keyfile"
-            echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "BRICK_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
-            echo "BRICK_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "BRICK_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "BRICK_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            store_password="$KEYSTORE_PASSWORD"
+            key_alias="$KEY_ALIAS"
+            key_password="$KEY_PASSWORD"
+            signing_mode='stable-production-key'
+            stable_available='true'
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
+            # Qualification must prove the full R8 -> package -> signature-verification path even
+            # when the production signing secret is intentionally unavailable to PR CI. Generate a
+            # throw-away runner-local key; it is never committed, uploaded or treated as shippable.
+            store_password="$(openssl rand -hex 24)"
+            key_password="$store_password"
+            key_alias='brick-p6b-ci-ephemeral'
+            keytool -genkeypair -noprompt \
+              -keystore "$keyfile" -storetype PKCS12 \
+              -storepass "$store_password" -keypass "$key_password" \
+              -alias "$key_alias" -keyalg RSA -keysize 3072 -validity 7 \
+              -dname 'CN=Brick Phase 6B CI Ephemeral,OU=Qualification,O=Brick,C=SG'
+            chmod 600 "$keyfile"
+            signing_mode='ci-ephemeral-nonproduction'
+            stable_available='false'
           fi
+          echo "BRICK_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+          echo "BRICK_KEYSTORE_PASSWORD=$store_password" >> "$GITHUB_ENV"
+          echo "BRICK_KEY_ALIAS=$key_alias" >> "$GITHUB_ENV"
+          echo "BRICK_KEY_PASSWORD=$key_password" >> "$GITHUB_ENV"
+          echo "mode=$signing_mode" >> "$GITHUB_OUTPUT"
+          echo "stable_available=$stable_available" >> "$GITHUB_OUTPUT"
       - name: Verify dependency lock is reproducible
         shell: bash
         run: |
@@ -162,12 +181,17 @@ jobs:
         run: |
           set -euo pipefail
           grep -F 'isMinifyEnabled = true' app/build.gradle.kts >/dev/null
+          grep -F 'isShrinkResources = true' app/build.gradle.kts >/dev/null
           grep -F 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'android:allowBackup="false"' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'rikka.shizuku.ShizukuProvider' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'interface IBrickPrivilegedService' app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl >/dev/null
           grep -F 'attemptSosLocationEnable()' app/src/main/java/com/brick/safety/reliability/ServiceControl.kt >/dev/null
           grep -F 'command.deviceId != deviceId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/reliability/Phase6BDurabilityInstrumentedTest.kt
+          test ! -e .github/workflows/tmp-p6-android-diagnostic.yml
+          test ! -e .github/workflows/tmp-phase6-android-preflight.yml
+          test ! -e .github/workflows/tmp-phase6-lock-refresh.yml
           ! grep -R -F 'newProcess(' app/src/main >/dev/null
           if grep -RniE 'firebase[-_ ]?analytics|google[-_ ]?analytics|googletagmanager|facebook.*pixel|meta.*pixel|mixpanel|amplitude|appsflyer|adjust\.com|doubleclick' app/src/main; then
             echo 'Analytics/ad tracker reference found in child app.' >&2
@@ -176,7 +200,8 @@ jobs:
       - name: Verify APKs and provenance
         shell: bash
         env:
-          RELEASE_AVAILABLE: ${{ steps.signing.outputs.available }}
+          RELEASE_SIGNING_MODE: ${{ steps.signing.outputs.mode }}
+          STABLE_SIGNING_AVAILABLE: ${{ steps.signing.outputs.stable_available }}
         run: |
           set -euo pipefail
           mkdir -p p6b-apk-evidence
@@ -186,17 +211,17 @@ jobs:
           test -n "$release_apk" && test -f "$release_apk"
           apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
           test -x "$apksigner_bin"
+          "$apksigner_bin" verify --verbose --print-certs "$release_apk" > p6b-apk-evidence/release-signing.txt
           sha256sum "$debug_apk" "$release_apk" > p6b-apk-evidence/sha256.txt
           {
             echo "android_sha=$ANDROID_PHASE6B_SHA"
-            echo "stable_signing_available=$RELEASE_AVAILABLE"
+            echo "release_signing_mode=$RELEASE_SIGNING_MODE"
+            echo "stable_production_signing_available=$STABLE_SIGNING_AVAILABLE"
             echo "java=$(java -version 2>&1 | head -n1)"
             echo "gradle=$(gradle --version | grep '^Gradle ' | head -n1)"
           } > p6b-apk-evidence/provenance.txt
-          if [[ "$RELEASE_AVAILABLE" == 'true' ]]; then
-            "$apksigner_bin" verify --verbose --print-certs "$release_apk" > p6b-apk-evidence/release-signing.txt
-          else
-            echo 'UNSIGNED RELEASE CANDIDATE — stable signing secrets were unavailable.' > p6b-apk-evidence/release-signing.txt
+          if [[ "$STABLE_SIGNING_AVAILABLE" != 'true' ]]; then
+            echo 'NON-PRODUCTION: this APK uses an ephemeral CI qualification key.' >> p6b-apk-evidence/provenance.txt
           fi
       - name: Upload APK/evidence
         uses: actions/upload-artifact@v4
