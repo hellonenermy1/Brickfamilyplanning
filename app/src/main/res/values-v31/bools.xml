@@ -1,0 +1,4 @@
+<resources>
+    <bool name="brick_companion_legacy_service_enabled">true</bool>
+    <bool name="brick_companion_association_service_enabled">false</bool>
+</resources>

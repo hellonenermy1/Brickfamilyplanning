@@ -28,5 +28,12 @@ interface EvidenceProvider {
     fun status(): EvidenceProviderStatus
     fun start(sink: EvidenceSink)
     fun applySampling(decision: EvidenceSamplingDecision)
+
+    /**
+     * Collect one bounded observation when the current sampling decision permits it. Phase 2
+     * providers do not need to implement this; the default keeps the original contract compatible.
+     */
+    fun collectNow() = Unit
+
     fun stop()
 }

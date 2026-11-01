@@ -241,6 +241,11 @@ class MainActivity : AppCompatActivity() {
             permissions += Manifest.permission.BLUETOOTH_SCAN
         }
         if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+            // Optional Wi-Fi RTT capability on supported hardware. Denial never blocks Brick Core.
+            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.POST_NOTIFICATIONS
         }

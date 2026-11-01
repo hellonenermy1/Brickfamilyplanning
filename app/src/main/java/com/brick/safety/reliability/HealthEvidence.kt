@@ -21,6 +21,7 @@ object HealthEvidence {
         val activityManager = context.getSystemService(ActivityManager::class.java)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+
         val now = System.currentTimeMillis()
         val lastRecovery = prefs.getLong("lastSelfRecoveryWallMs", 0L)
         val lastJournalFailure = prefs.getLong("lastJournalWriteFailureWallMs", 0L)
@@ -42,12 +43,12 @@ object HealthEvidence {
         val lastPhase3ConsistencyReject = prefs.getLong("lastPhase3ConsistencyRejectWallMs", 0L)
         val phase3ConsistencyRejectTotal = prefs.getLong("phase3ConsistencyRejectTotal", 0L).coerceAtLeast(0L)
 
+        val lastAtlasStateFailure = prefs.getLong("lastAtlasStateFailureWallMs", 0L)
+        val atlasStateFailureTotal = prefs.getLong("atlasStateFailureTotal", 0L).coerceAtLeast(0L)
+
         val evidenceSnapshot = runCatching {
             EvidenceJournal(context).let { journal ->
                 try {
-                    // refreshHealth() may perform due quarantine maintenance. Read stats afterward so
-                    // this health packet describes the post-maintenance journal state, not a stale
-                    // count that disappears only on the next heartbeat.
                     val healthy = journal.refreshHealth()
                     journal.stats() to healthy
                 } finally {
@@ -84,6 +85,7 @@ object HealthEvidence {
             .put("activityRecognitionPermission", granted(Manifest.permission.ACTIVITY_RECOGNITION))
             .put("bleAnchorConfigCount", bleAnchorConfigCount)
             .put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))
+            .put("nearbyWifiPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.NEARBY_WIFI_DEVICES))
             .put("notificationPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
             .put("batteryOptimizationExempt", powerManager.isIgnoringBatteryOptimizations(context.packageName))
             .put("powerSaveMode", powerManager.isPowerSaveMode)
@@ -133,5 +135,29 @@ object HealthEvidence {
             .put("lastPhase3ConsistencyRejectAgeMs", ageSince(lastPhase3ConsistencyReject))
             .put("phase3ConsistencyRejectTotal", phase3ConsistencyRejectTotal)
             .put("lastPhase3ConsistencyRejectReason", optionalString("lastPhase3ConsistencyRejectReason"))
+            .put("atlasStateHealthy", prefs.getBoolean("atlasStateHealthy", true))
+            .put("lastAtlasStateFailureAgeMs", ageSince(lastAtlasStateFailure))
+            .put("atlasStateFailureTotal", atlasStateFailureTotal)
+            .put("atlasLabelCount", prefs.getInt("atlasLabelCount", 0).coerceAtLeast(0))
+            .put("atlasSignalCount", prefs.getInt("atlasSignalCount", 0).coerceAtLeast(0))
+            .put("atlasCandidateCount", prefs.getInt("atlasCandidateCount", 0).coerceAtLeast(0))
+            .put("atlasCandidateAmbiguous", optionalBoolean("atlasCandidateAmbiguous"))
+            .put("atlasCandidateUncertaintyM", optionalFloat("atlasCandidateUncertaintyM"))
+            .put("atlasWifiProviderCapability", optionalString("atlasWifiProviderCapability"))
+            .put("atlasWifiProviderHealth", optionalString("atlasWifiProviderHealth"))
+            .put("atlasRttProviderCapability", optionalString("atlasRttProviderCapability"))
+            .put("atlasRttProviderHealth", optionalString("atlasRttProviderHealth"))
+            .put("atlasBleProviderCapability", optionalString("atlasBleProviderCapability"))
+            .put("atlasBleProviderHealth", optionalString("atlasBleProviderHealth"))
+            .put("atlasCellularProviderCapability", optionalString("atlasCellularProviderCapability"))
+            .put("atlasCellularProviderHealth", optionalString("atlasCellularProviderHealth"))
+            .put("atlasLanProviderCapability", optionalString("atlasLanProviderCapability"))
+            .put("atlasLanProviderHealth", optionalString("atlasLanProviderHealth"))
+            .put("atlasGnssProviderCapability", optionalString("atlasGnssProviderCapability"))
+            .put("atlasGnssProviderHealth", optionalString("atlasGnssProviderHealth"))
+            .put("atlasNetworkProviderCapability", optionalString("atlasNetworkProviderCapability"))
+            .put("atlasNetworkProviderHealth", optionalString("atlasNetworkProviderHealth"))
+            .put("atlasDeviceContextProviderCapability", optionalString("atlasDeviceContextProviderCapability"))
+            .put("atlasDeviceContextProviderHealth", optionalString("atlasDeviceContextProviderHealth"))
     }
 }

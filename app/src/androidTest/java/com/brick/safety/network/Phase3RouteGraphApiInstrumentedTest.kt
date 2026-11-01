@@ -1,9 +1,9 @@
 package com.brick.safety.network
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 
 @Suppress("DEPRECATION")
-class Phase3RouteGraphApiInstrumentedTest : InstrumentationTestCase() {
+class Phase3RouteGraphApiInstrumentedTest : BrickInstrumentationTestCase() {
     private fun response(segments: String, centerLat: Double = 1.3, centerLon: Double = 103.8, radiusM: Int = 650) =
         """{"protocol":1,"generatedAtMs":1700000000000,"center":{"lat":$centerLat,"lon":$centerLon},"radiusM":$radiusM,"segments":[$segments]}"""
 

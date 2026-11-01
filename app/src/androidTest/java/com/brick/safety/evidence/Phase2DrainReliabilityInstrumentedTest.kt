@@ -2,12 +2,12 @@ package com.brick.safety.evidence
 
 import android.content.Context
 import android.os.SystemClock
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import com.brick.safety.reliability.EvidenceRetryPolicy
 import java.util.UUID
 
 @Suppress("DEPRECATION")
-class Phase2DrainReliabilityInstrumentedTest : InstrumentationTestCase() {
+class Phase2DrainReliabilityInstrumentedTest : BrickInstrumentationTestCase() {
     companion object {
         private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
     }

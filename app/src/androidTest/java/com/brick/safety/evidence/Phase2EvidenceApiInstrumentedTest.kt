@@ -1,11 +1,11 @@
 package com.brick.safety.evidence
 
 import android.os.SystemClock
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import java.util.UUID
 
 @Suppress("DEPRECATION")
-class Phase2EvidenceApiInstrumentedTest : InstrumentationTestCase() {
+class Phase2EvidenceApiInstrumentedTest : BrickInstrumentationTestCase() {
     private fun record() = EvidenceRecord(
         epoch = 7,
         sequence = 42L,

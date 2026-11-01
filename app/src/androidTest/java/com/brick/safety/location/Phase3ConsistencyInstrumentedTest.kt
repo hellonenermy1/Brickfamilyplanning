@@ -1,9 +1,9 @@
 package com.brick.safety.location
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 
 @Suppress("DEPRECATION")
-class Phase3ConsistencyInstrumentedTest : InstrumentationTestCase() {
+class Phase3ConsistencyInstrumentedTest : BrickInstrumentationTestCase() {
     private fun fix(
         lat: Double = 1.3000,
         lon: Double = 103.8000,

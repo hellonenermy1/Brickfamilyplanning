@@ -2,11 +2,11 @@ package com.brick.safety.evidence
 
 import android.content.Context
 import android.os.SystemClock
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import java.util.UUID
 
 @Suppress("DEPRECATION")
-class Phase2EvidenceInstrumentedTest : InstrumentationTestCase() {
+class Phase2EvidenceInstrumentedTest : BrickInstrumentationTestCase() {
     companion object {
         private const val GOLDEN_HEX = "425245560100112233445566778899aabbccddeeff000112345678123456789abcdef01234567800000007000000000000002a00000000075bcd150000019a3b3636fbffff00000310000d64756d6d793a746573743a7363656e657068617365322d676f6c64656e"
         private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"

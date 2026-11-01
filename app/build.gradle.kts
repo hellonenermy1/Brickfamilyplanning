@@ -33,7 +33,7 @@ android {
         targetSdk = 35
         versionCode = 6
         versionName = "0.6.0-phase6-rc"
-        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures { viewBinding = true }
@@ -81,4 +81,8 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+
+    // Maintained instrumentation runner. Brick's test methods remain JUnit3-style TestCase tests,
+    // which AndroidJUnitRunner supports, while avoiding deprecated android.test framework classes.
+    androidTestImplementation("androidx.test:runner:1.7.0")
 }

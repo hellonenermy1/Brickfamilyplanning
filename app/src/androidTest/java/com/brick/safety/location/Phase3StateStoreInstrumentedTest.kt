@@ -1,10 +1,10 @@
 package com.brick.safety.location
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import java.io.File
 
 @Suppress("DEPRECATION")
-class Phase3StateStoreInstrumentedTest : InstrumentationTestCase() {
+class Phase3StateStoreInstrumentedTest : BrickInstrumentationTestCase() {
     private val marker = "phase3-sensitive-route-marker-1.3000-103.8000"
 
     override fun setUp() {
