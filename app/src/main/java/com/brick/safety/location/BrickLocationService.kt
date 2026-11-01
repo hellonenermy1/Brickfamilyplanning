@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
+import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
@@ -453,7 +454,12 @@ class BrickLocationService : Service() {
     }
 
     private fun appVersionName(): String = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }
     }.getOrNull() ?: "unknown"
 
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
