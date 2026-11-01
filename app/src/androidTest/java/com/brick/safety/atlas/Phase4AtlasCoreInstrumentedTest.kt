@@ -1,9 +1,9 @@
 package com.brick.safety.atlas
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 
 @Suppress("DEPRECATION")
-class Phase4AtlasCoreInstrumentedTest : InstrumentationTestCase() {
+class Phase4AtlasCoreInstrumentedTest : BrickInstrumentationTestCase() {
     private val baseWall = 1_800_000_000_000L
 
     private fun label(

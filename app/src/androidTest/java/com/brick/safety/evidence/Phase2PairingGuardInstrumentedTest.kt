@@ -2,11 +2,11 @@ package com.brick.safety.evidence
 
 import android.content.Context
 import android.os.SystemClock
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import java.util.UUID
 
 @Suppress("DEPRECATION")
-class Phase2PairingGuardInstrumentedTest : InstrumentationTestCase() {
+class Phase2PairingGuardInstrumentedTest : BrickInstrumentationTestCase() {
     companion object {
         private const val TEST_DEVICE_ID = "12345678-1234-4678-9abc-def012345678"
         private const val SECOND_DEVICE_ID = "87654321-4321-4abc-8def-0123456789ab"

@@ -1,10 +1,10 @@
 package com.brick.safety.atlas
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import java.io.File
 
 @Suppress("DEPRECATION")
-class Phase4AtlasStateInstrumentedTest : InstrumentationTestCase() {
+class Phase4AtlasStateInstrumentedTest : BrickInstrumentationTestCase() {
     private fun file(): File = File(instrumentation.targetContext.filesDir, "brick_atlas_v1.bin")
 
     override fun setUp() {

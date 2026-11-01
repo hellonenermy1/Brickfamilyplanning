@@ -1,10 +1,10 @@
 package com.brick.safety.location
 
-import android.test.InstrumentationTestCase
+import com.brick.safety.testing.BrickInstrumentationTestCase
 import kotlin.math.abs
 
 @Suppress("DEPRECATION")
-class Phase3CoreInstrumentedTest : InstrumentationTestCase() {
+class Phase3CoreInstrumentedTest : BrickInstrumentationTestCase() {
     fun testLearnedOdometryAndZeroVelocityStayConservative() {
         val odo = LearnedOdometryModel()
         assertTrue(odo.calibrateStride(Phase3Mode.WALKING, MotionPlacement.HAND_LIKELY, 10, 8.0, 5f, 5f))
