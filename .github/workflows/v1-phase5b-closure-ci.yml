@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE5B_SHA: ea021cb685292f31afb9adbf254fbfb6a1e18225
+  ANDROID_PHASE5B_SHA: 6e9210575fd20b21ca4f995b6eac7c7cc738e0ab
 
 concurrency:
   group: brick-v1-phase5b-${{ github.event.pull_request.number || github.ref }}
@@ -47,6 +47,8 @@ jobs:
           node --check scripts/test-phase5-current-refinement.mjs
           node --check scripts/test-phase5-parent-live.mjs
           node --check scripts/test-phase5-live-state-order.mjs
+          node --check scripts/test-phase5-coarse-network.mjs
+          node --check scripts/test-phase5-refined-history.mjs
           npx esbuild src/protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-protocol.mjs
           npx esbuild src/phase5-evidence.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-evidence.mjs
           npx esbuild src/ground-receiver.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-ground-receiver.mjs
@@ -56,6 +58,8 @@ jobs:
           npx esbuild src/phase5-current-refinement.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-current-refinement.mjs
           npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-state-order.mjs
           npx esbuild src/parent-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6.mjs
+          npx esbuild src/phase5-coarse-network.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-coarse-network.mjs
+          npx esbuild src/phase5-refined-history.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase5-refined-history.mjs
           node scripts/test-phase5-fusion-protocol.mjs /tmp/brick-protocol.mjs
           node scripts/test-phase5-witness.mjs /tmp/brick-phase5-evidence.mjs
           node scripts/test-phase5-ground.mjs /tmp/brick-ground-receiver.mjs /tmp/brick-phase5-evidence.mjs
@@ -65,6 +69,8 @@ jobs:
           node scripts/test-phase5-current-refinement.mjs /tmp/brick-phase5-current-refinement.mjs
           node scripts/test-phase5-live-state-order.mjs /tmp/brick-live-state-order.mjs
           node scripts/test-phase5-parent-live.mjs /tmp/brick-parent-v6.mjs
+          node scripts/test-phase5-coarse-network.mjs /tmp/brick-phase5-coarse-network.mjs
+          node scripts/test-phase5-refined-history.mjs /tmp/brick-phase5-refined-history.mjs
       - name: Retain Phase 4 / 3 / 2 Cloud regressions
         shell: bash
         run: |
@@ -91,6 +97,12 @@ jobs:
           grep -F 'originalRealtimeHypothesisId' src/phase5-smoothing.ts >/dev/null
           grep -F 'shouldAdvanceLiveState' src/device-do.ts >/dev/null
           ! grep -F 'exactDistanceM' src/ground-receiver.ts >/dev/null
+          grep -F 'coarseNetworkFromCf' src/phase5-coarse-network.ts >/dev/null
+          grep -F 'history/refined/' src/phase5-refined-history.ts >/dev/null
+          grep -F 'phase5_hypothesis_frames' schema/010_phase5b_closure.sql >/dev/null
+          grep -F 'phase5_precise_endpoints' schema/010_phase5b_closure.sql >/dev/null
+          grep -F 'persistHypothesisFrameIfPresent' src/evidence-route.ts >/dev/null
+          grep -F 'preciseEndpointStatements' src/location-ingest-v6.ts >/dev/null
 
   android-build:
     name: Phase 2-5 cumulative Android build / lint / dependency lock
@@ -153,6 +165,11 @@ jobs:
           grep -R -l 'Phase3' app/src/androidTest >/dev/null
           grep -R -l 'Phase4' app/src/androidTest >/dev/null
           grep -R -l 'Phase5' app/src/androidTest >/dev/null
+          grep -F 'testCoarseNetworkCannotPullBetterCurrentEvidence' app/src/androidTest/java/com/brick/safety/fusion/Phase5CoarseNetworkInstrumentedTest.kt >/dev/null
+          grep -F 'testHypothesisFrameIsEncryptedJournalEvidenceAndKeepsAlternatives' app/src/androidTest/java/com/brick/safety/fusion/Phase5HypothesisRecorderInstrumentedTest.kt >/dev/null
+          grep -F 'FUSION_HYPOTHESES' app/src/main/java/com/brick/safety/evidence/EvidenceModel.kt >/dev/null
+          grep -F 'Phase5HypothesisRuntime.record' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
+          grep -F 'if (constraints.isEmpty())' app/src/main/java/com/brick/safety/fusion/Phase5PositionFusion.kt >/dev/null
 
   android-instrumentation:
     name: Phase 2-5 cumulative Android instrumentation
