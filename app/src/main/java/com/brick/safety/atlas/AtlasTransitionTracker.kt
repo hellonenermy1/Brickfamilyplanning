@@ -52,7 +52,7 @@ internal class AtlasTransitionTracker(
         val keys = eligible.map { "${it.kind.ordinal}:${it.signalId}" }.toSet()
         if (keys.isEmpty()) return scan
         val measurements = eligible.mapNotNull { observation ->
-            observation.measurement?.takeIf(Float::isFinite)?.let {
+            observation.measurement?.takeIf { it.isFinite() }?.let {
                 "${observation.kind.ordinal}:${observation.signalId}" to it
             }
         }.toMap()
@@ -177,7 +177,7 @@ internal class AtlasTransitionTracker(
 
     private fun sequenceObservation(id: String, elapsedMs: Long, quality: Float): AtlasSignalObservation? {
         while (recentTransitions.isNotEmpty() &&
-            elapsedMs - recentTransitions.first.elapsedMs > sequenceGapMs) {
+            elapsedMs - (recentTransitions.peekFirst()?.elapsedMs ?: elapsedMs) > sequenceGapMs) {
             recentTransitions.removeFirst()
         }
         recentTransitions.addLast(RecentTransition(id, elapsedMs, quality))
