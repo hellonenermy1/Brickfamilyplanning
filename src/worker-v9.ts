@@ -5,6 +5,7 @@ import { augmentHealthWithLearnedPlaces } from "./phase5-places";
 import { augmentHealthWithCoarseNetwork } from "./phase5-coarse-network";
 import { listCurrentExternalConstraints } from "./phase5-external-constraints";
 import { refineCurrentState, type ParentCurrentState } from "./phase5-current-refinement";
+import { cleanupPhase5RefinedHistory, listRefinedHistory, processRefinementsForDevice } from "./phase5-refined-history";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -44,11 +45,6 @@ function asParentState(value: unknown): ParentCurrentState | null {
   };
 }
 
-/**
- * Add a parent-only Phase 5 refinement without replacing the Durable Object's child-reported state.
- * The inherited route has already enforced parent authentication/revocation semantics. A revoked
- * device remains archived and receives no fresh external refinement.
- */
 async function augmentParentStateWithExternalRefinement(response: Response, env: Env, deviceId: string): Promise<Response> {
   if (!response.ok || !DEVICE_ID_RE.test(deviceId)) return response;
   const contentType = (response.headers.get("Content-Type") ?? "").toLowerCase();
@@ -78,32 +74,59 @@ async function augmentParentStateWithExternalRefinement(response: Response, env:
   });
 }
 
+async function augmentParentHistoryWithRefinedLayer(response: Response, env: Env, deviceId: string, fromMs: number, toMs: number) {
+  if (!response.ok || !DEVICE_ID_RE.test(deviceId)) return response;
+  const contentType = (response.headers.get("Content-Type") ?? "").toLowerCase();
+  if (!contentType.includes("application/json")) return response;
+  let body: unknown;
+  try { body = await response.json(); } catch { return response; }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return response;
+  let refinedHistory;
+  try { refinedHistory = await listRefinedHistory(env, deviceId, fromMs, toMs); }
+  catch {
+    // Refined history is optional extra information. It must never make trusted/raw history unreadable.
+    return new Response(JSON.stringify(body), { status: response.status, statusText: response.statusText, headers: response.headers });
+  }
+  const headers = new Headers(response.headers);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  return new Response(JSON.stringify({ ...(body as Record<string, unknown>), refinedHistory }), {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
     const ground = u.pathname.match(/^\/api\/ground\/([^/]+)\/sighting$/);
     if (req.method === "POST" && ground) return handleGroundReceiverRequest(req, env, ground[1]);
 
-    // The inherited worker performs the normal signed/revocation/rate-limited device-health request
-    // first. Phase 5 only augments a successful authenticated response; it never creates a second
-    // device-config authentication path.
     const health = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
     if (req.method === "POST" && health) {
       const response = await base.fetch!(req, env, ctx);
       const withPlaces = await augmentHealthWithLearnedPlaces(response, env.DB, health[1]);
-      // request.cf is Cloudflare's IP-derived visitor metadata. It is deliberately returned only as
-      // a 50 km-class last-resort area; Android enforces the same honesty floor independently.
       return augmentHealthWithCoarseNetwork(withPlaces, req.cf as Record<string, unknown> | undefined);
     }
 
-    // Parent state remains the child-reported Durable Object snapshot plus a separate refinement.
-    // Raw/current state is never overwritten by Witness/Ground evidence.
     const parentState = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/state$/);
     if (req.method === "GET" && parentState) {
       const response = await base.fetch!(req, env, ctx);
       let deviceId: string;
       try { deviceId = decodeURIComponent(parentState[1]); } catch { return response; }
       return augmentParentStateWithExternalRefinement(response, env, deviceId);
+    }
+
+    const parentHistory = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/history$/);
+    if (req.method === "GET" && parentHistory) {
+      const response = await base.fetch!(req, env, ctx);
+      let deviceId: string;
+      try { deviceId = decodeURIComponent(parentHistory[1]); } catch { return response; }
+      const fromMs = Number(u.searchParams.get("from"));
+      const toMs = Number(u.searchParams.get("to"));
+      if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return response;
+      return augmentParentHistoryWithRefinedLayer(response, env, deviceId, fromMs, toMs);
     }
 
     return base.fetch!(req, env, ctx);
@@ -113,7 +136,18 @@ export default {
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (base.scheduled) await base.scheduled(controller, env, ctx);
-    // Bounded privacy/operational indexes only. Raw evidence retains its existing independent R2 policy.
     try { await cleanupPhase5SemanticIndexes(env.DB); } catch { /* optional index cleanup retries next cron */ }
+
+    // Refinement is eventually consistent: if an earlier R2 pass failed after the endpoint/frame was
+    // durably indexed, maintenance retries a bounded set without touching live child state.
+    try {
+      const pending = await env.DB.prepare(
+        "SELECT DISTINCT device_id FROM phase5_hypothesis_frames WHERE refined_run_id IS NULL ORDER BY device_id LIMIT 20"
+      ).all<{ device_id: string }>();
+      for (const row of pending.results) {
+        try { await processRefinementsForDevice(env, row.device_id); } catch { /* retry next maintenance */ }
+      }
+      await cleanupPhase5RefinedHistory(env);
+    } catch { /* Phase 5 refined layer is non-blocking for Core */ }
   }
 } satisfies ExportedHandler<Env>;
