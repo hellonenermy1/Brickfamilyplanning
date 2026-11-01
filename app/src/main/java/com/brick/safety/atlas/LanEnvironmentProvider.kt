@@ -43,7 +43,6 @@ class LanEnvironmentProvider(
     @Volatile private var lastCollectElapsedMs = 0L
     @Volatile private var typeIndex = 0
     @Volatile private var currentListener: NsdManager.DiscoveryListener? = null
-    @Volatile private var currentCategory: String = "unknown"
     @Volatile private var latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
 
     override val descriptor = EvidenceProviderDescriptor(
@@ -79,7 +78,6 @@ class LanEnvironmentProvider(
 
         val (type, category) = SERVICE_TYPES[typeIndex % SERVICE_TYPES.size]
         typeIndex = (typeIndex + 1) % SERVICE_TYPES.size
-        currentCategory = category
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(regType: String) {
                 latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.HEALTHY)
@@ -90,17 +88,16 @@ class LanEnvironmentProvider(
                 val serviceType = serviceInfo.serviceType?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: type.lowercase()
                 val id = runCatching { AtlasPrivacyId.reduce("lan", "$serviceType|${rawName.lowercase()}") }.getOrNull() ?: return
                 synchronized(found) {
-                    if (found.size < MAX_SERVICES) found[id] = id to currentCategory
+                    if (found.size < MAX_SERVICES) found[id] = id to category
                 }
             }
 
             override fun onServiceLost(serviceInfo: NsdServiceInfo) = Unit
-
             override fun onDiscoveryStopped(serviceType: String) = Unit
 
             override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
                 latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "discovery_start_$errorCode")
-                finishDiscovery(this)
+                finishDiscovery(this, stopAgain = false)
             }
 
             override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {
@@ -157,7 +154,6 @@ class LanEnvironmentProvider(
         onAtlasScan(AtlasScan(elapsed, wall, quality, observations))
         val payload = JSONObject()
             .put("v", 1)
-            .put("cat", currentCategory)
             .put("services", JSONArray().also { array ->
                 snapshot.take(12).forEach { (id, category) ->
                     array.put(JSONObject().put("id", id).put("cat", category))
@@ -183,7 +179,9 @@ class LanEnvironmentProvider(
     private fun localNetworkAvailable(): Boolean {
         val network = connectivity.activeNetwork ?: return false
         val caps = connectivity.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+        // A local-only Wi-Fi/Ethernet network can still expose stable NSD services even when it has
+        // no Internet validation. Do not incorrectly suppress LAN evidence in that state.
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
 }
