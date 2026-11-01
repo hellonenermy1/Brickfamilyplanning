@@ -60,8 +60,11 @@ object ManagedPolicy {
             runCatching { dpm.setAutoTimeRequired(admin, true) }
         }
 
+        // Phase 6: Location now follows a durable parent desired state instead of being forced ON
+        // unconditionally. ON is the store default, so upgrading from Phase 5B preserves behavior.
         if (Build.VERSION.SDK_INT >= 30) {
-            runCatching { dpm.setLocationEnabled(admin, true) }
+            val desiredOn = ParentLocationStateStore.read(context).desired == DesiredLocationState.ON
+            runCatching { dpm.setLocationEnabled(admin, desiredOn) }
             runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
         }
         return true
