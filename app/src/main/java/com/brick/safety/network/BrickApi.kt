@@ -34,6 +34,18 @@ object BrickApi {
         val latitude: Double,
         val longitude: Double
     )
+    data class LocationControlCommand(
+        val deviceId: String,
+        val commandId: String,
+        val nonce: String,
+        val desiredEnabled: Boolean,
+        val issuedAtMs: Long,
+        val expiresAtMs: Long
+    )
+    data class HealthSyncResult(
+        val bleAnchors: List<BleAnchorConfig>,
+        val locationCommand: LocationControlCommand?
+    )
     /**
      * Null means the server intentionally omitted that configuration family, usually because its
      * backing query/source was unavailable. Empty means the authenticated server successfully
@@ -43,14 +55,17 @@ object BrickApi {
     data class HealthConfig(
         val bleAnchors: List<BleAnchorConfig>?,
         val learnedPlaces: List<LearnedPlaceConfig>?,
-        val coarseNetwork: CoarseNetworkConfig?
+        val coarseNetwork: CoarseNetworkConfig?,
+        val locationCommand: LocationControlCommand?
     )
 
     private const val LOCATION_V2_BYTES = 90
     private const val LOCATION_BATCH_VERSION: Byte = 1
     private const val MAX_LOCATION_DRAIN_GROUP = 50
     private const val MAX_LOCATION_HTTP_BATCH = 20
+    private const val MAX_COMMAND_DELIVERY_MS = 10 * 60_000L
     private val PLACE_ID_RE = Regex("[A-Za-z0-9._:-]{1,96}")
+    private val COMMAND_ID_RE = Regex("[A-Za-z0-9._:-]{8,128}")
 
     private fun secureBase(baseUrl: String): String {
         val value = baseUrl.trim().trimEnd('/')
@@ -155,7 +170,7 @@ object BrickApi {
         return acknowledged
     }
 
-    internal fun parseHealthConfig(response: JSONObject): HealthConfig {
+    internal fun parseHealthConfig(response: JSONObject, nowMs: Long = System.currentTimeMillis()): HealthConfig {
         val bleAnchors: List<BleAnchorConfig>? = if (response.has("bleAnchors") && !response.isNull("bleAnchors")) {
             val array = response.optJSONArray("bleAnchors")
             if (array == null) emptyList() else buildList<BleAnchorConfig> {
@@ -206,7 +221,35 @@ object BrickApi {
             }
         } else null
 
-        return HealthConfig(bleAnchors = bleAnchors, learnedPlaces = learnedPlaces, coarseNetwork = coarseNetwork)
+        val locationCommand = response.optJSONObject("locationCommand")?.let { j ->
+            val protocol = j.optInt("protocol", -1)
+            val deviceId = j.optString("deviceId", "")
+            val commandId = j.optString("commandId", "")
+            val nonce = j.optString("nonce", "")
+            val issuedAtMs = j.optLong("issuedAtMs", -1L)
+            val expiresAtMs = j.optLong("expiresAtMs", -1L)
+            if (protocol != 1 || runCatching { UUID.fromString(deviceId) }.isFailure || !COMMAND_ID_RE.matches(commandId) ||
+                runCatching { UUID.fromString(nonce) }.isFailure || !j.has("desiredEnabled") || j.isNull("desiredEnabled") ||
+                issuedAtMs <= 0L || expiresAtMs <= nowMs || expiresAtMs - nowMs > MAX_COMMAND_DELIVERY_MS) {
+                null
+            } else {
+                LocationControlCommand(
+                    deviceId = deviceId,
+                    commandId = commandId,
+                    nonce = nonce,
+                    desiredEnabled = j.optBoolean("desiredEnabled"),
+                    issuedAtMs = issuedAtMs,
+                    expiresAtMs = expiresAtMs
+                )
+            }
+        }
+
+        return HealthConfig(
+            bleAnchors = bleAnchors,
+            learnedPlaces = learnedPlaces,
+            coarseNetwork = coarseNetwork,
+            locationCommand = locationCommand
+        )
     }
 
     private fun applyLearnedPlaceConfig(deviceId: String, config: HealthConfig) {
@@ -226,7 +269,7 @@ object BrickApi {
         Phase5CoarseNetworkRuntime.update(deviceId, coarse.latitude, coarse.longitude)
     }
 
-    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): List<BleAnchorConfig> {
+    fun sendHealth(baseUrl: String, deviceId: String, health: JSONObject): HealthSyncResult {
         val payload = health.toString().toByteArray(Charsets.UTF_8)
         val url = endpoint(baseUrl, "/api/device/$deviceId/health")
         val c = connection(url)
@@ -239,7 +282,7 @@ object BrickApi {
         val config = parseHealthConfig(JSONObject(text))
         applyLearnedPlaceConfig(deviceId, config)
         applyCoarseNetworkConfig(deviceId, config)
-        return config.bleAnchors ?: emptyList()
+        return HealthSyncResult(config.bleAnchors ?: emptyList(), config.locationCommand)
     }
 
     fun createSafetyEnvelope(kind: String, eventSequence: Long, detail: JSONObject = JSONObject(), latitude: Double? = null, longitude: Double? = null, accuracyM: Double? = null): SafetyEnvelope {
