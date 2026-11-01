@@ -103,7 +103,32 @@ jobs:
           test "$before" = "$after"
           git diff --exit-code -- app/gradle.lockfile
       - name: Compile app tests and lint
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
+        id: android_compile
+        shell: bash
+        run: |
+          set -u
+          LOG=/tmp/brick-p4-gradle.log
+          if gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace >"$LOG" 2>&1; then
+            echo "Phase 4 Android compile/lint passed."
+            exit 0
+          else
+            status=$?
+          fi
+
+          echo "::group::Phase 4 Gradle compiler/lint diagnostics"
+          grep -nE '(^e: |^.*error:|Unresolved reference|Type mismatch|Cannot access|None of the following|Overload resolution ambiguity|FAILURE:|What went wrong:|Execution failed for task|A failure occurred while executing|Lint found|[0-9]+ errors?, [0-9]+ warnings?)' "$LOG" | head -n 300 || true
+          echo "--- final Gradle context ---"
+          tail -n 180 "$LOG" || true
+          echo "::endgroup::"
+          exit "$status"
+      - name: Upload full Gradle failure log
+        if: failure() && steps.android_compile.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase4-android-gradle-failure-log
+          path: /tmp/brick-p4-gradle.log
+          if-no-files-found: error
+          retention-days: 7
       - name: Lock Phase 4 architecture invariants
         shell: bash
         run: |
