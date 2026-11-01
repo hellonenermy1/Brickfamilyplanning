@@ -10,6 +10,7 @@ permissions:
 
 env:
   ANDROID_PHASE5B_SHA: 055ef0b2990bb810a6dac24309f980285f8777b5
+  CLOUD_PHASE5B_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
   group: brick-v1-phase5b-${{ github.event.pull_request.number || github.ref }}
@@ -22,6 +23,11 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CLOUD_PHASE5B_SHA }}
+      - name: Verify exact Cloud candidate
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$CLOUD_PHASE5B_SHA"
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
