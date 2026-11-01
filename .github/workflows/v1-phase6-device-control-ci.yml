@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: 39db9c685c495d12dc920ae078ec2f1cb1078155
+  ANDROID_PHASE6_SHA: 00dfa7a6e2f449c4632453e678fd8f1df1c88554
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -182,6 +182,7 @@ jobs:
           test -f app/src/androidTest/java/com/brick/safety/managed/Phase6ParentLocationStateInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/network/Phase6LocationCommandInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/privileged/Phase6PrivilegedBridgeInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt
 
   android-instrumentation:
     name: Phase 2-6 cumulative Android instrumentation
