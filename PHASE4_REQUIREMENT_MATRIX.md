@@ -2,9 +2,9 @@
 
 Date: 2026-11-01
 Exact candidate pair at this checkpoint:
-- Android `v1-p4-atlas-trust-android`: `f6cfcc178ee8a4e7799c176e350c5b967c56069d`
-- Cloud `v1-p4-atlas-trust-cloud`: `bfe99f59697944467b0ac11fc2253ca16b68fa0b`
-- Exact-pair CI: run `41267183265` (in progress when this matrix was created)
+- Android `v1-p4-atlas-trust-android`: `c6bb20268b22c4f0567773f70c3f5a3717218437`
+- Cloud `v1-p4-atlas-trust-cloud`: `20e6e482b06160a4f5d5329b1452e3af02ab7d9f`
+- Exact-pair CI: run `41268166679` (in progress when this matrix was updated)
 
 Status vocabulary: `IMPLEMENTED`, `PARTIAL`, `CI PENDING`, `DEVICE VERIFY`, `OPEN`, `RULE`, `P5 INTEGRATION`.
 
@@ -33,7 +33,7 @@ Status vocabulary: `IMPLEMENTED`, `PARTIAL`, `CI PENDING`, `DEVICE VERIFY`, `OPE
 | BLE-ENV-006 MOBILE | geographic-spread classifier | IMPLEMENTED / CI PENDING / moving-device verify pending |
 | BLE-ENV-007 UNSTABLE | health/variance classifier | IMPLEMENTED / CI PENDING |
 | BLE stale/unknown semantics | stale age + insufficient-evidence handling | IMPLEMENTED / CI PENDING |
-| LAN-001 authorised local environment | Android NSD service environment | PARTIAL: useful supported subset; gateway characteristics not yet learned |
+| LAN-001 authorised local environment | Android NSD service environment | PARTIAL: useful supported subset; generic gateway address was not promoted because it is commonly shared and would add weak/correlated location value |
 | LAN-002 mDNS/NSD/casting/printer/Matter/etc. | Cast, AirPlay, IPP/printer, Matter and HTTP NSD categories | PARTIAL: no broad SSDP/UPnP/NAS probing by design; platform permission/power/privacy gate remains |
 | LAN-003 association learned only under trusted position | Atlas training gate applies to LAN | IMPLEMENTED |
 | CELL-001 LTE/NR exposed radio environment | LTE/NR identity, signal, RSRQ/SINR, TA when API exposes, channel/bands, neighbor set, transitions | IMPLEMENTED source / DEVICE VERIFY |
@@ -43,31 +43,31 @@ Status vocabulary: `IMPLEMENTED`, `PARTIAL`, `CI PENDING`, `DEVICE VERIFY`, `OPE
 | GNSS-ATL-001 aggregate sky fingerprint | constellation/count/CN0/azimuth/elevation/carrier/used-in-fix | IMPLEMENTED / DEVICE VERIFY |
 | GNSS-ATL-002 no permanent satellite identity | fingerprint uses aggregate buckets only | IMPLEMENTED rule |
 | NET-001 Wi-Fi/mobile/loss/recovery transitions | passive network state + offline durable evidence + transition tracker | IMPLEMENTED subset; latency/loss measurement remains PARTIAL |
-| NET-ATL-001 transport/IP/DNS/captive/transition/latency/loss | transport, v4/v6, reduced DNS, captive/validated, loss/recovery implemented | PARTIAL: active latency/packet-loss probing intentionally not added without measured value/cost justification |
+| NET-ATL-001 transport/IP/DNS/captive/transition/latency/loss | transport, v4/v6, reduced DNS, captive/validated, loss/recovery implemented | PARTIAL: active latency/packet-loss probing intentionally not added without measured value/cost justification; no extra network chatter is introduced merely to tick this row |
 | NET-ATL-002 network context cannot outweigh stronger evidence | low spoof-resistance weight; P5 owns final fusion | IMPLEMENTED source / P5 integration audit |
-| COMP-001 known companion/accessory presence weak only | no arbitrary Bluetooth device is promoted to trusted companion | OPEN/PARTIAL: proper authorised CompanionDevice association/presence flow not implemented in Phase 4 candidate |
-| COMP-002 charging type/state as weak context | `DeviceContextProvider` | IMPLEMENTED |
+| COMP-001 known companion/accessory presence weak only | `CompanionPresenceController` uses only Android CompanionDeviceManager associations; system-only callback services are API-gated; raw addresses are privacy-reduced/not persisted; companion + charging share one `device.context` independence group | IMPLEMENTED SOURCE / CI PENDING / DEVICE VERIFY; association setup/real presence behaviour must be verified on target OPPO |
+| COMP-002 charging type/state as weak context | `DeviceContextProvider`; missing battery broadcast no longer suppresses companion evidence | IMPLEMENTED / CI PENDING |
 | ARR-001 approach/departure/building-entry sequences | privacy-reduced environmental/activity transition tracker | PARTIAL: generic sequence learning implemented; real building-entry validation + P5 use pending |
 | ARR-002 turns/stops/stairs/escalator/lift/corridor/dwell with environment | broad activity transitions + Phase 3 motion foundation | PARTIAL: no claim of specific stairs/lift/corridor recognition without validated evidence |
 | ZONE-001 zone/floor fingerprints | coarse environmental zone ID + Wi-Fi/BLE/RTT/GNSS/motion evidence available | PARTIAL: zone groundwork exists; validated floor classifier not implemented |
 | ZONE-002 weak floor UI estimated | no Phase 4 UI claim | P7/P9; floor truth not claimed |
 | ZONE-003 no invented barometer | no barometer added | RULE satisfied |
-| PRIOR-001 time/dwell as weak prior only | no standalone time-only location claim | PARTIAL/P5 INTEGRATION; Phase 4 does not currently learn a persistent schedule prior |
+| PRIOR-001 time/dwell as weak prior only | no standalone time-only location claim | PARTIAL/P5 INTEGRATION; Phase 4 does not currently learn a persistent schedule prior because unvalidated schedule inference must not become location truth |
 | TRUST-001 geographic uniqueness/spread | signal label spread | IMPLEMENTED |
 | TRUST-002 stability across trusted visits | visit counts/presence | IMPLEMENTED |
 | TRUST-003 mobility across distant places | MOBILE classification | IMPLEMENTED |
 | TRUST-004 freshness/age | decay/stale rules | IMPLEMENTED |
 | TRUST-005 quality/repeatability | quality, measurements, counts/variance | IMPLEMENTED |
 | TRUST-006 spoofability | type-specific spoof-resistance factors; SSID very weak | IMPLEMENTED |
-| TRUST-007 correlation/independence | independence-group caps; derived sequence inherits source group | IMPLEMENTED / CI PENDING |
+| TRUST-007 correlation/independence | independence-group caps; derived sequence inherits source group; companion and charging explicitly share one weak context group | IMPLEMENTED / CI PENDING |
 | TRUST-008 source health | health ratio participates in classification/weight | IMPLEMENTED |
 | TRUST-009 count + replacement history | observation/visit counts + trusted misses/relearning | IMPLEMENTED / CI PENDING |
 | TRUST-010 common collapse/distinctive gain | common/mobile/static weighting | IMPLEMENTED / CI PENDING |
 | TRUST-011 full signal-class suite | TRUSTED_ANCHOR/DISTINCTIVE_STATIC/LOCAL_COMMON/GLOBAL_COMMON/MOBILE/UNSTABLE/STALE/UNKNOWN | IMPLEMENTED / CI PENDING |
-| IND-001 correlated observations cannot multiply confidence | per-group hard cap; RTT/Wi-Fi and derived Wi-Fi transitions share group | IMPLEMENTED / CI PENDING |
+| IND-001 correlated observations cannot multiply confidence | per-group hard cap; RTT/Wi-Fi and derived Wi-Fi transitions share group; device companion/charging context is one group | IMPLEMENTED / CI PENDING |
 | NEG-001 cautious negative evidence | first miss weak; repeated trusted scoped misses stronger; hard total cap 0.15 | IMPLEMENTED / CI PENDING |
 | RELEARN-001 automatic router/beacon/LAN/cellular relearning | eligible-scan denominator + scoped trusted misses + retirement after repeated evidence | IMPLEMENTED / CI PENDING / DEVICE VERIFY |
-| PRIV-ATL-001 HMAC/privacy-reduced Wi-Fi/BLE identifiers | Android Keystore-backed HMAC reduction | IMPLEMENTED / Android runtime verify pending |
+| PRIV-ATL-001 HMAC/privacy-reduced Wi-Fi/BLE identifiers | Android Keystore-backed HMAC reduction; legacy companion MAC is reduced before storage | IMPLEMENTED / Android runtime verify pending |
 | PRIV-ATL-002 bounded raw environmental retention | inherited Phase 2 raw `evidence/raw/` 30-day R2 lifecycle; local pending evidence is durable until ACK | IMPLEMENTED IN SOURCE / Cloudflare deployed lifecycle verification pending |
 | EVD-008 Wi-Fi RTT provider available to later fusion | capability-gated RTT source exists | IMPLEMENTED / P5 INTEGRATION / DEVICE VERIFY |
 
@@ -83,6 +83,8 @@ Status vocabulary: `IMPLEMENTED`, `PARTIAL`, `CI PENDING`, `DEVICE VERIFY`, `OPE
 | replaced LAN device | scoped LAN disappearance/replacement tests | CI PENDING / DEVICE VERIFY |
 | changing cellular environment | independent Wi-Fi/BLE vs changed-cell adversarial test | CI PENDING / DEVICE VERIFY |
 
+Additional regression evidence in this candidate: companion association pruning, privacy reduction before persistence, reboot/update presence-cache clearing, and proof that companion + charging cannot manufacture independent location confirmation.
+
 ## Honest closeout state
 
-Phase 4 is **not ACCEPTED**. The main Atlas/Trust implementation is substantially complete in source, but exact-pair CI is still running at this checkpoint; physical OPPO/ColorOS verification is not executed; Phase 2/3 formal acceptance dependencies remain open; and several optional/validated capabilities above remain partial rather than being falsely claimed complete.
+Phase 4 is **not ACCEPTED**. The main Atlas/Trust implementation is substantially complete in source and the authorised companion-context source gap is now closed, but exact-pair CI run `41268166679` is still running at this checkpoint; physical OPPO/ColorOS verification is not executed; Phase 2/3 formal acceptance dependencies remain open; and the explicitly partial capabilities above remain partial rather than being falsely claimed complete.
