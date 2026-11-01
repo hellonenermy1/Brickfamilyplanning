@@ -5,7 +5,9 @@ const WITNESS_FAMILY = 12;
 const SLOT_MS = 5 * 60_000;
 const BACKLOG_WINDOW_MS = 14 * 24 * 60 * 60_000;
 const ALIAS_RETENTION_AFTER_SLOT_MS = 14 * 24 * 60 * 60_000;
+const SIGHTING_INDEX_RETENTION_MS = 30 * 24 * 60 * 60_000;
 const CLOCK_GRACE_MS = 2 * 60_000;
+const CLEANUP_LIMIT = 200;
 const ALIAS_RE = /^[0-9a-f]{16}$/;
 
 type AliasRow = { child_device_id: string; slot: number };
@@ -42,12 +44,15 @@ function parseAliasPayload(value: unknown): AliasPayload | null {
   if (value.aliases.length < 1 || value.aliases.length > 24) throw new Phase5SemanticError("invalid witness alias count");
   const aliases: AliasEntry[] = [];
   const seen = new Set<string>();
+  const seenSlots = new Set<number>();
   for (const item of value.aliases) {
     if (!isObject(item) || typeof item.a !== "string" || !ALIAS_RE.test(item.a) || !isInt(item.s) || item.s < 0) {
       throw new Phase5SemanticError("invalid witness alias entry");
     }
     if (seen.has(item.a)) throw new Phase5SemanticError("duplicate witness alias");
+    if (seenSlots.has(item.s)) throw new Phase5SemanticError("duplicate witness alias slot");
     seen.add(item.a);
+    seenSlots.add(item.s);
     aliases.push({ a: item.a, s: item.s });
   }
   return { v: 1, t: "a", aliases };
@@ -90,6 +95,25 @@ function validateRecordTime(record: EvidenceRecord, now: number) {
   }
 }
 
+/**
+ * Raw BREV retention remains governed by the Phase 2 R2 lifecycle. These statements bound only the
+ * fast semantic indexes that contain rotating aliases / witness coordinates. Small capped deletes
+ * amortize cleanup over normal witness traffic without a separate maintenance dependency.
+ */
+function cleanupStatements(db: D1Database, now: number): D1PreparedStatement[] {
+  const sightingCutoff = now - SIGHTING_INDEX_RETENTION_MS;
+  return [
+    db.prepare(
+      "DELETE FROM witness_aliases WHERE alias IN (" +
+      "SELECT alias FROM witness_aliases WHERE expires_at<?1 ORDER BY expires_at LIMIT ?2)"
+    ).bind(now, CLEANUP_LIMIT),
+    db.prepare(
+      "DELETE FROM witness_sightings WHERE record_id IN (" +
+      "SELECT record_id FROM witness_sightings WHERE received_at<?1 ORDER BY received_at LIMIT ?2)"
+    ).bind(sightingCutoff, CLEANUP_LIMIT)
+  ];
+}
+
 async function aliasStatements(db: D1Database, uploaderDeviceId: string, record: EvidenceRecord, payload: AliasPayload, now: number) {
   validateRecordTime(record, now);
   const recordSlot = Math.floor(record.wallTimeMs / SLOT_MS);
@@ -125,6 +149,7 @@ async function aliasStatements(db: D1Database, uploaderDeviceId: string, record:
       ).bind(uploaderDeviceId, item.a, validFrom - CLOCK_GRACE_MS, validTo + CLOCK_GRACE_MS)
     );
   }
+  out.push(...cleanupStatements(db, now));
   return out;
 }
 
@@ -152,7 +177,7 @@ async function sightingStatements(db: D1Database, witnessDeviceId: string, recor
     }
   }
 
-  return [
+  const out = [
     db.prepare(
       "INSERT OR IGNORE INTO witness_sightings(record_id,alias,witness_device_id,child_device_id,observed_wall_ms," +
       "witness_latitude,witness_longitude,witness_accuracy_m,rssi,tx_power,proximity_allowance_m,uncertainty_m,authorised,received_at) " +
@@ -163,6 +188,8 @@ async function sightingStatements(db: D1Database, witnessDeviceId: string, recor
       allowance, uncertainty, authorised, now
     )
   ];
+  out.push(...cleanupStatements(db, now));
+  return out;
 }
 
 /**
