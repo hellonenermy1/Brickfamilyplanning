@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: 1dc7c815deedd9de05330f4812a5f6abbacd571d
+  ANDROID_PHASE6_SHA: b2bac78fdfdb132a341b8a820bb537e90c100203
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -64,7 +64,7 @@ jobs:
           NODE
 
   android-build:
-    name: Phase 6 Android build, lint and dependency lock
+    name: Phase 6 Android build, tests, lint, R8 release and dependency lock
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -109,12 +109,12 @@ jobs:
             exit 1
           fi
           git diff --exit-code -- app/gradle.lockfile
-      - name: Build and lint
+      - name: Build, test, lint and R8 release
         id: build_lint
         shell: bash
         run: |
           set +e
-          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace 2>&1 | tee p6-build-lint.log
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --stacktrace 2>&1 | tee p6-build-lint.log
           code=${PIPESTATUS[0]}
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit "$code"
@@ -126,6 +126,29 @@ jobs:
           path: p6-build-lint.log
           if-no-files-found: error
           retention-days: 3
+      - name: Verify R8 release evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/build/outputs/mapping/release/mapping.txt
+          release_apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$release_apk" && test -s "$release_apk"
+          sha256sum "$release_apk" | tee p6-release-apk.sha256
+          printf '%s\n' "$release_apk" > p6-release-apk.path
+      - name: Preserve release qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-android-release-evidence
+          path: |
+            p6-release-apk.sha256
+            p6-release-apk.path
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/mapping/release/mapping.txt
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+            app/build/reports/tests
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify Phase 6 Android control source
         shell: bash
         run: |
@@ -144,10 +167,14 @@ jobs:
           grep -F 'locationControlCommandId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F '.setSilent(true)' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'dev.rikka.shizuku:api:13.1.5' app/build.gradle.kts >/dev/null
+          grep -F 'isMinifyEnabled = true' app/build.gradle.kts >/dev/null
+          grep -F 'isShrinkResources = true' app/build.gradle.kts >/dev/null
           grep -F 'rikka.shizuku.ShizukuProvider' app/src/main/AndroidManifest.xml >/dev/null
           grep -F 'interface IBrickPrivilegedService' app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl >/dev/null
           grep -F 'LOCATION_CONTROL' app/src/main/java/com/brick/safety/privileged/PrivilegedBridge.kt >/dev/null
+          grep -F '@Keep' app/src/main/java/com/brick/safety/privileged/BrickShizukuUserService.kt >/dev/null
           grep -F 'class BrickShizukuUserService' app/src/main/java/com/brick/safety/privileged/BrickShizukuUserService.kt >/dev/null
+          grep -F '.tag("brick-phase6")' app/src/main/java/com/brick/safety/privileged/ShizukuPrivilegedBridge.kt >/dev/null
           grep -F 'AtlasPrivacyId.reduce("p6bssid"' app/src/main/java/com/brick/safety/privileged/ShizukuPrivilegedBridge.kt >/dev/null
           ! grep -R -F 'newProcess(' app/src/main >/dev/null
           test -f app/src/androidTest/java/com/brick/safety/managed/Phase6ParentLocationStateInstrumentedTest.kt
