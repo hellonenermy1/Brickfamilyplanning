@@ -41,6 +41,7 @@ class GnssSkyProvider(
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var decision = EvidenceSamplingDecision(false, null)
     @Volatile private var lastCollectElapsedMs = 0L
+    @Volatile private var lastConsumedSnapshotElapsedMs = 0L
     @Volatile private var latest: SkySnapshot? = null
     @Volatile private var registered = false
     @Volatile private var latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "not_started")
@@ -107,6 +108,10 @@ class GnssSkyProvider(
             latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "stale_gnss_status")
             return
         }
+        // The foreground pulse can run faster than GnssStatus callbacks. Re-emitting the same sky
+        // object would fabricate repeatability and make Atlas trust grow without a new measurement.
+        if (sky.elapsedMs <= lastConsumedSnapshotElapsedMs) return
+        lastConsumedSnapshotElapsedMs = sky.elapsedMs
         lastCollectElapsedMs = nowElapsed
         val nowWall = System.currentTimeMillis()
         val observations = listOf(
@@ -118,8 +123,6 @@ class GnssSkyProvider(
                 sky.quality,
                 sourceHealthy = true
             ),
-            // Coarse state is derived from aggregate sky geometry/signal only. It is not satellite
-            // identity and remains in the same GNSS independence group.
             AtlasSignalObservation(
                 AtlasSignalKind.GNSS_SKY,
                 AtlasPrivacyId.reduce("gnssstate", sky.skyState),
@@ -270,10 +273,6 @@ class GnssSkyProvider(
         )
     }
 
-    /**
-     * Coarse aggregate sky classification only. `degraded` means the observed sky is inconsistent/
-     * difficult; it does not claim multipath as a proven cause. This keeps the UI/algorithm honest.
-     */
     private fun skyState(
         total: Int,
         used: Int,
