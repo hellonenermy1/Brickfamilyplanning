@@ -22,6 +22,21 @@ class Phase4TransitionInstrumentedTest : BrickInstrumentationTestCase() {
         }
     )
 
+    private fun wifiScanWithLevels(elapsed: Long, vararg values: Pair<String, Float>): AtlasScan = AtlasScan(
+        elapsed,
+        wall + elapsed,
+        0.85f,
+        values.map { (id, level) ->
+            AtlasSignalObservation(
+                AtlasSignalKind.WIFI_AP,
+                id,
+                "wifi.scan",
+                level,
+                0.85f
+            )
+        }
+    )
+
     fun testMinorRadioChurnDoesNotCreateTransitionButMaterialChangeDoes() {
         val tracker = AtlasTransitionTracker()
         val first = tracker.augmentSource(
@@ -51,6 +66,26 @@ class Phase4TransitionInstrumentedTest : BrickInstrumentationTestCase() {
         assertEquals("wifi.scan", transition!!.independenceGroup)
         assertTrue(transition.signalId.startsWith("trans:"))
         assertTrue(transition.quality <= 0.70f)
+    }
+
+    fun testWifiRouteGradientNeedsRepeatedStableApsAndStaysCorrelated() {
+        val tracker = AtlasTransitionTracker()
+        val apA = "wifi:gradientaaaaaaaaaaaaaaaa"
+        val apB = "wifi:gradientbbbbbbbbbbbbbbbb"
+        val apC = "wifi:gradientcccccccccccccccc"
+        tracker.augmentSource(
+            "wifi",
+            wifiScanWithLevels(10_000L, apA to -70f, apB to -65f, apC to -55f)
+        )
+        val next = tracker.augmentSource(
+            "wifi",
+            wifiScanWithLevels(15_000L, apA to -58f, apB to -55f, apC to -66f)
+        )
+        val gradient = next.observations.firstOrNull { it.kind == AtlasSignalKind.TRANSITION && it.signalId.startsWith("grad:") }
+        assertNotNull(gradient)
+        assertEquals("wifi.scan", gradient!!.independenceGroup)
+        assertTrue(gradient.quality <= 0.55f)
+        assertTrue((gradient.measurement ?: 0f) >= 6f)
     }
 
     fun testActivityApproachSequenceStaysDerivedAndLowTrust() {
