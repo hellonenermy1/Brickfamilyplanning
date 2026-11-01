@@ -1,0 +1,69 @@
+name: Brick V1 Phase 4 — One-time AndroidX test migration
+
+on:
+  push:
+    branches: [v1-p4-atlas-trust-cloud]
+    paths: ['.github/workflows/v1-phase4-onetime-androidx-test-migration.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: v1-p4-atlas-trust-android
+          fetch-depth: 0
+      - name: Replace deprecated android.test base only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('app/src/androidTest/java')
+          changed = []
+          for path in sorted(root.rglob('*.kt')):
+              text = path.read_text()
+              original = text
+              text = text.replace(
+                  'import android.test.InstrumentationTestCase',
+                  'import com.brick.safety.testing.BrickInstrumentationTestCase'
+              )
+              text = text.replace(': InstrumentationTestCase()', ': BrickInstrumentationTestCase()')
+              if text != original:
+                  path.write_text(text)
+                  changed.append(str(path))
+
+          if not changed:
+              raise SystemExit('No legacy InstrumentationTestCase files changed')
+          remaining = []
+          for path in sorted(root.rglob('*.kt')):
+              text = path.read_text()
+              if 'android.test.InstrumentationTestCase' in text or ': InstrumentationTestCase()' in text:
+                  remaining.append(str(path))
+          if remaining:
+              raise SystemExit('Legacy references remain: ' + ', '.join(remaining))
+          print('Migrated files:')
+          print('\n'.join(changed))
+          PY
+      - name: Verify migration scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff --name-only
+          test -z "$(git diff --name-only | grep -v '^app/src/androidTest/java/.*\.kt$' || true)"
+          test "$(git diff --name-only | wc -l)" -ge 1
+      - name: Commit deterministic migration to Android staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Brick Phase 4 CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app/src/androidTest/java
+          git commit -m 'test: migrate instrumentation tests off deprecated android.test base'
+          git push origin HEAD:v1-p4-atlas-trust-android
