@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE6_SHA: b2bac78fdfdb132a341b8a820bb537e90c100203
+  ANDROID_PHASE6_SHA: 39db9c685c495d12dc920ae078ec2f1cb1078155
   CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
@@ -159,7 +159,9 @@ jobs:
           grep -F 'expiresAtMs > nowMs' app/src/main/java/com/brick/safety/managed/ParentLocationState.kt >/dev/null
           grep -F 'desiredValue !is Boolean' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
           grep -F 'issuedAtMs > nowMs + MAX_COMMAND_FUTURE_SKEW_MS' app/src/main/java/com/brick/safety/network/BrickApi.kt >/dev/null
-          grep -F 'ParentLocationStateStore.read(context)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'ParentLocationStateStore.read(appContext)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'RECONCILE_RETRY_MS = 15_000L' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'scheduleReconcile(appContext)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'setParentLocationState(desiredOn)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
           grep -F 'attemptSosLocationEnable()' app/src/main/java/com/brick/safety/reliability/ServiceControl.kt >/dev/null
           grep -F 'command.deviceId != deviceId' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
