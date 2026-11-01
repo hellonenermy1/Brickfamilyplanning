@@ -33,7 +33,12 @@ A source existing is not acceptance. Evidence states remain separate: implemente
 5. LTE/NR environmental evidence including legitimately exposed signal/identity/band/channel/Timing Advance data and material serving-environment transitions. No DIY tower triangulation.
 6. Aggregate GNSS-sky quality/fingerprint evidence using constellation mix/count, C/N0 distribution, azimuth/elevation, used-in-fix and carrier bands. No permanent satellite identity and no claim that an aggregate degradation pattern proves multipath.
 7. Network context including transport, IPv4/IPv6, DNS context, captive/validated state, loss/recovery and interface-state transitions without adding active polling merely to create evidence.
-8. Charging/device-power context as weak context.
+8. Trusted companion/device context as **weak evidence only**:
+   - charger state/type/pattern;
+   - presence only for devices explicitly associated through Android Companion Device Manager;
+   - privacy-reduced identifiers only;
+   - no arbitrary nearby/bonded Bluetooth device promoted to a trusted companion;
+   - companion and charger observations remain correlated weak context, never independent location proof.
 9. Short, privacy-reduced environmental/activity transition sequences and coarse environmental zones. These remain low-trust evidence, not semantic named places or floor truth.
 10. Signal Trust rules for geographic spread, repeated trusted visits, freshness, quality/repeatability, spoofability, correlation/independence, source health, observation count and replacement history.
 11. Cautious negative evidence: one miss is weak; only repeated trusted disappearance inside the correct provider/observation scope may retire a signal.
@@ -43,7 +48,7 @@ A source existing is not acceptance. Evidence states remain separate: implemente
 ## Explicitly not claimed complete by Phase 4 source alone
 
 - Final degraded-position fusion or final PRECISE/ASSISTED/ANCHORED/ESTIMATED/COARSE decision — Phase 5.
-- A single BSSID, SSID, beacon, LAN device, cell or GNSS pattern proving a place.
+- A single BSSID, SSID, beacon, LAN device, companion, cell or GNSS pattern proving a place.
 - Exact BLE RSSI ranging.
 - DIY cellular triangulation.
 - Custom raw-GNSS pseudorange solving.
@@ -51,7 +56,7 @@ A source existing is not acceptance. Evidence states remain separate: implemente
 - Generic building-wall or floor truth without validated geometry/ground truth.
 - Active latency/packet-loss probing when it would add avoidable network/power cost; current network context stays passive unless a later measured need justifies more.
 - Broad raw SSDP/UPnP socket scanning merely to tick a requirement box; current Android local-network permissions/privacy/power constraints must be respected.
-- Trusted companion presence unless the device is explicitly authorised/associated. Arbitrary bonded or nearby Bluetooth devices are not treated as trusted companions.
+- Silent companion trust enrollment. Phase 4 may observe an existing explicitly authorised Android companion association; setup/enrollment UX and real target-device presence behavior still require later integration/device verification.
 - Phase 5 semantic place labels such as Home/School/Grandparents.
 
 ## Phase 4 exit evidence
@@ -68,9 +73,11 @@ The source/CI gate must include the retained Phase 2/3 regressions plus Phase 4 
 - one correlated radio family cannot manufacture precise truth;
 - provider/cache replay cannot manufacture repeated observations;
 - negative evidence is scoped to the provider observation domain;
-- derived transition/route-gradient evidence cannot masquerade as a new independent sensor.
+- derived transition/route-gradient evidence cannot masquerade as a new independent sensor;
+- trusted companion + charging context cannot manufacture multiple independent confirmations;
+- stale companion presence is discarded across reboot/update and must be re-confirmed by Android.
 
-Real OPPO/ColorOS behavior, screen-off collection, Wi-Fi/BLE throttling, hardware RTT capability, real cellular/GNSS patterns and power/resource cost remain device-verification gates.
+Real OPPO/ColorOS behavior, screen-off collection, Wi-Fi/BLE throttling, hardware RTT capability, companion association/presence callbacks, real cellular/GNSS patterns and power/resource cost remain device-verification gates.
 
 ## Acceptance rule
 
