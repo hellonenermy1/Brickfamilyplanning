@@ -27,4 +27,18 @@ class Phase5WitnessAliasInstrumentedTest : BrickInstrumentationTestCase() {
         val slot = 6_000_001L
         assertFalse(WitnessAliasKey.token(deviceId, slot).contentEquals(WitnessAliasKey.token(other, slot)))
     }
+
+    fun testLegacyAdvertisementUsesOnlyNineByteBrickServicePayload() {
+        val token = ByteArray(WitnessAliasKey.TOKEN_BYTES) { it.toByte() }
+        val payload = WitnessMeshProvider.serviceDataPayload(token)
+        assertEquals(1 + WitnessAliasKey.TOKEN_BYTES, payload.size)
+        assertEquals(WitnessMeshProvider.AD_PAYLOAD_VERSION, payload[0])
+        assertTrue(payload.copyOfRange(1, payload.size).contentEquals(token))
+
+        // A 128-bit Service Data AD structure costs: length byte + type byte + 16-byte UUID +
+        // Brick service payload. BLE flags normally cost another 3 bytes. Keeping only Service Data
+        // therefore stays inside the 31-byte legacy advertisement budget: 1+1+16+9+3 = 30.
+        val estimatedLegacyBytes = 1 + 1 + 16 + payload.size + 3
+        assertTrue(estimatedLegacyBytes <= 31)
+    }
 }
