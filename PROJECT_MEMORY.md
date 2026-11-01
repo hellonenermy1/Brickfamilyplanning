@@ -1,6 +1,6 @@
 # Brick Project Memory
 
-Last updated: 2026-10-31
+Last updated: 2026-11-01
 
 ## Standing rules
 
@@ -19,11 +19,9 @@ Last updated: 2026-10-31
 
 ## New Brick V1 nine-phase program
 
-Phase 1 is accepted as a documentation/contract phase. The program is:
-
 1. Contract, Baseline & Architecture Freeze — **ACCEPTED 2026-10-31**
-2. Evidence Platform, Protocol & Durable Data Foundation — **SOURCE IMPLEMENTED + FURTHER HARDENED / FINAL PAIRED EXECUTION BLOCKED / NOT ACCEPTED**
-3. Motion Intelligence, Learned Odometry & Particle Positioning
+2. Evidence Platform, Protocol & Durable Data Foundation — **ACCEPTANCE-READY IN SOURCE / REAL ANDROID + OPPO + HOSTED/LIVE GATES PENDING / NOT ACCEPTED**
+3. Motion Intelligence, Learned Odometry & Particle Positioning — **SOURCE-COMPLETE + ACCEPTANCE-READY / PHASE 2 DEPENDENCY + HOSTED + DEVICE GATES PENDING / NOT ACCEPTED**
 4. Environmental Fingerprint Atlas & Signal Trust Engine
 5. Unified Fusion, Learned Places, Routes, Witness Mesh & Ground Network
 6. Device Owner, Parent Location Control & Optional Shizuku Enhancement
@@ -40,27 +38,28 @@ Phase 1 artifacts:
 - `PHASE1_SOURCE_COVERAGE.md`
 - `PHASE1_REPORT.md`
 
-Phase 2 current-state artifacts:
+Phase 2 artifacts:
 
 - `PHASE2_REPORT.md`
 - `PHASE2_LOCAL_VERIFICATION.md`
-- `AUDIT_STATUS.md`
+- `PHASE2_CHECKPOINT_2026-11-01.md`
+- `PHASE2_ACCEPTANCE_READINESS_2026-11-01.md`
+
+Phase 3 artifact:
+
+- `PHASE3_REPORT.md`
 
 Important Phase 1 truth: the retained Phase 6 candidate is a strong foundation but is **not** the completed new V1 contract. Production acceptance remains Phase 9.
 
 ## Phase 2 current resume state
 
-When Jayvian says to continue Phase 2, **do not restart**. Resume from the current staging branches and these rules:
+When Jayvian says to continue Phase 2, **do not restart**. Resume from:
 
-- Cloud staging: `v1-p2-evidence-cloud`, PR #6, draft/unmerged.
-- Android staging: `v1-p2-evidence-android`, PR #7, draft/unmerged.
-- Exact paired checkpoint at this memory update:
-  - Cloud `60697dc37cb325574e9bd22283e2b3dd1d847817`
-  - Android `4ec37a2021bcd575cfefeadd58c968675965a8e7`
-- Cloud Phase 2 CI pins that exact Android SHA in both Android jobs and asserts the checkout SHA. Do not replace the pin with a moving branch ref for an acceptance run.
-- Always re-read branch heads before modifying or merging. If a real defect requires a new Android head, update the Cloud CI pin in the same task so the pair remains explicit.
-- Do not merge either PR until the exact paired heads receive real hosted Cloud + Android + emulator execution.
-- Do not treat Phase 3 as unlocked/accepted while the Phase 2 exit gate remains open.
+- Cloud staging: `v1-p2-evidence-cloud`, PR #6, draft/unmerged, exact head `1d880b703dd5d0c5f581926426a0db29e6c67b8b`.
+- Android staging: `v1-p2-evidence-android`, PR #7, draft/unmerged, exact head `9d1d04532abc52b679075fe2e330c3d2daafab3b`.
+- Exact hosted run/retry: `41221221445`; prerequisite jobs again failed before runner/source-step execution and instrumentation was skipped.
+- Do not merge either PR until real hosted execution, required real OPPO/ColorOS Phase 2 qualification and exact Cloudflare production verification pass.
+- A reminder is scheduled for Monday afternoon Singapore time for the real OPPO/ColorOS Phase 2 qualification.
 
 Phase 2 permanent design decisions:
 
@@ -72,56 +71,91 @@ Phase 2 permanent design decisions:
 6. **Paired identity is canonical v4.** Android only journals/drains evidence for canonical lowercase RFC-4122 v4/variant-2 device IDs created by pairing. Cloud evidence route enforces the same boundary.
 7. **Exact ACK is the deletion boundary.** Dispatcher independently reconstructs the expected ACK set and must see that exact set before local evidence deletion; a missing/partial/wrong ACK never deletes pending evidence.
 8. **Pending evidence is read in wire order.** Recovery/import insertion order must not make valid durable evidence unsendable; `nextPending()` orders by `(epoch,sequence,id)`.
-9. **Quarantine is historical evidence, not permanent current failure.** Quarantined rows remain counted, but current journal health can recover after the failure hold when a successful operation or `refreshHealth()` read probe proves the journal is readable. Health telemetry calls the probe so quiet devices can recover honestly.
+9. **Quarantine is bounded history, not permanent current failure.** Current journal health can recover after the failure hold/read probe. Quarantine has 30-day age retention and a 2,048-row cap while pending evidence is never age-purged and sequence state is never reset.
 10. **Raw R2 is privacy-reduced/content-addressed.** Raw evidence object paths use `sha256(deviceId)` and include exact `batchSha`; never use raw/sanitized device ID in the R2 key.
 11. **Batch UUID and new record identities are hard transactional claims.** `evidence_batches` and absent `evidence_records` use normal `INSERT`, not `INSERT OR IGNORE`. Conflicting concurrent claims must roll back rather than silently link to competing data.
-12. **Record replay must not amplify storage.** If all records already exist and match exactly under a fresh transport batch UUID, return exact ACKs with `duplicateRecords:true` and create no new R2 object/batch row.
-13. **Legitimate concurrency converges once.** An exact same-batch race may return the already-durable ACK; a mixed exact-record race may re-read state and retry once. Changed content remains `EvidenceConflict`; unrelated storage failure must not be masked.
-14. **Evidence request bodies are actually bounded.** Evidence route uses `readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)` and must not use unbounded `req.arrayBuffer()`; no-length/chunked traffic over 65,536 bytes is rejected before device-rate consumption or persistence.
-15. **Rate limits are split by trust boundary.** Request-attempt limiting happens on requester context first; the device-scoped evidence bucket is consumed only after successful P-256 device-signature verification. Rate limiting is abuse resistance, not an authentication primitive.
-16. **Signed route is testable separately.** `src/evidence-route.ts` owns the actual evidence HTTP validation/auth/rate/persistence flow; `worker-v7` delegates to it and preserves older worker behavior.
-17. **Android signature format matters.** Android `SHA256withECDSA` emits DER. The route test uses Android-style DER via `signLikeAndroid()`/`p1363ToDer()` so the intended verification boundary matches the APK.
-18. **Persist before ACK.** A success ACK is returned only after the applicable durable evidence state has been verified. Storage failure is never ACKed as success.
+12. **Record replay must not amplify storage.** If all records already exist and match exactly under a fresh transport batch UUID, return exact ACKs and create no new R2 object/batch row.
+13. **Legitimate concurrency converges once.** Exact races may re-read durable state and retry once. Changed content remains conflict; unrelated storage failure must not be masked.
+14. **Evidence request bodies are actually bounded.** No-length/chunked traffic over 65,536 bytes is rejected before device-rate consumption or persistence.
+15. **Rate limits are split by trust boundary.** Request-attempt limiting happens on requester context first; the device-scoped evidence bucket is consumed only after valid P-256 device-signature verification.
+16. **Signed route is separately testable.** `src/evidence-route.ts` owns evidence HTTP validation/auth/rate/persistence and `worker-v7` delegates to it.
+17. **Android signature format matters.** Android `SHA256withECDSA` emits DER; tests exercise Android-style DER rather than only WebCrypto P1363.
+18. **Persist before ACK.** A success ACK is returned only after applicable durable state has been verified.
 19. **Later-phase tables are foundations only.** Atlas/witness/receiver/command/refined-history schema existence does not mean those algorithms are implemented.
-20. **Do not change live epoch/reboot semantics casually in Phase 2.** The existing epoch lifecycle affects the retained live-tracking protocol and broader DUR/P8 work. A Phase 2 audit noted that `elapsedRealtime` resets on reboot while the baseline epoch is not visibly incremented by BootReceiver, but changing this cross-cutting behavior is deferred until the relevant durability/replay phase unless concrete Phase 2 evidence proves it blocks the current exit gate.
+20. **Do not casually change live epoch/reboot semantics in Phase 2.** The existing epoch lifecycle is cross-cutting and remains a later durability/replay concern unless concrete evidence makes it a current blocker.
 
-Verification truth at this memory update:
+Phase 2 execution evidence retained:
 
-- Earlier Phase 2 heads received real local pure-Kotlin protocol execution and Cloud SQLite/R2/WebCrypto harness execution.
-- Earlier observed markers remain valid evidence for what actually ran:
-  - `LATEST ANDROID KOTLIN PHASE2 PROTOCOL PASS`
-  - `LOCAL_CURRENT_PHASE2_CLOUD_RACE_HARNESS_PASS`
-  - `LOCAL_CURRENT_PHASE2_SIGNED_ROUTE_PASS`
-- Targeted local checks also exercised the later record-identity unique-constraint rollback and DER↔P1363 verification shape.
-- The final paired heads add streaming body bounds, race convergence, exact dispatcher ACK-set validation, persistent-failure backoff, wire-order recovery and journal-health recovery **after** those earlier complete harness runs.
-- Therefore do not describe the earlier local passes as full verification of final Cloud `60697dc3...` / Android `4ec37a20...`.
+- `PHASE2_CURRENT_CLOUD_ACCEPTANCE_HARNESS_PASS`
+- `PHASE2_CURRENT_CLOUD_RERUN_TRIGGER_PASS`
+- `PHASE2_CURRENT_ANDROID_KOTLIN_PROTOCOL_PASS`
+- `PHASE2_CURRENT_ANDROID_ACK_JVM_STUB_PASS`
+- `PHASE2_CURRENT_ANDROID_DISPATCHER_JVM_STUB_PASS`
+- `PHASE2_CURRENT_ANDROID_QUARANTINE_SQL_PASS`
 
-Latest hosted CI at this memory update:
+Those Android JVM/SQLite checks are useful source/logic evidence, not Android framework/Keystore/WorkManager/OPPO proof. Zero-step/no-runner hosted runs are neither pass nor source failure.
 
-- run `41215211883`
-- Cloud head `60697dc37cb325574e9bd22283e2b3dd1d847817`
-- pinned Android head `4ec37a2021bcd575cfefeadd58c968675965a8e7`
-- Cloud job: failure with `runner_id: 0`, `steps: []`
-- Android build/lint job: failure with `runner_id: 0`, `steps: []`
-- Android instrumentation: skipped
+## Phase 3 current resume state
 
-Treat zero-step/no-runner runs as neither pass nor source failure. The current execution environment also has no Android SDK, so do not claim local full Android compile/lint/SQLite/Keystore/WorkManager/emulator proof.
+When Jayvian says to continue Phase 3, **do not restart or redesign**. Resume from:
 
-Phase 2 acceptance still requires actual hosted execution of the final Cloud integration/regression suite, exact-pinned Android dependency-lock/compile/lint, Android emulator instrumentation, then canonical post-merge checks and live Cloudflare evidence-route/schema/retention verification before live-integration claims.
+- Android staging: `v1-p3-motion-positioning-android`, PR #10, draft/unmerged, base `v1-p2-evidence-android`, exact head `48423e5ba84dd6273315581f6c101141e5eae9ac`.
+- Cloud staging: `v1-p3-motion-positioning-cloud`, PR #9, draft/unmerged, base `v1-p2-evidence-cloud`, exact head `3db7c6c54fcf4a6b35afa22e91076178fde29de9`.
+- Cloud Phase 3 CI pins exact Android `48423e5ba84dd6273315581f6c101141e5eae9ac`.
+- Exact CI run `41254615824`: Cloud and Android prerequisite jobs failed before source steps; instrumentation skipped.
+- `PHASE3_REPORT.md` is the authoritative Phase 3 implementation/acceptance handoff.
+- Phase 3 is **source-complete/acceptance-ready, not accepted**. Do not add speculative features merely to look busy; only fix a concrete audit/test defect.
+- Do not merge PR #9/#10 until Phase 2 is accepted first and Phase 3's hosted + Android instrumentation + real OPPO tests pass.
+
+Phase 3 permanent design decisions:
+
+1. **Pure positioning core, Android adapter outside.** Learned odometry, route graph, sequence matching and particles stay mostly pure Kotlin. `MotionEngine` is the platform sensor adapter so OEM/sensor failure cannot corrupt the positioning architecture.
+2. **Fused Location remains primary.** Phase 3 improves trust/fallback; it does not replace Android fused positioning.
+3. **Many hypotheses, not one guessed route.** Precise loss initializes/propagates a deterministic particle set. Internal weights are not exposed as calibrated user probabilities.
+4. **Uncertainty must grow between trusted fixes.** Particle uncertainty is monotonic during unsupported propagation and estimates expire rather than remaining falsely precise forever.
+5. **Learned odometry is bounded.** Walking/running stride is calibrated only from good trusted periods; vehicle/bicycle acceleration integration is bounded; raw acceleration is never integrated indefinitely.
+6. **Stationary zero-velocity correction.** Strong stationary evidence pulls estimated velocity to zero and suppresses fake drift.
+7. **Long process gaps do not replay missed steps down one heading.** Direct propagation is capped at 30 seconds. Longer gaps freeze direct displacement and expand uncertainty aggressively.
+8. **Route/path evidence only where geometry exists.** Local learned paths and private PMTiles geometry may constrain hypotheses. Missing map coverage is never a wall. Brick currently cannot claim generic indoor wall avoidance without building-wall geometry.
+9. **No hidden global snap.** Different particles may softly prefer different route candidates; the entire estimate is never silently snapped to one road.
+10. **Stationary particles ignore route geometry.** Nearby streets must never drag a stationary child position toward a road.
+11. **Route evidence decays.** Private map cache expires after 7 days; single learned segments after 45 days; repeated learned segments after 180 days. Future-skewed route timestamps are rejected.
+12. **Route freshness uses phone receipt time.** Server generation time is diagnostics/provenance only; clock skew must not make local geometry fresh forever.
+13. **Private route graph is signed and bounded.** Device-authenticated route request, fixed 650 m server radius, <=256 segments, bounded client response, serialization-safe IDs, allowed movement bits and client locality check.
+14. **Magnetic evidence is sequence-only.** Orientation-corrected multi-sample sequences require repeated trusted observation, reweight hypotheses only, and never create a standalone exact position.
+15. **Physical landmarks are sequence-only.** One bump/turn/stop proves almost nothing. Repeated multi-event sequences are supporting route evidence only.
+16. **Magnetic/landmark models decay.** Both expire after 90 days and must relearn rather than resurrect an old signature indefinitely.
+17. **Fused-fix consistency is deliberately fail-open.** Weak/missing sensors do not reject GPS; phone orientation alone is not travel direction; speed metadata alone cannot reject a plausible coordinate. Strong contradictions may reject before trusted-state/model training.
+18. **Rejected raw GPS is preserved.** A rejected fix flows through the normal raw observation fields; filtering must not erase evidence.
+19. **Phase 3 state is encrypted/atomic/bounded.** `brick_phase3_state.bin` uses the existing Keystore-backed journal cipher plus `AtomicFile`; corruption fails closed and oversized state is rejected.
+20. **No continuous inertial state across reboot.** Restored particles are refused if the monotonic clock reset makes continuity impossible.
+21. **Health stays privacy-safe.** Publish counts/ages/uncertainty/provider health, not route coordinates, particle clouds or raw IMU/magnetic values.
+22. **Private map is optional.** Missing/corrupt route graph cannot block Brick Core; learned routes/odometry and the existing server corridor path continue.
+
+Phase 3 executed evidence retained:
+
+- `PHASE3_PURE_CORE_ACCEPTANCE_PASS` for the earlier pure core covering learned odometry/ZVC, route graph behavior, repeated sequence support, particle persistence, uncertainty growth, route elimination, long-outage expiry and trusted-fix recovery.
+- Focused latest `PositionConsistencyGuard` Kotlin/JVM cases passed normal/fail-open behavior plus stationary, no-step, coordinate-supported acceleration, calibrated reversal and hard-physics rejection.
+- Later TTL/state-store/route-parser/health hardening is source-reviewed and test-covered but still requires Android framework/emulator/device execution.
+
+Monday OPPO work after Phase 2 qualification should then cover Phase 3 sensor availability/health, hand vs pocket walking, running, stationary ZVC, GNSS-loss short walk with growing uncertainty, turns/path elimination, private-map offline cache, provider failure, >30 s process gap, same-boot state restore, reboot refusal of continuous particles, precise-fix return/recentering, weak-sensor fail-open behavior, and measured battery/CPU impact. See `PHASE3_REPORT.md` for the full list.
 
 ## Canonical GitHub layout
 
 Active repository: `hellonenermy1/Brickfamilyplanning`
 
-- `main` — canonical Cloudflare deployment branch. It contains the Phase 6 Worker/backend, setup scripts, schemas, private-map web assets and the manual GitHub Actions dispatchers.
-- `apk-download` — Android-only source branch. The default-branch APK workflow checks out this branch and produces downloadable APK artifacts.
-- `audit-progress` — documentation-only audit/progress/project-memory branch. No runtime source should be developed here.
+- `main` — canonical Cloudflare deployment branch.
+- `apk-download` — canonical Android source branch.
+- `audit-progress` — documentation-only audit/progress/project-memory branch.
 
 Temporary/non-canonical V1 work branches currently include:
 
 - `v1-p1-contract` — integrated Phase 1 documentation staging ref; remove when a supported cleanup path exists.
-- `v1-p2-evidence-cloud` — Phase 2 Cloud staging branch / PR #6.
-- `v1-p2-evidence-android` — Phase 2 Android staging branch / PR #7.
+- `v1-p2-evidence-cloud` — Phase 2 Cloud staging / PR #6.
+- `v1-p2-evidence-android` — Phase 2 Android staging / PR #7.
+- `v1-p3-motion-positioning-cloud` — Phase 3 Cloud staging / PR #9.
+- `v1-p3-motion-positioning-android` — Phase 3 Android staging / PR #10.
+- `temp-noop` — accidental non-canonical ref created during Phase 3 tool switching; it points at Phase 3 Cloud history and contains no unique intended work. Remove when a supported branch-ref deletion path is available. Never treat it as canonical.
 
 Archive repository: `hellonenermy1/Brickfamilyplanning-archive`
 
@@ -183,7 +217,7 @@ When Jayvian says to continue/archive/delete old branches, do this in order:
 
 - `main` clean-layout head before temporary archive workflow: `710fdbf6494a5f947c56d8e4a8fcd911a00e8aad`
 - `main` temporary archival-workflow head observed at Phase 1 start: `9ae0f2b72b63d3dfd0bc7807adfbd2928dcd2059`
-- `apk-download` observed at Phase 1 start: `c99fe4ce7f74b14ba23d280739ed150a327b8520`
+- `apk-download` observed at Phase 1 start: `c99fe4ce7f74b14e23d280739ed150a327b8520`
 - `audit-progress` pre-Phase-1 head: `da2d56f6d46eeb293d5ef5010304730dd45378d1`
 
 Runtime trees observed at Phase 1 start:
@@ -201,7 +235,7 @@ Runtime trees observed at Phase 1 start:
 - Fully validated source commit for that tree: `176d94f604eb562a59260ef380ee680a564acfcc`
 - Later hardening head `b23741d31ec6c51a5b00b6fe15b753b0d70d04c8` had the same tree before repository separation.
 - PR #5 is archived/superseded and must not be merged.
-- Phase 2 staging does not change release identity or production qualification.
+- Phase 2/3 staging does not change release identity or production qualification.
 
 ## Current architecture decisions
 
