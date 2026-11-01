@@ -13,14 +13,16 @@ Evidence boundary: this file describes the latest integrated Phase 2-5 source li
 
 | Phase | Latest integrated source state | Hosted automated state | Still cannot be closed by hosted CI alone |
 |---|---|---|---|
-| 1 | accepted contract/architecture freeze | accepted | none for Phase 1 |
-| 2 | durable evidence journal, sequence/idempotency, exact ACK, signed bounded upload, durable server persistence retained in latest code | Cloud regressions PASS; Android build/lint PASS; cumulative Android instrumentation still running at this revision | target OPPO/ColorOS + controlled deployed Cloudflare evidence |
-| 3 | motion/sensors, learned odometry, particles, routes, repeated magnetic/landmark support, uncertainty/expiry retained in latest code | Cloud regressions PASS; Android build/lint PASS; cumulative Android instrumentation still running | physical sensors/motion/GNSS-loss/recovery/background behavior |
-| 4 | Environmental Atlas, Signal Trust, Wi-Fi/BLE/LAN/cell/GNSS/network/companion evidence and relearning retained/hardened | Cloud regressions PASS; Android build/lint PASS; cumulative Android instrumentation still running | real radio/provider/background/replacement/companion capability evidence; deliberate partials remain honest |
-| 5 | unified fusion, learned places, radio-route prior, coarse IP, Witness/Ground, ranging abstractions, durable hypotheses and separate refined history implemented on closure line | Cloud regressions PASS; Android build/lint PASS; cumulative Android instrumentation still running | real degraded fusion/multi-device/ranging capability + controlled deployed integration |
+| 1 | accepted contract/architecture freeze | **ACCEPTED** | none for Phase 1 |
+| 2 | durable evidence journal, sequence/idempotency, exact ACK, signed bounded upload and durable server persistence retained in latest code | **PASS** — retained Cloud regressions + build/lint + cumulative Android instrumentation | target OPPO/ColorOS + controlled deployed Cloudflare evidence |
+| 3 | motion/sensors, learned odometry, particles, routes, repeated magnetic/landmark support and uncertainty/expiry retained | **PASS** — retained Cloud regressions + cumulative Android instrumentation | physical sensors/motion/GNSS-loss/recovery/background behavior |
+| 4 | Environmental Atlas, Signal Trust, Wi-Fi/BLE/LAN/cell/GNSS/network/companion evidence and relearning retained/hardened | **PASS** — retained Cloud regressions + cumulative Android instrumentation | real radio/provider/background/replacement/companion capability evidence; deliberate partials remain honest |
+| 5 | unified fusion, learned places, radio-route prior, coarse IP, Witness/Ground, ranging abstractions, durable hypotheses and separate refined history implemented | **PASS** — Phase 5 Cloud tests + build/lint + cumulative Android instrumentation | real degraded fusion/multi-device/ranging capability + controlled deployed integration |
+
+Final cumulative Android instrumentation executed **123 tests and passed 123/123** on the pinned Android SHA. The job ended `BUILD SUCCESSFUL`.
 
 ## Interpretation rule
 
-A cumulative 5B pass proves the latest integrated source preserves and executes retained Phase 2-5 behavior together. It does not retroactively turn an older phase branch's historical failed/no-run CI into a pass, and it does not substitute emulator evidence for physical-device evidence.
+The 5B pass proves the latest integrated source preserves and executes retained Phase 2-5 behavior together. It does not retroactively rewrite older historical CI results, and it does not substitute emulator evidence for physical-device evidence.
 
-Formal acceptance remains phase-ordered and evidence-based.
+Assistant-side source + hosted automated closure for Phases 2-5 is complete. Formal acceptance remains phase-ordered and evidence-based, with the physical/deployed gates still pending where required.
