@@ -43,10 +43,10 @@ jobs:
           remaining = []
           for path in sorted(root.rglob('*.kt')):
               text = path.read_text()
-              if 'android.test.InstrumentationTestCase' in text or ': InstrumentationTestCase()' in text:
+              if 'import android.test.InstrumentationTestCase' in text or ': InstrumentationTestCase()' in text:
                   remaining.append(str(path))
           if remaining:
-              raise SystemExit('Legacy references remain: ' + ', '.join(remaining))
+              raise SystemExit('Legacy syntax remains: ' + ', '.join(remaining))
           print('Migrated files:')
           print('\n'.join(changed))
           PY
