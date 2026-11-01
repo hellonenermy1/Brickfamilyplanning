@@ -27,6 +27,7 @@ class CellularEnvironmentProvider(
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var decision = EvidenceSamplingDecision(false, null)
     @Volatile private var lastCollectElapsedMs = 0L
+    @Volatile private var lastConsumedCellElapsedMs = 0L
     @Volatile private var latestStatus = EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.UNAVAILABLE, "not_started")
 
     override val descriptor = EvidenceProviderDescriptor(
@@ -74,6 +75,9 @@ class CellularEnvironmentProvider(
             latestStatus = EvidenceProviderStatus(ProviderCapability.SUPPORTED, ProviderHealth.DEGRADED, "lte_nr_unavailable")
             return
         }
+        val generationElapsed = cells.maxOf { it.observedElapsedMs }
+        if (generationElapsed <= lastConsumedCellElapsedMs) return
+        lastConsumedCellElapsedMs = generationElapsed
 
         val nowWall = System.currentTimeMillis()
         val observations = cells.map { cell ->
@@ -106,7 +110,8 @@ class CellularEnvironmentProvider(
         val timingAdvance: Int?,
         val channel: Int?,
         val bands: List<Int>,
-        val quality: Float
+        val quality: Float,
+        val observedElapsedMs: Long
     )
 
     @Suppress("DEPRECATION")
@@ -117,13 +122,13 @@ class CellularEnvironmentProvider(
         if (age > MAX_CELL_AGE_MS) return null
         val freshness = (1f - age.toFloat() / MAX_CELL_AGE_MS).coerceIn(0.2f, 1f)
         return when (info) {
-            is CellInfoLte -> normalizeLte(info, freshness)
-            is CellInfoNr -> normalizeNr(info, freshness)
+            is CellInfoLte -> normalizeLte(info, freshness, observedElapsed)
+            is CellInfoNr -> normalizeNr(info, freshness, observedElapsed)
             else -> null
         }
     }
 
-    private fun normalizeLte(info: CellInfoLte, freshness: Float): NormalizedCell? {
+    private fun normalizeLte(info: CellInfoLte, freshness: Float, observedElapsed: Long): NormalizedCell? {
         val identity = info.cellIdentity
         val signal = info.cellSignalStrength
         val ci = identity.ci.takeIf(::availableInt)
@@ -149,11 +154,12 @@ class CellularEnvironmentProvider(
             ta,
             earfcn,
             bands,
-            qualityFor(dbm, info.isRegistered, freshness)
+            qualityFor(dbm, info.isRegistered, freshness),
+            observedElapsed
         )
     }
 
-    private fun normalizeNr(info: CellInfoNr, freshness: Float): NormalizedCell? {
+    private fun normalizeNr(info: CellInfoNr, freshness: Float, observedElapsed: Long): NormalizedCell? {
         val identity = info.cellIdentity as? CellIdentityNr ?: return null
         val signal = info.cellSignalStrength as? CellSignalStrengthNr ?: return null
         val nci = identity.nci.takeIf { it != CellInfo.UNAVAILABLE_LONG && it >= 0L }
@@ -179,7 +185,8 @@ class CellularEnvironmentProvider(
             ta,
             nrarfcn,
             bands,
-            qualityFor(dbm, info.isRegistered, freshness)
+            qualityFor(dbm, info.isRegistered, freshness),
+            observedElapsed
         )
     }
 
