@@ -151,6 +151,8 @@ object HealthEvidence {
             .put("atlasCandidateUncertaintyM", optionalFloat("atlasCandidateUncertaintyM"))
             .put("atlasWifiProviderCapability", optionalString("atlasWifiProviderCapability"))
             .put("atlasWifiProviderHealth", optionalString("atlasWifiProviderHealth"))
+            .put("atlasRttProviderCapability", optionalString("atlasRttProviderCapability"))
+            .put("atlasRttProviderHealth", optionalString("atlasRttProviderHealth"))
             .put("atlasBleProviderCapability", optionalString("atlasBleProviderCapability"))
             .put("atlasBleProviderHealth", optionalString("atlasBleProviderHealth"))
             .put("atlasCellularProviderCapability", optionalString("atlasCellularProviderCapability"))
@@ -161,5 +163,7 @@ object HealthEvidence {
             .put("atlasGnssProviderHealth", optionalString("atlasGnssProviderHealth"))
             .put("atlasNetworkProviderCapability", optionalString("atlasNetworkProviderCapability"))
             .put("atlasNetworkProviderHealth", optionalString("atlasNetworkProviderHealth"))
+            .put("atlasDeviceContextProviderCapability", optionalString("atlasDeviceContextProviderCapability"))
+            .put("atlasDeviceContextProviderHealth", optionalString("atlasDeviceContextProviderHealth"))
     }
 }
