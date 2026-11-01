@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: b5a9e307e50a810af53960bc57315a20c3d294c7
+  ANDROID_PHASE4_SHA: 656285410da226e239296f3f7405d387621e1b43
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
