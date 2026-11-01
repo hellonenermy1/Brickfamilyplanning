@@ -37,7 +37,7 @@ class Phase6LocationCommandInstrumentedTest {
     }
 
     @Test
-    fun expiredMalformedOrOverlongDeliveryIsRejected() {
+    fun malformedExpiredOrAmbiguousDeliveryIsRejected() {
         val expired = commandJson().put("expiresAtMs", now)
         assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", expired), now).locationCommand)
 
@@ -52,6 +52,15 @@ class Phase6LocationCommandInstrumentedTest {
 
         val wrongProtocol = commandJson().put("protocol", 2)
         assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", wrongProtocol), now).locationCommand)
+
+        val textBoolean = commandJson().put("desiredEnabled", "false")
+        assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", textBoolean), now).locationCommand)
+
+        val backwardsWindow = commandJson().put("issuedAtMs", now + 400_000L).put("expiresAtMs", now + 300_000L)
+        assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", backwardsWindow), now).locationCommand)
+
+        val futureIssued = commandJson().put("issuedAtMs", now + 60_001L).put("expiresAtMs", now + 300_000L)
+        assertNull(BrickApi.parseHealthConfig(JSONObject().put("locationCommand", futureIssued), now).locationCommand)
     }
 
     @Test
