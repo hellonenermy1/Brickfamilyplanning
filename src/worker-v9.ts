@@ -2,6 +2,7 @@ import phase8, { BrickDevice } from "./worker-v8";
 import { handleGroundReceiverRequest, type GroundReceiverEnv } from "./ground-receiver";
 import { cleanupPhase5SemanticIndexes } from "./phase5-maintenance";
 import { augmentHealthWithLearnedPlaces } from "./phase5-places";
+import { augmentHealthWithCoarseNetwork } from "./phase5-coarse-network";
 import { listCurrentExternalConstraints } from "./phase5-external-constraints";
 import { refineCurrentState, type ParentCurrentState } from "./phase5-current-refinement";
 export { BrickDevice };
@@ -89,7 +90,10 @@ export default {
     const health = u.pathname.match(/^\/api\/device\/([^/]+)\/health$/);
     if (req.method === "POST" && health) {
       const response = await base.fetch!(req, env, ctx);
-      return augmentHealthWithLearnedPlaces(response, env.DB, health[1]);
+      const withPlaces = await augmentHealthWithLearnedPlaces(response, env.DB, health[1]);
+      // request.cf is Cloudflare's IP-derived visitor metadata. It is deliberately returned only as
+      // a 50 km-class last-resort area; Android enforces the same honesty floor independently.
+      return augmentHealthWithCoarseNetwork(withPlaces, req.cf as Record<string, unknown> | undefined);
     }
 
     // Parent state remains the child-reported Durable Object snapshot plus a separate refinement.
