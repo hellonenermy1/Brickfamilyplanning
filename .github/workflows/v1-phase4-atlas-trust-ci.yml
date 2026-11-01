@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: e0663f09d3c79e38a33920136f5dee833383d265
+  ANDROID_PHASE4_SHA: 93d7424d9d9f4a33c283c54411605a6f4871e799
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -165,6 +165,8 @@ jobs:
           grep -F 'testLanAbsenceOnlyCountsInsideSameDiscoveryCategory' app/src/androidTest/java/com/brick/safety/atlas/Phase4SignalTrustInstrumentedTest.kt >/dev/null
           grep -F 'testWifiRouteGradientNeedsRepeatedStableApsAndStaysCorrelated' app/src/androidTest/java/com/brick/safety/atlas/Phase4TransitionInstrumentedTest.kt >/dev/null
           grep -F 'testCompanionAndChargingCannotManufactureIndependentConfirmations' app/src/androidTest/java/com/brick/safety/atlas/Phase4CompanionContextInstrumentedTest.kt >/dev/null
+          grep -F 'testObservationRegistryAllowsSameDeviceAfterRemovalAndReassociation' app/src/androidTest/java/com/brick/safety/atlas/Phase4CompanionContextInstrumentedTest.kt >/dev/null
+          grep -F 'testObservationRegistryRetriesAfterStartFailure' app/src/androidTest/java/com/brick/safety/atlas/Phase4CompanionContextInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Phase 4 Android instrumentation
