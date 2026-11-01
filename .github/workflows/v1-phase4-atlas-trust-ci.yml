@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_PHASE4_SHA: 656285410da226e239296f3f7405d387621e1b43
+  ANDROID_PHASE4_SHA: f97bfbbdad918e53e14053dadc1c563c23578c41
 
 concurrency:
   group: brick-v1-phase4-${{ github.event.pull_request.number || github.ref }}
@@ -70,12 +70,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
+      - name: Locate Android SDK command-line tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          test -d "$SDK_ROOT"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          test -n "$AVDMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "$(dirname "$SDKMANAGER_PATH")" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
       - name: Install compile SDK explicitly
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platform-tools' 'platforms;android-36'
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36'
       - name: Verify dependency lock
         shell: bash
         run: |
@@ -105,6 +122,8 @@ jobs:
           grep -F 'AtlasPrivacyId.reduce("cell"' app/src/main/java/com/brick/safety/atlas/CellularEnvironmentProvider.kt >/dev/null
           grep -F 'AtlasPrivacyId.reduce("lan"' app/src/main/java/com/brick/safety/atlas/LanEnvironmentProvider.kt >/dev/null
           grep -F 'AtlasPrivacyId.reduce("gnss"' app/src/main/java/com/brick/safety/atlas/GnssSkyProvider.kt >/dev/null
+          grep -F 'ATLAS_PULSE_MS = 5_000L' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
+          grep -F 'Phase4AtlasRuntime.stop()' app/src/main/java/com/brick/safety/location/BrickLocationService.kt >/dev/null
           grep -F 'testOneCorrelatedRadioFamilyCannotBecomePreciseLocationTruth' app/src/androidTest/java/com/brick/safety/atlas/Phase4AtlasCoreInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
@@ -126,19 +145,36 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
+      - name: Locate Android SDK command-line tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          test -d "$SDK_ROOT"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          test -n "$AVDMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "$(dirname "$SDKMANAGER_PATH")" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/emulator" >> "$GITHUB_PATH"
       - name: Install Android SDK + emulator
         shell: bash
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
-          echo no | avdmanager create avd --force --name brick-p4 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | "$AVDMANAGER" create avd --force --name brick-p4 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
       - name: Boot emulator and run retained + Phase 4 instrumentation
         shell: bash
         run: |
           set -euo pipefail
           sudo chmod 666 /dev/kvm || true
-          nohup "$ANDROID_HOME/emulator/emulator" -avd brick-p4 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p4-emulator.log 2>&1 &
+          nohup "$ANDROID_SDK_ROOT/emulator/emulator" -avd brick-p4 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p4-emulator.log 2>&1 &
           adb wait-for-device
           for i in $(seq 1 120); do
             [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
