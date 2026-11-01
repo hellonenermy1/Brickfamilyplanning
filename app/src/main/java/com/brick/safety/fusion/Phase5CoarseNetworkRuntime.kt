@@ -14,7 +14,10 @@ import com.brick.safety.location.PositionQuality
  */
 object Phase5CoarseNetworkRuntime {
     private const val RADIUS_M = 50_000f
-    private const val MAX_AGE_MS = 15L * 60L * 1_000L
+    // Health normally refreshes every 30 seconds. Five minutes tolerates several missed exchanges
+    // without letting a mobile-carrier egress location linger long enough to become stale travel
+    // context. This remains a last-resort area, never a precise fix.
+    private const val MAX_AGE_MS = 5L * 60L * 1_000L
 
     private data class Snapshot(
         val ownerDeviceId: String,
