@@ -178,8 +178,8 @@ class Phase4SignalTrustInstrumentedTest : BrickInstrumentationTestCase() {
         val wifi = obs("wifi:stablehome00000000000000", measurement = -50f)
         val oldBle = obs("ble:oldbeacon000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -58f)
         val newBle = obs("ble:newbeacon000000000000000", AtlasSignalKind.BLE_DEVICE, "ble.scan", -57f)
-        val oldLan = obs("lan:olddevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd", null)
-        val newLan = obs("lan:newdevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd", null)
+        val oldLan = obs("lan:olddevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd.cast", null)
+        val newLan = obs("lan:newdevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd.cast", null)
 
         repeat(4) { visit ->
             val wall = baseWall + visit * 20L * 60_000L
@@ -190,7 +190,6 @@ class Phase4SignalTrustInstrumentedTest : BrickInstrumentationTestCase() {
             ))
         }
 
-        // One trusted miss is intentionally not enough to erase a device.
         run {
             val wall = baseWall + 90L * 60_000L
             val elapsed = 8_000_000L
@@ -213,7 +212,6 @@ class Phase4SignalTrustInstrumentedTest : BrickInstrumentationTestCase() {
         assertNull(atlas.signalSummary(oldBle.kind, oldBle.signalId, baseWall + 103L * 60_000L))
         assertNull(atlas.signalSummary(oldLan.kind, oldLan.signalId, baseWall + 103L * 60_000L))
 
-        // A later visit lets the stable replacements gain normal repeated-visit status.
         val finalWall = baseWall + 125L * 60_000L
         val finalElapsed = 10_000_000L
         assertTrue(atlas.observeTrusted(
@@ -222,6 +220,56 @@ class Phase4SignalTrustInstrumentedTest : BrickInstrumentationTestCase() {
         ))
         assertNotNull(atlas.signalSummary(newBle.kind, newBle.signalId, finalWall + 1_000L))
         assertNotNull(atlas.signalSummary(newLan.kind, newLan.signalId, finalWall + 1_000L))
+    }
+
+    fun testLanAbsenceOnlyCountsInsideSameDiscoveryCategory() {
+        val atlas = EnvironmentalAtlas()
+        val cast = obs("lan:castdevice000000000000000", AtlasSignalKind.LAN_SERVICE, "lan.nsd.cast", null)
+        val printerMarker = AtlasSignalObservation(
+            AtlasSignalKind.LAN_SERVICE,
+            "lanempty:printer000000000000",
+            "lan.nsd.printer",
+            null,
+            0.60f,
+            semanticCommon = true
+        )
+        val castMarker = AtlasSignalObservation(
+            AtlasSignalKind.LAN_SERVICE,
+            "lanempty:cast00000000000000000",
+            "lan.nsd.cast",
+            null,
+            0.60f,
+            semanticCommon = true
+        )
+
+        repeat(4) { visit ->
+            val wall = baseWall + visit * 20L * 60_000L
+            val elapsed = 100_000L + visit * 1_500_000L
+            assertTrue(atlas.observeTrusted(
+                label("lan-scope-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(cast))
+            ))
+        }
+
+        repeat(14) { n ->
+            val wall = baseWall + (90L + n) * 60_000L
+            val elapsed = 8_000_000L + n * 70_000L
+            assertTrue(atlas.observeTrusted(
+                label("lan-scope-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(printerMarker))
+            ))
+        }
+        assertNotNull(atlas.signalSummary(cast.kind, cast.signalId, baseWall + 105L * 60_000L))
+
+        repeat(12) { n ->
+            val wall = baseWall + (120L + n) * 60_000L
+            val elapsed = 10_000_000L + n * 70_000L
+            assertTrue(atlas.observeTrusted(
+                label("lan-scope-home", 1.3000, 103.8000, elapsed, wall),
+                scan(elapsed, wall, listOf(castMarker))
+            ))
+        }
+        assertNull(atlas.signalSummary(cast.kind, cast.signalId, baseWall + 133L * 60_000L))
     }
 
     fun testChangingCellularEnvironmentCannotRelocatePhoneAgainstIndependentEvidence() {
