@@ -15,5 +15,5 @@ interface IBrickPrivilegedService {
     Bundle powerDiagnostics();
     boolean requestPowerRepair();
     boolean attemptSosLocationEnable();
-    void destroy() = 16777114;
+    void destroy();
 }
