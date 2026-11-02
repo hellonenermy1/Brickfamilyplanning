@@ -1,3 +1,5 @@
+import { buildPhase7HealthPresentation } from "./phase7-health-presentation";
+
 export type Phase7PositionClass =
   | "precise"
   | "assisted"
@@ -35,6 +37,12 @@ export type Phase7CorridorCandidate = {
 
 export type Phase7PositionPresentation = {
   protocol: 1;
+  basis: {
+    epoch: number | null;
+    sequence: number | null;
+    receivedAt: number | null;
+    wallTimeMs: number | null;
+  };
   positionClass: Phase7PositionClass;
   geometry: {
     kind: Phase7GeometryKind;
@@ -67,12 +75,15 @@ type RouteCorridor = {
 };
 
 type BasePosition = {
+  epoch?: unknown;
+  sequence?: unknown;
   lat?: unknown;
   lon?: unknown;
   uncertaintyM?: unknown;
   quality?: unknown;
   source?: unknown;
   receivedAt?: unknown;
+  wallTimeMs?: unknown;
   routeCorridor?: RouteCorridor | null;
 };
 
@@ -99,17 +110,21 @@ type Snapshot = {
   latest?: BasePosition | null;
   state?: BasePosition | null;
   refinedState?: RefinedState | null;
-  health?: {
+  health?: (Record<string, unknown> & {
     trackingIntervalMs?: unknown;
-  } | null;
-  derived?: {
+  }) | null;
+  derived?: (Record<string, unknown> & {
     deviceStatus?: unknown;
     positionStatus?: unknown;
-  } | null;
+  }) | null;
 };
 
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function safeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
 }
 
 function safeText(value: unknown, fallback = "unknown") {
@@ -351,6 +366,12 @@ export function buildPhase7ParentPresentation(snapshot: Snapshot, now = Date.now
 
   return {
     protocol: 1,
+    basis: {
+      epoch: safeInteger(base?.epoch),
+      sequence: safeInteger(base?.sequence),
+      receivedAt: safeInteger(base?.receivedAt),
+      wallTimeMs: safeInteger(base?.wallTimeMs)
+    },
     positionClass: selectedClass,
     geometry,
     confidence,
@@ -377,11 +398,13 @@ export async function augmentPhase7ParentStateResponse(response: Response, now =
 
   const object = body as Snapshot & Record<string, unknown>;
   const presentation = buildPhase7ParentPresentation(object, now);
+  const healthPresentation = buildPhase7HealthPresentation(object, presentation);
   const headers = new Headers(response.headers);
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("Cache-Control", "no-store");
   headers.set("X-Brick-Position-Presentation", "phase7-v1");
-  return new Response(JSON.stringify({ ...object, presentation }), {
+  headers.set("X-Brick-Health-Presentation", "phase7-v1");
+  return new Response(JSON.stringify({ ...object, presentation, healthPresentation }), {
     status: response.status,
     statusText: response.statusText,
     headers
