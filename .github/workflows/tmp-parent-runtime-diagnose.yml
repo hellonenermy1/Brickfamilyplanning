@@ -1,0 +1,42 @@
+name: TEMP Parent Runtime Diagnose
+
+on:
+  push:
+    branches: [v1-p6c-parent-beta-cloud]
+    paths: [.github/workflows/tmp-parent-runtime-diagnose.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Render exact Phase 6C portal and parse final browser module
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/parent-v6c.mjs
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const mod = await import('file:///tmp/parent-v6c.mjs');
+          const html = mod.parentV6CHtml();
+          fs.writeFileSync('/tmp/parent-v6c.html', html);
+          const m = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+          if (!m) throw new Error('inline module script not found');
+          fs.writeFileSync('/tmp/parent-inline.mjs', m[1]);
+          console.log('rendered html bytes', html.length);
+          console.log('inline module bytes', m[1].length);
+          NODE
+          node --check /tmp/parent-inline.mjs
+      - name: Show module around parser failure if any
+        if: failure()
+        run: nl -ba /tmp/parent-inline.mjs | sed -n '1,260p'
