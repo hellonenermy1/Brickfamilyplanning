@@ -11,7 +11,13 @@ import {
 import { claimDevMaintenance, syntheticScheduledController } from "./dev-maintenance";
 export { BrickDevice };
 
-type Env = Record<string, unknown> & { DB?: D1Database; BRICK_MAP_SOURCE?: string };
+type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
+type Env = Record<string, unknown> & {
+  DB?: D1Database;
+  BRICK_MAP_SOURCE?: string;
+  PARENT_LOGIN_RATE?: RateLimit;
+  DEV_PARENT_PIN_HASH?: string;
+};
 const base = phase9 as ExportedHandler<Env>;
 
 function developmentParentResponse(baseResponse: Response, baseHtml: string) {
@@ -68,10 +74,15 @@ export default {
     scheduleRequestDrivenMaintenance(env as Env & { DB: D1Database }, runtime, ctx);
 
     if (isParentPath(u.pathname)) {
-      const authRoute = await handleDevParentAuthRoute(cleanReq, { DB: env.DB });
+      const parentAuthEnv = {
+        DB: env.DB,
+        PARENT_LOGIN_RATE: env.PARENT_LOGIN_RATE,
+        DEV_PARENT_PIN_HASH: env.DEV_PARENT_PIN_HASH
+      };
+      const authRoute = await handleDevParentAuthRoute(cleanReq, parentAuthEnv);
       if (authRoute) return authRoute;
 
-      const authorized = await authorizeDevParentRequest(cleanReq, { DB: env.DB });
+      const authorized = await authorizeDevParentRequest(cleanReq, parentAuthEnv);
       if (!authorized) return devParentUnauthorized(cleanReq);
 
       const response = await base.fetch!(authorized, runtime, ctx);
