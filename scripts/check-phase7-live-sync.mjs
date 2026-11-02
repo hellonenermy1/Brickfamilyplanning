@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+import { pathToFileURL } from 'node:url';
+
+await build({entryPoints:['src/parent-v7-live.ts'],bundle:true,platform:'node',format:'esm',outfile:'/tmp/brick-parent-v7-live.mjs',logLevel:'silent'});
+const parent = await import(pathToFileURL('/tmp/brick-parent-v7-live.mjs').href + `?v=${Date.now()}`);
+const html = parent.parentV7LiveHtml();
+for (const required of ['p7HealthPresentationMatches','p7ScheduleNormalizedStateRefresh','snapshot.healthPresentation=null']) {
+  assert.ok(html.includes(required), `missing live health sync contract: ${required}`);
+}
+
+await build({entryPoints:['src/phase7-state-v2.ts'],bundle:true,platform:'node',format:'esm',outfile:'/tmp/brick-phase7-state-v2.mjs',logLevel:'silent'});
+const state = await import(pathToFileURL('/tmp/brick-phase7-state-v2.mjs').href + `?v=${Date.now()}`);
+const response = new Response(JSON.stringify({
+  latest:{epoch:1,sequence:1,lat:1.3,lon:103.8,uncertaintyM:15,quality:'precise',source:'fused',receivedAt:1_999_999_999_000,wallTimeMs:1_999_999_999_000},
+  health:{healthSequence:5,receivedAt:2_000_000_000_000,operationalStatus:'healthy',serviceActive:true,journalWriteHealthy:true,safetyOutboxWriteHealthy:true,network:'wifi',locationEnabled:true,locationSubscribed:true,fineLocationPermission:true,backgroundLocationPermission:true,locationAgeMs:1000,atlasRttProviderHealth:'unsupported'},
+  derived:{deviceStatus:'healthy',positionStatus:'fresh'}
+}),{headers:{'content-type':'application/json'}});
+const out = await state.augmentPhase7ParentStateResponseV2(response,2_000_000_000_000);
+const body = await out.json();
+assert.equal(body.healthPresentation.providers.find(p=>p.id==='wifi_rtt')?.status,'unsupported');
+assert.match(body.healthPresentation.providers.find(p=>p.id==='wifi_rtt')?.explanation,/neutral/i);
+console.log('Phase 7 live-sync/provider normalization fixtures: PASS');
