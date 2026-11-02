@@ -1,0 +1,176 @@
+name: Brick P6 — One-shot Release Qualification
+
+on:
+  pull_request:
+    branches: [v1-p6-device-control-cloud]
+
+permissions:
+  contents: read
+
+env:
+  QUALIFIED_CLOUD_SHA: e4657294d1d5c377a41a32bd91c80d17a4e5a21b
+  QUALIFIED_ANDROID_SHA: 00dfa7a6e2f449c4632453e678fd8f1df1c88554
+
+jobs:
+  production-cloud-qualification:
+    name: Exact Phase 6 Cloud production deploy and verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.QUALIFIED_CLOUD_SHA }}
+      - name: Verify exact Cloud source
+        run: test "$(git rev-parse HEAD)" = "$QUALIFIED_CLOUD_SHA"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Require production Cloudflare credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing CLOUDFLARE_API_TOKEN GitHub Actions secret.' >&2; exit 1; }
+      - name: Install locked dependencies and rerun final Cloud gates
+        run: |
+          npm ci --no-audit --no-fund
+          bash scripts/phase6-cloud-regression.sh
+      - name: Provision/migrate/deploy exact Phase 6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          env -u GITHUB_SHA npm run setup
+          state_sha="$(node --input-type=module -e "import fs from 'node:fs'; const s=JSON.parse(fs.readFileSync('setup-state.json','utf8')); process.stdout.write(s.sourceGitSha || '')")"
+          test "$state_sha" = "$QUALIFIED_CLOUD_SHA"
+          account_id="$(node --input-type=module -e "import fs from 'node:fs'; const s=JSON.parse(fs.readFileSync('setup-state.json','utf8')); process.stdout.write(s.accountId || '')")"
+          test -n "$account_id"
+          echo "CLOUDFLARE_ACCOUNT_ID=$account_id" >> "$GITHUB_ENV"
+      - name: Install and verify private Singapore map
+        run: npm run map:install
+      - name: Strict final deploy tagged with canonical Cloud SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-git-${QUALIFIED_CLOUD_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.jsonc --tag "$tag" --message "Brick V1 Phase 6 qualified source $QUALIFIED_CLOUD_SHA"
+          npx wrangler deployments list --json --config wrangler.jsonc > worker-deployments.json
+          test -s worker-deployments.json
+          grep -F "$QUALIFIED_CLOUD_SHA" worker-deployments.json >/dev/null
+      - name: Verify deployed resources, schema, Access and public attack surface
+        env:
+          BRICK_REQUIRE_PRIVATE_MAP: 'true'
+        run: node scripts/verify-cloudflare-deployment.mjs
+      - name: Upload production deployment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-production-cloud-evidence
+          path: |
+            setup-state.json
+            deployment-verification.json
+            worker-deployments.json
+            .brick-map-cache/singapore.meta.json
+          if-no-files-found: error
+          retention-days: 30
+
+  production-android-signing:
+    name: Exact Phase 6 stable-signed Android release
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      KEYSTORE_B64: ${{ secrets.BRICK_ANDROID_KEYSTORE_B64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.BRICK_ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.BRICK_ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.BRICK_ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.QUALIFIED_ANDROID_SHA }}
+      - name: Verify exact Android source
+        run: test "$(git rev-parse HEAD)" = "$QUALIFIED_ANDROID_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+      - name: Install release analysis tooling
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Require and prepare stable production signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${KEYSTORE_B64:-}" || { echo 'Missing BRICK_ANDROID_KEYSTORE_B64 secret.' >&2; exit 1; }
+          test -n "${KEYSTORE_PASSWORD:-}" || { echo 'Missing BRICK_ANDROID_KEYSTORE_PASSWORD secret.' >&2; exit 1; }
+          test -n "${KEY_ALIAS:-}" || { echo 'Missing BRICK_ANDROID_KEY_ALIAS secret.' >&2; exit 1; }
+          test -n "${KEY_PASSWORD:-}" || { echo 'Missing BRICK_ANDROID_KEY_PASSWORD secret.' >&2; exit 1; }
+          keyfile="$RUNNER_TEMP/brick-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$keyfile"
+          chmod 600 "$keyfile"
+          test -s "$keyfile"
+          echo "BRICK_KEYSTORE_PATH=$keyfile" >> "$GITHUB_ENV"
+          echo "BRICK_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "BRICK_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "BRICK_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Verify locked Android dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Build stable-signed R8 release and release lint
+        run: gradle --no-daemon :app:assembleRelease :app:lintRelease --stacktrace
+      - name: Verify signing, generated manifest and write release provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p6-signed-release
+          release_apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$release_apk" && test -s "$release_apk"
+          apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          apkanalyzer_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort | tail -n1)"
+          test -x "$apksigner_bin" && test -x "$apkanalyzer_bin"
+          "$apksigner_bin" verify --verbose --print-certs "$release_apk" | tee p6-signed-release/signing.txt
+          "$apkanalyzer_bin" apk summary "$release_apk" | tee p6-signed-release/apk-summary.txt
+          "$apkanalyzer_bin" manifest permissions "$release_apk" > p6-signed-release/permissions.txt
+          "$apkanalyzer_bin" manifest print "$release_apk" > p6-signed-release/manifest.xml
+          sha256sum "$release_apk" | tee p6-signed-release/release-apk.sha256
+          grep -F 'com.brick.safety' p6-signed-release/apk-summary.txt >/dev/null
+          grep -F 'usesCleartextTraffic="false"' p6-signed-release/manifest.xml >/dev/null
+          grep -F 'allowBackup="false"' p6-signed-release/manifest.xml >/dev/null
+          grep -F 'com.brick.safety.location.BrickLocationService' p6-signed-release/manifest.xml >/dev/null
+          grep -F 'rikka.shizuku.ShizukuProvider' p6-signed-release/manifest.xml >/dev/null
+          {
+            echo "android_git_sha=$QUALIFIED_ANDROID_SHA"
+            echo "cloud_git_sha=$QUALIFIED_CLOUD_SHA"
+            echo "version_name=0.6.0-phase6-rc"
+            echo "version_code=6"
+            cat p6-signed-release/release-apk.sha256
+          } > p6-signed-release/provenance.txt
+          cp "$release_apk" p6-signed-release/
+          cp app/build/outputs/mapping/release/mapping.txt p6-signed-release/
+          cp app/build/reports/lint-results-release.txt p6-signed-release/ || true
+      - name: Upload stable-signed Android release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-production-signed-android
+          path: p6-signed-release/
+          if-no-files-found: error
+          retention-days: 30
