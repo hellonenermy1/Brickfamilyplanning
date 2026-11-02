@@ -11,6 +11,24 @@ Phase 7 converts the already-built Phase 2–6 tracking, evidence, reliability a
 - Development remains card-free: no mandatory R2, Queue, Access/Zero Trust or Cron binding.
 - Production worker/config/deployment remain frozen until Phase 7 acceptance.
 
+## First qualification checkpoint
+
+Phase 7 cloud CI run `41394922335` passed on head `90b1dc49b9406f922e8c140f6d3941d58c1f22c6`.
+
+Passed gates:
+
+- retained Phase 6C base ancestry
+- locked dependency install
+- parent asset build + TypeScript checks
+- Phase 7 precise / corridor / anchored / stale-refinement / conflict / last-known / unknown fixtures
+- retained Phase 2–6 cloud regression and privacy gates
+- rendered Phase 7 parent browser contract + JavaScript syntax check
+- card-free development isolation
+- production worker/config isolation
+- dependency audit
+
+This proves the first Phase 7 cloud slice only. It is not Phase 7 acceptance and is not a production-readiness claim.
+
 ## Phase 7 rules
 
 1. Never make stale evidence look fresh because a server computation just ran.
@@ -26,13 +44,13 @@ Phase 7 converts the already-built Phase 2–6 tracking, evidence, reliability a
 
 | Packet | Scope | Status |
 |---|---|---|
-| P7.0 | Requirement matrix + stable parent read model | IN PROGRESS |
-| P7.1 | Position Presentation Engine + honest geometry | IN PROGRESS |
-| P7.2 | Human-readable evidence/conflict explanation | STARTED |
+| P7.0 | Requirement matrix + stable parent read model | BASELINE PASS |
+| P7.1 | Position Presentation Engine + honest geometry | PARTIAL PASS — contract done, full map geometry pending |
+| P7.2 | Human-readable evidence/conflict explanation | PARTIAL PASS |
 | P7.3 | Trusted/refined history integration and playback | NOT STARTED |
 | P7.4 | Device / position / provider health + Location control UX | NOT STARTED |
 | P7.5 | Trips, Places and minimal child UX revalidation | NOT STARTED |
-| P7.6 | Full Phase 7 CI + real OPPO integration qualification | IN PROGRESS |
+| P7.6 | Full Phase 7 CI + real OPPO integration qualification | CLOUD BASELINE PASS — full/OPPO pending |
 
 ## Current implementation
 
@@ -82,16 +100,16 @@ Existing live tracking, safety controls, history, trips, Places, health, diagnos
 
 | Requirement | Existing before P7 | P7 action | Current status |
 |---|---|---|---|
-| Current trusted location | Yes | Normalize into presentation contract | STARTED |
-| Current refined location | Yes | Normalize without upgrading precision | STARTED |
-| Uncertainty | Yes | Always surface honestly | STARTED |
-| Route corridor | Yes | Expose as explicit CORRIDOR geometry | STARTED |
-| Anchored region | Partial UI | Expose as ANCHORED_AREA | STARTED |
-| Coarse region | Partial UI | Expose as AREA | STARTED |
-| Last-known area | Partial UI | Expose as LAST_KNOWN_AREA | STARTED |
-| Unknown/no trustworthy coordinate | Yes internally | Expose as NONE, never fake marker | STARTED |
-| Evidence explanations | Backend data exists | Human-readable parent display | STARTED |
-| Evidence conflicts | Backend data exists | Explicit warning + widened uncertainty | STARTED |
+| Current trusted location | Yes | Normalize into presentation contract | CONTRACT PASS |
+| Current refined location | Yes | Normalize without upgrading precision | CONTRACT PASS |
+| Uncertainty | Yes | Always surface honestly | CONTRACT PASS |
+| Route corridor | Yes | Expose as explicit CORRIDOR geometry | CONTRACT PASS / MAP REVALIDATION PENDING |
+| Anchored region | Partial UI | Expose as ANCHORED_AREA | CONTRACT PASS / MAP REVALIDATION PENDING |
+| Coarse region | Partial UI | Expose as AREA | CONTRACT PASS / MAP REVALIDATION PENDING |
+| Last-known area | Partial UI | Expose as LAST_KNOWN_AREA | CONTRACT PASS / MAP REVALIDATION PENDING |
+| Unknown/no trustworthy coordinate | Yes internally | Expose as NONE, never fake marker | CONTRACT PASS |
+| Evidence explanations | Backend data exists | Human-readable parent display | FIRST UI PASS |
+| Evidence conflicts | Backend data exists | Explicit warning + widened uncertainty | FIRST UI PASS |
 | Today/Yesterday/7/30/custom history | Yes | Revalidate | PENDING |
 | Distance/duration/avg/max/modes/stops | Yes | Revalidate and preserve | PENDING |
 | 0.5x/1x/2x/5x/10x playback | Yes | Revalidate | PENDING |
