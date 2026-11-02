@@ -17,9 +17,6 @@ val releaseSigningAvailable = listOf(
 ).all { !it.isNullOrBlank() }
 
 dependencyLocking {
-    // Brick's release APK must resolve the same transitive dependency versions as the audited
-    // candidate. The generated app/gradle.lockfile is committed after the first lock-generation
-    // run; normal builds then consume it automatically and fail rather than silently drifting.
     lockAllConfigurations()
 }
 
@@ -31,14 +28,21 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.6.0-phase6c-beta1"
+        versionCode = 8
+        versionName = "0.7.0-phase7-beta1-test"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Phase 7 on this branch is intentionally a disposable qualification beta.
+        // Expiry: 2026-12-03T00:00:00Z. A new beta must consciously move this forward.
+        buildConfigField("boolean", "BRICK_BETA", "true")
+        buildConfigField("long", "BRICK_BETA_EXPIRY_EPOCH_MS", "1796256000000L")
+        buildConfigField("String", "BRICK_BETA_CHANNEL", "\"phase7-beta1-test\"")
     }
 
     buildFeatures {
         viewBinding = true
         aidl = true
+        buildConfig = true
     }
 
     signingConfigs {
@@ -89,12 +93,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
-    // Phase 6 optional privileged bridge. UserService keeps the exposed surface typed; Brick Core
-    // remains fully functional when Shizuku/Sui is absent, stopped or denied.
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
-    // Maintained instrumentation runner. Brick's test methods remain JUnit3-style TestCase tests,
-    // which AndroidJUnitRunner supports, while avoiding deprecated android.test framework classes.
     androidTestImplementation("androidx.test:runner:1.7.0")
 }

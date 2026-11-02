@@ -16,13 +16,19 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.brick.safety.BuildConfig
+import com.brick.safety.beta.BetaSafety
+import com.brick.safety.managed.ManagedPolicy
+import java.time.Instant
 import java.util.concurrent.Executors
 
 class DiagnosticsActivity : AppCompatActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private lateinit var sessionText: TextView
+    private lateinit var betaSafetyText: TextView
     private lateinit var errorBanner: TextView
     private lateinit var reportView: TextView
     private lateinit var sessionButton: Button
@@ -41,6 +47,7 @@ class DiagnosticsActivity : AppCompatActivity() {
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "diagnostics_opened")
         setContentView(buildUi())
         renderSession()
+        renderBetaSafety()
         refreshReport()
     }
 
@@ -71,12 +78,12 @@ class DiagnosticsActivity : AppCompatActivity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "BRICK 6C BETA DIAGNOSTICS"
+            text = "BRICK PHASE 7 TEST BETA"
             textSize = 23f
             setTypeface(typeface, Typeface.BOLD)
         })
         root.addView(TextView(this).apply {
-            text = "OPPO field-test black box • no coordinates in diagnostic logs"
+            text = "Disposable Device Owner test build • testOnly=true • no coordinates in diagnostic logs"
             textSize = 12f
             setPadding(0, dp(4), 0, dp(12))
         })
@@ -86,6 +93,12 @@ class DiagnosticsActivity : AppCompatActivity() {
             setTypeface(typeface, Typeface.BOLD)
         }
         root.addView(sessionText)
+
+        betaSafetyText = TextView(this).apply {
+            textSize = 13f
+            setPadding(0, dp(8), 0, dp(4))
+        }
+        root.addView(betaSafetyText)
 
         errorBanner = TextView(this).apply {
             textSize = 14f
@@ -125,6 +138,22 @@ class DiagnosticsActivity : AppCompatActivity() {
         export.addView(button("SHARE REPORT") { shareReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
         root.addView(export, params(dp(8)))
 
+        root.addView(TextView(this).apply {
+            text = "BETA ESCAPE CONTROLS"
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, dp(18), 0, dp(4))
+        })
+
+        root.addView(button("EMERGENCY RELEASE DEVICE OWNER") { confirmReleaseOwner() }, params(dp(4)))
+        root.addView(button("SELF-DESTRUCT BETA") { confirmSelfDestruct() }, params(dp(6)))
+
+        root.addView(TextView(this).apply {
+            text = "Self-destruct never wipes or factory-resets the phone. It retires this beta, stops Brick, cancels recovery work, releases Device Owner/admin, then opens Android's uninstall screen."
+            textSize = 12f
+            setPadding(0, dp(6), 0, dp(4))
+        })
+
         reportView = TextView(this).apply {
             text = "Loading diagnostics…"
             textSize = 12f
@@ -153,6 +182,18 @@ class DiagnosticsActivity : AppCompatActivity() {
         sessionButton.text = if (id == null) "START TEST SESSION" else "END TEST SESSION"
     }
 
+    private fun renderBetaSafety() {
+        val owner = ManagedPolicy.isDeviceOwner(this)
+        val retired = BetaSafety.isRetired(this)
+        val expired = BetaSafety.isExpired()
+        betaSafetyText.text = buildString {
+            append("Build: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n")
+            append("Channel: ${BuildConfig.BRICK_BETA_CHANNEL}\n")
+            append("Auto-expiry: ${Instant.ofEpochMilli(BetaSafety.expiryEpochMs())}\n")
+            append("Device Owner: $owner • retired: $retired • expired: $expired")
+        }
+    }
+
     private fun refreshReport() {
         if (worker.isShutdown) return
         worker.execute {
@@ -170,14 +211,58 @@ class DiagnosticsActivity : AppCompatActivity() {
                     errorBanner.text = "LAST ERROR • ${error.component}/${error.event}\n${error.detail.take(500)}\nTap COPY FULL REPORT and send it if this looks relevant."
                 }
                 renderSession()
+                renderBetaSafety()
             }
         }
+    }
+
+    private fun confirmReleaseOwner() {
+        AlertDialog.Builder(this)
+            .setTitle("Release Device Owner?")
+            .setMessage("Emergency escape only. This removes Brick's Device Owner / admin role but does not erase the phone and does not retire the beta.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Release") { _, _ ->
+                worker.execute {
+                    val result = BetaSafety.releaseDeviceOwner(applicationContext)
+                    runOnUiThread {
+                        renderBetaSafety()
+                        if (result.released) {
+                            toast("Device Owner/admin released")
+                        } else {
+                            toast("Release incomplete: ${result.error ?: "still active"}")
+                        }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun confirmSelfDestruct() {
+        AlertDialog.Builder(this)
+            .setTitle("Self-destruct this beta?")
+            .setMessage("This retires Brick Phase 7 beta, stops tracking/recovery, releases Device Owner/admin, and opens Android's uninstall screen. It NEVER factory-resets or wipes the phone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("SELF-DESTRUCT") { _, _ ->
+                worker.execute {
+                    val result = BetaSafety.selfDestruct(
+                        applicationContext,
+                        reason = "manual_diagnostics",
+                        launchUninstall = false
+                    )
+                    runOnUiThread {
+                        renderBetaSafety()
+                        toast(if (result.released) "Brick beta released" else "Retired; owner release needs attention")
+                        BetaSafety.openUninstallScreen(this)
+                    }
+                }
+            }
+            .show()
     }
 
     private fun copyReport() {
         val report = latestReport.ifBlank { DiagnosticStore.fullReport(this) }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Brick 6C diagnostic report", report))
+        clipboard.setPrimaryClip(ClipData.newPlainText("Brick Phase 7 diagnostic report", report))
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "report_copied", "chars=${report.length}")
         toast("Full report copied")
     }
@@ -187,7 +272,7 @@ class DiagnosticsActivity : AppCompatActivity() {
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "report_shared", "chars=${report.length}")
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Brick Phase 6C Beta diagnostic report")
+            putExtra(Intent.EXTRA_SUBJECT, "Brick Phase 7 Test Beta diagnostic report")
             putExtra(Intent.EXTRA_TEXT, report)
         }, "Share Brick diagnostic report"))
     }

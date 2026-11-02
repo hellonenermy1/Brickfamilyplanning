@@ -1,0 +1,89 @@
+name: Brick V1 Phase 7 — Safe Beta APK Export
+
+on:
+  push:
+    branches: [v1-p7-android-ux]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-apk:
+    name: Build and export removable Phase 7 test beta
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+
+      - name: Refuse unsafe Device Owner beta export
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          gradle_file=app/build.gradle.kts
+          beta=app/src/main/java/com/brick/safety/beta/BetaSafety.kt
+          diagnostics=app/src/main/java/com/brick/safety/diagnostics/DiagnosticsActivity.kt
+
+          grep -F 'android:testOnly="true"' "$manifest" >/dev/null
+          grep -F 'versionCode = 8' "$gradle_file" >/dev/null
+          grep -F 'versionName = "0.7.0-phase7-beta1-test"' "$gradle_file" >/dev/null
+          grep -F 'BRICK_BETA", "true"' "$gradle_file" >/dev/null
+          grep -F 'clearDeviceOwnerApp(appContext.packageName)' "$beta" >/dev/null
+          grep -F 'Intent.ACTION_DELETE' "$beta" >/dev/null
+          grep -F 'SELF-DESTRUCT BETA' "$diagnostics" >/dev/null
+          ! grep -R -n -F 'wipeData(' app/src/main/java/com/brick/safety/beta
+
+          expiry_ms="$(sed -n 's/.*BRICK_BETA_EXPIRY_EPOCH_MS", "\([0-9][0-9]*\)L".*/\1/p' "$gradle_file")"
+          test -n "$expiry_ms"
+          now_ms="$(($(date +%s) * 1000))"
+          test "$expiry_ms" -gt "$now_ms"
+          max_ms="$((now_ms + 45 * 24 * 60 * 60 * 1000))"
+          test "$expiry_ms" -le "$max_ms"
+
+      - name: Build Phase 7 debug test APK
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+
+      - name: Record APK hash and signing certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          sha256sum "$APK" | tee apk-sha256.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee apk-signing-cert.txt
+
+      - name: Upload Phase 7 safe beta APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase7-safe-test-beta-apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            apk-sha256.txt
+            apk-signing-cert.txt
+          if-no-files-found: error
+          retention-days: 30

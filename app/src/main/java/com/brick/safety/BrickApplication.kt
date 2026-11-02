@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import com.brick.safety.beta.BetaSafety
 import com.brick.safety.data.Journal
 import com.brick.safety.diagnostics.DiagnosticMonitor
 import com.brick.safety.diagnostics.DiagnosticStore
@@ -21,6 +22,16 @@ class BrickApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DiagnosticStore.init(this)
+
+        if (!BetaSafety.enforceStartup(this)) {
+            DiagnosticStore.log(
+                DiagnosticStore.Severity.WARN,
+                "beta",
+                "startup_blocked_retired_or_expired"
+            )
+            return
+        }
+
         DiagnosticMonitor.start(this)
         CrashReporter.install(this)
         Phase5LearnedPlaceRuntime.initialize(this)
@@ -52,8 +63,6 @@ class BrickApplication : Application() {
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
         recoverSequenceWatermark()
-        // WorkManager is only a recovery backstop. A corrupt/unavailable WorkManager database must
-        // never crash Brick before BootReceiver or the foreground tracking service can recover.
         runCatching { RecoveryScheduler.ensureScheduled(this) }
             .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "recovery", "scheduler_setup_failed", it.javaClass.simpleName, it) }
     }
