@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   qualify-parent-beta:
-    name: Parent beta typecheck, regression, render and isolation
+    name: Parent beta typecheck, regression, render and free-runtime isolation
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -39,8 +39,7 @@ jobs:
           npm run build:parent-assets
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
-          node --check scripts/setup-v1-phase6-development.mjs
-          node --check scripts/install-private-map-development.mjs
+          node --check scripts/setup-v1-phase6-development-free.mjs
 
       - name: Run retained Phase 2-6 cloud regression and privacy gates
         run: bash scripts/phase6-cloud-regression.sh
@@ -69,36 +68,38 @@ jobs:
           if (!html.includes('location-control')) throw new Error('Phase 6 GPS control support was lost');
           if (!html.includes('Revoke selected phone')) throw new Error('Phase 6 revocation UI support was lost');
           if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('beta portal reintroduced live third-party CDN assets');
-          if (/positionLat|positionLon|exact coordinates/i.test(html)) {
-            if (/positionLat=|positionLon=|latitude=|longitude=/i.test(html)) throw new Error('diagnostic report appears to expose exact coordinates');
+          if (/positionLat|positionLon|exact coordinates/i.test(html) && /positionLat=|positionLon=|latitude=|longitude=/i.test(html)) {
+            throw new Error('diagnostic report appears to expose exact coordinates');
           }
           console.log(`Rendered Phase 6C parent beta: ${html.length} bytes`);
           NODE
 
-      - name: Verify development stack is isolated from production resource names
+      - name: Verify card-free development runtime and production isolation
         shell: bash
         run: |
           set -euo pipefail
           grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
           grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"bucket_name": "brick-family-v1-dev-history"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"bucket_name": "brick-family-v1-dev-maps"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"queue": "brick-family-v1-dev-events"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"dead_letter_queue": "brick-family-v1-dev-dlq"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
           grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
-          grep -F 'from "./worker-v9"' src/worker-v10.ts >/dev/null
-          grep -F 'from "./parent-v6c"' src/worker-v10.ts >/dev/null
-          grep -F 'headers.set("X-Brick-Portal", "phase6c-beta")' src/worker-v10.ts >/dev/null
-          grep -F 'headers.set("X-Brick-Environment", "development")' src/worker-v10.ts >/dev/null
-          grep -F 'u.pathname === "/parent/map/basemap.pmtiles"' src/worker-v5b.ts >/dev/null
-          grep -F 'servePrivateBasemap' src/worker-v5b.ts >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'brick-family-v1-dev-history' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'brick-family-v1-dev-events' wrangler.development.template.jsonc >/dev/null
+          grep -F 'dev_object_store' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'dev_object_chunks' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'developmentRuntimeEnv' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
+          grep -F 'class D1ObjectBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class DirectEventQueue' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class RemoteMapBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'setup-v1-phase6-development-free.mjs' package.json >/dev/null
 
-          # Production remains frozen on its original identities/entrypoint.
+          # Production remains frozen on its original identities/entrypoint and R2 design.
           grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           grep -F 'brick-v1-phase6-production' .github/workflows/deploy-brick.yml >/dev/null
-          ! grep -F 'brick-family-v1-dev' wrangler.template.jsonc >/dev/null
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
 
       - name: Verify development worker with Wrangler dry-run bundler
@@ -111,7 +112,8 @@ jobs:
           const config = source
             .replace('__D1_DATABASE_ID__', '00000000-0000-0000-0000-000000000000')
             .replace('__CF_ACCESS_TEAM_DOMAIN__', 'https://brick-development.cloudflareaccess.com')
-            .replace('__CF_ACCESS_AUD__', 'development-dry-run-audience');
+            .replace('__CF_ACCESS_AUD__', 'development-dry-run-audience')
+            .replace('__BRICK_MAP_SOURCE__', 'https://build.protomaps.com/20261101.pmtiles');
           fs.writeFileSync('wrangler.development.dryrun.jsonc', config);
           NODE
           rm -rf /tmp/brick-worker-v10-dry
