@@ -8,6 +8,9 @@ const html = parent.parentV7LiveHtml();
 for (const required of ['p7HealthPresentationMatches','p7ScheduleNormalizedStateRefresh','snapshot.healthPresentation=null']) {
   assert.ok(html.includes(required), `missing live health sync contract: ${required}`);
 }
+assert.ok(html.includes("q==='precise'||q==='assisted'?'CIRCLE'"), 'live fallback must reserve exact circle geometry for precise/assisted quality');
+assert.ok(html.includes("q==='estimated'||q==='coarse'?'AREA':'NONE'"), 'unrecognized/unknown live quality must fall back to NONE rather than an exact point');
+assert.ok(!html.includes("q==='estimated'||q==='coarse'?'AREA':'CIRCLE'"), 'unsafe unknown-to-circle live fallback must not return');
 
 await build({entryPoints:['src/phase7-state-v2.ts'],bundle:true,platform:'node',format:'esm',outfile:'/tmp/brick-phase7-state-v2.mjs',logLevel:'silent'});
 const state = await import(pathToFileURL('/tmp/brick-phase7-state-v2.mjs').href + `?v=${Date.now()}`);
