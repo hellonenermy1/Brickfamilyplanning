@@ -44,16 +44,18 @@ jobs:
       - name: Run retained Phase 2-6 cloud regression and privacy gates
         run: bash scripts/phase6-cloud-regression.sh
 
-      - name: Render Phase 6C parent portal and verify beta contract
+      - name: Render actual beta5 parent portal and verify browser contract
         shell: bash
         run: |
           set -euo pipefail
-          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
+          npx esbuild src/parent-v6d.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6d.mjs
           node --input-type=module <<'NODE'
-          const m = await import('file:///tmp/brick-parent-v6c.mjs');
-          const html = m.parentV6CHtml();
+          import fs from 'node:fs';
+          const m = await import('file:///tmp/brick-parent-v6d.mjs');
+          const html = m.parentV6DHtml();
           const required = [
             'DEVELOPMENT BETA',
+            'Development Beta 5',
             'Development diagnostics',
             'Live trust',
             'PORTAL CONNECTING',
@@ -61,18 +63,24 @@ jobs:
             'Copy beta report',
             'id="debugLog"',
             'id="portalLive"',
-            'getPrivateMapStatus'
+            'getPrivateMapStatus',
+            'Map unavailable on this browser. Brick controls and device data are still available.'
           ];
           for (const value of required) if (!html.includes(value)) throw new Error(`missing parent beta UI contract: ${value}`);
           if (!html.includes('pairingQrDataUrl')) throw new Error('Phase 6 pairing QR support was lost');
           if (!html.includes('location-control')) throw new Error('Phase 6 GPS control support was lost');
           if (!html.includes('Revoke selected phone')) throw new Error('Phase 6 revocation UI support was lost');
+          if (!html.includes('__brickFallback:true')) throw new Error('map-startup failure isolation was lost');
           if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('beta portal reintroduced live third-party CDN assets');
           if (/positionLat|positionLon|exact coordinates/i.test(html) && /positionLat=|positionLon=|latitude=|longitude=/i.test(html)) {
             throw new Error('diagnostic report appears to expose exact coordinates');
           }
-          console.log(`Rendered Phase 6C parent beta: ${html.length} bytes`);
+          const inline = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+          if (!inline) throw new Error('rendered parent inline browser module missing');
+          fs.writeFileSync('/tmp/brick-parent-inline.mjs', inline[1]);
+          console.log(`Rendered Phase 6C beta5 parent portal: ${html.length} bytes`);
           NODE
+          node --check /tmp/brick-parent-inline.mjs
 
       - name: Verify fully card-free runtime and production isolation
         shell: bash
@@ -86,7 +94,7 @@ jobs:
           grep -F '"DEV_PARENT_AUTH_MODE": "d1-session-v1"' wrangler.development.template.jsonc >/dev/null
           grep -F '"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"' wrangler.development.template.jsonc >/dev/null
           grep -F '"name": "PARENT_LOGIN_RATE"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"CURRENT_APP_VERSION": "0.6.0-phase6c-beta4-cardfree"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"CURRENT_APP_VERSION": "0.6.0-phase6c-beta5-cardfree"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
           ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
@@ -96,6 +104,8 @@ jobs:
           grep -F 'dev_parent_sessions' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_maintenance_state' schema/013_phase6c_request_maintenance.sql >/dev/null
           grep -F 'developmentRuntimeEnv' src/worker-v10.ts >/dev/null
+          grep -F 'parentV6DHtml' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Portal", "phase6c-beta5' src/worker-v10.ts >/dev/null
           grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
           grep -F 'stripDevParentInternalHeader' src/worker-v10.ts >/dev/null
           grep -F 'authorizeDevParentRequest' src/worker-v10.ts >/dev/null
