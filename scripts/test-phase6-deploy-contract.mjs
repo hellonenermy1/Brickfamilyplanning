@@ -7,6 +7,7 @@ function requireCondition(condition, message) {
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const entry = fs.readFileSync('scripts/setup.mjs', 'utf8');
 const setup = fs.readFileSync('scripts/setup-v1-phase6.mjs', 'utf8');
+const verifier = fs.readFileSync('scripts/verify-cloudflare-deployment.mjs', 'utf8');
 const wrangler = fs.readFileSync('wrangler.template.jsonc', 'utf8');
 const deployWorkflow = fs.readFileSync('.github/workflows/deploy-brick.yml', 'utf8');
 
@@ -54,6 +55,17 @@ for (const marker of [
 ]) requireCondition(setup.includes(marker), `Phase 6 setup provenance/retention is missing ${marker}`);
 
 for (const marker of [
+  'const EXPECTED_V1_PROGRAM_PHASE = 6;',
+  'const EXPECTED_SCHEMA_VERSION = 11;',
+  "const EXPECTED_WORKER_ENTRY = 'src/worker-v9.ts';",
+  "'schema/011_v1_phase6_location_control.sql'",
+  "'device_location_control'",
+  'state?.schemaVersion === EXPECTED_SCHEMA_VERSION',
+  'state?.workerEntry === EXPECTED_WORKER_ENTRY',
+  'Brick V1 Phase 6 deployment verified'
+]) requireCondition(verifier.includes(marker), `post-deploy verifier is missing Phase 6 contract: ${marker}`);
+
+for (const marker of [
   'name: Deploy Brick V1 Phase 6 Candidate',
   '\"main\": \"src/worker-v9.ts\"',
   "'schema/011_v1_phase6_location_control.sql'",
@@ -63,4 +75,4 @@ for (const marker of [
   "s.workerEntry !== 'src/worker-v9.ts'"
 ]) requireCondition(deployWorkflow.includes(marker), `deployment workflow is missing Phase 6 gate: ${marker}`);
 
-console.log('Phase 6 deployment contract passed: schema 001-011 precedes v9 activation and deployment provenance is enforced.');
+console.log('Phase 6 deployment contract passed: schema 001-011 precedes v9 activation, post-deploy verification is Phase 6 aware, and deployment provenance is enforced.');
