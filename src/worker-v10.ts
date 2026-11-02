@@ -1,5 +1,5 @@
 import phase9, { BrickDevice } from "./worker-v9";
-import { parentV6CHtml } from "./parent-v6c";
+import { parentV6DHtml } from "./parent-v6d";
 import { cleanupDevelopmentObjectStore, developmentRuntimeEnv } from "./dev-free-runtime";
 import {
   authorizeDevParentRequest,
@@ -28,12 +28,12 @@ function developmentParentResponse(baseResponse: Response, baseHtml: string) {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
     });
   }
-  const html = parentV6CHtml().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
+  const html = parentV6DHtml().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
   const headers = new Headers(baseResponse.headers);
   headers.set("Cache-Control", "no-store");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Brick-Environment", "development");
-  headers.set("X-Brick-Portal", "phase6c-beta");
+  headers.set("X-Brick-Portal", "phase6c-beta5");
   headers.set("X-Brick-Storage", "d1-free-runtime");
   headers.set("X-Brick-Parent-Auth", "d1-session-v1");
   return new Response(html, { status: baseResponse.status, statusText: baseResponse.statusText, headers });
