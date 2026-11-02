@@ -16,9 +16,22 @@ async function deterministicId(key:string){const digest=new Uint8Array(await cry
 async function eventRecord(env:Phase4Env,deviceId:string,kind:string,lat:number|null,lon:number|null,accuracyM:number|null,detail:Record<string,unknown>,dedupeKey?:string){const now=Date.now(),id=dedupeKey?await deterministicId(dedupeKey):crypto.randomUUID();const event:RealtimeSafetyEvent={id,kind,deviceCreatedAt:now,serverCreatedAt:now,latitude:lat,longitude:lon,accuracyM,detail};const statement=env.DB.prepare("INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?4,?5,?6,?7,?8)").bind(id,deviceId,kind,now,lat,lon,accuracyM,JSON.stringify(detail));return{event,statement}}
 async function internalEvent(env:Phase4Env,deviceId:string,kind:string,lat:number|null,lon:number|null,accuracyM:number|null,detail:Record<string,unknown>){const r=await eventRecord(env,deviceId,kind,lat,lon,accuracyM,detail);await r.statement.run();return r.event}
 
+/**
+ * Geofence and trip state changes are safety semantics, not map presentation. They may use only a
+ * trusted coordinate class: PRECISE, ASSISTED or ANCHORED, with bounded uncertainty. ESTIMATED,
+ * COARSE, LAST_KNOWN and UNKNOWN remain useful for the parent display but must never manufacture
+ * an arrival/exit/stop transition just because their displayed centre happens to cross a boundary.
+ */
+export function safetyPositionEligible(packet: Pick<LivePacket,"trustedLatE7"|"trustedLonE7"|"uncertaintyCm"|"quality">): boolean {
+ if(packet.trustedLatE7===null||packet.trustedLonE7===null)return false;
+ const accuracyM=packet.uncertaintyCm/100;
+ if(!Number.isFinite(accuracyM)||accuracyM<0||accuracyM>250)return false;
+ return packet.quality===1||packet.quality===2||packet.quality===3;
+}
+
 export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePacket):Promise<RealtimeSafetyEvent[]>{
- const generated:RealtimeSafetyEvent[]=[];if(packet.trustedLatE7===null||packet.trustedLonE7===null)return generated;
- const lat=packet.trustedLatE7/1e7,lon=packet.trustedLonE7/1e7,accuracyM=packet.uncertaintyCm/100,now=Date.now();if(!Number.isFinite(accuracyM)||accuracyM>250)return generated;
+ const generated:RealtimeSafetyEvent[]=[];if(!safetyPositionEligible(packet))return generated;
+ const lat=packet.trustedLatE7!/1e7,lon=packet.trustedLonE7!/1e7,accuracyM=packet.uncertaintyCm/100,now=Date.now();
  const fences=await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE device_id=?1 AND enabled=1").bind(deviceId).all<Geofence>();
  for(const g of fences.results){
   const d=distanceM(lat,lon,g.latitude,g.longitude);const current=await env.DB.prepare("SELECT stable_state,candidate_state,candidate_since,candidate_count,last_epoch,last_sequence FROM geofence_state WHERE geofence_id=?1").bind(g.id).first<GeoState>();
