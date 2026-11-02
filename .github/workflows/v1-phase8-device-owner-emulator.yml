@@ -1,0 +1,120 @@
+name: Brick V1 Phase 8 — Device Owner Lifecycle Emulator
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  device-owner-lifecycle:
+    name: Fresh AVD Device Owner provision -> staged release -> uninstall
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p8-do-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Install SDK and build test APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
+      - name: Boot fresh emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-do -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-do-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          # A fresh CI AVD must not contain user accounts before Device Owner provisioning.
+          ! "$ADB" shell dumpsys account 2>/dev/null | grep -E 'Account \{|Account \{' >/dev/null
+
+      - name: Install testOnly Brick and provision real Device Owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_APK=app/build/outputs/apk/debug/app-debug.apk
+          TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          "$ADB" install -t "$APP_APK"
+          "$ADB" install -t "$TEST_APK"
+          "$ADB" shell dpm set-device-owner com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
+          grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
+
+      - name: Run staged retirement as the Device Owner app
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell am instrument -w -r \
+            -e class 'com.brick.safety.beta.Phase8BetaSafetyInstrumentedTest#testRetirementIsMonotonicAndFailClosed' \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-do-instrumentation.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-do-instrumentation.txt >/dev/null
+
+      - name: Verify ownership is released and package is removable
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-after.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-after.txt >/dev/null
+          "$ADB" shell pm uninstall com.brick.safety | tee /tmp/p8-do-uninstall.txt
+          grep -F 'Success' /tmp/p8-do-uninstall.txt >/dev/null
+
+      - name: Preserve Device Owner diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p p8-do-failure
+          cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
+          cp /tmp/p8-do-set-owner.txt p8-do-failure/set-owner.txt || true
+          cp /tmp/p8-do-owners-before.txt p8-do-failure/owners-before.txt || true
+          cp /tmp/p8-do-instrumentation.txt p8-do-failure/instrumentation.txt || true
+          cp /tmp/p8-do-owners-after.txt p8-do-failure/owners-after.txt || true
+          "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
+          "$ADB" logcat -d > p8-do-failure/logcat.txt || true
+
+      - name: Upload Device Owner failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase8-device-owner-lifecycle-failure
+          path: p8-do-failure/
+          if-no-files-found: warn
+          retention-days: 14
