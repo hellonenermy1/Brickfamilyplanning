@@ -75,6 +75,32 @@ async function htmlRequest(origin, path, session) {
   return { response, body };
 }
 
+function verifyPresentationSemantics(presentation) {
+  const cls = presentation?.positionClass;
+  const geometry = presentation?.geometry;
+  const kind = geometry?.kind;
+  const allowed = {
+    precise: new Set(['CIRCLE']),
+    assisted: new Set(['CIRCLE']),
+    anchored: new Set(['ANCHORED_AREA']),
+    estimated: new Set(['AREA', 'CORRIDOR']),
+    coarse: new Set(['AREA']),
+    last_known: new Set(['LAST_KNOWN_AREA']),
+    unknown: new Set(['NONE'])
+  };
+  if (!allowed[cls]?.has(kind)) throw new Error(`invalid live Phase 7 class/geometry combination: ${cls}/${kind}`);
+  const lat = geometry?.latitude, lon = geometry?.longitude;
+  if (kind === 'NONE') {
+    if (lat !== null || lon !== null) throw new Error('NONE geometry must not expose a current coordinate');
+  } else if (!(typeof lat === 'number' && Number.isFinite(lat) && lat >= -90 && lat <= 90 &&
+               typeof lon === 'number' && Number.isFinite(lon) && lon >= -180 && lon <= 180)) {
+    throw new Error(`${kind} geometry is missing a legal coordinate basis`);
+  }
+  if (cls === 'unknown' && presentation?.confidence !== 'very_low') {
+    throw new Error('unknown live position must have very_low confidence');
+  }
+}
+
 function verifyWebSocket(origin, deviceId, session) {
   return new Promise((resolve, reject) => {
     const u = new URL(origin);
@@ -153,6 +179,7 @@ try {
     if (state.presentation?.protocol !== 1) throw new Error('Phase 7 position presentation missing from live state');
     if (state.healthPresentation?.protocol !== 1) throw new Error('Phase 7 health presentation missing from live state');
     if (!state.presentation.geometry || typeof state.presentation.geometry.kind !== 'string') throw new Error('live Phase 7 geometry contract missing');
+    verifyPresentationSemantics(state.presentation);
     console.log(`Authenticated live Phase 7 state PASS (${state.presentation.positionClass}/${state.presentation.geometry.kind}).`);
 
     const from = Date.now() - 24 * 60 * 60_000;
@@ -167,6 +194,12 @@ try {
     const control = (await jsonRequest(origin, `/parent/api/device/${encodeURIComponent(active.id)}/location-control`, session)).body;
     for (const field of ['desiredEnabled', 'configured', 'actualEnabled', 'actualObservedAtMs', 'matchesDesired', 'lastAckedCommandId']) {
       if (!(field in control)) throw new Error(`location-control live response missing ${field}`);
+    }
+    if (control.matchesDesired === true && typeof control.actualEnabled !== 'boolean') {
+      throw new Error('location-control cannot match desired without an actual phone observation');
+    }
+    if (control.commandId && control.lastAckedCommandId === control.commandId && !Number.isFinite(control.actualObservedAtMs)) {
+      throw new Error('acknowledged current Location command is missing its phone observation time');
     }
     console.log('Authenticated live Location requested/actual/ack contract PASS.');
 
