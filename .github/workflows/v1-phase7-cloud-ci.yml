@@ -42,26 +42,27 @@ jobs:
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
 
-      - name: Verify Phase 7 presentation, health and safety contracts
+      - name: Verify Phase 7 presentation, health, live-sync and safety contracts
         shell: bash
         run: |
           set -euo pipefail
           node scripts/check-phase7-parent-presentation.mjs
           node scripts/check-phase7-health-presentation.mjs
+          node scripts/check-phase7-live-sync.mjs
           node scripts/check-phase7-safety-quality.mjs
 
       - name: Run retained Phase 2-6 cloud regression and privacy gates
         run: bash scripts/phase6-cloud-regression.sh
 
-      - name: Render Phase 7 parent and verify browser contract
+      - name: Render actual served Phase 7 parent and verify browser contract
         shell: bash
         run: |
           set -euo pipefail
-          npx esbuild src/parent-v7.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v7.mjs
+          npx esbuild src/parent-v7-live.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v7.mjs
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const m = await import('file:///tmp/brick-parent-v7.mjs');
-          const html = m.parentV7Html();
+          const html = m.parentV7LiveHtml();
           const required = [
             'Phase 7 Development',
             'PHASE 7 BETA',
@@ -84,6 +85,9 @@ jobs:
             'p7-position-area',
             'p7-position-corridor',
             'p7-refined-history',
+            'p7HealthPresentationMatches',
+            'p7ScheduleNormalizedStateRefresh',
+            'snapshot.healthPresentation=null',
             'Development diagnostics',
             'Map unavailable on this browser. Brick controls and device data are still available.'
           ];
@@ -92,7 +96,7 @@ jobs:
           const inline = html.match(/<script type="module">([\s\S]*?)<\/script>/);
           if (!inline) throw new Error('rendered Phase 7 inline browser module missing');
           fs.writeFileSync('/tmp/brick-parent-v7-inline.mjs', inline[1]);
-          console.log(`Rendered Phase 7 parent portal: ${html.length} bytes`);
+          console.log(`Rendered actual served Phase 7 parent portal: ${html.length} bytes`);
           NODE
           node --check /tmp/brick-parent-v7-inline.mjs
 
@@ -100,13 +104,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'parentV7Html' src/worker-v10.ts >/dev/null
-          grep -F 'augmentPhase7ParentStateResponse' src/worker-v10.ts >/dev/null
+          grep -F 'parentV7LiveHtml as parentV7Html' src/worker-v10.ts >/dev/null
+          grep -F 'augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse' src/worker-v10.ts >/dev/null
           grep -F 'X-Brick-Portal", "phase7-beta1' src/worker-v10.ts >/dev/null
           grep -F 'X-Brick-Position-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
           grep -F 'X-Brick-Health-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
+          grep -F 'reportsUnsupported' src/phase7-state-v2.ts >/dev/null
           grep -F 'safetyPositionEligible' src/phase4.ts >/dev/null
           grep -F 'packet.quality===1||packet.quality===2||packet.quality===3' src/phase4.ts >/dev/null
+          grep -F 'tripOverdueEligible' src/phase4.ts >/dev/null
           grep -F 'refinedHistory' src/worker-v9.ts >/dev/null
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
