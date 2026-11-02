@@ -149,7 +149,9 @@ async function browserAcceptance(session) {
   let pageSession;
 
   try {
-    const target = await cdp.send('Target.createTarget', { url: 'about:blank', width: 1440, height: 1100 });
+    // Chrome 156 rejects width/height on Target.createTarget unless creating a new window.
+    // Create a normal page target, attach, then set viewport through Emulation instead.
+    const target = await cdp.send('Target.createTarget', { url: 'about:blank' });
     pageSession = (await cdp.send('Target.attachToTarget', { targetId: target.targetId, flatten: true })).sessionId;
     cdp.on(message => {
       if (message.sessionId !== pageSession) return;
@@ -168,6 +170,7 @@ async function browserAcceptance(session) {
       cdp.send('Network.enable', {}, pageSession),
       cdp.send('Log.enable', {}, pageSession)
     ]);
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false }, pageSession);
     await cdp.send('Network.setCookie', {
       name: 'brick_parent_dev', value: session, url: ORIGIN, secure: true, httpOnly: true, sameSite: 'Strict'
     }, pageSession);
