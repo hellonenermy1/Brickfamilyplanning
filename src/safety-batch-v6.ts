@@ -33,6 +33,9 @@ function distanceM(aLat: number, aLon: number, bLat: number, bLon: number) {
 function atLeast(epoch: number, sequence: number, otherEpoch: number, otherSequence: number) {
   return epoch > otherEpoch || (epoch === otherEpoch && sequence >= otherSequence);
 }
+function packetOrder(a: LivePacket, b: LivePacket) {
+  return a.epoch - b.epoch || a.sequence - b.sequence;
+}
 async function deterministicId(key: string) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   return "srv_" + Array.from(digest.slice(0, 16), b => b.toString(16).padStart(2, "0")).join("");
@@ -57,9 +60,44 @@ async function eventRecord(env: SafetyBatchEnv, deviceId: string, kind: string, 
   };
 }
 
+/**
+ * Coordinate-dependent safety semantics are stricter than map presentation. Only PRECISE,
+ * ASSISTED and ANCHORED packets with a bounded <=250 m uncertainty may drive geofence, arrival or
+ * prolonged-stop transitions. ESTIMATED / COARSE / LAST_KNOWN / UNKNOWN can still be displayed by
+ * the parent, but never manufacture a safety transition from their displayed centre.
+ */
+export function safetyPositionEligibleV6(packet: Pick<LivePacket, "trustedLatE7" | "trustedLonE7" | "uncertaintyCm" | "quality">) {
+  if (packet.trustedLatE7 === null || packet.trustedLonE7 === null) return false;
+  const accuracyM = packet.uncertaintyCm / 100;
+  if (!Number.isFinite(accuracyM) || accuracyM < 0 || accuracyM > 250) return false;
+  return packet.quality === 1 || packet.quality === 2 || packet.quality === 3;
+}
+
+/** Time-based overdue remains valid even when the current coordinate is not trustworthy. */
+export function tripOverdueEligibleV6(expectedArrivalAt: number | null, lastAlertAt: number | null, eventTime: number) {
+  return expectedArrivalAt !== null && eventTime > expectedArrivalAt + 600_000 &&
+    (!lastAlertAt || eventTime - lastAlertAt > 1_800_000);
+}
+
+export function coordinateDwellStateV6(
+  positionEligible: boolean,
+  arrivalCandidateSince: number | null,
+  arrivalCandidateCount: number,
+  stationarySince: number | null
+) {
+  return positionEligible
+    ? { arrivalCandidateSince, arrivalCandidateCount, stationarySince }
+    : { arrivalCandidateSince: null, arrivalCandidateCount: 0, stationarySince: null };
+}
+
 export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: string, packets: LivePacket[]) {
-  const usable = packets.filter(p => p.trustedLatE7 !== null && p.trustedLonE7 !== null && p.uncertaintyCm >= 0 && p.uncertaintyCm <= 25_000);
-  if (!usable.length) return [] as RealtimeSafetyEvent[];
+  if (!packets.length) return [] as RealtimeSafetyEvent[];
+  // Ingest already requires strict ordering, but sort defensively so this evaluator is safe if it is
+  // called directly by another bounded path in the future.
+  const ordered = packets.slice().sort(packetOrder);
+  const highest = ordered[ordered.length - 1];
+  const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
+  if (!(await stub.canEvaluateSafety(highest.epoch, highest.sequence))) return [] as RealtimeSafetyEvent[];
 
   const [fenceRows, tripRow] = await Promise.all([
     env.DB.prepare(
@@ -72,7 +110,11 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
       "SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at,stationary_since,last_stop_alert_at,last_eval_epoch,last_eval_sequence,last_distance_to_destination_m,last_location_at FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1"
     ).bind(deviceId).first<Trip>()
   ]);
-  if (!fenceRows.results.length && !tripRow) return [] as RealtimeSafetyEvent[];
+
+  if (!fenceRows.results.length && !tripRow) {
+    await stub.commitSafetyEvaluation(highest.epoch, highest.sequence);
+    return [] as RealtimeSafetyEvent[];
+  }
 
   const fences = fenceRows.results.map<FenceState>(row => ({
     row,
@@ -91,15 +133,30 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
   let tripEndedAt: number | null = null;
   const events: PendingEvent[] = [];
 
-  for (const packet of usable) {
-    const lat = packet.trustedLatE7! / 1e7;
-    const lon = packet.trustedLonE7! / 1e7;
-    const accuracyM = packet.uncertaintyCm / 100;
+  for (const packet of ordered) {
+    const positionEligible = safetyPositionEligibleV6(packet);
+    const lat = positionEligible ? packet.trustedLatE7! / 1e7 : null;
+    const lon = positionEligible ? packet.trustedLonE7! / 1e7 : null;
+    const accuracyM = positionEligible ? packet.uncertaintyCm / 100 : null;
     const eventTime = packet.wallTimeMs;
 
     for (const f of fences) {
       if (atLeast(f.lastEpoch, f.lastSequence, packet.epoch, packet.sequence)) continue;
-      const d = distanceM(lat, lon, f.row.latitude, f.row.longitude);
+
+      // A degraded/unqualified interval breaks coordinate-dependent dwell. Stable inside/outside and
+      // the last trustworthy distance remain unchanged, but the ordering watermark advances so a
+      // delayed older trusted packet cannot resurrect the pre-gap candidate.
+      if (!positionEligible) {
+        f.candidate = null;
+        f.candidateSince = null;
+        f.candidateCount = 0;
+        f.lastEpoch = packet.epoch;
+        f.lastSequence = packet.sequence;
+        f.dirty = true;
+        continue;
+      }
+
+      const d = distanceM(lat!, lon!, f.row.latitude, f.row.longitude);
       const enter = Math.max(25, f.row.radius_m - Math.min(30, f.row.radius_m * 0.15));
       const exit = f.row.radius_m + Math.max(25, f.row.radius_m * 0.20);
       const desired = f.stable === "inside" ? (d >= exit ? "outside" : "inside") : (d <= enter ? "inside" : "outside");
@@ -122,60 +179,94 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
           f.stable = next; f.candidate = null; f.candidateSince = null; f.candidateCount = 0;
         }
       }
-      f.lastDistanceM = d; f.lastEpoch = packet.epoch; f.lastSequence = packet.sequence; f.dirty = true;
+      f.lastDistanceM = d;
+      f.lastEpoch = packet.epoch;
+      f.lastSequence = packet.sequence;
+      f.dirty = true;
     }
 
     if (trip && tripState === "active" && !atLeast(trip.last_eval_epoch, trip.last_eval_sequence, packet.epoch, packet.sequence)) {
+      const dwell = coordinateDwellStateV6(
+        positionEligible,
+        trip.arrival_candidate_since,
+        trip.arrival_candidate_count,
+        trip.stationary_since
+      );
+      trip.arrival_candidate_since = dwell.arrivalCandidateSince;
+      trip.arrival_candidate_count = dwell.arrivalCandidateCount;
+      trip.stationary_since = dwell.stationarySince;
+
       let dist: number | null = null;
-      if (trip.destination_latitude !== null && trip.destination_longitude !== null) {
-        dist = distanceM(lat, lon, trip.destination_latitude, trip.destination_longitude);
+      if (positionEligible && trip.destination_latitude !== null && trip.destination_longitude !== null) {
+        dist = distanceM(lat!, lon!, trip.destination_latitude, trip.destination_longitude);
         if (dist <= trip.destination_radius_m) {
           trip.arrival_candidate_since ??= eventTime;
           trip.arrival_candidate_count += 1;
           const arrivalSince = trip.arrival_candidate_since;
           if (trip.arrival_candidate_count >= 2 && arrivalSince !== null && eventTime - arrivalSince >= 10_000) {
-            tripState = "arrived"; tripEndedAt = eventTime;
+            tripState = "arrived";
+            tripEndedAt = eventTime;
             events.push(await eventRecord(
               env, deviceId, "trip_ended", packet, lat, lon, accuracyM,
               { tripId: trip.id, reason: "arrived", destination: trip.destination_name, distanceM: Math.round(dist) },
               `${deviceId}|trip|${trip.id}|arrived|${arrivalSince}`
             ));
-            trip.arrival_candidate_since = null; trip.arrival_candidate_count = 0; trip.stationary_since = null;
+            trip.arrival_candidate_since = null;
+            trip.arrival_candidate_count = 0;
+            trip.stationary_since = null;
           }
         } else {
-          trip.arrival_candidate_since = null; trip.arrival_candidate_count = 0;
+          trip.arrival_candidate_since = null;
+          trip.arrival_candidate_count = 0;
         }
       }
 
       if (tripState === "active") {
-        const stationary = packet.activity === 1;
-        const away = dist === null || dist > trip.destination_radius_m * 1.5;
-        if (stationary && away) {
-          trip.stationary_since ??= eventTime;
-          const stationarySince = trip.stationary_since;
-          if (stationarySince !== null && eventTime - stationarySince >= 600_000 && (!trip.last_stop_alert_at || eventTime - trip.last_stop_alert_at >= 1_800_000)) {
-            const previousStopAlert = trip.last_stop_alert_at ?? 0;
-            trip.last_stop_alert_at = eventTime;
-            events.push(await eventRecord(
-              env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
-              { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name, stoppedMinutes: Math.floor((eventTime - stationarySince) / 60_000), distanceToDestinationM: dist === null ? null : Math.round(dist) },
-              `${deviceId}|trip|${trip.id}|stop|${stationarySince}|${previousStopAlert}`
-            ));
+        if (positionEligible) {
+          const stationary = packet.activity === 1;
+          const away = dist === null || dist > trip.destination_radius_m * 1.5;
+          if (stationary && away) {
+            trip.stationary_since ??= eventTime;
+            const stationarySince = trip.stationary_since;
+            if (stationarySince !== null && eventTime - stationarySince >= 600_000 &&
+                (!trip.last_stop_alert_at || eventTime - trip.last_stop_alert_at >= 1_800_000)) {
+              const previousStopAlert = trip.last_stop_alert_at ?? 0;
+              trip.last_stop_alert_at = eventTime;
+              events.push(await eventRecord(
+                env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
+                { tripId: trip.id, reason: "prolonged_stop", destination: trip.destination_name,
+                  stoppedMinutes: Math.floor((eventTime - stationarySince) / 60_000),
+                  distanceToDestinationM: dist === null ? null : Math.round(dist) },
+                `${deviceId}|trip|${trip.id}|stop|${stationarySince}|${previousStopAlert}`
+              ));
+            }
+          } else {
+            trip.stationary_since = null;
           }
-        } else trip.stationary_since = null;
+        }
 
-        if (trip.expected_arrival_at && eventTime > trip.expected_arrival_at + 600_000 && (!trip.last_alert_at || eventTime - trip.last_alert_at > 1_800_000)) {
+        // Overdue is time-based, not coordinate-based. It keeps working while position is degraded;
+        // in that case the event intentionally carries no guessed coordinate or distance.
+        if (tripOverdueEligibleV6(trip.expected_arrival_at, trip.last_alert_at, eventTime)) {
           const previousAlert = trip.last_alert_at ?? 0;
           trip.last_alert_at = eventTime;
           events.push(await eventRecord(
             env, deviceId, "trip_alert", packet, lat, lon, accuracyM,
-            { tripId: trip.id, reason: "overdue", destination: trip.destination_name, distanceToDestinationM: dist === null ? null : Math.round(dist) },
+            { tripId: trip.id, reason: "overdue", destination: trip.destination_name,
+              distanceToDestinationM: positionEligible && dist !== null ? Math.round(dist) : null,
+              positionQualified: positionEligible },
             `${deviceId}|trip|${trip.id}|overdue|${trip.expected_arrival_at}|${previousAlert}`
           ));
         }
       }
-      trip.last_eval_epoch = packet.epoch; trip.last_eval_sequence = packet.sequence;
-      trip.last_distance_to_destination_m = dist; trip.last_location_at = eventTime; tripDirty = true;
+
+      trip.last_eval_epoch = packet.epoch;
+      trip.last_eval_sequence = packet.sequence;
+      if (positionEligible) {
+        trip.last_distance_to_destination_m = dist;
+        trip.last_location_at = eventTime;
+      }
+      tripDirty = true;
     }
   }
 
@@ -192,13 +283,13 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
   if (trip && tripDirty) {
     writes.push(env.DB.prepare(
       "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9))"
-    ).bind(tripState, tripEndedAt, trip.arrival_candidate_since, trip.arrival_candidate_count, trip.last_alert_at, trip.stationary_since, trip.last_stop_alert_at, trip.last_eval_epoch, trip.last_eval_sequence, trip.last_distance_to_destination_m, trip.last_location_at, trip.id));
+    ).bind(tripState, tripEndedAt, trip.arrival_candidate_since, trip.arrival_candidate_count, trip.last_alert_at,
+      trip.stationary_since, trip.last_stop_alert_at, trip.last_eval_epoch, trip.last_eval_sequence,
+      trip.last_distance_to_destination_m, trip.last_location_at, trip.id));
   }
   writes.push(...events.map(e => e.statement));
   if (writes.length) await env.DB.batch(writes);
 
-  const highest = usable[usable.length - 1];
-  const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
   await stub.commitSafetyEvaluation(highest.epoch, highest.sequence);
   // D1 is the durable source of truth. A transient realtime/WebSocket broadcast failure must not
   // turn a successfully persisted safety transition into a failed ingest/duplicate reconstruction.
