@@ -26,7 +26,7 @@
   ],
   "vars": {
     "APP_ENV": "development",
-    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta4-cardfree",
+    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta5-cardfree",
     "DEV_PARENT_AUTH_MODE": "d1-session-v1",
     "DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d",
     "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
