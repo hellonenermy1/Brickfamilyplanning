@@ -8,6 +8,7 @@ import {
   handleDevParentAuthRoute,
   stripDevParentInternalHeader
 } from "./dev-parent-auth";
+import { claimDevMaintenance, syntheticScheduledController } from "./dev-maintenance";
 export { BrickDevice };
 
 type Env = Record<string, unknown> & { DB?: D1Database; BRICK_MAP_SOURCE?: string };
@@ -36,6 +37,25 @@ function isParentPath(pathname: string) {
   return pathname === "/parent" || pathname === "/parent/" || pathname.startsWith("/parent/");
 }
 
+function scheduleRequestDrivenMaintenance(env: Env & { DB: D1Database }, runtime: Env, ctx: ExecutionContext) {
+  ctx.waitUntil((async () => {
+    const now = Date.now();
+    if (base.scheduled && await claimDevMaintenance(env.DB, "minute", 60_000, now)) {
+      await base.scheduled(syntheticScheduledController("*/1 * * * *", now), runtime, ctx);
+    }
+    if (await claimDevMaintenance(env.DB, "daily", 86_400_000, now)) {
+      if (base.scheduled) await base.scheduled(syntheticScheduledController("17 3 * * *", now), runtime, ctx);
+      await Promise.all([
+        cleanupDevelopmentObjectStore(env.DB),
+        cleanupDevParentAuth({ DB: env.DB })
+      ]);
+    }
+  })().catch(() => {
+    // Maintenance is best-effort and must never break a child ACK or parent request. Its normal
+    // work is retried by the next request after the D1 lease interval.
+  }));
+}
+
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     if (!env.DB) return new Response("Development D1 binding missing", { status: 503, headers: { "Cache-Control": "no-store" } });
@@ -45,6 +65,7 @@ export default {
     const cleanReq = stripDevParentInternalHeader(req);
     const u = new URL(cleanReq.url);
     const runtime = developmentRuntimeEnv(env);
+    scheduleRequestDrivenMaintenance(env as Env & { DB: D1Database }, runtime, ctx);
 
     if (isParentPath(u.pathname)) {
       const authRoute = await handleDevParentAuthRoute(cleanReq, { DB: env.DB });
@@ -67,6 +88,8 @@ export default {
     if (base.queue) return base.queue(batch, developmentRuntimeEnv(env), ctx);
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // No cron binding is required by the card-free beta, but retaining this handler makes a future
+    // optional trigger safe without changing production code.
     const runtime = developmentRuntimeEnv(env);
     if (base.scheduled) await base.scheduled(controller, runtime, ctx);
     if (env.DB) {
