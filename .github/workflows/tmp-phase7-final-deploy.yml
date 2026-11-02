@@ -1,0 +1,102 @@
+name: TEMP Brick Phase 7 Final Development Deploy
+
+on:
+  push:
+    branches: [v1-p7-cloud-ux]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase7-final-development-temp
+  cancel-in-progress: false
+
+jobs:
+  deploy-phase7-final-development:
+    if: ${{ !contains(github.event.head_commit.message, 'remove final temporary Phase 7 deploy workflow') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Preflight exact Phase 7 development branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p7-cloud-ux"
+          git merge-base --is-ancestor 1a4e9c6c19ba372b49a500e0b227dbefe7bdac73 HEAD
+          grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'coordinateDwellState' src/phase4.ts >/dev/null
+          grep -F 'parentV7LiveHtml as parentV7Html' src/worker-v10.ts >/dev/null
+          grep -F 'augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse' src/worker-v10.ts >/dev/null
+          grep -F "q==='precise'||q==='assisted'?'CIRCLE'" src/parent-v7-live.ts >/dev/null
+          grep -F 'knownPositionQuality' src/phase7-state-v2.ts >/dev/null
+          grep -F 'phase7-beta1' src/worker-v10.ts >/dev/null
+          ! grep -F '"main": "src/worker-v10.ts"' wrangler.template.jsonc >/dev/null
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Re-run exact Phase 7 qualification before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node scripts/check-phase7-parent-presentation.mjs
+          node scripts/check-phase7-health-presentation.mjs
+          node scripts/check-phase7-live-sync.mjs
+          node scripts/check-phase7-safety-quality.mjs
+          bash scripts/phase6-cloud-regression.sh
+
+      - name: Provision or reuse card-free development resources
+        run: npm run setup:development
+
+      - name: Verify generated runtime remains card-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s setup-development-state.json
+          ! grep -F 'r2_buckets' wrangler.development.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.jsonc >/dev/null
+
+      - name: Deploy exact final Phase 7 development SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-dev-phase7-final-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 7 final development source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.development.jsonc > worker-phase7-final-deployments.json
+          grep -F "$GITHUB_SHA" worker-phase7-final-deployments.json >/dev/null
+
+      - name: Verify live authenticated final Phase 7 contract
+        run: node scripts/verify-phase7-development-live.mjs
+
+      - name: Verify unauthenticated boundary remains closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$(node --input-type=module -e "import fs from 'node:fs';console.log(JSON.parse(fs.readFileSync('setup-development-state.json','utf8')).workerHost)")"
+          code="$(curl -sS -o /tmp/p7-final-parent-unauth -w '%{http_code}' "https://$host/parent")"
+          case "$code" in 301|302|303|307|308|401) ;; *) echo "Unexpected unauthenticated parent status: $code" >&2; exit 1 ;; esac
+          forged="$(curl -sS -o /tmp/p7-final-parent-forged -w '%{http_code}' "https://$host/parent" -H 'X-Brick-Dev-Parent-Verified: session-v1')"
+          case "$forged" in 301|302|303|307|308|401) ;; *) echo "Forged internal auth marker returned unexpected status: $forged" >&2; exit 1 ;; esac
