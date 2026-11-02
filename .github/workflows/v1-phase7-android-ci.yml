@@ -1,0 +1,188 @@
+name: Brick V1 Phase 7 — Android UX Integration CI
+
+on:
+  push:
+    branches: [v1-p7-android-ux]
+  pull_request:
+    branches: [v1-p6c-oppo-beta-android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-contract:
+    name: Phase 7 Android preservation, build, lint and provider contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify qualified Phase 6C OPPO base is retained
+        run: git merge-base --is-ancestor 0c2c7e58279fd0faeca7f3e4dcf461111bdbb33b HEAD
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+
+      - name: Verify dependency lock is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Build, unit test, lint and R8
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
+
+      - name: Verify Phase 7 child UX remains deliberately minimal
+        shell: bash
+        run: |
+          set -euo pipefail
+          layout=app/src/main/res/layout/activity_main.xml
+          grep -F 'android:text="BRICK"' "$layout" >/dev/null
+          grep -F 'android:id="@+id/status"' "$layout" >/dev/null
+          grep -F 'android:id="@+id/safeButton"' "$layout" >/dev/null
+          grep -F 'android:text="I'\''M SAFE"' "$layout" >/dev/null
+          grep -F 'android:id="@+id/sosButton"' "$layout" >/dev/null
+          grep -F 'android:text="SOS"' "$layout" >/dev/null
+          grep -F 'android:id="@+id/fixButton"' "$layout" >/dev/null
+          ! grep -E '<(androidx\.)?[^>]*(MapView|WebView)' "$layout" >/dev/null
+          ! grep -E 'speed|latitude|longitude|history|diagnostic' "$layout" >/dev/null
+
+      - name: Verify Device Owner and managed policy path remains intact
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          grep -F '.managed.BrickDeviceAdminReceiver' "$manifest" >/dev/null
+          grep -F 'android.permission.BIND_DEVICE_ADMIN' "$manifest" >/dev/null
+          grep -F 'android.app.action.DEVICE_ADMIN_ENABLED' "$manifest" >/dev/null
+          grep -F 'isDeviceOwnerApp(context.packageName)' app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt >/dev/null
+          grep -F 'ManagedPolicy.apply(this)' app/src/main/java/com/brick/safety/ui/MainActivity.kt >/dev/null
+
+      - name: Verify Phase 7 provider-health source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          health=app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt
+          for key in \
+            atlasWifiProviderCapability atlasWifiProviderHealth \
+            atlasRttProviderCapability atlasRttProviderHealth \
+            atlasBleProviderCapability atlasBleProviderHealth \
+            atlasCellularProviderCapability atlasCellularProviderHealth \
+            atlasLanProviderCapability atlasLanProviderHealth \
+            atlasGnssProviderCapability atlasGnssProviderHealth \
+            atlasNetworkProviderCapability atlasNetworkProviderHealth \
+            atlasDeviceContextProviderCapability atlasDeviceContextProviderHealth \
+            privilegedProvider privilegedAvailable privilegedConnected privilegedPermissionGranted; do
+            grep -F "\"$key\"" "$health" >/dev/null || { echo "Missing Phase 7 health key: $key"; exit 1; }
+          done
+          grep -F 'journalWriteHealthy' "$health" >/dev/null
+          grep -F 'safetyOutboxWriteHealthy' "$health" >/dev/null
+          grep -F 'evidenceJournalHealthy' "$health" >/dev/null
+
+      - name: Retain Phase 6C diagnostic privacy contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'Brick 6C Diagnostics' app/src/main/AndroidManifest.xml >/dev/null
+          grep -F 'MAX_EVENTS = 12_000' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          grep -F 'NORMAL_RETENTION_MS = 48L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          grep -F 'ERROR_RETENTION_MS = 7L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          ! grep -R -n -E 'anchorLatBits|anchorLonBits|latitude|longitude|deviceId\s*=|apiBase\s*=' app/src/main/java/com/brick/safety/diagnostics
+
+  emulator-regression:
+    name: Phase 2-7 cumulative Android instrumentation
+    needs: android-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK and AVD
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p7-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Install and boot emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | "$AVDMANAGER" create avd --force --name brick-p7 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p7 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p7-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+      - name: Run all retained Phase 2-6C Android instrumentation
+        run: gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+
+      - name: Preserve emulator diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p p7-failure
+          cp /tmp/brick-p7-emulator.log p7-failure/emulator.log || true
+          "$ADB" logcat -d > p7-failure/logcat.txt || true
+          cp -R app/build/reports/androidTests p7-failure/androidTests || true
+
+      - name: Upload emulator diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase7-android-emulator-failure
+          path: p7-failure/
+          if-no-files-found: warn
+          retention-days: 14
