@@ -1,0 +1,110 @@
+name: Brick V1 Phase 6C — Parent Beta CI
+
+on:
+  pull_request:
+    branches: [v1-p6-device-control-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify-parent-beta:
+    name: Parent beta typecheck, regression, render and isolation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify qualified Phase 6 cloud base is retained
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor e4657294d1d5c377a41a32bd91c80d17a4e5a21b HEAD
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck and build same-origin parent assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node --check scripts/setup-v1-phase6-development.mjs
+          node --check scripts/install-private-map-development.mjs
+
+      - name: Run retained Phase 2-6 cloud regression and privacy gates
+        run: bash scripts/phase6-cloud-regression.sh
+
+      - name: Render Phase 6C parent portal and verify beta contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
+          node --input-type=module <<'NODE'
+          const m = await import('file:///tmp/brick-parent-v6c.mjs');
+          const html = m.parentV6CHtml();
+          const required = [
+            'DEVELOPMENT BETA',
+            'Development diagnostics',
+            'Live trust',
+            'PORTAL CONNECTING',
+            'Run self-check',
+            'Copy beta report',
+            'id="debugLog"',
+            'id="portalLive"',
+            'phase6c-beta'
+          ];
+          for (const value of required) if (!html.includes(value)) throw new Error(`missing parent beta UI contract: ${value}`);
+          if (!html.includes('pairingQrDataUrl')) throw new Error('Phase 6 pairing QR support was lost');
+          if (!html.includes('location-control')) throw new Error('Phase 6 GPS control support was lost');
+          if (!html.includes('Revoke selected phone')) throw new Error('Phase 6 revocation UI support was lost');
+          if (!html.includes('/parent/map/basemap.pmtiles')) throw new Error('private map path was lost');
+          if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('beta portal reintroduced live third-party CDN assets');
+          if (/positionLat|positionLon|exact coordinates/i.test(html)) {
+            // Wording in the privacy note may mention exact coordinates; only reject diagnostic report keys.
+            if (/positionLat=|positionLon=|latitude=|longitude=/i.test(html)) throw new Error('diagnostic report appears to expose exact coordinates');
+          }
+          console.log(`Rendered Phase 6C parent beta: ${html.length} bytes`);
+          NODE
+
+      - name: Verify development stack is isolated from production resource names
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"bucket_name": "brick-family-v1-dev-history"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"bucket_name": "brick-family-v1-dev-maps"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"queue": "brick-family-v1-dev-events"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"dead_letter_queue": "brick-family-v1-dev-dlq"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'from "./worker-v9"' src/worker-v10.ts >/dev/null
+          grep -F 'from "./parent-v6c"' src/worker-v10.ts >/dev/null
+
+          # Production remains frozen on its original identities/entrypoint.
+          grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'brick-v1-phase6-production' .github/workflows/deploy-brick.yml >/dev/null
+          ! grep -F 'brick-family-v1-dev' wrangler.template.jsonc >/dev/null
+          ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
+
+      - name: Verify development worker bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/worker-v10.ts --bundle --platform=browser --format=esm --outfile=/tmp/brick-worker-v10.mjs
+          test -s /tmp/brick-worker-v10.mjs
+
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
