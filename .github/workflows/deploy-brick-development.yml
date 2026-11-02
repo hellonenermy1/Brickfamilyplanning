@@ -44,6 +44,8 @@ jobs:
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
           grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
           grep -F '"DEV_PARENT_AUTH_MODE": "d1-session-v1"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"name": "PARENT_LOGIN_RATE"' wrangler.development.template.jsonc >/dev/null
           grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
@@ -71,7 +73,10 @@ jobs:
           grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
           grep -F 'stripDevParentInternalHeader' src/worker-v10.ts >/dev/null
           grep -F 'authorizeDevParentRequest' src/worker-v10.ts >/dev/null
-          grep -F 'claimDevMaintenance' src/worker-v10.ts >/dev/null
+          grep -F 'PARENT_LOGIN_RATE' src/worker-v10.ts >/dev/null
+          grep -F 'DEV_PARENT_PIN_HASH' src/worker-v10.ts >/dev/null
+          grep -F 'reusable 6-digit beta access code' src/dev-parent-auth.ts >/dev/null
+          ! grep -F 'consumed after the first successful login' src/dev-parent-auth.ts >/dev/null
           grep -F 'dev_parent_sessions' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_maintenance_state' schema/013_phase6c_request_maintenance.sql >/dev/null
           npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
@@ -101,6 +106,7 @@ jobs:
           if (s.storageMode !== 'd1-chunked-no-r2') throw new Error('R2-free storage mode not active');
           if (s.queueMode !== 'direct-synchronous-no-cloudflare-queue') throw new Error('queue-free mode not active');
           if (s.parentAuthMode !== 'd1-session-v1-no-zero-trust') throw new Error('Zero-Trust-free parent auth not active');
+          if (s.parentLoginMode !== 'reusable-6-digit-pin-v1') throw new Error('Reusable development parent PIN mode not active');
           if (s.schedulerMode !== 'request-driven-d1-lease-no-cron') throw new Error('cron-free scheduler not active');
           if (s.mapMode !== 'same-origin-worker-range-proxy' || !/^https:\/\//.test(s.mapSource || '')) throw new Error('map proxy mode not active');
           NODE
@@ -144,7 +150,10 @@ jobs:
           login_code="$(curl -sS -o /tmp/brick-login-response -w '%{http_code}' "https://$host/parent/login")"
           test "$login_code" = "200" || { echo "Unexpected /parent/login status: $login_code" >&2; exit 1; }
           grep -F 'Brick Parent' /tmp/brick-login-response >/dev/null
-          grep -F 'one-time bootstrap code' /tmp/brick-login-response >/dev/null
+          grep -F 'reusable 6-digit beta access code' /tmp/brick-login-response >/dev/null
+
+          wrong_login_code="$(curl -sS -o /tmp/brick-wrong-login-response -w '%{http_code}' -X POST "https://$host/parent/login" -H 'content-type: application/x-www-form-urlencoded' --data 'token=000000')"
+          test "$wrong_login_code" = "401" || { echo "Unexpected wrong-PIN status: $wrong_login_code" >&2; exit 1; }
 
           api_code="$(curl -sS -o /tmp/brick-api-response -w '%{http_code}' -X POST "https://$host/api/pair/complete" -H 'content-type: application/json' --data '{"token":"invalid"}')"
           case "$api_code" in
@@ -155,6 +164,7 @@ jobs:
           echo "Parent session boundary status: $parent_code"
           echo "Forged-header boundary status: $forged_code"
           echo "Parent login page status: $login_code"
+          echo "Wrong parent PIN status: $wrong_login_code"
           echo "Child API negative smoke status: $api_code"
           echo "Parent beta: https://$host/parent"
           echo "Child beta API: https://$host"
@@ -176,6 +186,7 @@ jobs:
           console.log('Storage:            ' + s.storageMode);
           console.log('Queue mode:         ' + s.queueMode);
           console.log('Parent auth:        ' + s.parentAuthMode);
+          console.log('Parent login:       ' + s.parentLoginMode);
           console.log('Scheduler:          ' + s.schedulerMode);
           console.log('Map mode:           ' + s.mapMode);
           console.log('Map source:         ' + s.mapSource);
