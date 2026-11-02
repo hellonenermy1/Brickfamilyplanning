@@ -23,10 +23,11 @@ function knownPositionQuality(value: unknown) {
 /**
  * Phase 7 read-model hardening. Some Android providers report UNSUPPORTED in the health field even
  * when capability is absent. Treat that as neutral unsupported rather than unknown. This wrapper
- * also keeps the parent conservative when an unexpected position-quality token reaches the read
- * model: UNKNOWN never renders as an exact current point, and an unknown-quality refinement may not
- * replace base coordinates while borrowing the base quality label. Raw child/refinement evidence is
- * retained verbatim; only the parent presentation is hardened.
+ * also keeps the parent conservative when inconsistent or future position data reaches the read
+ * model: no trustworthy coordinate always normalizes to UNKNOWN/NONE, UNKNOWN never renders as an
+ * exact current point, and an unknown-quality refinement may not replace base coordinates while
+ * borrowing the base quality label. Raw child/refinement evidence is retained verbatim; only the
+ * parent presentation is hardened.
  */
 export async function augmentPhase7ParentStateResponseV2(response: Response, now = Date.now()): Promise<Response> {
   const augmented = await augmentPhase7ParentStateResponse(response, now);
@@ -57,12 +58,14 @@ export async function augmentPhase7ParentStateResponseV2(response: Response, now
     presentation = body.presentation as unknown as Record<string, unknown>;
   }
 
-  // The underlying presentation builder is intentionally permissive for forward compatibility.
-  // At the served V2 boundary, however, an unknown quality cannot justify an exact current point.
-  if (presentation?.positionClass === "unknown") {
-    const geometry = record(presentation.geometry);
+  // A class label cannot substitute for a coordinate. If the builder has no drawable trustworthy
+  // geometry, normalize the served state to UNKNOWN/NONE even when a stale/inconsistent quality
+  // token says precise/assisted/etc. This prevents "Precise position" with no trustworthy point.
+  const existingGeometry = record(presentation?.geometry);
+  if (presentation && (presentation.positionClass === "unknown" || existingGeometry?.kind === "NONE")) {
+    presentation.positionClass = "unknown";
     presentation.geometry = {
-      ...(geometry ?? {}),
+      ...(existingGeometry ?? {}),
       kind: "NONE",
       latitude: null,
       longitude: null,
@@ -71,6 +74,7 @@ export async function augmentPhase7ParentStateResponseV2(response: Response, now
       corridorCandidates: []
     };
     presentation.confidence = "very_low";
+    presentation.headline = "Unknown position";
     presentation.explanation = "Brick does not currently have a trustworthy position to show.";
     body.presentation = presentation;
     body.healthPresentation = buildPhase7HealthPresentation(
