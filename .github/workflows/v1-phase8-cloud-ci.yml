@@ -112,6 +112,14 @@ jobs:
           npx esbuild src/location-ingest-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-ingest-p8.mjs
           node scripts/test-phase8-v6-live-monotonicity.mjs /tmp/brick-location-ingest-p8.mjs
 
+      - name: Phase 8 integrated ingest retry torture
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8-torture.mjs
+          npx esbuild src/location-ingest-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-p8-torture.mjs
+          node scripts/test-phase8-integrated-ingest-torture.mjs /tmp/brick-history-p8-torture.mjs /tmp/brick-location-p8-torture.mjs
+
       - name: Phase 8 SOS direct durability and backlog-bypass contract
         run: node scripts/test-phase8-sos-priority-contract.mjs
 
