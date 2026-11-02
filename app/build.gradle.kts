@@ -28,15 +28,15 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.7.0-phase7-beta1-test"
+        versionCode = 9
+        versionName = "0.8.0-phase8-beta1-test"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Phase 7 on this branch is intentionally a disposable qualification beta.
-        // Expiry: 2026-12-03T00:00:00Z. A new beta must consciously move this forward.
+        // Phase 8 remains a disposable, explicitly removable Device Owner hardening beta.
+        // Expiry: 2026-12-10T00:00:00Z. A new beta must consciously move this forward.
         buildConfigField("boolean", "BRICK_BETA", "true")
-        buildConfigField("long", "BRICK_BETA_EXPIRY_EPOCH_MS", "1796256000000L")
-        buildConfigField("String", "BRICK_BETA_CHANNEL", "\"phase7-beta1-test\"")
+        buildConfigField("long", "BRICK_BETA_EXPIRY_EPOCH_MS", "1796860800000L")
+        buildConfigField("String", "BRICK_BETA_CHANNEL", "\"phase8-beta1-test\"")
     }
 
     buildFeatures {

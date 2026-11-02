@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.brick.safety.beta.BetaSafety
 import java.util.concurrent.TimeUnit
 
 object RecoveryScheduler {
@@ -16,10 +17,15 @@ object RecoveryScheduler {
     private const val EVIDENCE_SOON_WORK = "brick-evidence-soon-recovery"
 
     fun ensureScheduled(context: Context) {
+        val app = context.applicationContext
+        if (!BetaSafety.isOperational(app)) {
+            cancelAll(app)
+            return
+        }
         val request = PeriodicWorkRequestBuilder<RecoveryWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
             .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        WorkManager.getInstance(app).enqueueUniquePeriodicWork(
             PERIODIC_WORK,
             ExistingPeriodicWorkPolicy.KEEP,
             request
@@ -27,14 +33,12 @@ object RecoveryScheduler {
     }
 
     fun scheduleSoon(context: Context, delaySeconds: Long = 15) {
+        val app = context.applicationContext
+        if (!BetaSafety.isOperational(app)) return
         val request = OneTimeWorkRequestBuilder<RecoveryWorker>()
             .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS)
             .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(
-            SOON_WORK,
-            ExistingWorkPolicy.REPLACE,
-            request
-        )
+        WorkManager.getInstance(app).enqueueUniqueWork(SOON_WORK, ExistingWorkPolicy.REPLACE, request)
     }
 
     private fun evidenceRequest(delaySeconds: Long) = OneTimeWorkRequestBuilder<EvidenceUploadWorker>()
@@ -43,7 +47,9 @@ object RecoveryScheduler {
         .build()
 
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
-        WorkManager.getInstance(context).enqueueUniqueWork(
+        val app = context.applicationContext
+        if (!BetaSafety.isOperational(app)) return
+        WorkManager.getInstance(app).enqueueUniqueWork(
             EVIDENCE_SOON_WORK,
             ExistingWorkPolicy.KEEP,
             evidenceRequest(delaySeconds)
@@ -51,7 +57,9 @@ object RecoveryScheduler {
     }
 
     fun scheduleEvidenceFollowUp(context: Context, delaySeconds: Long) {
-        WorkManager.getInstance(context).enqueueUniqueWork(
+        val app = context.applicationContext
+        if (!BetaSafety.isOperational(app)) return
+        WorkManager.getInstance(app).enqueueUniqueWork(
             EVIDENCE_SOON_WORK,
             ExistingWorkPolicy.APPEND_OR_REPLACE,
             evidenceRequest(delaySeconds)
