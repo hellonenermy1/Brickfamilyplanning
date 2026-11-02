@@ -61,13 +61,13 @@ jobs:
             'Run self-check',
             'Copy beta report',
             'id="debugLog"',
-            'id="portalLive"'
+            'id="portalLive"',
+            'getPrivateMapStatus'
           ];
           for (const value of required) if (!html.includes(value)) throw new Error(`missing parent beta UI contract: ${value}`);
           if (!html.includes('pairingQrDataUrl')) throw new Error('Phase 6 pairing QR support was lost');
           if (!html.includes('location-control')) throw new Error('Phase 6 GPS control support was lost');
           if (!html.includes('Revoke selected phone')) throw new Error('Phase 6 revocation UI support was lost');
-          if (!html.includes('/parent/map/basemap.pmtiles')) throw new Error('private map path was lost');
           if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('beta portal reintroduced live third-party CDN assets');
           if (/positionLat|positionLon|exact coordinates/i.test(html)) {
             // Wording in the privacy note may mention exact coordinates; only reject diagnostic report keys.
@@ -92,6 +92,8 @@ jobs:
           grep -F 'from "./parent-v6c"' src/worker-v10.ts >/dev/null
           grep -F 'headers.set("X-Brick-Portal", "phase6c-beta")' src/worker-v10.ts >/dev/null
           grep -F 'headers.set("X-Brick-Environment", "development")' src/worker-v10.ts >/dev/null
+          grep -F 'u.pathname === "/parent/map/basemap.pmtiles"' src/worker-v5b.ts >/dev/null
+          grep -F 'servePrivateBasemap' src/worker-v5b.ts >/dev/null
 
           # Production remains frozen on its original identities/entrypoint.
           grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
