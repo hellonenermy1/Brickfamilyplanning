@@ -1,14 +1,15 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-v1-dev';
 const D1_NAME = 'brick-family-v1-dev';
-const ACCESS_APP_NAME = 'Brick Parent Dashboard Development';
-const CURRENT_APP_VERSION = '0.6.0-phase6c-beta2-free';
+const CURRENT_APP_VERSION = '0.6.0-phase6c-beta3-cardfree';
 const TEMPLATE = 'wrangler.development.template.jsonc';
 const GENERATED_CONFIG = 'wrangler.development.jsonc';
 const STATE = 'setup-development-state.json';
+const LOGIN_TOKEN_MS = 24 * 60 * 60 * 1000;
 const SCHEMAS = [
   'schema/001_init.sql',
   'schema/002_phase2_health.sql',
@@ -75,61 +76,6 @@ async function d1Query(d1Id, sql, params = []) {
   });
 }
 
-async function zeroTrustOrganization() {
-  let org;
-  try { org = await cf(`/accounts/${accountId}/access/organizations`); }
-  catch (error) { throw new Error(`Cloudflare Zero Trust/Access is not initialized. ${String(error)}`); }
-  const value = Array.isArray(org) ? org[0] : org;
-  if (!value?.auth_domain) throw new Error('Cloudflare Zero Trust organization has no auth_domain.');
-  const domain = String(value.auth_domain).replace(/^https?:\/\//i, '').replace(/\/$/, '');
-  if (!/^[a-z0-9.-]+\.cloudflareaccess\.com$/i.test(domain)) throw new Error(`Unexpected Access auth_domain: ${domain}`);
-  return `https://${domain.toLowerCase()}`;
-}
-
-async function ensureCloudflareIdp() {
-  const idps = await cf(`/accounts/${accountId}/access/identity_providers`);
-  if (Array.isArray(idps) && idps.some(x => x.type === 'cloudflare')) return;
-  await cf(`/accounts/${accountId}/access/identity_providers`, {
-    method: 'POST',
-    body: JSON.stringify({ name: 'Cloudflare', type: 'cloudflare', config: { restrict_to_account_members: true } })
-  });
-}
-
-function appDestinations(app) {
-  return Array.isArray(app?.destinations) ? app.destinations.map(d => d?.uri).filter(Boolean) : app?.domain ? [app.domain] : [];
-}
-
-async function ensureAccess(workerHost) {
-  await ensureCloudflareIdp();
-  const destination = `${workerHost}/parent*`;
-  const apps = await cf(`/accounts/${accountId}/access/apps?per_page=100`);
-  const candidates = (Array.isArray(apps) ? apps : []).filter(a => a.type === 'self_hosted' && (a.name === ACCESS_APP_NAME || appDestinations(a).includes(destination)));
-  if (candidates.length > 1) throw new Error(`Multiple development Access apps match ${destination}; refusing to guess.`);
-  const desired = {
-    type: 'self_hosted',
-    name: ACCESS_APP_NAME,
-    session_duration: '12h',
-    app_launcher_visible: false,
-    allow_iframe: false,
-    enable_binding_cookie: true,
-    http_only_cookie_attribute: true,
-    same_site_cookie_attribute: 'lax',
-    path_cookie_attribute: true,
-    destinations: [{ type: 'public', uri: destination }],
-    policies: [{
-      name: 'Brick development parents — Cloudflare account members',
-      decision: 'allow', precedence: 1,
-      include: [{ cloudflare_account_member: { account_id: accountId } }]
-    }]
-  };
-  const app = candidates.length === 0
-    ? await cf(`/accounts/${accountId}/access/apps`, { method: 'POST', body: JSON.stringify(desired) })
-    : await cf(`/accounts/${accountId}/access/apps/${candidates[0].id}`, { method: 'PUT', body: JSON.stringify(desired) });
-  if (!app?.id || !app?.aud) throw new Error('Development Access app has no ID/AUD.');
-  if (!appDestinations(app).includes(destination)) throw new Error('Development Access app did not retain exact /parent* destination.');
-  return { appId: app.id, aud: app.aud, destination };
-}
-
 function run(cmd, args, { capture = false } = {}) {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, {
@@ -161,11 +107,9 @@ async function findMapSource() {
   throw new Error('Could not find a recent Protomaps daily PMTiles build. Set BRICK_MAP_SOURCE and rerun.');
 }
 
-function renderWrangler(template, d1Id, teamDomain, aud, mapSource) {
+function renderWrangler(template, d1Id, mapSource) {
   return template
     .replace('__D1_DATABASE_ID__', d1Id)
-    .replace('__CF_ACCESS_TEAM_DOMAIN__', teamDomain)
-    .replace('__CF_ACCESS_AUD__', aud)
     .replace('__BRICK_MAP_SOURCE__', mapSource);
 }
 
@@ -191,64 +135,79 @@ async function applyMigrations(d1Id) {
   }
 }
 
-console.log('[free dev 1/8] Creating/reusing D1 only…');
+async function createBootstrapLogin(d1Id) {
+  const now = Date.now();
+  const plaintext = randomBytes(32).toString('base64url');
+  const hash = createHash('sha256').update(plaintext).digest('hex');
+  const expiresAt = now + LOGIN_TOKEN_MS;
+  await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens WHERE expires_at<?1 OR consumed_at IS NOT NULL', [now]);
+  await d1Query(
+    d1Id,
+    'INSERT INTO dev_parent_login_tokens(token_hash,created_at,expires_at,consumed_at) VALUES(?1,?2,?3,NULL)',
+    [hash, now, expiresAt]
+  );
+  return { plaintext, expiresAt };
+}
+
+console.log('[card-free dev 1/6] Creating/reusing D1 only…');
 const d1Id = await ensureD1();
 const mapSource = await findMapSource();
 
-console.log('[free dev 2/8] Checking Zero Trust organization…');
-const teamDomain = await zeroTrustOrganization();
-
-console.log('[free dev 3/8] Building same-origin assets and type-checking…');
+console.log('[card-free dev 2/6] Building same-origin assets and type-checking…');
 await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build:parent-assets']);
 await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'typecheck']);
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '-p', 'tsconfig.web.json', '--noEmit']);
 
 const template = await fs.readFile(TEMPLATE, 'utf8');
 if (!template.includes('"name": "brick-family-v1-dev"') || !template.includes('"main": "src/worker-v10.ts"')) throw new Error('Development template targets wrong worker.');
-if (template.includes('r2_buckets') || template.includes('"queues"')) throw new Error('Development template must not bind R2 or Queues.');
-await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, 'development-bootstrap-not-valid', mapSource));
+if (template.includes('r2_buckets') || template.includes('"queues"') || template.includes('CF_ACCESS_')) {
+  throw new Error('Card-free development template must not bind R2, Queues, or Cloudflare Access.');
+}
+if (!template.includes('"DEV_PARENT_AUTH_MODE": "d1-session-v1"')) throw new Error('D1 parent session auth is not enabled in the development template.');
+await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, mapSource));
 
-console.log('[free dev 4/8] Applying Phase 1-6 + no-R2 D1 schema…');
+console.log('[card-free dev 3/6] Applying Phase 1-6 + D1 object/session schema…');
 await applyMigrations(d1Id);
 
-console.log('[free dev 5/8] Bootstrapping isolated worker with parent auth locked…');
+console.log('[card-free dev 4/6] Creating one-time parent bootstrap login…');
+const bootstrapLogin = await createBootstrapLogin(d1Id);
+
+console.log('[card-free dev 5/6] Deploying isolated worker-v10…');
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-const bootstrap = await run(npx, ['wrangler', 'deploy', '--config', GENERATED_CONFIG], { capture: true });
-const hostMatch = String(bootstrap).match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/);
+const deployOutput = await run(npx, ['wrangler', 'deploy', '--strict', '--config', GENERATED_CONFIG], { capture: true });
+const hostMatch = String(deployOutput).match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/);
 if (!hostMatch) throw new Error('Development worker hostname was not detected after deploy.');
 const workerHost = hostMatch[1];
 
-console.log('[free dev 6/8] Protecting /parent* with Cloudflare Access…');
-const access = await ensureAccess(workerHost);
-await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, access.aud, mapSource));
-
-console.log('[free dev 7/8] Final-deploying card-free worker-v10…');
-await run(npx, ['wrangler', 'deploy', '--strict', '--config', GENERATED_CONFIG]);
-
-console.log('[free dev 8/8] Writing non-secret deployment state…');
+console.log('[card-free dev 6/6] Writing non-secret deployment state…');
 const sourceGitSha = process.env.GITHUB_SHA || 'local-unverified';
 const state = {
   sourceGitSha,
   environment: 'development',
-  releaseState: 'development-beta-free',
+  releaseState: 'development-beta-cardfree',
   workerEntry: 'src/worker-v10.ts',
   workerName: WORKER_NAME,
   workerHost,
   currentAppVersion: CURRENT_APP_VERSION,
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
+  parentAuthMode: 'd1-session-v1-no-zero-trust',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
   resources: { DB: D1_NAME, objectStore: 'dev_object_store + dev_object_chunks', map: 'remote PMTiles proxy' },
-  access: { mode: 'cloudflare-access-rs256', appId: access.appId, destination: access.destination },
   recovery: { d1TimeTravelDays: 7, inDatabaseSnapshots: true },
+  bootstrapLoginExpiresAt: bootstrapLogin.expiresAt,
   configuredAt: new Date().toISOString()
 };
 await fs.writeFile(STATE, JSON.stringify(state, null, 2));
 
-console.log('Brick Phase 6C card-free development setup completed.');
+const loginUrl = `https://${workerHost}/parent/login?token=${bootstrapLogin.plaintext}`;
+console.log('Brick Phase 6C fully card-free development setup completed.');
 console.log(`Source Git SHA:    ${sourceGitSha}`);
 console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child beta API:   https://${workerHost}`);
 console.log(`Storage:          ${state.storageMode}`);
+console.log(`Parent auth:      ${state.parentAuthMode}`);
 console.log(`Map:              ${state.mapMode}`);
+console.log('ONE-TIME PARENT LOGIN (sensitive; expires in 24h and is consumed on use):');
+console.log(loginUrl);
