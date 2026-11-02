@@ -33,12 +33,21 @@ export function tripOverdueEligible(expectedArrivalAt:number|null,lastAlertAt:nu
  return expectedArrivalAt!==null&&now>expectedArrivalAt+600000&&(!lastAlertAt||now-lastAlertAt>1800000);
 }
 
+export function coordinateDwellState(positionEligible:boolean,arrivalSince:number|null,arrivalCount:number,stationarySince:number|null){
+ return positionEligible?{arrivalSince,arrivalCount,stationarySince}:{arrivalSince:null,arrivalCount:0,stationarySince:null};
+}
+
 export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePacket):Promise<RealtimeSafetyEvent[]>{
  const generated:RealtimeSafetyEvent[]=[],positionEligible=safetyPositionEligible(packet),now=Date.now();
  const lat=positionEligible?packet.trustedLatE7!/1e7:null,lon=positionEligible?packet.trustedLonE7!/1e7:null,accuracyM=positionEligible?packet.uncertaintyCm/100:null;
 
- // Geofence state changes require a qualified position. Degraded packets do not advance geofence
- // candidate/high-water state, so the next trustworthy observation can evaluate the boundary.
+ // A degraded observation breaks any in-progress coordinate dwell. Advance the per-fence ordering
+ // watermark while clearing only candidate state, so old trusted packets cannot later complete a
+ // dwell interval across an untrusted gap. Stable inside/outside state and last distance remain.
+ if(!positionEligible){
+  await env.DB.prepare("UPDATE geofence_state SET candidate_state=NULL,candidate_since=NULL,candidate_count=0,updated_at=?1,last_epoch=?3,last_sequence=?4 WHERE device_id=?2 AND (last_epoch<?3 OR (last_epoch=?3 AND last_sequence<?4))").bind(now,deviceId,packet.epoch,packet.sequence).run();
+ }
+
  if(positionEligible){
   const fences=await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE device_id=?1 AND enabled=1").bind(deviceId).all<Geofence>();
   for(const g of fences.results){
@@ -55,7 +64,8 @@ export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePa
 
  const trip=await env.DB.prepare("SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at,stationary_since,last_stop_alert_at,last_eval_epoch,last_eval_sequence FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1").bind(deviceId).first<Trip>();
  if(!trip||evaluated(packet.epoch,packet.sequence,trip.last_eval_epoch,trip.last_eval_sequence))return generated;
- let dist:number|null=null,arrivalSince=trip.arrival_candidate_since,arrivalCount=trip.arrival_candidate_count,stationarySince=trip.stationary_since,lastAlert=trip.last_alert_at,lastStop=trip.last_stop_alert_at,state="active",endedAt:number|null=null;const events:{event:RealtimeSafetyEvent;statement:D1PreparedStatement}[]=[];
+ const dwell=coordinateDwellState(positionEligible,trip.arrival_candidate_since,trip.arrival_candidate_count,trip.stationary_since);
+ let dist:number|null=null,arrivalSince=dwell.arrivalSince,arrivalCount=dwell.arrivalCount,stationarySince=dwell.stationarySince,lastAlert=trip.last_alert_at,lastStop=trip.last_stop_alert_at,state="active",endedAt:number|null=null;const events:{event:RealtimeSafetyEvent;statement:D1PreparedStatement}[]=[];
 
  if(positionEligible&&trip.destination_latitude!==null&&trip.destination_longitude!==null){
   dist=distanceM(lat!,lon!,trip.destination_latitude,trip.destination_longitude);
@@ -65,8 +75,8 @@ export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePa
 
  if(state==="active"){
   // Prolonged-stop semantics need a trustworthy position to establish that the phone is away from
-  // the destination. When position is degraded, preserve the prior stop candidate rather than
-  // inventing progress or clearing it from a guessed centre point.
+  // the destination. A degraded interval already cleared stationarySince above, so a later trusted
+  // fix must start a new continuous dwell interval instead of inheriting old time.
   if(positionEligible){
    const stationary=packet.activity===1,away=dist===null||dist>trip.destination_radius_m*1.5;
    if(stationary&&away){stationarySince??=now;if(now-stationarySince>=600000&&(!lastStop||now-lastStop>=1800000)){lastStop=now;events.push(await eventRecord(env,deviceId,"trip_alert",lat,lon,accuracyM,{tripId:trip.id,reason:"prolonged_stop",destination:trip.destination_name,stoppedMinutes:Math.floor((now-stationarySince)/60000),distanceToDestinationM:dist===null?null:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`))}}
