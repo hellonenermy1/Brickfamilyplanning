@@ -1,15 +1,13 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-v1-dev';
 const D1_NAME = 'brick-family-v1-dev';
-const CURRENT_APP_VERSION = '0.6.0-phase6c-beta3-cardfree';
+const CURRENT_APP_VERSION = '0.6.0-phase6c-beta4-cardfree';
 const TEMPLATE = 'wrangler.development.template.jsonc';
 const GENERATED_CONFIG = 'wrangler.development.jsonc';
 const STATE = 'setup-development-state.json';
-const LOGIN_TOKEN_MS = 24 * 60 * 60 * 1000;
 const SCHEMAS = [
   'schema/001_init.sql',
   'schema/002_phase2_health.sql',
@@ -136,21 +134,6 @@ async function applyMigrations(d1Id) {
   }
 }
 
-async function createBootstrapLogin(d1Id) {
-  const now = Date.now();
-  const plaintext = randomBytes(32).toString('base64url');
-  const hash = createHash('sha256').update(plaintext).digest('hex');
-  const expiresAt = now + LOGIN_TOKEN_MS;
-  // Exactly one active bootstrap code. Existing browser sessions are not affected by redeploys.
-  await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
-  await d1Query(
-    d1Id,
-    'INSERT INTO dev_parent_login_tokens(token_hash,created_at,expires_at,consumed_at) VALUES(?1,?2,?3,NULL)',
-    [hash, now, expiresAt]
-  );
-  return { plaintext, expiresAt };
-}
-
 console.log('[card-free dev 1/6] Creating/reusing D1 only…');
 const d1Id = await ensureD1();
 const mapSource = await findMapSource();
@@ -166,13 +149,15 @@ if (template.includes('r2_buckets') || template.includes('"queues"') || template
   throw new Error('Card-free development template must not bind R2, Queues, Cloudflare Access, or Cron triggers.');
 }
 if (!template.includes('"DEV_PARENT_AUTH_MODE": "d1-session-v1"')) throw new Error('D1 parent session auth is not enabled in the development template.');
+if (!template.includes('"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"')) throw new Error('Expected reusable development parent PIN hash is missing.');
+if (!template.includes('"name": "PARENT_LOGIN_RATE"')) throw new Error('Development parent login rate limiter is missing.');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, mapSource));
 
 console.log('[card-free dev 3/6] Applying Phase 1-6 + D1 object/session/maintenance schema…');
 await applyMigrations(d1Id);
 
-console.log('[card-free dev 4/6] Creating one-time parent bootstrap login…');
-const bootstrapLogin = await createBootstrapLogin(d1Id);
+console.log('[card-free dev 4/6] Removing obsolete one-time parent bootstrap tokens…');
+await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
 
 console.log('[card-free dev 5/6] Deploying isolated worker-v10…');
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -194,24 +179,23 @@ const state = {
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
+  parentLoginMode: 'reusable-6-digit-pin-v1',
   schedulerMode: 'request-driven-d1-lease-no-cron',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
   resources: { DB: D1_NAME, objectStore: 'dev_object_store + dev_object_chunks', map: 'remote PMTiles proxy' },
   recovery: { d1TimeTravelDays: 7, inDatabaseSnapshots: true },
-  bootstrapLoginExpiresAt: bootstrapLogin.expiresAt,
   configuredAt: new Date().toISOString()
 };
 await fs.writeFile(STATE, JSON.stringify(state, null, 2));
 
-const loginUrl = `https://${workerHost}/parent/login?token=${bootstrapLogin.plaintext}`;
 console.log('Brick Phase 6C fully card-free development setup completed.');
 console.log(`Source Git SHA:    ${sourceGitSha}`);
 console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child beta API:   https://${workerHost}`);
 console.log(`Storage:          ${state.storageMode}`);
 console.log(`Parent auth:      ${state.parentAuthMode}`);
+console.log(`Parent login:     ${state.parentLoginMode}`);
 console.log(`Scheduler:        ${state.schedulerMode}`);
 console.log(`Map:              ${state.mapMode}`);
-console.log('ONE-TIME PARENT LOGIN (sensitive; expires in 24h and is consumed on use):');
-console.log(loginUrl);
+console.log('Reusable parent beta PIN is configured; plaintext PIN is intentionally not written to logs.');
