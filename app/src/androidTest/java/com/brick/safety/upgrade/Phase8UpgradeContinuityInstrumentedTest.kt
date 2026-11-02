@@ -2,7 +2,6 @@ package com.brick.safety.upgrade
 
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
-import com.brick.safety.beta.BetaSafety
 import com.brick.safety.crypto.DeviceKeys
 import com.brick.safety.data.Journal
 import com.brick.safety.testing.BrickInstrumentationTestCase
@@ -91,7 +90,13 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
         assertNotNull(before)
         assertEquals("AndroidKeyStore identity must survive package update", before, DeviceKeys.publicSpkiBase64())
 
-        assertEquals(BetaSafety.RetirementStage.DISARMED, BetaSafety.retirementStage(context))
-        assertFalse("upgrade must never reactivate a previously disarmed install", BetaSafety.isOperational(context))
+        // Reflection keeps this same test APK runnable against Phase 7, where BetaSafety does not yet
+        // exist, while still proving Phase 8 interprets the persisted marker as fail-closed.
+        val betaClass = Class.forName("com.brick.safety.beta.BetaSafety")
+        val beta = betaClass.getField("INSTANCE").get(null)
+        val stage = betaClass.getMethod("retirementStage", Context::class.java).invoke(beta, context).toString()
+        val operational = betaClass.getMethod("isOperational", Context::class.java).invoke(beta, context) as Boolean
+        assertEquals("DISARMED", stage)
+        assertFalse("upgrade must never reactivate a previously disarmed install", operational)
     }
 }
