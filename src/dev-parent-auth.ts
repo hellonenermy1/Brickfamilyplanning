@@ -2,13 +2,14 @@ const COOKIE = "brick_parent_dev";
 const INTERNAL_HEADER = "X-Brick-Dev-Parent-Verified";
 const INTERNAL_VALUE = "session-v1";
 const SESSION_MS = 30 * 86_400_000;
-const MAX_TOKEN_CHARS = 128;
 const MAX_SESSION_CHARS = 128;
+const LOGIN_CODE_RE = /^\d{6}$/;
+const PIN_HASH_RE = /^[0-9a-f]{64}$/i;
 
-export type DevParentAuthEnv = { DB: D1Database };
+type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
+export type DevParentAuthEnv = { DB: D1Database; PARENT_LOGIN_RATE?: RateLimit; DEV_PARENT_PIN_HASH?: string };
 
 type SessionRow = { ok: number };
-type ConsumedRow = { token_hash: string };
 
 function randomToken(bytes = 32) {
   const raw = crypto.getRandomValues(new Uint8Array(bytes));
@@ -20,6 +21,13 @@ function randomToken(bytes = 32) {
 async function sha256Hex(value: string) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
   return Array.from(digest, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function constantTimeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 function cookieValue(req: Request) {
@@ -53,23 +61,34 @@ function baseHeaders(contentType = "text/html; charset=utf-8") {
 function loginPage(message = "") {
   const safe = message.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent Beta Login</title><style>
-  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the one-time bootstrap code shown in the GitHub development deployment run. It is consumed after the first successful login.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">One-time code</label><input id="token" name="token" autocomplete="one-time-code" required maxlength="128"><button type="submit">Sign in to beta</button></form></main></body></html>`;
+  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the reusable 6-digit beta access code. A successful sign-in keeps this browser signed in for 30 days.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Beta access code</label><input id="token" name="token" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{6}" minlength="6" maxlength="6" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
 }
 
-async function readFormToken(req: Request) {
+async function readFormCode(req: Request) {
   const type = (req.headers.get("Content-Type") ?? "").toLowerCase();
   if (!type.startsWith("application/x-www-form-urlencoded")) return null;
   const text = await req.text();
-  if (text.length > 512) return null;
+  if (text.length > 128) return null;
   const value = new URLSearchParams(text).get("token")?.trim() ?? "";
-  return value.length >= 32 && value.length <= MAX_TOKEN_CHARS && /^[A-Za-z0-9_-]+$/.test(value) ? value : null;
+  return LOGIN_CODE_RE.test(value) ? value : null;
 }
 
-async function consumeBootstrapToken(env: DevParentAuthEnv, token: string, now: number) {
-  const hash = await sha256Hex(token);
-  return env.DB.prepare(
-    "UPDATE dev_parent_login_tokens SET consumed_at=?1 WHERE token_hash=?2 AND consumed_at IS NULL AND expires_at>=?1 RETURNING token_hash"
-  ).bind(now, hash).first<ConsumedRow>();
+function loginRateKey(req: Request) {
+  const ip = (req.headers.get("CF-Connecting-IP") ?? "unknown").slice(0, 96);
+  return `parent-login:${ip}`;
+}
+
+async function loginRateAllowed(req: Request, env: DevParentAuthEnv) {
+  if (!env.PARENT_LOGIN_RATE) return false;
+  const result = await env.PARENT_LOGIN_RATE.limit({ key: loginRateKey(req) });
+  return result.success;
+}
+
+async function loginCodeValid(env: DevParentAuthEnv, code: string) {
+  const expected = env.DEV_PARENT_PIN_HASH?.trim().toLowerCase() ?? "";
+  if (!PIN_HASH_RE.test(expected)) return false;
+  const actual = await sha256Hex(code);
+  return constantTimeEqual(actual, expected);
 }
 
 async function createSession(env: DevParentAuthEnv, now: number) {
@@ -115,24 +134,20 @@ export function devParentUnauthorized(req: Request) {
 export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthEnv): Promise<Response | null> {
   const url = new URL(req.url);
   if (url.pathname === "/parent/login" && req.method === "GET") {
-    const queryToken = url.searchParams.get("token")?.trim() ?? "";
-    if (!queryToken) return new Response(loginPage(), { status: 200, headers: baseHeaders() });
-    if (queryToken.length < 32 || queryToken.length > MAX_TOKEN_CHARS || !/^[A-Za-z0-9_-]+$/.test(queryToken)) {
-      return new Response(loginPage("That bootstrap link is invalid."), { status: 400, headers: baseHeaders() });
-    }
-    const now = Date.now();
-    const consumed = await consumeBootstrapToken(env, queryToken, now);
-    if (!consumed) return new Response(loginPage("That code is expired or has already been used."), { status: 401, headers: baseHeaders() });
-    const session = await createSession(env, now);
-    return new Response(null, { status: 303, headers: { Location: "/parent", "Set-Cookie": sessionCookie(session), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
+    return new Response(loginPage(), { status: 200, headers: baseHeaders() });
   }
 
   if (url.pathname === "/parent/login" && req.method === "POST") {
-    const token = await readFormToken(req);
-    if (!token) return new Response(loginPage("Enter the complete one-time code."), { status: 400, headers: baseHeaders() });
+    if (!(await loginRateAllowed(req, env))) {
+      return new Response(loginPage("Too many sign-in attempts. Try again in about a minute."), {
+        status: 429,
+        headers: { ...baseHeaders(), "Retry-After": "60" }
+      });
+    }
+    const code = await readFormCode(req);
+    if (!code) return new Response(loginPage("Enter the 6-digit beta access code."), { status: 400, headers: baseHeaders() });
+    if (!(await loginCodeValid(env, code))) return new Response(loginPage("That beta access code is incorrect."), { status: 401, headers: baseHeaders() });
     const now = Date.now();
-    const consumed = await consumeBootstrapToken(env, token, now);
-    if (!consumed) return new Response(loginPage("That code is expired or has already been used."), { status: 401, headers: baseHeaders() });
     const session = await createSession(env, now);
     return new Response(null, { status: 303, headers: { Location: "/parent", "Set-Cookie": sessionCookie(session), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   }
@@ -151,7 +166,7 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
 
 export async function cleanupDevParentAuth(env: DevParentAuthEnv, now = Date.now()) {
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM dev_parent_login_tokens WHERE expires_at<?1 OR consumed_at IS NOT NULL").bind(now - 86_400_000),
+    env.DB.prepare("DELETE FROM dev_parent_login_tokens"),
     env.DB.prepare("DELETE FROM dev_parent_sessions WHERE expires_at<?1 OR (revoked_at IS NOT NULL AND revoked_at<?2)").bind(now, now - 7 * 86_400_000)
   ]);
 }
