@@ -26,6 +26,7 @@ class IsolatedEvidenceProvider(
 
     @Volatile private var sink: EvidenceSink? = null
     @Volatile private var latestDecision = EvidenceSamplingDecision(false, null)
+    @Volatile private var decisionDirty = true
     @Volatile private var delegateStarted = false
     @Volatile private var consecutiveFailures = 0
     @Volatile private var retryAtElapsedMs = 0L
@@ -61,28 +62,16 @@ class IsolatedEvidenceProvider(
 
     override fun applySampling(decision: EvidenceSamplingDecision) {
         latestDecision = decision
+        decisionDirty = true
         if (inBackoff() || !delegateStarted) return
-        try {
-            delegate.applySampling(decision)
-            recoverIfSameOperation("apply")
-        } catch (t: Throwable) {
-            recordFailure("apply", t)
-        }
+        applyDecisionIfNeeded()
     }
 
     override fun collectNow() {
         if (inBackoff()) return
         if (!delegateStarted && !ensureStarted()) return
         if (inBackoff()) return
-
-        // A recovered provider receives the latest sampling policy before its first collection.
-        try {
-            delegate.applySampling(latestDecision)
-            recoverIfSameOperation("apply")
-        } catch (t: Throwable) {
-            recordFailure("apply", t)
-            return
-        }
+        if (!applyDecisionIfNeeded()) return
 
         try {
             delegate.collectNow()
@@ -94,6 +83,7 @@ class IsolatedEvidenceProvider(
 
     override fun stop() {
         delegateStarted = false
+        decisionDirty = true
         sink = null
         runCatching { delegate.stop() }
     }
@@ -106,11 +96,26 @@ class IsolatedEvidenceProvider(
         return try {
             delegate.start(currentSink)
             delegateStarted = true
+            decisionDirty = true
             recoverIfSameOperation("start")
             true
         } catch (t: Throwable) {
             delegateStarted = false
             recordFailure("start", t)
+            false
+        }
+    }
+
+    private fun applyDecisionIfNeeded(): Boolean {
+        if (!decisionDirty) return true
+        return try {
+            delegate.applySampling(latestDecision)
+            decisionDirty = false
+            recoverIfSameOperation("apply")
+            true
+        } catch (t: Throwable) {
+            decisionDirty = true
+            recordFailure("apply", t)
             false
         }
     }
