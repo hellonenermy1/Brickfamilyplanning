@@ -1,5 +1,6 @@
 package com.brick.safety.beta
 
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.brick.safety.BuildConfig
 import com.brick.safety.testing.BrickInstrumentationTestCase
@@ -9,7 +10,18 @@ class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
 
     override fun setUp() {
         super.setUp()
-        context.getSharedPreferences("brick_beta_safety", android.content.Context.MODE_PRIVATE)
+        clearRetirementTestState()
+    }
+
+    override fun tearDown() {
+        // Shared regression emulators must not inherit this test's deliberately retired state.
+        // The dedicated Device Owner lifecycle job verifies ownership removal before uninstalling.
+        clearRetirementTestState()
+        super.tearDown()
+    }
+
+    private fun clearRetirementTestState() {
+        context.getSharedPreferences("brick_beta_safety", Context.MODE_PRIVATE)
             .edit().clear().commit()
     }
 
