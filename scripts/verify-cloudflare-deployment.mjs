@@ -5,19 +5,34 @@ const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
 const EXPECTED_RELEASE = '0.6.0-phase6-rc';
 const EXPECTED_RELEASE_STATE = 'candidate-not-real-device-qualified';
-const EXPECTED_V1_PROGRAM_PHASE = 2;
-const EXPECTED_EVIDENCE_PROTOCOL = 1;
+const EXPECTED_V1_PROGRAM_PHASE = 6;
+const EXPECTED_SCHEMA_VERSION = 11;
+const EXPECTED_WORKER_ENTRY = 'src/worker-v9.ts';
 const HISTORY_BUCKET = 'brick-family-v1-history';
 const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
 const DLQ = 'brick-family-v1-dlq';
 const DAY_SECONDS = 86_400;
+const REQUIRED_SCHEMAS = [
+  'schema/001_init.sql',
+  'schema/002_phase2_health.sql',
+  'schema/003_phase4_safety.sql',
+  'schema/004_phase5_operations.sql',
+  'schema/007_phase5c_hardening.sql',
+  'schema/008_v1_phase2_evidence.sql',
+  'schema/009_v1_phase5_fusion.sql',
+  'schema/010_phase5b_closure.sql',
+  'schema/011_v1_phase6_location_control.sql'
+];
 const REQUIRED_TABLES = [
   'devices', 'device_health_samples', 'health_incidents', 'safety_events', 'geofences',
   'trips', 'crash_reports', 'audit_log', 'device_replay_state', 'ble_anchors',
   'evidence_batches', 'evidence_records', 'evidence_batch_records', 'device_evidence_state',
   'evidence_provider_health', 'atlas_models', 'witness_authorizations', 'ground_receivers',
-  'device_commands', 'refined_history_runs'
+  'device_commands', 'refined_history_runs',
+  'witness_aliases', 'witness_sightings', 'ground_sightings', 'learned_place_models',
+  'phase5_refined_intervals', 'phase5_hypothesis_frames', 'phase5_precise_endpoints',
+  'device_location_control'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -85,9 +100,13 @@ function requireAccessDenial(response, label) {
 const state = JSON.parse(await fs.readFile('setup-state.json', 'utf8'));
 const sourceGitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 assert(/^[0-9a-f]{40}$/.test(sourceGitSha), 'could not determine exact checked-out Git SHA');
-assert(state?.phase === 6, 'underlying audited release baseline is not Phase 6');
-assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 2');
-assert(state?.v1Phase2EvidenceProtocol === EXPECTED_EVIDENCE_PROTOCOL, 'setup-state evidence protocol is not v1');
+assert(state?.phase === 6, 'setup-state phase is not 6');
+assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 6');
+assert(state?.schemaVersion === EXPECTED_SCHEMA_VERSION, 'setup-state schema version is not 11');
+assert(state?.workerEntry === EXPECTED_WORKER_ENTRY, 'setup-state worker entry is not worker-v9.ts');
+assert(state?.sourceGitSha === sourceGitSha, 'setup-state source SHA does not match the checked-out deployment source');
+assert(Array.isArray(state?.appliedSchemas), 'setup-state applied schema list is missing');
+for (const schema of REQUIRED_SCHEMAS) assert(state.appliedSchemas.includes(schema), `setup-state did not record required migration: ${schema}`);
 assert(Number(state?.retention?.rawEvidenceDays) === 30, 'setup-state raw evidence retention is not 30 days');
 assert(state?.releaseState === EXPECTED_RELEASE_STATE, 'setup-state release qualification state is not explicitly unqualified');
 assert(state?.currentRelease === EXPECTED_RELEASE, 'setup-state current release does not match the audited APK release');
@@ -126,7 +145,7 @@ for (const table of REQUIRED_TABLES) assert(tableNames.has(table), `required D1 
 
 const schemaRows = await cf(`/accounts/${accountId}/d1/database/${state.d1Id}/query`, {
   method: 'POST',
-  body: JSON.stringify({ sql: "SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('crash_reports','device_replay_state','evidence_records','evidence_provider_health')" })
+  body: JSON.stringify({ sql: "SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('crash_reports','device_replay_state','evidence_records','evidence_provider_health','device_location_control','phase5_hypothesis_frames','phase5_precise_endpoints')" })
 });
 const schemaByName = new Map((schemaRows?.[0]?.results || []).map(row => [row.name, String(row.sql || '')]));
 const crashSchema = schemaByName.get('crash_reports') || '';
@@ -138,6 +157,12 @@ assert(/independence_group/i.test(evidenceSchema) && /payload_sha256/i.test(evid
 assert(/UNIQUE\s*\(\s*device_id\s*,\s*record_id\s*\)/i.test(evidenceSchema), 'evidence record-id idempotency constraint is missing');
 const providerHealthSchema = schemaByName.get('evidence_provider_health') || '';
 assert(/last_epoch/i.test(providerHealthSchema) && /last_sequence/i.test(providerHealthSchema), 'provider-health monotonic ordering fields are missing');
+const locationControlSchema = schemaByName.get('device_location_control') || '';
+assert(/desired_enabled/i.test(locationControlSchema) && /command_id/i.test(locationControlSchema) && /last_acked_command_id/i.test(locationControlSchema), 'Phase 6 location-control schema is incomplete');
+const hypothesisSchema = schemaByName.get('phase5_hypothesis_frames') || '';
+assert(/refined_run_id/i.test(hypothesisSchema) && /r2_key/i.test(hypothesisSchema), 'Phase 5B hypothesis-frame schema is incomplete');
+const endpointSchema = schemaByName.get('phase5_precise_endpoints') || '';
+assert(/uncertainty_m/i.test(endpointSchema) && /wall_time_ms/i.test(endpointSchema), 'Phase 5B precise-endpoint schema is incomplete');
 
 // Access must be the exact self-hosted application and policy that setup intends.
 const app = await cf(`/accounts/${accountId}/access/apps/${state.access.appId}`);
@@ -188,9 +213,6 @@ const invalidDevice = await manualFetch(`${origin}/api/device/deployment-smoke/l
 });
 assert(invalidDevice.status === 401 || invalidDevice.status === 429, `unsigned fake-device location request did not fail closed (HTTP ${invalidDevice.status})`);
 
-// Keep path validation and authentication as separate evidence. A non-v4 path must fail as 400;
-// then a syntactically valid but nonexistent v4 device must reach the auth boundary and fail 401
-// (or 429 if the public requester bucket is already exhausted).
 const invalidEvidencePath = await manualFetch(`${origin}/api/device/deployment-smoke/evidence`, {
   method: 'POST',
   headers: { 'content-type': 'application/vnd.brick.evidence' },
@@ -205,14 +227,14 @@ const unauthorizedEvidence = await manualFetch(`${origin}/api/device/${fakeEvide
 });
 assert(unauthorizedEvidence.status === 401 || unauthorizedEvidence.status === 429, `unsigned fake-v4 evidence request did not fail closed at auth (HTTP ${unauthorizedEvidence.status})`);
 
-// The workflow performs a strict, tagged deploy immediately before this verifier. Keep the exact
-// source SHA in non-secret evidence so the APK/backend freeze can prove which source was deployed.
 const verifiedAt = new Date().toISOString();
 const report = {
   ok: true,
   phase: 6,
   v1ProgramPhase: EXPECTED_V1_PROGRAM_PHASE,
-  evidenceProtocol: EXPECTED_EVIDENCE_PROTOCOL,
+  schemaVersion: EXPECTED_SCHEMA_VERSION,
+  workerEntry: EXPECTED_WORKER_ENTRY,
+  appliedSchemas: REQUIRED_SCHEMAS,
   sourceGitSha,
   workerName: EXPECTED_WORKER,
   workerHost: state.workerHost,
@@ -253,4 +275,4 @@ state.deploymentVerifiedAt = verifiedAt;
 state.deploymentVerification = { ok: true, evidenceFile: 'deployment-verification.json' };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
 await fs.writeFile('deployment-verification.json', JSON.stringify(report, null, 2));
-console.log(`Brick V1 Phase 2 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
+console.log(`Brick V1 Phase 6 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
