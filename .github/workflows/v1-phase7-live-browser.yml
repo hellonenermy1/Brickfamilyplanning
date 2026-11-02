@@ -23,7 +23,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       BRICK_DEV_PARENT_ORIGIN: https://brick-family-v1-dev.lumjayvian.workers.dev
-      PHASE7_DEPLOYED_SOURCE_SHA: 53c040c0cb14047cd9200edadd3c9f67b4ab25b5
+      PHASE7_DEPLOYED_SOURCE_SHA: 8179b5c6588a611eb9903bcea271318f960158a0
     steps:
       - uses: actions/checkout@v5
         with:
