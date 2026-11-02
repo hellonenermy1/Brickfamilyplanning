@@ -12,24 +12,47 @@ permissions:
 
 jobs:
   cloud-hardening:
-    name: Phase 8 cloud security, durability, privacy and retained regression
+    name: Phase 8 cloud security, durability, privacy, supply-chain and retained regression
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
 
       - name: Verify exact Phase 7 cloud baseline is retained
         run: git merge-base --is-ancestor 820fb8974ae185d74b4963b31b18a7fa0eafedf6 HEAD
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
           cache: npm
 
       - name: Install exactly locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Phase 8 dependency and workflow supply-chain gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'uses:[[:space:]]+[^[:space:]#]+@v[0-9]+' .github/workflows/v1-phase8-*.yml
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const exact = /^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/;
+          const forbidden = /(analytics|amplitude|mixpanel|appsflyer|facebook.*sdk|google-ads|doubleclick|segment(?:-|$)|sentry)/i;
+          for (const group of ['dependencies', 'devDependencies']) {
+            for (const [name, version] of Object.entries(pkg[group] ?? {})) {
+              if (!exact.test(String(version))) throw new Error(`non-exact ${group} version: ${name}=${version}`);
+              if (forbidden.test(name)) throw new Error(`telemetry/ads dependency forbidden in Brick Phase 8: ${name}`);
+              const locked = lock.packages?.[`node_modules/${name}`]?.version;
+              if (locked !== version) throw new Error(`package-lock mismatch for ${name}: package.json=${version}, lock=${locked}`);
+            }
+          }
+          if (lock.lockfileVersion !== 3) throw new Error(`unexpected npm lockfile version: ${lock.lockfileVersion}`);
+          console.log('Phase 8 exact dependency and lock consistency gate OK');
+          NODE
 
       - name: Typecheck and build retained parent assets
         run: |
@@ -66,6 +89,11 @@ jobs:
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
 
+          # Phase 8 has no WebSocket transport today. Treat that requirement as VERIFIED UNSUPPORTED,
+          # rather than pretending a WebSocket auth test exists. Any future WebSocket endpoint must
+          # deliberately remove this gate and add authenticated session/origin/isolation tests.
+          ! grep -R -nE 'WebSocketPair|new[[:space:]]+WebSocket|Upgrade["'"']?[[:space:]]*:[[:space:]]*["'"']websocket' src web
+
       - name: Phase 8 parent session security source gate
         shell: bash
         run: |
@@ -77,6 +105,13 @@ jobs:
           grep -F 'PARENT_LOGIN_RATE' "$auth" >/dev/null
           grep -F 'headers.delete(INTERNAL_HEADER)' "$auth" >/dev/null
           grep -F 'headers.set(INTERNAL_HEADER, INTERNAL_VALUE)' "$auth" >/dev/null
+
+      - name: Phase 8 source privacy / accidental telemetry gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE '(google-analytics\.com|googletagmanager\.com|doubleclick\.net|api\.segment\.io|api\.amplitude\.com|api\.mixpanel\.com)' src web
+          node scripts/audit-privacy.mjs
 
       - name: Dependency vulnerability gate
         run: npm audit --omit=dev --audit-level=high
