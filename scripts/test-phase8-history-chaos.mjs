@@ -82,6 +82,9 @@ const p1 = packet(1);
 const p2 = packet(2, p1.wallTimeMs + 5_000);
 
 // A transient durable-store failure must request retry and must not ACK the Queue message.
+// history-store writes raw/trusted replicas concurrently, so one sibling object is allowed to land
+// before the other fails. That partial write is not treated as delivery: the queue message retries,
+// and the next pass must repair/converge the segment before ACK.
 r2.failNextPuts(1);
 const first = message({ type: 'location', deviceId: 'child-1', packet: p1, rawPacket: p1 });
 const failed = await history.processHistoryBatch({ messages: [first] }, { HISTORY: r2 });
@@ -89,14 +92,15 @@ assert.equal(first.acked, 0);
 assert.equal(first.retried, 1);
 assert.equal(failed.processedMessages, 0);
 assert.equal(failed.retriedMessages, 1);
-assert.equal(r2.objects.size, 0);
+assert.ok(r2.objects.size <= 1, 'a failed concurrent replica write may leave at most one partial object');
 
-// Redelivery after the fault must become durable before ACK.
+// Redelivery after the fault must converge both durable objects before ACK.
 const retry = message({ type: 'location', deviceId: 'child-1', packet: p1, rawPacket: p1 });
 const recovered = await history.processHistoryBatch({ messages: [retry] }, { HISTORY: r2 });
 assert.equal(retry.acked, 1);
 assert.equal(retry.retried, 0);
 assert.equal(recovered.processedMessages, 1);
+assert.equal(r2.objects.size, 2, 'retry must repair/converge raw and trusted history replicas');
 let raw = await readRaw(r2);
 assert.deepEqual(raw.packets.map(p => p.sequence), [1]);
 
