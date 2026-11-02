@@ -13,27 +13,47 @@ Phase 7 converts the already-built Phase 2–6 tracking, evidence, reliability a
 - Development remains card-free: no mandatory R2, Queue, Access/Zero Trust or Cron binding.
 - Production worker/config/deployment remain frozen until Phase 7 acceptance.
 
-## Latest cloud qualification checkpoint
+## Qualification checkpoints
 
-Phase 7 cloud CI run `41397317932` passed after the safety-quality split and full parent UX integration.
+### Cloud / parent
 
-Passed gates:
+Cloud CI run `41399295630` passed on head `86d888104cc07498d822adf17044cf6840539fd7` after the final safety dwell-gap lock and temporary-deploy cleanup.
+
+Passed gates include:
 
 - retained qualified Phase 6C base ancestry
 - locked dependency install
 - parent asset build + TypeScript checks
 - Phase 7 position-presentation fixtures
 - separate Device Health / Position Health / provider-status fixtures
+- live WebSocket/REST synchronization fixtures
 - trusted-position-only geofence/arrival/stop fixtures
+- degraded-position gap resets coordinate-dependent dwell candidates
 - time-based trip-overdue independence from GPS quality
 - retained Phase 2–6 cloud regression and privacy gates
-- rendered Phase 7 parent browser contract + JavaScript syntax check
+- rendered actual served Phase 7 parent contract + JavaScript syntax check
 - honest geometry/refined-history/health/Location-control UI contract
+- Today / Yesterday / 7 / 30 / custom history controls
+- all five playback speeds and retained summary metrics
+- responsive desktop/mobile CSS contract
+- map-failure isolation and revoke UI retention
 - card-free development isolation
 - production worker/config isolation
+- absence of temporary Phase 7 deploy workflows
 - dependency audit
 
-This proves the current Phase 7 cloud implementation in CI. It does not replace live-browser or real-OPPO qualification and is not a production-readiness claim.
+The exact final patched runtime was deployed to `brick-family-v1-dev` from SHA `279e26e589dc687a336e2a45ec5de8f8385ea97d`. Deployment/live-verification run `41399072204` passed pre-deploy qualification, card-free resource checks, deployment, authenticated live Phase 7 contract verification, and unauthenticated-boundary verification. Later branch commits are CI/docs cleanup and do not change the deployed Worker runtime.
+
+### Android
+
+Android qualification run `41397097200` passed on Phase 7 Android head `f0c18e373d83c9a192ab55abd6dbc22d8932413c`.
+
+Both jobs passed:
+
+- build / unit tests / lint / R8 / minimal-child-UI / Device Owner / provider-health / diagnostics-privacy contract
+- full retained Phase 2–6C emulator instrumentation
+
+This qualifies the Android integration in CI. It does not replace real OPPO behavior testing.
 
 ## Phase 7 rules
 
@@ -47,18 +67,19 @@ This proves the current Phase 7 cloud implementation in CI. It does not replace 
 8. Child UI remains deliberately minimal; development diagnostics stay separate.
 9. Coordinate-dependent safety transitions require PRECISE / ASSISTED / ANCHORED evidence with bounded uncertainty.
 10. Purely time-based safety alerts must continue when position is degraded and must omit guessed coordinates.
+11. Any degraded/unqualified positioning interval breaks pending coordinate-dependent geofence, arrival and prolonged-stop dwell; later trusted evidence must start new dwell rather than inheriting old elapsed time.
 
 ## Work packets
 
 | Packet | Scope | Status |
 |---|---|---|
 | P7.0 | Requirement matrix + stable parent read model | CLOUD CONTRACT PASS |
-| P7.1 | Position Presentation Engine + honest geometry | CLOUD IMPLEMENTATION + CI PASS; LIVE BROWSER PENDING |
-| P7.2 | Human-readable evidence/conflict explanation | CLOUD IMPLEMENTATION + CI PASS; LIVE EVIDENCE PENDING |
-| P7.3 | Trusted/refined history integration and playback | CLOUD IMPLEMENTATION + CI PASS; LIVE DATA PENDING |
-| P7.4 | Device / position / provider health + Location control UX | CLOUD IMPLEMENTATION + CI PASS; LIVE PHONE ACK PENDING |
-| P7.5 | Trips, Places and minimal child UX revalidation | CLOUD SAFETY GUARD PASS; ANDROID/OPPO PENDING |
-| P7.6 | Full Phase 7 CI + real OPPO integration qualification | CLOUD PASS; ANDROID CI + REAL OPPO PENDING |
+| P7.1 | Position Presentation Engine + honest geometry | CLOUD IMPLEMENTATION + CI + LIVE API PASS; REAL BROWSER INTERACTION PENDING |
+| P7.2 | Human-readable evidence/conflict explanation | CLOUD IMPLEMENTATION + CI PASS; REAL BROWSER/OPPO EVIDENCE PENDING |
+| P7.3 | Trusted/refined history integration and playback | TRUSTED LIVE HISTORY + CONTRACT PASS; REAL PLAYBACK/REFINED VISUAL PROOF PENDING |
+| P7.4 | Device / position / provider health + Location control UX | CLOUD MODEL + LIVE CONTRACT PASS; REAL PHONE COMMAND/UI ACK SMOKE PENDING |
+| P7.5 | Trips, Places and minimal child UX revalidation | CLOUD SAFETY + ANDROID CI PASS; REAL OPPO SAFETY SMOKE PENDING |
+| P7.6 | Full Phase 7 CI + real OPPO integration qualification | CLOUD + ANDROID CI PASS; REAL BROWSER + OPPO ACCEPTANCE PENDING |
 
 ## Current implementation
 
@@ -77,11 +98,11 @@ This proves the current Phase 7 cloud implementation in CI. It does not replace 
 - explicit conflict list
 - offline/historical marker
 
-The source-fix basis prevents a REST refinement for an older point from being silently applied to a newer WebSocket fix. When the live fix advances first, the browser temporarily presents only the new phone state until the server read model catches up.
+The source-fix basis prevents a REST refinement for an older point from being silently applied to a newer WebSocket fix. When the live fix advances first, the browser temporarily presents only the new phone state and requests a fresh normalized server state instead of attaching stale Phase 7 presentation to the new fix.
 
 ### Honest map geometry
 
-`src/parent-v7.ts` now owns the live position geometry after the retained Phase 6 renderer runs:
+`src/parent-v7.ts` owns the Phase 7 live position geometry after the retained Phase 6 renderer runs:
 
 - PRECISE / ASSISTED: point + uncertainty circle
 - ESTIMATED route: corridor, not exact marker
@@ -116,8 +137,9 @@ The existing trusted history remains the base route and evidence source. Existin
 - the parent reports refined-frame/run counts and how many frames changed from the realtime hypothesis
 - failure to load refined history does not make trusted history unreadable
 - Today / Yesterday / 7 / 30 / custom and all existing playback controls are retained
+- 0.5x / 1x / 2x / 5x / 10x playback remains retained
 
-The card-free development path remains append-once D1 location history with indexed time/segment lookup and virtual 15-minute history objects on read. No second history store was added.
+The card-free development path remains append-once D1 location history with indexed time/segment lookup and bounded reads. No second evidence history store was added.
 
 ### Health model
 
@@ -127,11 +149,11 @@ The card-free development path remains append-once D1 location history with inde
 - Position Health
 - Evidence Providers
 
-Provider normalization covers Wi-Fi environment, Wi-Fi RTT, BLE, cellular context, LAN discovery, GNSS sky, network context, device context and the optional privileged fallback. `UNSUPPORTED` is neutral rather than a device failure. A healthy phone can therefore remain Device Healthy while its Position Health is degraded indoors or during stale evidence.
+Provider normalization covers Wi-Fi environment, Wi-Fi RTT, BLE, cellular context, LAN discovery, GNSS sky, network context, device context and the optional privileged fallback. `UNSUPPORTED` is neutral rather than a device failure. Provider unsupported state may be established from either capability or explicit provider-health evidence. A healthy phone can therefore remain Device Healthy while its Position Health is degraded indoors or during stale evidence.
 
 ### Location control acknowledgement
 
-The Phase 7 parent now displays independently:
+The Phase 7 parent displays independently:
 
 - requested Location state
 - actual phone-reported Location state
@@ -142,25 +164,26 @@ The UI does not call a command confirmed merely because the parent tapped ON/OFF
 
 ### Trips and Places safety boundary
 
-`src/phase4.ts` now explicitly separates map presentation from safety transitions:
+`src/phase4.ts` explicitly separates map presentation from safety transitions:
 
 - PRECISE / ASSISTED / ANCHORED, uncertainty <= 250 m: eligible for geofence and coordinate-dependent trip transitions
 - ESTIMATED / COARSE / LAST_KNOWN / UNKNOWN: cannot manufacture geofence enter/exit, arrival or prolonged-stop transitions from a guessed centre
-- degraded observations do not advance geofence candidate state
+- degraded observations cannot advance coordinate-dependent dwell
+- a degraded/unqualified interval clears pending geofence, arrival and prolonged-stop dwell candidates while preserving stable geofence state and last trustworthy trip location/distance
+- evaluation watermarks still advance so an older delayed trusted packet cannot resurrect pre-gap dwell
 - time-based trip overdue remains active even without a trustworthy coordinate
 - overdue events under degraded positioning carry no guessed coordinate/distance
-- last trustworthy trip distance/location is preserved instead of being overwritten by degraded data
 
 ### Android preservation branch
 
-The Phase 7 Android branch intentionally starts with qualification rather than unnecessary app rewrites. Its CI checks:
+The Phase 7 Android branch intentionally qualifies integration rather than rewriting working tracking code. CI proves:
 
 - minimal child UX remains intact
 - Device Owner receiver and managed-policy path remain intact
 - provider capability/health fields required by Phase 7 remain emitted
 - diagnostic privacy/retention contract remains intact
-- build, unit tests, lint and R8
-- full retained Phase 2–6C emulator instrumentation
+- build, unit tests, lint and R8 pass
+- full retained Phase 2–6C emulator instrumentation passes
 
 Real OPPO verification is still mandatory.
 
@@ -168,35 +191,53 @@ Real OPPO verification is still mandatory.
 
 | Requirement | P7 state |
 |---|---|
-| Current trusted location | CLOUD CONTRACT PASS |
-| Current refined location | CLOUD CONTRACT PASS |
-| Uncertainty | CLOUD CONTRACT PASS |
-| Precise/assisted circle | RENDER CONTRACT PASS; LIVE PENDING |
-| Estimated route corridor | RENDER CONTRACT PASS; LIVE PENDING |
-| Anchored region | RENDER CONTRACT PASS; LIVE PENDING |
-| Coarse / possible area | RENDER CONTRACT PASS; LIVE PENDING |
-| Last-known area | RENDER CONTRACT PASS; LIVE PENDING |
-| Unknown/no trustworthy coordinate | RENDER CONTRACT PASS; LIVE PENDING |
-| Evidence explanations | CLOUD + RENDER CI PASS; LIVE PENDING |
-| Evidence conflicts | CLOUD + RENDER CI PASS; LIVE PENDING |
-| Today/Yesterday/7/30/custom history | RETAINED; LIVE REVALIDATION PENDING |
-| Distance/duration/avg/max/modes/stops | RETAINED; LIVE REVALIDATION PENDING |
-| 0.5x/1x/2x/5x/10x playback | RETAINED; LIVE REVALIDATION PENDING |
-| Refined history separate from trusted | CLOUD + RENDER CI PASS; LIVE DATA PENDING |
-| Provider capability/health | CLOUD MODEL + RENDER CI PASS; LIVE PHONE DATA PENDING |
-| Device vs Position Health | CLOUD MODEL + CI PASS; LIVE PENDING |
-| Measured reliability/no fake manual score | RETAINED; LIVE REVALIDATION PENDING |
-| Desired vs actual vs acknowledged Location | RENDER CONTRACT PASS; LIVE PHONE ACK PENDING |
-| Degraded geofence/trip safety | CLOUD LOGIC + FIXTURES PASS; LIVE PENDING |
-| Minimal child UI | ANDROID CI IN PROGRESS |
-| Device Owner path | ANDROID CI IN PROGRESS / REAL OPPO OWNER ALREADY PROVISIONED |
+| Current trusted location | CLOUD CONTRACT + LIVE API PASS |
+| Current refined location | CLOUD CONTRACT + LIVE API CONTRACT PASS |
+| Uncertainty | CLOUD CONTRACT + LIVE API PASS |
+| Precise/assisted circle | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Estimated route corridor | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Anchored region | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Coarse / possible area | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Last-known area | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Unknown/no trustworthy coordinate | RENDER CONTRACT PASS; REAL BROWSER STATE PENDING |
+| Evidence explanations | CLOUD + RENDER CI PASS; REAL BROWSER PENDING |
+| Evidence conflicts | CLOUD + RENDER CI PASS; NATURAL REAL-WORLD OBSERVATION OPTIONAL |
+| Today/Yesterday/7/30/custom history | RETAINED + CONTRACT PASS; BROWSER INTERACTION PENDING |
+| Distance/duration/avg/max/modes/stops | RETAINED + CONTRACT PASS; BROWSER INTERACTION PENDING |
+| 0.5x/1x/2x/5x/10x playback | RETAINED + CONTRACT PASS; BROWSER INTERACTION PENDING |
+| Refined history separate from trusted | CLOUD + RENDER + LIVE API CONTRACT PASS; REAL REFINED VISUAL DATA PENDING IF PRODUCED |
+| Provider capability/health | CLOUD MODEL + RENDER + LIVE API PASS; REAL BROWSER/PHONE SMOKE PENDING |
+| Device vs Position Health | CLOUD MODEL + CI + LIVE API PASS; REAL BROWSER SMOKE PENDING |
+| Measured reliability/no fake manual score | RETAINED + CONTRACT PASS; REAL BROWSER SMOKE PENDING |
+| Desired vs actual vs acknowledged Location | LIVE API CONTRACT PASS; REAL COMMAND/UI ACK SMOKE PENDING |
+| Degraded geofence/trip safety | CLOUD LOGIC + FIXTURES + DWELL-GAP GUARD PASS; REAL OPPO SMOKE PENDING |
+| Minimal child UI | ANDROID CI PASS |
+| Device Owner path | ANDROID CI PASS; REAL OPPO MANAGED-MODE SMOKE PENDING |
+| Retained Android instrumentation | PASS — run `41397097200` |
 | Card-free beta isolation | PASS |
 | Production isolation | PASS |
 | Real OPPO Phase 7 proof | PENDING |
 
+## Real-world acceptance source of truth
+
+Use `docs/phase7-oppo-browser-acceptance.md`. It explicitly covers:
+
+- desktop and mobile browser interaction
+- WebSocket/REST cross-fix synchronization
+- precise/assisted/degraded/unknown presentation
+- requested/actual/acknowledged Location control
+- history/playback/refined overlay
+- geofence/trip dwell interruption by degraded positioning
+- health/provider semantics
+- I’M SAFE / SOS online and offline/reconnect regression
+- restart/network/reboot recovery
+- revocation/read-only-history proof strategy
+
+Rare states that cannot safely or naturally be produced are recorded as fixture-verified or not naturally observed; they are never falsely marked as real-device PASS.
+
 ## Phase 7 acceptance
 
-Phase 7 may be marked ACCEPTED only after all of these pass:
+Phase 7 may be marked ACCEPTED only after all of these pass or are explicitly classified by the real-world acceptance rules:
 
 - retained Phase 2–6 cloud and Android regression
 - precise display
@@ -209,9 +250,9 @@ Phase 7 may be marked ACCEPTED only after all of these pass:
 - unknown/no-coordinate display
 - conflicting evidence widens uncertainty and is explained
 - trusted history remains unchanged by refined history
-- refined history is visibly distinct
+- refined history is visibly distinct when real refined frames exist
 - all five playback speeds
-- trip/geofence behavior under degraded states
+- trip/geofence behavior under degraded states, including dwell interruption
 - Device Health vs Position Health separation
 - unsupported provider is neutral
 - requested vs actual Location acknowledgement
