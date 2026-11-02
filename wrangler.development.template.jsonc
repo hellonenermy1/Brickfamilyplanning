@@ -20,41 +20,15 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "brick-family-v1-dev", "database_id": "__D1_DATABASE_ID__" }
   ],
-  "r2_buckets": [
-    { "binding": "HISTORY", "bucket_name": "brick-family-v1-dev-history" },
-    { "binding": "MAPS", "bucket_name": "brick-family-v1-dev-maps" }
-  ],
-  "queues": {
-    "producers": [
-      { "binding": "EVENTS", "queue": "brick-family-v1-dev-events" }
-    ],
-    "consumers": [
-      {
-        "queue": "brick-family-v1-dev-events",
-        "max_batch_size": 50,
-        "max_batch_timeout": 5,
-        "max_retries": 5,
-        "dead_letter_queue": "brick-family-v1-dev-dlq",
-        "max_concurrency": 1
-      },
-      {
-        "queue": "brick-family-v1-dev-dlq",
-        "max_batch_size": 20,
-        "max_batch_timeout": 5,
-        "max_retries": 100,
-        "retry_delay": 300,
-        "max_concurrency": 1
-      }
-    ]
-  },
   "ratelimits": [
     { "name": "DEVICE_RATE", "namespace_id": "42001", "simple": { "limit": 120, "period": 60 } },
     { "name": "PAIR_RATE", "namespace_id": "42002", "simple": { "limit": 20, "period": 60 } }
   ],
   "vars": {
     "APP_ENV": "development",
-    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta1",
+    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta2-free",
     "CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__",
-    "CF_ACCESS_AUD": "__CF_ACCESS_AUD__"
+    "CF_ACCESS_AUD": "__CF_ACCESS_AUD__",
+    "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
   }
 }
