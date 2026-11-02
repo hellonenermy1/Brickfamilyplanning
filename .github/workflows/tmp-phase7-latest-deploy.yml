@@ -1,0 +1,119 @@
+name: TEMP Brick Phase 7 Latest Development Deploy
+
+on:
+  push:
+    branches: [v1-p7-cloud-ux]
+    paths:
+      - '.github/workflows/tmp-phase7-latest-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase7-latest-development
+  cancel-in-progress: false
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BRICK_DEV_PARENT_ORIGIN: https://brick-family-v1-dev.lumjayvian.workers.dev
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Preflight exact Phase 7 card-free development source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p7-cloud-ux"
+          grep -F 'parentV7LiveHtml as parentV7Html' src/worker-v10.ts >/dev/null
+          grep -F 'augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Portal", "phase7-beta1' src/worker-v10.ts >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          echo "Phase 7 latest deployment source: $GITHUB_SHA"
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Phase 7 and retained Phase 2-6 qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node scripts/check-phase7-parent-presentation.mjs
+          node scripts/check-phase7-health-presentation.mjs
+          node scripts/check-phase7-live-sync.mjs
+          node scripts/check-phase7-safety-quality.mjs
+          bash scripts/phase6-cloud-regression.sh
+          npm audit --omit=dev --audit-level=high
+
+      - name: Provision or reuse card-free development resources and deploy
+        run: npm run setup:development
+
+      - name: Verify card-free isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s setup-development-state.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
+          if (s.sourceGitSha !== process.env.GITHUB_SHA) throw new Error(`setup SHA ${s.sourceGitSha} != ${process.env.GITHUB_SHA}`);
+          if (s.workerEntry !== 'src/worker-v10.ts' || s.workerName !== 'brick-family-v1-dev') throw new Error('wrong development worker');
+          if (s.storageMode !== 'd1-chunked-no-r2') throw new Error('R2-free storage mode not active');
+          if (s.queueMode !== 'direct-synchronous-no-cloudflare-queue') throw new Error('queue-free mode not active');
+          if (s.schedulerMode !== 'request-driven-d1-lease-no-cron') throw new Error('cron-free scheduler not active');
+          NODE
+          ! grep -F 'r2_buckets' wrangler.development.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.jsonc >/dev/null
+
+      - name: Strict deploy exact Phase 7 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-p7-latest-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 7 latest development source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.development.jsonc > worker-development-deployments.json
+          grep -F "$GITHUB_SHA" worker-development-deployments.json >/dev/null
+
+      - name: Verify live authenticated Phase 7 API and security boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-phase7-development-live.mjs
+          unauth="$(curl -sS -o /tmp/p7-unauth -w '%{http_code}' "$BRICK_DEV_PARENT_ORIGIN/parent")"
+          case "$unauth" in 301|302|303|307|308|401) ;; *) echo "Unexpected unauthenticated /parent status $unauth" >&2; exit 1;; esac
+          forged="$(curl -sS -o /tmp/p7-forged -w '%{http_code}' "$BRICK_DEV_PARENT_ORIGIN/parent" -H 'X-Brick-Dev-Parent-Verified: session-v1')"
+          case "$forged" in 301|302|303|307|308|401) ;; *) echo "Forged header bypassed auth: $forged" >&2; exit 1;; esac
+
+      - name: Exercise real latest parent portal in Chrome
+        run: node scripts/verify-phase7-development-browser.mjs
+
+      - name: Upload privacy-safe acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase7-latest-live-browser-${{ github.run_id }}
+          path: phase7-browser-evidence/
+          if-no-files-found: warn
+          retention-days: 14
