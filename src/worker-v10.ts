@@ -1,5 +1,6 @@
 import phase9, { BrickDevice } from "./worker-v9";
-import { parentV6DHtml } from "./parent-v6d";
+import { parentV7Html } from "./parent-v7";
+import { augmentPhase7ParentStateResponse } from "./phase7-parent-presentation";
 import { cleanupDevelopmentObjectStore, developmentRuntimeEnv } from "./dev-free-runtime";
 import {
   authorizeDevParentRequest,
@@ -28,12 +29,12 @@ function developmentParentResponse(baseResponse: Response, baseHtml: string) {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
     });
   }
-  const html = parentV6DHtml().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
+  const html = parentV7Html().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
   const headers = new Headers(baseResponse.headers);
   headers.set("Cache-Control", "no-store");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Brick-Environment", "development");
-  headers.set("X-Brick-Portal", "phase6c-beta5");
+  headers.set("X-Brick-Portal", "phase7-beta1");
   headers.set("X-Brick-Storage", "d1-free-runtime");
   headers.set("X-Brick-Parent-Auth", "d1-session-v1");
   return new Response(html, { status: baseResponse.status, statusText: baseResponse.statusText, headers });
@@ -41,6 +42,10 @@ function developmentParentResponse(baseResponse: Response, baseHtml: string) {
 
 function isParentPath(pathname: string) {
   return pathname === "/parent" || pathname === "/parent/" || pathname.startsWith("/parent/");
+}
+
+function isParentStatePath(pathname: string) {
+  return /^\/parent\/api\/device\/[^/]+\/state$/.test(pathname);
 }
 
 function scheduleRequestDrivenMaintenance(env: Env & { DB: D1Database }, runtime: Env, ctx: ExecutionContext) {
@@ -67,7 +72,7 @@ export default {
     if (!env.DB) return new Response("Development D1 binding missing", { status: 503, headers: { "Cache-Control": "no-store" } });
 
     // Never trust an internal-development marker supplied by a client. Every request is cleaned at
-    // the outermost worker before any imported Phase 6 handler can see it.
+    // the outermost worker before any imported Phase 6/7 handler can see it.
     const cleanReq = stripDevParentInternalHeader(req);
     const u = new URL(cleanReq.url);
     const runtime = developmentRuntimeEnv(env);
@@ -89,13 +94,16 @@ export default {
       if (cleanReq.method === "GET" && (u.pathname === "/parent" || u.pathname === "/parent/") && response.ok) {
         return developmentParentResponse(response, await response.text());
       }
+      if (cleanReq.method === "GET" && isParentStatePath(u.pathname) && response.ok) {
+        return augmentPhase7ParentStateResponse(response);
+      }
       return response;
     }
 
     return base.fetch!(cleanReq, runtime, ctx);
   },
   async queue(batch: MessageBatch<unknown>, env: Env, ctx: ExecutionContext) {
-    // No Cloudflare Queue is bound in Phase 6C beta. Kept only for forward compatibility.
+    // No Cloudflare Queue is bound in the card-free beta. Kept only for forward compatibility.
     if (base.queue) return base.queue(batch, developmentRuntimeEnv(env), ctx);
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
