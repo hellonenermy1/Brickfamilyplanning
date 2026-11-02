@@ -2,6 +2,7 @@ export type AccessAuthEnv = {
   APP_ENV?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
+  DEV_PARENT_AUTH_MODE?: string;
 };
 
 type AccessJwtHeader = { alg?: unknown; kid?: unknown; typ?: unknown };
@@ -22,6 +23,8 @@ const encoder = new TextEncoder();
 const MAX_JWT_BYTES = 16 * 1024;
 const CLOCK_SKEW_SECONDS = 60;
 const JWKS_CACHE_MS = 5 * 60 * 1000;
+const DEV_INTERNAL_HEADER = "X-Brick-Dev-Parent-Verified";
+const DEV_INTERNAL_VALUE = "session-v1";
 let jwksCache: { teamDomain: string; loadedAt: number; keys: AccessJwk[] } | null = null;
 
 function decodeBase64Url(part: string): Uint8Array | null {
@@ -101,6 +104,15 @@ export async function verifyAccessRequest(req: Request, env: AccessAuthEnv, nowM
   const url = new URL(req.url);
   if (env.APP_ENV !== "production" && (url.hostname === "localhost" || url.hostname === "127.0.0.1")) {
     return { type: "app", aud: ["local-development"], iss: "local-development", exp: Math.floor(nowMs / 1000) + 60, iat: Math.floor(nowMs / 1000) };
+  }
+
+  // Phase 6C development-only session auth. The externally reachable worker-v10 ALWAYS strips this
+  // header from the incoming request and only re-adds it after validating a hashed D1 session.
+  // Production cannot enter this branch because both APP_ENV and DEV_PARENT_AUTH_MODE are gated.
+  if (env.APP_ENV === "development" && env.DEV_PARENT_AUTH_MODE === "d1-session-v1" &&
+      req.headers.get(DEV_INTERNAL_HEADER) === DEV_INTERNAL_VALUE) {
+    const now = Math.floor(nowMs / 1000);
+    return { type: "app", aud: ["brick-development-session"], iss: "brick-development-session", exp: now + 60, iat: now };
   }
 
   const teamDomain = normalizeTeamDomain(env.CF_ACCESS_TEAM_DOMAIN);
