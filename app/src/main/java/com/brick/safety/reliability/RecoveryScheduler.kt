@@ -42,10 +42,6 @@ object RecoveryScheduler {
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .build()
 
-    /**
-     * Initial evidence wake-up. KEEP is intentional: repeated observations must not replace and
-     * postpone an already scheduled/running drain.
-     */
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
         WorkManager.getInstance(context).enqueueUniqueWork(
             EVIDENCE_SOON_WORK,
@@ -54,16 +50,18 @@ object RecoveryScheduler {
         )
     }
 
-    /**
-     * Called by the currently running evidence worker when durable records remain. Appending one
-     * successor avoids WorkManager retry backoff growing during a normal large-backlog catch-up,
-     * while new observations still use KEEP and therefore cannot create an unbounded work chain.
-     */
     fun scheduleEvidenceFollowUp(context: Context, delaySeconds: Long) {
         WorkManager.getInstance(context).enqueueUniqueWork(
             EVIDENCE_SOON_WORK,
             ExistingWorkPolicy.APPEND_OR_REPLACE,
             evidenceRequest(delaySeconds)
         )
+    }
+
+    fun cancelAll(context: Context) {
+        val workManager = WorkManager.getInstance(context.applicationContext)
+        workManager.cancelUniqueWork(PERIODIC_WORK)
+        workManager.cancelUniqueWork(SOON_WORK)
+        workManager.cancelUniqueWork(EVIDENCE_SOON_WORK)
     }
 }

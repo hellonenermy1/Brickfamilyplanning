@@ -39,6 +39,7 @@
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Brick"
+        android:testOnly="true"
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
 
@@ -63,12 +64,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Phase 6C beta-only console. It is deliberately a separate launcher so the normal child
-             surface remains unchanged while OPPO field-test diagnostics stay available without ADB. -->
+        <!-- Phase 7 beta-only console. It is deliberately a separate launcher so the normal child
+             surface remains minimal while field-test diagnostics and beta escape controls stay available. -->
         <activity
             android:name=".diagnostics.DiagnosticsActivity"
             android:exported="true"
-            android:label="Brick 6C Diagnostics">
+            android:label="Brick Phase 7 Beta Diagnostics">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -80,10 +81,6 @@
             android:exported="false"
             android:foregroundServiceType="location|connectedDevice" />
 
-        <!-- Exactly one of these system-only companion callbacks is enabled for a given Android
-             version. This prevents a newer framework type from being loaded on an older phone.
-             tools:targetApi documents the same deliberate SDK gate to lint; runtime enablement is
-             still controlled by the version-specific boolean resources below. -->
         <service
             android:name=".atlas.BrickCompanionLegacyService"
             android:enabled="@bool/brick_companion_legacy_service_enabled"
