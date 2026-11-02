@@ -50,14 +50,14 @@ jobs:
           "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;default;x86_64'
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
-      - name: Boot fresh AOSP emulator in pre-provisioning state
+      - name: Boot fresh AOSP emulator in true pre-provisioning state
         shell: bash
         run: |
           set -euo pipefail
           echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
           sudo chmod 666 /dev/kvm || true
           "$ADB" start-server
-          nohup "$EMULATOR" -avd brick-p8-do -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-do-emulator.log 2>&1 &
+          nohup "$EMULATOR" -avd brick-p8-do -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-do-emulator.log 2>&1 &
           "$ADB" wait-for-device
           for i in $(seq 1 120); do
             [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
@@ -65,11 +65,25 @@ jobs:
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
+          # DevicePolicyManagerService caches setup/provisioning state during boot. Changing these
+          # settings after the service has initialized is not enough: reboot once so the policy
+          # service itself starts in the pre-setup state that a real zero-touch/ADB provisioning
+          # flow requires.
           "$ADB" shell settings put secure user_setup_complete 0
           "$ADB" shell settings put global device_provisioned 0
+          "$ADB" reboot
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
           test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
           test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
-          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-before.txt
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before.txt >/dev/null
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
 
       - name: Install Brick and provision real Device Owner before setup completes
         shell: bash
@@ -78,6 +92,8 @@ jobs:
           APP_APK=app/build/outputs/apk/debug/app-debug.apk
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$ADB" install -t "$APP_APK"
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-install.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-install.txt >/dev/null
           "$ADB" shell dpm set-device-owner com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
@@ -141,20 +157,21 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          cp /tmp/p8-do-accounts-before.txt p8-do-failure/accounts-before.txt || true
-          cp /tmp/p8-do-set-owner.txt p8-do-failure/set-owner.txt || true
-          cp /tmp/p8-do-owners-before.txt p8-do-failure/owners-before.txt || true
-          cp /tmp/p8-do-owners-stage1.txt p8-do-failure/owners-stage1.txt || true
-          cp /tmp/p8-do-owners-after-reboot.txt p8-do-failure/owners-after-reboot.txt || true
-          cp /tmp/p8-stage1.txt p8-do-failure/stage1-instrumentation.txt || true
-          cp /tmp/p8-stage23.txt p8-do-failure/stage23-instrumentation.txt || true
-          "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
-          "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
-          "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
-          "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
-          "$ADB" logcat -d > p8-do-failure/logcat.txt || true
+          for f in accounts-before accounts-after-install set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+            cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
+          done
+          if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
+            timeout 10s "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
+            timeout 10s "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
+            timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
+          else
+            printf 'No responsive emulator was available at failure collection time.\n' > p8-do-failure/no-device.txt
+          fi
 
       - name: Upload Device Owner failure diagnostics
         if: failure()
