@@ -42,7 +42,8 @@ class Phase4AtlasController(context: Context) {
     @Volatile private var latestCandidateElapsedMs = 0L
     @Volatile private var ownerInitialized = false
 
-    private val providers: List<EvidenceProvider> = listOf(
+    /** Every optional provider gets its own Phase 8 exception/backoff boundary. */
+    private val providers: List<EvidenceProvider> = listOf<EvidenceProvider>(
         WifiEnvironmentProvider(appContext) { noteProviderScan("wifi", it) },
         WifiRttEnvironmentProvider(appContext) { noteProviderScan("wifi-rtt", it) },
         BleEnvironmentProvider(appContext) { noteProviderScan("ble", it) },
@@ -54,7 +55,7 @@ class Phase4AtlasController(context: Context) {
         // Phase 5: uses the same adaptive provider pulse + durable EvidenceJournal. Witness data is
         // intentionally NOT fed into Atlas learning; it is a separately authenticated external constraint.
         WitnessMeshProvider(appContext)
-    )
+    ).map { IsolatedEvidenceProvider(it) }
 
     private val sink = EvidenceSink { observation ->
         val deviceId = prefs.getString("deviceId", null)?.takeIf { it.isNotBlank() } ?: return@EvidenceSink false
@@ -161,6 +162,8 @@ class Phase4AtlasController(context: Context) {
         }
         providers.forEach { provider ->
             val decision = EvidenceSamplingCoordinator.decision(provider.descriptor.samplingClass, state)
+            // IsolatedEvidenceProvider is the primary fault boundary; outer guards remain as a final
+            // controller boundary so a future wrapper regression still cannot kill Brick Core.
             runCatching { provider.applySampling(decision) }
             runCatching { provider.collectNow() }
         }
@@ -169,7 +172,11 @@ class Phase4AtlasController(context: Context) {
 
     fun candidates(): List<AtlasMatchCandidate> = latestCandidates
 
-    fun providerStatuses(): Map<EvidenceProviderId, EvidenceProviderStatus> = providers.associate { it.descriptor.provider to it.status() }
+    fun providerStatuses(): Map<EvidenceProviderId, EvidenceProviderStatus> = providers.associate { provider ->
+        provider.descriptor.provider to runCatching { provider.status() }.getOrElse {
+            EvidenceProviderStatus(ProviderCapability.TEMPORARILY_UNAVAILABLE, ProviderHealth.FAILED, "controller_status_guard")
+        }
+    }
 
     fun snapshot(): AtlasRuntimeSnapshot = AtlasRuntimeSnapshot(
         candidates = latestCandidates,
