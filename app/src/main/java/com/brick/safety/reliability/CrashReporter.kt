@@ -3,6 +3,7 @@ package com.brick.safety.reliability
 import android.content.Context
 import android.os.Process
 import com.brick.safety.data.CrashOutbox
+import com.brick.safety.diagnostics.DiagnosticStore
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.util.UUID
@@ -17,6 +18,16 @@ object CrashReporter {
         val appContext = context.applicationContext
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                DiagnosticStore.log(
+                    appContext,
+                    DiagnosticStore.Severity.ERROR,
+                    "crash",
+                    "uncaught_exception",
+                    "thread=${thread.name} type=${throwable.javaClass.name} message=${throwable.message?.take(500) ?: "none"}",
+                    throwable
+                )
+            }
             runCatching { persist(appContext, throwable) }
             if (previous != null) previous.uncaughtException(thread, throwable)
             else {

@@ -31,8 +31,8 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.6.0-phase6-rc"
+        versionCode = 7
+        versionName = "0.6.0-phase6c-beta1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

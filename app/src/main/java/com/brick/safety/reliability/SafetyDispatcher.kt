@@ -3,6 +3,7 @@ package com.brick.safety.reliability
 import android.content.Context
 import android.os.BatteryManager
 import com.brick.safety.data.SafetyOutbox
+import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.network.BrickApi
 import org.json.JSONObject
 
@@ -28,6 +29,7 @@ object SafetyDispatcher {
                 .putBoolean("safetyOutboxWriteHealthy", false)
                 .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
                 .apply()
+            DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "sequence_persist_failed", "kind=$kind")
             return null
         }
 
@@ -49,8 +51,19 @@ object SafetyDispatcher {
         val saved = SafetyOutbox(context).use { outbox ->
             outbox.append(envelope.eventId, envelope.kind, envelope.payload, priority)
         }
-        if (!saved) return null
+        if (!saved) {
+            DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "outbox_save_failed", "kind=$kind priority=$priority")
+            return null
+        }
+        DiagnosticStore.log(
+            context,
+            if (priority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
+            "safety",
+            "event_saved",
+            "kind=$kind priority=$priority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}"
+        )
         runCatching { ServiceControl.ensureTracking(context) }
+            .onFailure { DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "tracking_wake_failed", "kind=$kind", it) }
         return envelope.eventId
     }
 
@@ -63,9 +76,14 @@ object SafetyDispatcher {
             for (event in outbox.pending(limit)) {
                 try {
                     BrickApi.sendSafetyPayload(apiBase, deviceId, event.payload, event.eventId)
-                    if (!outbox.ack(event.eventId)) break
+                    if (!outbox.ack(event.eventId)) {
+                        DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "local_ack_failed", "kind=${event.kind}")
+                        break
+                    }
                     delivered++
-                } catch (_: Exception) {
+                    DiagnosticStore.log(context, DiagnosticStore.Severity.INFO, "safety", "event_delivered", "kind=${event.kind}")
+                } catch (t: Exception) {
+                    DiagnosticStore.log(context, DiagnosticStore.Severity.WARN, "safety", "delivery_failed", "kind=${event.kind} type=${t.javaClass.simpleName} message=${t.message?.take(500) ?: "none"}", t)
                     break
                 }
             }
