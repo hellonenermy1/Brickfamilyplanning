@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-v1-dev';
 const D1_NAME = 'brick-family-v1-dev';
-const CURRENT_APP_VERSION = '0.6.0-phase6c-beta4-cardfree';
+const CURRENT_APP_VERSION = '0.6.0-phase6c-beta5-cardfree';
 const TEMPLATE = 'wrangler.development.template.jsonc';
 const GENERATED_CONFIG = 'wrangler.development.jsonc';
 const STATE = 'setup-development-state.json';
