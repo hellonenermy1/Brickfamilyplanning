@@ -55,7 +55,7 @@ jobs:
           node /tmp/server.mjs >/tmp/server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
-          cat >/tmp/test.mjs <<'NODE'
+          cat >./tmp-parent-test.mjs <<'NODE'
           import { chromium } from 'playwright';
           const browser=await chromium.launch({headless:true});
           const page=await browser.newPage({viewport:{width:1280,height:900}});
@@ -76,7 +76,7 @@ jobs:
           await browser.close();
           if(errors.length) process.exit(2);
           NODE
-          node /tmp/test.mjs
+          node ./tmp-parent-test.mjs
       - name: Upload runtime screenshot
         if: always()
         uses: actions/upload-artifact@v4
