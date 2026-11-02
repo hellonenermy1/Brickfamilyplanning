@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing CLOUDFLARE_API_TOKEN' >&2; exit 1; }
           git cat-file -e "$PHASE7_DEPLOYED_SOURCE_SHA^{commit}"
-          # Browser-only verifier/workflow changes and deletion of the two exact temporary helper
+          # Browser-only verifier/workflow changes plus deletion of the two exact temporary helper
           # workflows are allowed after the pinned deployed source. No runtime source may differ.
           runtime_changes="$(git diff --name-only "$PHASE7_DEPLOYED_SOURCE_SHA"..HEAD | grep -Ev '^(scripts/verify-phase7-development-browser\.mjs|\.github/workflows/v1-phase7-live-browser\.yml|\.github/workflows/tmp-phase7-latest-deploy\.yml|\.github/workflows/tmp-p7-patch-browser-render-wait\.yml|docs/phase7-(status|oppo-browser-acceptance)\.md)$' || true)"
           if [ -n "$runtime_changes" ]; then
