@@ -63,6 +63,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Phase 6C beta-only console. It is deliberately a separate launcher so the normal child
+             surface remains unchanged while OPPO field-test diagnostics stay available without ADB. -->
+        <activity
+            android:name=".diagnostics.DiagnosticsActivity"
+            android:exported="true"
+            android:label="Brick 6C Diagnostics">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".location.BrickLocationService"
             android:exported="false"
