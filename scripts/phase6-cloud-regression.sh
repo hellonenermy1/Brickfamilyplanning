@@ -5,6 +5,12 @@ set -euo pipefail
 npm run typecheck
 npx tsc -p tsconfig.web.json --noEmit
 
+# Phase 6 production setup/deployment must remain schema-safe and provenance-locked.
+node --check scripts/setup.mjs
+node --check scripts/setup-v1-phase6.mjs
+node --check scripts/test-phase6-deploy-contract.mjs
+node scripts/test-phase6-deploy-contract.mjs
+
 # Phase 6 security, recovery and durability regressions.
 node --check scripts/test-phase6-access.mjs
 node --check scripts/test-phase6-ops.mjs
