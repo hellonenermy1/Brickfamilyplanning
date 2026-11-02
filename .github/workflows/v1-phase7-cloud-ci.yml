@@ -76,6 +76,24 @@ jobs:
             'id="historyRefinedToggle"',
             'id="refinedHistoryNote"',
             'Refined history overlay',
+            'data-range="today">Today',
+            'data-range="yesterday">Yesterday',
+            'data-range="7">7 days',
+            'data-range="30">30 days',
+            'id="fromDate"',
+            'id="toDate"',
+            'id="loadHistory"',
+            '<option value="0.5">0.5×</option>',
+            '<option value="1" selected>1×</option>',
+            '<option value="2">2×</option>',
+            '<option value="5">5×</option>',
+            '<option value="10">10×</option>',
+            'id="sumDistance"',
+            'id="sumDuration"',
+            'id="sumAvg"',
+            'id="sumMax"',
+            'id="sumModes"',
+            'id="sumStops"',
             'Position Health',
             'Evidence Providers',
             'id="p7PositionHealth"',
@@ -88,6 +106,9 @@ jobs:
             'p7HealthPresentationMatches',
             'p7ScheduleNormalizedStateRefresh',
             'snapshot.healthPresentation=null',
+            '@media(max-width:900px)',
+            '@media(max-width:430px)',
+            'Revoke selected phone',
             'Development diagnostics',
             'Map unavailable on this browser. Brick controls and device data are still available.'
           ];
@@ -119,6 +140,7 @@ jobs:
           ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
           ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          test ! -e .github/workflows/tmp-phase7-development-deploy.yml
 
           # Production remains frozen on the retained Phase 6 production entrypoint/config.
           grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
