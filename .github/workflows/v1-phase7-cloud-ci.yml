@@ -1,0 +1,164 @@
+name: Brick V1 Phase 7 — Cloud Intelligence and UX CI
+
+on:
+  push:
+    branches: [v1-p7-cloud-ux]
+  pull_request:
+    branches: [v1-p6c-parent-beta-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualify-phase7-cloud:
+    name: Phase 7 contract, parent UX and retained Phase 2-6 regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify qualified Phase 6C parent base is retained
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 1a4e9c6c19ba372b49a500e0b227dbefe7bdac73 HEAD
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck and build retained parent assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+
+      - name: Verify Phase 7 presentation, health, live-sync and safety contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-phase7-parent-presentation.mjs
+          node scripts/check-phase7-health-presentation.mjs
+          node scripts/check-phase7-live-sync.mjs
+          node scripts/check-phase7-safety-quality.mjs
+
+      - name: Run retained Phase 2-6 cloud regression and privacy gates
+        run: bash scripts/phase6-cloud-regression.sh
+
+      - name: Render actual served Phase 7 parent and verify browser contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/parent-v7-live.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v7.mjs
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const m = await import('file:///tmp/brick-parent-v7.mjs');
+          const html = m.parentV7LiveHtml();
+          const required = [
+            'Phase 7 Development',
+            'PHASE 7 BETA',
+            'Why this position',
+            'id="p7Confidence"',
+            'id="p7EvidenceAge"',
+            'id="p7Geometry"',
+            'id="p7PresentationSource"',
+            'id="p7Evidence"',
+            'Evidence conflict detected',
+            'id="historyRefinedToggle"',
+            'id="refinedHistoryNote"',
+            'Refined history overlay',
+            'data-range="today">Today',
+            'data-range="yesterday">Yesterday',
+            'data-range="7">7 days',
+            'data-range="30">30 days',
+            'id="fromDate"',
+            'id="toDate"',
+            'id="loadHistory"',
+            '<option value="0.5">0.5×</option>',
+            '<option value="1" selected>1×</option>',
+            '<option value="2">2×</option>',
+            '<option value="5">5×</option>',
+            '<option value="10">10×</option>',
+            'id="sumDistance"',
+            'id="sumDuration"',
+            'id="sumAvg"',
+            'id="sumMax"',
+            'id="sumModes"',
+            'id="sumStops"',
+            'Position Health',
+            'Evidence Providers',
+            'id="p7PositionHealth"',
+            'id="p7Providers"',
+            'id="gpsAck"',
+            'id="gpsObserved"',
+            'p7-position-area',
+            'p7-position-corridor',
+            'p7-refined-history',
+            'p7HealthPresentationMatches',
+            'p7ScheduleNormalizedStateRefresh',
+            'snapshot.healthPresentation=null',
+            '@media(max-width:900px)',
+            '@media(max-width:430px)',
+            'Revoke selected phone',
+            'Development diagnostics',
+            'Map unavailable on this browser. Brick controls and device data are still available.'
+          ];
+          for (const value of required) if (!html.includes(value)) throw new Error(`missing Phase 7 parent UI contract: ${value}`);
+          if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('Phase 7 parent reintroduced live third-party CDN assets');
+          const inline = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+          if (!inline) throw new Error('rendered Phase 7 inline browser module missing');
+          fs.writeFileSync('/tmp/brick-parent-v7-inline.mjs', inline[1]);
+          console.log(`Rendered actual served Phase 7 parent portal: ${html.length} bytes`);
+          NODE
+          node --check /tmp/brick-parent-v7-inline.mjs
+
+      - name: Verify Phase 7 state integration and card-free beta isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'parentV7LiveHtml as parentV7Html' src/worker-v10.ts >/dev/null
+          grep -F 'augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Portal", "phase7-beta1' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Position-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
+          grep -F 'X-Brick-Health-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
+          grep -F 'reportsUnsupported' src/phase7-state-v2.ts >/dev/null
+
+          # Lock the actual Phase 6/7 location-ingest safety path, not only the legacy single-packet evaluator.
+          grep -F 'evaluateSafetyBatchV6' src/location-ingest-v6.ts >/dev/null
+          grep -F 'safetyPositionEligibleV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'packet.quality === 1 || packet.quality === 2 || packet.quality === 3' src/safety-batch-v6.ts >/dev/null
+          grep -F 'tripOverdueEligibleV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'coordinateDwellStateV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'positionQualified: positionEligible' src/safety-batch-v6.ts >/dev/null
+          ! grep -F 'const usable = packets.filter' src/safety-batch-v6.ts >/dev/null
+
+          # Legacy path stays aligned for retained Phase 2-6 compatibility.
+          grep -F 'safetyPositionEligible' src/phase4.ts >/dev/null
+          grep -F 'tripOverdueEligible' src/phase4.ts >/dev/null
+          grep -F 'coordinateDwellState' src/phase4.ts >/dev/null
+
+          grep -F 'refinedHistory' src/worker-v9.ts >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          test ! -e .github/workflows/tmp-phase7-development-deploy.yml
+          test ! -e .github/workflows/tmp-phase7-final-deploy.yml
+
+          # Production remains frozen on the retained Phase 6 production entrypoint/config.
+          grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
+
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high

@@ -16,29 +16,84 @@ async function deterministicId(key:string){const digest=new Uint8Array(await cry
 async function eventRecord(env:Phase4Env,deviceId:string,kind:string,lat:number|null,lon:number|null,accuracyM:number|null,detail:Record<string,unknown>,dedupeKey?:string){const now=Date.now(),id=dedupeKey?await deterministicId(dedupeKey):crypto.randomUUID();const event:RealtimeSafetyEvent={id,kind,deviceCreatedAt:now,serverCreatedAt:now,latitude:lat,longitude:lon,accuracyM,detail};const statement=env.DB.prepare("INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?4,?5,?6,?7,?8)").bind(id,deviceId,kind,now,lat,lon,accuracyM,JSON.stringify(detail));return{event,statement}}
 async function internalEvent(env:Phase4Env,deviceId:string,kind:string,lat:number|null,lon:number|null,accuracyM:number|null,detail:Record<string,unknown>){const r=await eventRecord(env,deviceId,kind,lat,lon,accuracyM,detail);await r.statement.run();return r.event}
 
+/**
+ * Geofence and coordinate-dependent trip transitions are safety semantics, not map presentation.
+ * They may use only PRECISE, ASSISTED or ANCHORED coordinates with bounded uncertainty.
+ * ESTIMATED, COARSE, LAST_KNOWN and UNKNOWN remain useful for the parent display but cannot create
+ * enter/exit/arrival/prolonged-stop transitions from a guessed centre point.
+ */
+export function safetyPositionEligible(packet: Pick<LivePacket,"trustedLatE7"|"trustedLonE7"|"uncertaintyCm"|"quality">): boolean {
+ if(packet.trustedLatE7===null||packet.trustedLonE7===null)return false;
+ const accuracyM=packet.uncertaintyCm/100;
+ if(!Number.isFinite(accuracyM)||accuracyM<0||accuracyM>250)return false;
+ return packet.quality===1||packet.quality===2||packet.quality===3;
+}
+
+export function tripOverdueEligible(expectedArrivalAt:number|null,lastAlertAt:number|null,now:number):boolean{
+ return expectedArrivalAt!==null&&now>expectedArrivalAt+600000&&(!lastAlertAt||now-lastAlertAt>1800000);
+}
+
+export function coordinateDwellState(positionEligible:boolean,arrivalSince:number|null,arrivalCount:number,stationarySince:number|null){
+ return positionEligible?{arrivalSince,arrivalCount,stationarySince}:{arrivalSince:null,arrivalCount:0,stationarySince:null};
+}
+
 export async function evaluateSafety(env:Phase4Env,deviceId:string,packet:LivePacket):Promise<RealtimeSafetyEvent[]>{
- const generated:RealtimeSafetyEvent[]=[];if(packet.trustedLatE7===null||packet.trustedLonE7===null)return generated;
- const lat=packet.trustedLatE7/1e7,lon=packet.trustedLonE7/1e7,accuracyM=packet.uncertaintyCm/100,now=Date.now();if(!Number.isFinite(accuracyM)||accuracyM>250)return generated;
- const fences=await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE device_id=?1 AND enabled=1").bind(deviceId).all<Geofence>();
- for(const g of fences.results){
-  const d=distanceM(lat,lon,g.latitude,g.longitude);const current=await env.DB.prepare("SELECT stable_state,candidate_state,candidate_since,candidate_count,last_epoch,last_sequence FROM geofence_state WHERE geofence_id=?1").bind(g.id).first<GeoState>();
-  if(current&&evaluated(packet.epoch,packet.sequence,current.last_epoch,current.last_sequence))continue;
-  const stable=current?.stable_state??"unknown",enter=Math.max(25,g.radius_m-Math.min(30,g.radius_m*.15)),exit=g.radius_m+Math.max(25,g.radius_m*.20),desired=stable==="inside"?(d>=exit?"outside":"inside"):(d<=enter?"inside":"outside");
-  if(!current||stable==="unknown"){await env.DB.prepare("INSERT OR REPLACE INTO geofence_state(geofence_id,device_id,stable_state,candidate_state,candidate_since,candidate_count,last_distance_m,updated_at,last_epoch,last_sequence) VALUES(?1,?2,?3,NULL,NULL,0,?4,?5,?6,?7)").bind(g.id,deviceId,desired,d,now,packet.epoch,packet.sequence).run();continue}
-  if(desired===stable){await env.DB.prepare("UPDATE geofence_state SET candidate_state=NULL,candidate_since=NULL,candidate_count=0,last_distance_m=?1,updated_at=?2,last_epoch=?3,last_sequence=?4 WHERE geofence_id=?5").bind(d,now,packet.epoch,packet.sequence,g.id).run();continue}
-  const same=current.candidate_state===desired,since=same&&current.candidate_since?current.candidate_since:now,count=same?current.candidate_count+1:1;
-  if(count>=2&&now-since>=10000){const rec=await eventRecord(env,deviceId,desired==="inside"?"geofence_enter":"geofence_exit",lat,lon,accuracyM,{geofenceId:g.id,name:g.name,distanceM:Math.round(d)},`${deviceId}|gf|${g.id}|${packet.epoch}|${packet.sequence}|${desired}`);await env.DB.batch([env.DB.prepare("UPDATE geofence_state SET stable_state=?1,candidate_state=NULL,candidate_since=NULL,candidate_count=0,last_distance_m=?2,updated_at=?3,last_epoch=?4,last_sequence=?5 WHERE geofence_id=?6 AND (last_epoch<?4 OR (last_epoch=?4 AND last_sequence<?5))").bind(desired,d,now,packet.epoch,packet.sequence,g.id),rec.statement]);generated.push(rec.event)}
-  else await env.DB.prepare("UPDATE geofence_state SET candidate_state=?1,candidate_since=?2,candidate_count=?3,last_distance_m=?4,updated_at=?5,last_epoch=?6,last_sequence=?7 WHERE geofence_id=?8").bind(desired,since,count,d,now,packet.epoch,packet.sequence,g.id).run();
+ const generated:RealtimeSafetyEvent[]=[],positionEligible=safetyPositionEligible(packet),now=Date.now();
+ const lat=positionEligible?packet.trustedLatE7!/1e7:null,lon=positionEligible?packet.trustedLonE7!/1e7:null,accuracyM=positionEligible?packet.uncertaintyCm/100:null;
+
+ // A degraded observation breaks any in-progress coordinate dwell. Advance the per-fence ordering
+ // watermark while clearing only candidate state, so old trusted packets cannot later complete a
+ // dwell interval across an untrusted gap. Stable inside/outside state and last distance remain.
+ if(!positionEligible){
+  await env.DB.prepare("UPDATE geofence_state SET candidate_state=NULL,candidate_since=NULL,candidate_count=0,updated_at=?1,last_epoch=?3,last_sequence=?4 WHERE device_id=?2 AND (last_epoch<?3 OR (last_epoch=?3 AND last_sequence<?4))").bind(now,deviceId,packet.epoch,packet.sequence).run();
  }
+
+ if(positionEligible){
+  const fences=await env.DB.prepare("SELECT id,name,latitude,longitude,radius_m,enabled FROM geofences WHERE device_id=?1 AND enabled=1").bind(deviceId).all<Geofence>();
+  for(const g of fences.results){
+   const d=distanceM(lat!,lon!,g.latitude,g.longitude);const current=await env.DB.prepare("SELECT stable_state,candidate_state,candidate_since,candidate_count,last_epoch,last_sequence FROM geofence_state WHERE geofence_id=?1").bind(g.id).first<GeoState>();
+   if(current&&evaluated(packet.epoch,packet.sequence,current.last_epoch,current.last_sequence))continue;
+   const stable=current?.stable_state??"unknown",enter=Math.max(25,g.radius_m-Math.min(30,g.radius_m*.15)),exit=g.radius_m+Math.max(25,g.radius_m*.20),desired=stable==="inside"?(d>=exit?"outside":"inside"):(d<=enter?"inside":"outside");
+   if(!current||stable==="unknown"){await env.DB.prepare("INSERT OR REPLACE INTO geofence_state(geofence_id,device_id,stable_state,candidate_state,candidate_since,candidate_count,last_distance_m,updated_at,last_epoch,last_sequence) VALUES(?1,?2,?3,NULL,NULL,0,?4,?5,?6,?7)").bind(g.id,deviceId,desired,d,now,packet.epoch,packet.sequence).run();continue}
+   if(desired===stable){await env.DB.prepare("UPDATE geofence_state SET candidate_state=NULL,candidate_since=NULL,candidate_count=0,last_distance_m=?1,updated_at=?2,last_epoch=?3,last_sequence=?4 WHERE geofence_id=?5").bind(d,now,packet.epoch,packet.sequence,g.id).run();continue}
+   const same=current.candidate_state===desired,since=same&&current.candidate_since?current.candidate_since:now,count=same?current.candidate_count+1:1;
+   if(count>=2&&now-since>=10000){const rec=await eventRecord(env,deviceId,desired==="inside"?"geofence_enter":"geofence_exit",lat,lon,accuracyM,{geofenceId:g.id,name:g.name,distanceM:Math.round(d)},`${deviceId}|gf|${g.id}|${packet.epoch}|${packet.sequence}|${desired}`);await env.DB.batch([env.DB.prepare("UPDATE geofence_state SET stable_state=?1,candidate_state=NULL,candidate_since=NULL,candidate_count=0,last_distance_m=?2,updated_at=?3,last_epoch=?4,last_sequence=?5 WHERE geofence_id=?6 AND (last_epoch<?4 OR (last_epoch=?4 AND last_sequence<?5))").bind(desired,d,now,packet.epoch,packet.sequence,g.id),rec.statement]);generated.push(rec.event)}
+   else await env.DB.prepare("UPDATE geofence_state SET candidate_state=?1,candidate_since=?2,candidate_count=?3,last_distance_m=?4,updated_at=?5,last_epoch=?6,last_sequence=?7 WHERE geofence_id=?8").bind(desired,since,count,d,now,packet.epoch,packet.sequence,g.id).run();
+  }
+ }
+
  const trip=await env.DB.prepare("SELECT id,destination_name,destination_latitude,destination_longitude,destination_radius_m,expected_arrival_at,arrival_candidate_since,arrival_candidate_count,last_alert_at,stationary_since,last_stop_alert_at,last_eval_epoch,last_eval_sequence FROM trips WHERE device_id=?1 AND state='active' ORDER BY started_at DESC LIMIT 1").bind(deviceId).first<Trip>();
  if(!trip||evaluated(packet.epoch,packet.sequence,trip.last_eval_epoch,trip.last_eval_sequence))return generated;
- let dist:number|null=null,arrivalSince=trip.arrival_candidate_since,arrivalCount=trip.arrival_candidate_count,stationarySince=trip.stationary_since,lastAlert=trip.last_alert_at,lastStop=trip.last_stop_alert_at,state="active",endedAt:number|null=null;const events:{event:RealtimeSafetyEvent;statement:D1PreparedStatement}[]=[];
- if(trip.destination_latitude!==null&&trip.destination_longitude!==null){dist=distanceM(lat,lon,trip.destination_latitude,trip.destination_longitude);if(dist<=trip.destination_radius_m){arrivalSince??=now;arrivalCount++;if(arrivalCount>=2&&now-arrivalSince>=10000){state="arrived";endedAt=now;arrivalSince=null;arrivalCount=0;stationarySince=null;events.push(await eventRecord(env,deviceId,"trip_ended",lat,lon,accuracyM,{tripId:trip.id,reason:"arrived",destination:trip.destination_name,distanceM:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|arrived`))}}else{arrivalSince=null;arrivalCount=0}}
- if(state==="active"){
-  const stationary=packet.activity===1,away=dist===null||dist>trip.destination_radius_m*1.5;if(stationary&&away){stationarySince??=now;if(now-stationarySince>=600000&&(!lastStop||now-lastStop>=1800000)){lastStop=now;events.push(await eventRecord(env,deviceId,"trip_alert",lat,lon,accuracyM,{tripId:trip.id,reason:"prolonged_stop",destination:trip.destination_name,stoppedMinutes:Math.floor((now-stationarySince)/60000),distanceToDestinationM:dist===null?null:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`))}}else stationarySince=null;
-  if(trip.expected_arrival_at&&now>trip.expected_arrival_at+600000&&(!lastAlert||now-lastAlert>1800000)){lastAlert=now;events.push(await eventRecord(env,deviceId,"trip_alert",lat,lon,accuracyM,{tripId:trip.id,reason:"overdue",destination:trip.destination_name,distanceToDestinationM:dist===null?null:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|overdue`))}
+ const dwell=coordinateDwellState(positionEligible,trip.arrival_candidate_since,trip.arrival_candidate_count,trip.stationary_since);
+ let dist:number|null=null,arrivalSince=dwell.arrivalSince,arrivalCount=dwell.arrivalCount,stationarySince=dwell.stationarySince,lastAlert=trip.last_alert_at,lastStop=trip.last_stop_alert_at,state="active",endedAt:number|null=null;const events:{event:RealtimeSafetyEvent;statement:D1PreparedStatement}[]=[];
+
+ if(positionEligible&&trip.destination_latitude!==null&&trip.destination_longitude!==null){
+  dist=distanceM(lat!,lon!,trip.destination_latitude,trip.destination_longitude);
+  if(dist<=trip.destination_radius_m){arrivalSince??=now;arrivalCount++;if(arrivalCount>=2&&now-arrivalSince>=10000){state="arrived";endedAt=now;arrivalSince=null;arrivalCount=0;stationarySince=null;events.push(await eventRecord(env,deviceId,"trip_ended",lat,lon,accuracyM,{tripId:trip.id,reason:"arrived",destination:trip.destination_name,distanceM:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|arrived`))}}
+  else{arrivalSince=null;arrivalCount=0}
  }
- const stmts:D1PreparedStatement[]=[env.DB.prepare("UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9))").bind(state,endedAt,arrivalSince,arrivalCount,lastAlert,stationarySince,lastStop,packet.epoch,packet.sequence,dist,now,trip.id),...events.map(x=>x.statement)];await env.DB.batch(stmts);generated.push(...events.map(x=>x.event));return generated;
+
+ if(state==="active"){
+  // Prolonged-stop semantics need a trustworthy position to establish that the phone is away from
+  // the destination. A degraded interval already cleared stationarySince above, so a later trusted
+  // fix must start a new continuous dwell interval instead of inheriting old time.
+  if(positionEligible){
+   const stationary=packet.activity===1,away=dist===null||dist>trip.destination_radius_m*1.5;
+   if(stationary&&away){stationarySince??=now;if(now-stationarySince>=600000&&(!lastStop||now-lastStop>=1800000)){lastStop=now;events.push(await eventRecord(env,deviceId,"trip_alert",lat,lon,accuracyM,{tripId:trip.id,reason:"prolonged_stop",destination:trip.destination_name,stoppedMinutes:Math.floor((now-stationarySince)/60000),distanceToDestinationM:dist===null?null:Math.round(dist)},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|stop`))}}
+   else stationarySince=null;
+  }
+
+  // Overdue is a time-based safety condition. It must keep working when GPS is degraded; in that
+  // case the alert intentionally carries no coordinate/distance rather than a guessed one.
+  if(tripOverdueEligible(trip.expected_arrival_at,lastAlert,now)){
+   lastAlert=now;
+   events.push(await eventRecord(env,deviceId,"trip_alert",lat,lon,accuracyM,{tripId:trip.id,reason:"overdue",destination:trip.destination_name,distanceToDestinationM:dist===null?null:Math.round(dist),positionQualified:positionEligible},`${deviceId}|trip|${trip.id}|${packet.epoch}|${packet.sequence}|overdue`));
+  }
+ }
+
+ const trustedLocationAt=positionEligible?now:null;
+ const stmts:D1PreparedStatement[]=[env.DB.prepare("UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=CASE WHEN ?10 IS NULL THEN last_distance_to_destination_m ELSE ?10 END,last_location_at=CASE WHEN ?11 IS NULL THEN last_location_at ELSE ?11 END WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9))").bind(state,endedAt,arrivalSince,arrivalCount,lastAlert,stationarySince,lastStop,packet.epoch,packet.sequence,dist,trustedLocationAt,trip.id),...events.map(x=>x.statement)];
+ await env.DB.batch(stmts);generated.push(...events.map(x=>x.event));return generated;
 }
 
 export async function createGeofence(req:Request,env:Phase4Env,deviceId:string){const b:Record<string,unknown>=await req.json<Record<string,unknown>>().catch(()=>({}as Record<string,unknown>)),name=typeof b.name==="string"?b.name.trim().slice(0,64):"",lat=Number(b.latitude),lon=Number(b.longitude),radius=Number(b.radiusM);if(!name||!Number.isFinite(lat)||lat< -90||lat>90||!Number.isFinite(lon)||lon< -180||lon>180||!Number.isFinite(radius)||radius<25||radius>5000)return json({error:"invalid geofence"},400);const id=crypto.randomUUID();await env.DB.prepare("INSERT INTO geofences(id,device_id,name,latitude,longitude,radius_m,enabled,created_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7)").bind(id,deviceId,name,lat,lon,radius,Date.now()).run();return json({id,name,latitude:lat,longitude:lon,radiusM:radius,enabled:true})}
