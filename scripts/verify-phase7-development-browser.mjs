@@ -209,6 +209,22 @@ async function browserAcceptance(session) {
       assert.notEqual(display, 'none', `${name} pane remained hidden`);
     }
 
+    await waitFor(async () => {
+      const state = await evaluate(`(() => ({
+        confidence:document.querySelector('#p7Confidence')?.textContent?.trim()||'',
+        geometry:document.querySelector('#p7Geometry')?.textContent?.trim()||'',
+        source:document.querySelector('#p7PresentationSource')?.textContent?.trim()||'',
+        positionHealth:document.querySelector('#p7PositionHealthSummary')?.textContent?.trim()||'',
+        gpsActual:document.querySelector('#gpsActual')?.textContent?.trim()||'',
+        gpsAck:document.querySelector('#gpsAck')?.textContent?.trim()||'',
+        gpsObserved:document.querySelector('#gpsObserved')?.textContent?.trim()||''
+      }))()`);
+      const ready = value => Boolean(value && value !== '—');
+      return ready(state.confidence) && ready(state.geometry) && ready(state.source) &&
+        ready(state.positionHealth) && !/^Waiting/i.test(state.positionHealth) &&
+        ready(state.gpsActual) && ready(state.gpsAck) && ready(state.gpsObserved);
+    }, { timeoutMs: 25_000, label: 'authenticated Phase 7 state render' });
+
     const rendered = await evaluate(`(() => ({
       confidence:document.querySelector('#p7Confidence')?.textContent?.trim(),
       evidenceAge:document.querySelector('#p7EvidenceAge')?.textContent?.trim(),
