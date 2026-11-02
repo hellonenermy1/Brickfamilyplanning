@@ -21,6 +21,11 @@ const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 // exact wrangler.development.jsonc with the real D1 UUID and map source.
 await run(node, ['scripts/setup-v1-phase6-development-free.mjs']);
 
+// Older development provisioners applied schema/002 but did not add the Phase 2 summary columns
+// to devices. Repair them idempotently in place before any follow-up beta verification. This does
+// not reset devices, pairing, sessions, history, or parent data.
+await run(node, ['scripts/ensure-development-legacy-columns.mjs']);
+
 const config = await fs.readFile('wrangler.development.jsonc', 'utf8');
 if (config.includes('r2_buckets') || config.includes('"queues"') || config.includes('CF_ACCESS_') || config.includes('"triggers"')) {
   throw new Error('Refusing Phase 6C v2 migration: generated development config is not fully card-free.');
