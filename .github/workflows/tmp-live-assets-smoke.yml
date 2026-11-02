@@ -1,0 +1,25 @@
+name: TEMP Live Parent Assets Smoke
+
+on:
+  push:
+    branches: [v1-p6c-parent-beta-cloud]
+    paths: [.github/workflows/tmp-live-assets-smoke.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check live parent browser assets without auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://brick-family-v1-dev.lumjayvian.workers.dev'
+          for p in /brick-map.mjs /brick-pair.mjs /maplibre-gl.css /maplibre-gl.mjs; do
+            code="$(curl -sS -o /tmp/a -w '%{http_code}' "$base$p")"
+            ct="$(curl -sSI "$base$p" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print substr($0,index($0,$2));exit}')"
+            echo "$p status=$code content-type=$ct bytes=$(wc -c </tmp/a)"
+            test "$code" = 200
+          done
