@@ -52,6 +52,24 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0' 'emulator' 'system-images;android-35;google_apis;x86_64'
 
+      - name: Pin one CI debug signing identity for both versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          rm -f "$HOME/.android/debug.keystore"
+          keytool -genkeypair \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -dname 'CN=Android Debug,O=Android,C=US' \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -noprompt
+          test -s "$HOME/.android/debug.keystore"
+
       - name: Build Phase 8 target and cross-version test APK
         run: |
           set -euo pipefail
@@ -77,12 +95,17 @@ jobs:
           set -euo pipefail
           p7="$RUNNER_TEMP/p8-upgrade/phase7.apk"
           p8="$RUNNER_TEMP/p8-upgrade/phase8.apk"
-          "$APKSIGNER" verify --print-certs "$p7" > "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt"
-          "$APKSIGNER" verify --print-certs "$p8" > "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt"
-          c7="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
-          c8="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          "$APKSIGNER" verify --print-certs "$p7" | tee "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt"
+          "$APKSIGNER" verify --print-certs "$p8" | tee "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt"
+          c7="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}' "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt" | tr -d ':' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          c8="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}' "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt" | tr -d ':' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
           [[ "$c7" =~ ^[0-9a-f]{64}$ ]]
-          test "$c7" = "$c8"
+          [[ "$c8" =~ ^[0-9a-f]{64}$ ]]
+          if [ "$c7" != "$c8" ]; then
+            echo "Phase 7 cert: $c7" >&2
+            echo "Phase 8 cert: $c8" >&2
+            exit 1
+          fi
           grep -F 'versionCode = 8' "$RUNNER_TEMP/brick-phase7-baseline/app/build.gradle.kts" >/dev/null
           grep -F 'versionCode = 9' app/build.gradle.kts >/dev/null
           printf 'phase7_cert_sha256=%s\nphase8_cert_sha256=%s\n' "$c7" "$c8" > "$RUNNER_TEMP/p8-upgrade/certificate-continuity.txt"
@@ -136,8 +159,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          "$ADB" logcat -d > "$RUNNER_TEMP/p8-upgrade/logcat.txt" || true
-          "$ADB" shell dumpsys package com.brick.safety > "$RUNNER_TEMP/p8-upgrade/package.txt" || true
+          set +e
+          if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
+            timeout 15s "$ADB" logcat -d > "$RUNNER_TEMP/p8-upgrade/logcat.txt" 2>&1 || true
+            timeout 15s "$ADB" shell dumpsys package com.brick.safety > "$RUNNER_TEMP/p8-upgrade/package.txt" 2>&1 || true
+          else
+            printf 'No booted emulator was available when the upgrade gate failed.\n' > "$RUNNER_TEMP/p8-upgrade/no-device.txt"
+          fi
 
       - name: Upload upgrade evidence on failure
         if: failure()
