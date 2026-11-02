@@ -8,11 +8,6 @@ on:
         required: false
         default: ''
         type: string
-      install_map:
-        description: 'Install/update the private Singapore map in DEVELOPMENT R2'
-        required: true
-        default: true
-        type: boolean
 
 permissions:
   contents: read
@@ -23,9 +18,9 @@ concurrency:
 
 jobs:
   deploy-development:
-    name: Qualify and deploy isolated Phase 6C development stack
+    name: Qualify and deploy card-free Phase 6C development stack
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 90
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id || secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -39,7 +34,7 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - name: Preflight exact development source and credentials
+      - name: Preflight exact card-free development source and credentials
         shell: bash
         run: |
           set -euo pipefail
@@ -47,24 +42,30 @@ jobs:
           test "$GITHUB_REF_NAME" = "v1-p6c-parent-beta-cloud" || { echo 'Run this development deploy from v1-p6c-parent-beta-cloud.' >&2; exit 1; }
           grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
-          grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
-          grep -F 'brick-family-v1-dev' scripts/setup-v1-phase6-development.mjs >/dev/null
+          grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'setup-v1-phase6-development-free.mjs' package.json >/dev/null
           ! grep -F '"main": "src/worker-v10.ts"' wrangler.template.jsonc >/dev/null
           echo "Development deploy source SHA: $GITHUB_SHA"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run full cloud regression and parent beta render gate
+      - name: Run full cloud regression and card-free beta gates
         shell: bash
         run: |
           set -euo pipefail
           npm run build:parent-assets
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
-          node --check scripts/setup-v1-phase6-development.mjs
-          node --check scripts/install-private-map-development.mjs
+          node --check scripts/setup-v1-phase6-development-free.mjs
           bash scripts/phase6-cloud-regression.sh
+          grep -F 'class D1ObjectBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class DirectEventQueue' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class RemoteMapBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
           npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
           node --input-type=module <<'NODE'
           const m = await import('file:///tmp/brick-parent-v6c.mjs');
@@ -74,10 +75,10 @@ jobs:
           }
           NODE
 
-      - name: Provision or reuse DEVELOPMENT resources and deploy
+      - name: Provision or reuse card-free DEVELOPMENT resources and deploy
         run: npm run setup:development
 
-      - name: Verify isolated setup provenance
+      - name: Verify isolated setup provenance and no paid storage dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -86,25 +87,24 @@ jobs:
           import fs from 'node:fs';
           const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
           if (s.sourceGitSha !== process.env.GITHUB_SHA) throw new Error(`development setup SHA ${s.sourceGitSha} != workflow ${process.env.GITHUB_SHA}`);
-          if (s.environment !== 'development' || s.releaseState !== 'development-beta') throw new Error('not a development beta state');
+          if (s.environment !== 'development' || s.releaseState !== 'development-beta-free') throw new Error('not the card-free development beta state');
           if (s.workerEntry !== 'src/worker-v10.ts' || s.workerName !== 'brick-family-v1-dev') throw new Error('wrong development worker');
           if (s.resources?.DB !== 'brick-family-v1-dev') throw new Error('wrong development D1');
-          if (s.resources?.HISTORY_BUCKET !== 'brick-family-v1-dev-history') throw new Error('wrong development history bucket');
-          if (s.resources?.MAPS_BUCKET !== 'brick-family-v1-dev-maps') throw new Error('wrong development map bucket');
-          if (s.resources?.EVENT_QUEUE !== 'brick-family-v1-dev-events' || s.resources?.DLQ !== 'brick-family-v1-dev-dlq') throw new Error('wrong development queues');
+          if (s.storageMode !== 'd1-chunked-no-r2') throw new Error('R2-free storage mode not active');
+          if (s.queueMode !== 'direct-synchronous-no-cloudflare-queue') throw new Error('queue-free mode not active');
+          if (s.mapMode !== 'same-origin-worker-range-proxy' || !/^https:\/\//.test(s.mapSource || '')) throw new Error('map proxy mode not active');
           if (s.access?.mode !== 'cloudflare-access-rs256') throw new Error('development Access was not verified');
           NODE
-
-      - name: Install private Singapore map into DEVELOPMENT only
-        if: inputs.install_map == true
-        run: npm run map:install:development
+          ! grep -F 'r2_buckets' wrangler.development.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.jsonc >/dev/null
+          npx wrangler d1 execute brick-family-v1-dev --remote --command "SELECT key,size FROM dev_object_store LIMIT 1" --config wrangler.development.jsonc >/tmp/brick-d1-object-smoke.txt
 
       - name: Strict final development deploy tagged with exact Git SHA
         shell: bash
         run: |
           set -euo pipefail
-          tag="brick-dev-git-${GITHUB_SHA:0:12}"
-          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 6C development beta source $GITHUB_SHA"
+          tag="brick-dev-free-git-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 6C card-free development beta source $GITHUB_SHA"
           npx wrangler deployments list --json --config wrangler.development.jsonc > worker-development-deployments.json
           test -s worker-development-deployments.json
           grep -F "$GITHUB_SHA" worker-development-deployments.json >/dev/null
@@ -140,18 +140,16 @@ jobs:
             node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
-          console.log('Brick Phase 6C DEVELOPMENT deployment');
+          console.log('Brick Phase 6C CARD-FREE DEVELOPMENT deployment');
           console.log('Source Git SHA:     ' + (s.sourceGitSha || 'NOT VERIFIED'));
-          console.log('Environment:        ' + (s.environment || 'NOT VERIFIED'));
           console.log('Worker:             ' + (s.workerName || 'NOT VERIFIED'));
           console.log('Parent beta:        https://' + s.workerHost + '/parent');
           console.log('Child beta API:     https://' + s.workerHost);
           console.log('D1:                 ' + s.resources.DB);
-          console.log('History R2:         ' + s.resources.HISTORY_BUCKET);
-          console.log('Private map R2:     ' + s.resources.MAPS_BUCKET);
-          console.log('Event queue:        ' + s.resources.EVENT_QUEUE);
-          console.log('DLQ:                ' + s.resources.DLQ);
-          console.log('Private map:        ' + Boolean(s.privateMap?.installed));
+          console.log('Storage:            ' + s.storageMode);
+          console.log('Queue mode:         ' + s.queueMode);
+          console.log('Map mode:           ' + s.mapMode);
+          console.log('Map source:         ' + s.mapSource);
           NODE
           else
             echo 'setup-development-state.json was not created; inspect the failed step above.'
@@ -161,7 +159,7 @@ jobs:
         if: ${{ always() && hashFiles('setup-development-state.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: brick-phase6c-development-deployment-${{ github.sha }}
+          name: brick-phase6c-card-free-development-${{ github.sha }}
           path: |
             setup-development-state.json
             worker-development-deployments.json
