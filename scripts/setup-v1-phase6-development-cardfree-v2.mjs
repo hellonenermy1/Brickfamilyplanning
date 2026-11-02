@@ -16,8 +16,8 @@ function run(cmd, args) {
 const node = process.execPath;
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-// Run the already-qualified card-free provisioner first. It creates/reuses D1, applies the base
-// Phase 1-6 + card-free schemas, creates the one-time parent bootstrap token and generates the
+// Run the qualified card-free provisioner first. It creates/reuses D1, applies the base
+// Phase 1-6 + card-free schemas, configures the reusable development parent PIN and generates the
 // exact wrangler.development.jsonc with the real D1 UUID and map source.
 await run(node, ['scripts/setup-v1-phase6-development-free.mjs']);
 
