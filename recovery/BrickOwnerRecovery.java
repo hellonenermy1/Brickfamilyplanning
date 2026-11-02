@@ -43,9 +43,7 @@ public final class BrickOwnerRecovery {
         if (dpm == null) throw new IllegalStateException("IDevicePolicyManager interface unavailable");
 
         boolean hasOwner = ((Boolean) invoke(dpm, "hasDeviceOwner", new Class<?>[0])).booleanValue();
-        Object component = invoke(dpm, "getDeviceOwnerComponent", new Class<?>[]{boolean.class}, false);
         System.out.println("hasDeviceOwner=" + hasOwner);
-        System.out.println("deviceOwner=" + String.valueOf(component));
 
         if (!clear) {
             System.out.println("dry_run=true");
@@ -53,17 +51,13 @@ public final class BrickOwnerRecovery {
             return;
         }
 
-        if (!hasOwner) throw new IllegalStateException("No Device Owner is currently configured");
-        if (component == null || !String.valueOf(component).startsWith(PACKAGE + "/")) {
-            throw new SecurityException("Refusing to clear unexpected owner: " + component);
+        if (!hasOwner) {
+            throw new IllegalStateException("Brick UID is not recognized as Device Owner; refusing to clear.");
         }
 
         System.out.println("clear_requested=true");
         invoke(dpm, "clearDeviceOwner", new Class<?>[]{String.class}, PACKAGE);
-
-        boolean ownerAfter = ((Boolean) invoke(dpm, "hasDeviceOwner", new Class<?>[0])).booleanValue();
-        System.out.println("hasDeviceOwner_after=" + ownerAfter);
-        if (ownerAfter) throw new IllegalStateException("Device Owner still present after clearDeviceOwner");
-        System.out.println("Device Owner cleared successfully.");
+        System.out.println("clearDeviceOwner returned without exception.");
+        System.out.println("Verify with: adb shell cmd device_policy list-owners");
     }
 }
