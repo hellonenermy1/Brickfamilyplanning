@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   qualify-parent-beta:
-    name: Parent beta typecheck, regression, render and free-runtime isolation
+    name: Parent beta typecheck, regression, render and fully card-free isolation
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -74,7 +74,7 @@ jobs:
           console.log(`Rendered Phase 6C parent beta: ${html.length} bytes`);
           NODE
 
-      - name: Verify card-free development runtime and production isolation
+      - name: Verify fully card-free runtime and production isolation
         shell: bash
         run: |
           set -euo pipefail
@@ -83,24 +83,56 @@ jobs:
           grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
           grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
           grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"DEV_PARENT_AUTH_MODE": "d1-session-v1"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
-          ! grep -F 'brick-family-v1-dev-history' wrangler.development.template.jsonc >/dev/null
-          ! grep -F 'brick-family-v1-dev-events' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
           grep -F 'dev_object_store' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_object_chunks' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'dev_parent_login_tokens' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'dev_parent_sessions' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'dev_maintenance_state' schema/013_phase6c_request_maintenance.sql >/dev/null
           grep -F 'developmentRuntimeEnv' src/worker-v10.ts >/dev/null
           grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
+          grep -F 'stripDevParentInternalHeader' src/worker-v10.ts >/dev/null
+          grep -F 'authorizeDevParentRequest' src/worker-v10.ts >/dev/null
+          grep -F 'claimDevMaintenance' src/worker-v10.ts >/dev/null
           grep -F 'class D1ObjectBucket' src/dev-free-runtime.ts >/dev/null
           grep -F 'class DirectEventQueue' src/dev-free-runtime.ts >/dev/null
           grep -F 'class RemoteMapBucket' src/dev-free-runtime.ts >/dev/null
           grep -F 'setup-v1-phase6-development-free.mjs' package.json >/dev/null
+          test ! -e .github/workflows/tmp-phase6c-cardfree-deploy.yml
 
-          # Production remains frozen on its original identities/entrypoint and R2 design.
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const src = fs.readFileSync('src/worker-v10.ts','utf8');
+          const strip = src.indexOf('const cleanReq = stripDevParentInternalHeader(req);');
+          const auth = src.indexOf('authorizeDevParentRequest(cleanReq');
+          if (!(strip >= 0 && auth > strip)) throw new Error('worker-v10 must strip the internal auth header before D1 session authorization');
+          NODE
+
+          # Production remains frozen on its original identities/entrypoint and Access/R2 design.
           grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           grep -F 'brick-v1-phase6-production' .github/workflows/deploy-brick.yml >/dev/null
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
+
+      - name: Verify development auth gate cannot affect production
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth-beta.mjs
+          node --input-type=module <<'NODE'
+          const m = await import('file:///tmp/brick-access-auth-beta.mjs');
+          const req = new Request('https://example.test/parent', { headers: { 'X-Brick-Dev-Parent-Verified': 'session-v1' } });
+          const dev = await m.parentAuthorized(req, { APP_ENV:'development', DEV_PARENT_AUTH_MODE:'d1-session-v1' });
+          if (!dev) throw new Error('development internal session marker was not accepted under the exact beta env gate');
+          const wrongMode = await m.parentAuthorized(req, { APP_ENV:'development', DEV_PARENT_AUTH_MODE:'wrong' });
+          if (wrongMode) throw new Error('development marker bypassed the exact auth-mode gate');
+          const prod = await m.parentAuthorized(req, { APP_ENV:'production', DEV_PARENT_AUTH_MODE:'d1-session-v1' });
+          if (prod) throw new Error('development marker bypassed production Cloudflare Access auth');
+          NODE
 
       - name: Verify development worker with Wrangler dry-run bundler
         shell: bash
@@ -111,8 +143,6 @@ jobs:
           const source = fs.readFileSync('wrangler.development.template.jsonc', 'utf8');
           const config = source
             .replace('__D1_DATABASE_ID__', '00000000-0000-0000-0000-000000000000')
-            .replace('__CF_ACCESS_TEAM_DOMAIN__', 'https://brick-development.cloudflareaccess.com')
-            .replace('__CF_ACCESS_AUD__', 'development-dry-run-audience')
             .replace('__BRICK_MAP_SOURCE__', 'https://build.protomaps.com/20261101.pmtiles');
           fs.writeFileSync('wrangler.development.dryrun.jsonc', config);
           NODE
