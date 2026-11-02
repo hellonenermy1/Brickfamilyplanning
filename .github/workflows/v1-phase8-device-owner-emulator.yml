@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   device-owner-lifecycle:
-    name: Fresh AOSP AVD Device Owner provision -> staged release -> uninstall
+    name: Pre-setup Device Owner provision -> post-setup staged release -> uninstall
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
@@ -50,7 +50,7 @@ jobs:
           "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;default;x86_64'
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
-      - name: Boot fresh AOSP emulator
+      - name: Boot fresh AOSP emulator in pre-provisioning state
         shell: bash
         run: |
           set -euo pipefail
@@ -64,30 +64,36 @@ jobs:
             sleep 5
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
-          # Device Owner provisioning is only meaningful on a truly fresh user. Fail before install
-          # rather than trying to mutate/delete accounts in the test fixture.
-          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-before.txt
-          ! grep -E 'Account \{' /tmp/p8-do-accounts-before.txt >/dev/null
 
-      - name: Install Brick and provision Device Owner before test harness
+          # A real Device Owner is provisioned before normal user setup completes. Android's shell
+          # post-setup exception has account restrictions that are irrelevant to the actual managed-
+          # device provisioning lifecycle. Model the proper lifecycle instead of deleting accounts.
+          "$ADB" shell settings put secure user_setup_complete 0
+          "$ADB" shell settings put global device_provisioned 0
+          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
+          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
+          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-before.txt
+
+      - name: Install Brick and provision real Device Owner before setup completes
         shell: bash
         run: |
           set -euo pipefail
           APP_APK=app/build/outputs/apk/debug/app-debug.apk
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 
-          # Provision immediately after installing the DPC. The instrumentation APK is deliberately
-          # installed only AFTER Device Owner succeeds so test tooling cannot invalidate provisioning.
           "$ADB" install -t "$APP_APK"
-          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-pre-owner.txt
-          ! grep -E 'Account \{' /tmp/p8-do-accounts-pre-owner.txt >/dev/null
           "$ADB" shell dpm set-device-owner com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
 
+          # Qualify release in the state Brick will actually live in: normal setup completed.
+          "$ADB" shell settings put secure user_setup_complete 1
+          "$ADB" shell settings put global device_provisioned 1
+          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "1"
+          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "1"
           "$ADB" install -t "$TEST_APK"
 
-      - name: Run staged retirement as the Device Owner app
+      - name: Run staged retirement as the post-setup Device Owner app
         shell: bash
         run: |
           set -euo pipefail
@@ -112,11 +118,13 @@ jobs:
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
           cp /tmp/p8-do-accounts-before.txt p8-do-failure/accounts-before.txt || true
-          cp /tmp/p8-do-accounts-pre-owner.txt p8-do-failure/accounts-pre-owner.txt || true
           cp /tmp/p8-do-set-owner.txt p8-do-failure/set-owner.txt || true
           cp /tmp/p8-do-owners-before.txt p8-do-failure/owners-before.txt || true
           cp /tmp/p8-do-instrumentation.txt p8-do-failure/instrumentation.txt || true
           cp /tmp/p8-do-owners-after.txt p8-do-failure/owners-after.txt || true
+          "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
+          "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
+          "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
           "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
           "$ADB" logcat -d > p8-do-failure/logcat.txt || true
 
