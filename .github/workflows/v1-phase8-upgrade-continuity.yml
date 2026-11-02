@@ -1,0 +1,149 @@
+name: Brick V1 Phase 8 — In-Place Upgrade Continuity
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  pull_request:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase7-to-phase8-upgrade:
+    name: Phase 7 -> 8 same-cert update preserves identity, backlog and retirement state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -x "$SDKMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "APKSIGNER=$SDK_ROOT/build-tools/35.0.0/apksigner" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/brick-p8-upgrade-avd" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/brick-p8-upgrade-avd" "$RUNNER_TEMP/p8-upgrade"
+
+      - name: Install Android SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0' 'emulator' 'system-images;android-35;google_apis;x86_64'
+
+      - name: Build Phase 8 target and cross-version test APK
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/p8-upgrade/phase8.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/p8-upgrade/phase8-test.apk"
+          test -s "$RUNNER_TEMP/p8-upgrade/phase8.apk"
+          test -s "$RUNNER_TEMP/p8-upgrade/phase8-test.apk"
+
+      - name: Build exact Phase 7 baseline with the same CI debug certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          P7="$RUNNER_TEMP/brick-phase7-baseline"
+          git worktree add --detach "$P7" 8843bdae902050c8c1fd7e67ed7ac80662d0da93
+          gradle --no-daemon -p "$P7" :app:assembleDebug --stacktrace
+          cp "$P7/app/build/outputs/apk/debug/app-debug.apk" "$RUNNER_TEMP/p8-upgrade/phase7.apk"
+          test -s "$RUNNER_TEMP/p8-upgrade/phase7.apk"
+
+      - name: Prove update certificate continuity and version monotonicity
+        shell: bash
+        run: |
+          set -euo pipefail
+          p7="$RUNNER_TEMP/p8-upgrade/phase7.apk"
+          p8="$RUNNER_TEMP/p8-upgrade/phase8.apk"
+          "$APKSIGNER" verify --print-certs "$p7" > "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt"
+          "$APKSIGNER" verify --print-certs "$p8" > "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt"
+          c7="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/p8-upgrade/phase7-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          c8="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/p8-upgrade/phase8-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$c7" =~ ^[0-9a-f]{64}$ ]]
+          test "$c7" = "$c8"
+          grep -F 'versionCode = 8' "$RUNNER_TEMP/brick-phase7-baseline/app/build.gradle.kts" >/dev/null
+          grep -F 'versionCode = 9' app/build.gradle.kts >/dev/null
+          printf 'phase7_cert_sha256=%s\nphase8_cert_sha256=%s\n' "$c7" "$c8" > "$RUNNER_TEMP/p8-upgrade/certificate-continuity.txt"
+
+      - name: Boot clean emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-upgrade --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-upgrade -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/p8-upgrade/emulator.log" 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+      - name: Seed durable Phase 7 identity and backlog
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" install -t "$RUNNER_TEMP/p8-upgrade/phase7.apk"
+          "$ADB" install -t "$RUNNER_TEMP/p8-upgrade/phase8-test.apk"
+          "$ADB" shell dumpsys package com.brick.safety | grep -E 'versionCode=8([[:space:]]|$)'
+          "$ADB" shell am instrument -w \
+            -e p8UpgradeMode seed \
+            -e class com.brick.safety.upgrade.Phase8UpgradeContinuityInstrumentedTest#testSeedPhase7State \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/p8-upgrade/seed.txt"
+          grep -F 'OK (1 test)' "$RUNNER_TEMP/p8-upgrade/seed.txt" >/dev/null
+
+      - name: Upgrade in place to Phase 8 without clearing app data
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" install -r -t "$RUNNER_TEMP/p8-upgrade/phase8.apk"
+          "$ADB" shell dumpsys package com.brick.safety | grep -E 'versionCode=9([[:space:]]|$)'
+
+      - name: Verify Phase 8 preserved identity, encrypted backlog and fail-closed retirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell am instrument -w \
+            -e p8UpgradeMode verify \
+            -e class com.brick.safety.upgrade.Phase8UpgradeContinuityInstrumentedTest#testVerifyPhase8UpgradePreservedIdentityBacklogAndRetirement \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/p8-upgrade/verify.txt"
+          grep -F 'OK (1 test)' "$RUNNER_TEMP/p8-upgrade/verify.txt" >/dev/null
+
+      - name: Preserve upgrade evidence on failure
+        if: failure()
+        shell: bash
+        run: |
+          "$ADB" logcat -d > "$RUNNER_TEMP/p8-upgrade/logcat.txt" || true
+          "$ADB" shell dumpsys package com.brick.safety > "$RUNNER_TEMP/p8-upgrade/package.txt" || true
+
+      - name: Upload upgrade evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-upgrade-continuity-failure
+          path: ${{ runner.temp }}/p8-upgrade/
+          if-no-files-found: warn
+          retention-days: 14
