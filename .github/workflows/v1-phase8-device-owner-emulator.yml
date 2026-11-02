@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   device-owner-lifecycle:
-    name: Fresh AVD Device Owner provision -> staged release -> uninstall
+    name: Fresh AOSP AVD Device Owner provision -> staged release -> uninstall
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
@@ -42,19 +42,19 @@ jobs:
           echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
           echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
 
-      - name: Install SDK and build test APKs
+      - name: Install clean AOSP SDK image and build test APKs
         shell: bash
         run: |
           set -euo pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;default;x86_64'
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
-      - name: Boot fresh emulator
+      - name: Boot fresh AOSP emulator
         shell: bash
         run: |
           set -euo pipefail
-          echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
           sudo chmod 666 /dev/kvm || true
           "$ADB" start-server
           nohup "$EMULATOR" -avd brick-p8-do -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-do-emulator.log 2>&1 &
@@ -64,20 +64,28 @@ jobs:
             sleep 5
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
-          # A fresh CI AVD must not contain user accounts before Device Owner provisioning.
-          ! "$ADB" shell dumpsys account 2>/dev/null | grep -E 'Account \{' >/dev/null
+          # Device Owner provisioning is only meaningful on a truly fresh user. Fail before install
+          # rather than trying to mutate/delete accounts in the test fixture.
+          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-before.txt
+          ! grep -E 'Account \{' /tmp/p8-do-accounts-before.txt >/dev/null
 
-      - name: Install testOnly Brick and provision real Device Owner
+      - name: Install Brick and provision Device Owner before test harness
         shell: bash
         run: |
           set -euo pipefail
           APP_APK=app/build/outputs/apk/debug/app-debug.apk
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+          # Provision immediately after installing the DPC. The instrumentation APK is deliberately
+          # installed only AFTER Device Owner succeeds so test tooling cannot invalidate provisioning.
           "$ADB" install -t "$APP_APK"
-          "$ADB" install -t "$TEST_APK"
+          "$ADB" shell dumpsys account > /tmp/p8-do-accounts-pre-owner.txt
+          ! grep -E 'Account \{' /tmp/p8-do-accounts-pre-owner.txt >/dev/null
           "$ADB" shell dpm set-device-owner com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
+
+          "$ADB" install -t "$TEST_APK"
 
       - name: Run staged retirement as the Device Owner app
         shell: bash
@@ -103,6 +111,8 @@ jobs:
         run: |
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
+          cp /tmp/p8-do-accounts-before.txt p8-do-failure/accounts-before.txt || true
+          cp /tmp/p8-do-accounts-pre-owner.txt p8-do-failure/accounts-pre-owner.txt || true
           cp /tmp/p8-do-set-owner.txt p8-do-failure/set-owner.txt || true
           cp /tmp/p8-do-owners-before.txt p8-do-failure/owners-before.txt || true
           cp /tmp/p8-do-instrumentation.txt p8-do-failure/instrumentation.txt || true
