@@ -72,10 +72,11 @@ jobs:
 
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
-      - name: Boot fresh AOSP emulator in true pre-provisioning state
+      - name: Boot fresh AOSP emulator and stage Brick before pre-setup reboot
         shell: bash
         run: |
           set -euo pipefail
+          APP_APK=app/build/outputs/apk/debug/app-debug.apk
           echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
           sudo chmod 666 /dev/kvm || true
           "$ADB" start-server
@@ -87,38 +88,57 @@ jobs:
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
-          # DevicePolicyManagerService caches setup/provisioning state during boot. Changing these
-          # settings after the service has initialized is not enough: reboot once so the policy
-          # service itself starts in the pre-setup state that a real zero-touch/ADB provisioning
-          # flow requires.
+          # Install the DPC before the pre-setup reboot. The bare AOSP emulator has no interactive
+          # SetupWizard and can auto-finalize USER_SETUP_COMPLETE a few seconds after boot. Installing
+          # after that reboot creates a race that makes dpm report the generic "accounts" precondition
+          # error even when AccountManager is empty.
+          "$ADB" install -t "$APP_APK"
+          "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before.txt >/dev/null
+          "$ADB" shell pm list users | tee /tmp/p8-do-users-before.txt
+
           "$ADB" shell settings put secure user_setup_complete 0
           "$ADB" shell settings put global device_provisioned 0
           "$ADB" reboot
-          "$ADB" wait-for-device
-          for i in $(seq 1 120); do
-            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
-            sleep 5
-          done
-          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
-          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
-          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
-          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
-          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before.txt >/dev/null
-          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
-          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
 
-      - name: Install Brick and provision real Device Owner before setup completes
+      - name: Provision real Device Owner before AOSP can auto-finalize setup
         shell: bash
         run: |
           set -euo pipefail
-          APP_APK=app/build/outputs/apk/debug/app-debug.apk
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-          "$ADB" install -t "$APP_APK"
-          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-install.txt
-          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-install.txt >/dev/null
-          "$ADB" shell dpm set-device-owner com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
+          "$ADB" wait-for-device
+
+          # Do not wait for sys.boot_completed here. As soon as package/user services are ready,
+          # provision the already-installed test DPC while DevicePolicyManagerService still sees the
+          # deliberately pre-setup state from boot.
+          for i in $(seq 1 120); do
+            if "$ADB" shell pm path com.brick.safety 2>/dev/null | grep -Fq 'package:'; then break; fi
+            sleep 1
+          done
+          "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-reboot.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-reboot.txt >/dev/null
+          "$ADB" shell pm list users | tee /tmp/p8-do-users-after-reboot.txt
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
+
+          # Reassert immediately before the shell command to eliminate the emulator's no-SetupWizard
+          # auto-finalization race. This is still a genuine Android Device Owner precondition: we do
+          # not bypass DevicePolicyManagerService or modify its account/owner checks.
+          "$ADB" shell settings put secure user_setup_complete 0
+          "$ADB" shell settings put global device_provisioned 0
+          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
+          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
+          "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
+
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 2
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
           "$ADB" shell settings put secure user_setup_complete 1
           "$ADB" shell settings put global device_provisioned 1
@@ -182,13 +202,14 @@ jobs:
           set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          for f in accounts-before accounts-after-install set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+          for f in accounts-before accounts-after-reboot users-before users-after-reboot set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
             cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
           done
           if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
             timeout 10s "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
             timeout 10s "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell pm list users > p8-do-failure/users-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
             timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
           else
