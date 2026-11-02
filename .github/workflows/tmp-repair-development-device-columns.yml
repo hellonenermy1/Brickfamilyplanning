@@ -15,6 +15,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BRICK_DEV_PARENT_ORIGIN: https://brick-family-v1-dev.lumjayvian.workers.dev
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -22,46 +23,5 @@ jobs:
           node-version: '24'
       - name: Repair D1 columns in place
         run: node scripts/ensure-development-legacy-columns.mjs
-      - name: Verify paired device and current-state APIs
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const t=fs.readFileSync('wrangler.development.template.jsonc','utf8')
-            .replace('__D1_DATABASE_ID__','422f09cc-bbca-4f88-a81a-5468c06bd5bc')
-            .replace('__BRICK_MAP_SOURCE__','https://build.protomaps.com/20261101.pmtiles');
-          fs.writeFileSync('/tmp/wrangler.verify.jsonc',t);
-          NODE
-          TOKEN="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')"
-          HASH="$(printf '%s' "$TOKEN" | sha256sum | awk '{print $1}')"
-          NOW="$(date +%s%3N)"
-          EXP="$((NOW + 600000))"
-          cleanup(){ npx wrangler d1 execute brick-family-v1-dev --remote --command "DELETE FROM dev_parent_sessions WHERE session_hash='$HASH'" --config /tmp/wrangler.verify.jsonc >/dev/null 2>&1 || true; }
-          trap cleanup EXIT
-          npx wrangler d1 execute brick-family-v1-dev --remote --command "INSERT INTO dev_parent_sessions(session_hash,created_at,expires_at,revoked_at) VALUES('$HASH',$NOW,$EXP,NULL)" --config /tmp/wrangler.verify.jsonc >/dev/null
-          BASE='https://brick-family-v1-dev.lumjayvian.workers.dev'
-          STATUS="$(curl -sS -o /tmp/body -w '%{http_code}' "$BASE/parent/api/devices" -H "Cookie: brick_parent_dev=$TOKEN" -H 'Accept: application/json')"
-          test "$STATUS" = 200 || { echo "devices endpoint status=$STATUS"; cat /tmp/body; exit 1; }
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const j=JSON.parse(fs.readFileSync('/tmp/body','utf8'));
-          if(!Array.isArray(j.devices)) throw new Error('devices response missing devices array');
-          console.log('LIVE_DEVICES_API=PASS');
-          console.log('PAIRED_DEVICE_COUNT='+j.devices.length);
-          if(j.devices.length) fs.writeFileSync('/tmp/device_id',String(j.devices[0].id));
-          for(const d of j.devices) console.log(`DEVICE=${d.name || 'unnamed'} revoked=${d.revoked_at!=null} lastSeen=${d.last_seen_at ?? 'none'} lastHealth=${d.last_health_at ?? 'none'} health=${d.health_status ?? 'unknown'} app=${d.app_version ?? 'none'}`);
-          NODE
-          if [ -s /tmp/device_id ]; then
-            DEVICE_ID="$(cat /tmp/device_id)"
-            STATE_STATUS="$(curl -sS -o /tmp/state -w '%{http_code}' "$BASE/parent/api/device/$DEVICE_ID/state" -H "Cookie: brick_parent_dev=$TOKEN" -H 'Accept: application/json')"
-            test "$STATE_STATUS" = 200 || { echo "state endpoint status=$STATE_STATUS"; cat /tmp/state; exit 1; }
-            node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const j=JSON.parse(fs.readFileSync('/tmp/state','utf8'));
-          console.log('LIVE_DEVICE_STATE_API=PASS');
-          console.log('STATE_KEYS='+Object.keys(j).join(','));
-          const s=j.latest || j.state || null;
-          if(s) console.log('STATE_HAS_POSITION='+(s.lat!=null && s.lon!=null));
-          NODE
-          fi
+      - name: Run permanent authenticated live parent smoke
+        run: node scripts/verify-development-parent-live.mjs
