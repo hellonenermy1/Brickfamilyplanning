@@ -20,7 +20,8 @@ const SCHEMAS = [
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
   'schema/011_v1_phase6_location_control.sql',
-  'schema/012_phase6c_free_runtime.sql'
+  'schema/012_phase6c_free_runtime.sql',
+  'schema/013_phase6c_request_maintenance.sql'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -140,7 +141,8 @@ async function createBootstrapLogin(d1Id) {
   const plaintext = randomBytes(32).toString('base64url');
   const hash = createHash('sha256').update(plaintext).digest('hex');
   const expiresAt = now + LOGIN_TOKEN_MS;
-  await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens WHERE expires_at<?1 OR consumed_at IS NOT NULL', [now]);
+  // Exactly one active bootstrap code. Existing browser sessions are not affected by redeploys.
+  await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
   await d1Query(
     d1Id,
     'INSERT INTO dev_parent_login_tokens(token_hash,created_at,expires_at,consumed_at) VALUES(?1,?2,?3,NULL)',
@@ -160,13 +162,13 @@ await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '-p', 'tscon
 
 const template = await fs.readFile(TEMPLATE, 'utf8');
 if (!template.includes('"name": "brick-family-v1-dev"') || !template.includes('"main": "src/worker-v10.ts"')) throw new Error('Development template targets wrong worker.');
-if (template.includes('r2_buckets') || template.includes('"queues"') || template.includes('CF_ACCESS_')) {
-  throw new Error('Card-free development template must not bind R2, Queues, or Cloudflare Access.');
+if (template.includes('r2_buckets') || template.includes('"queues"') || template.includes('CF_ACCESS_') || template.includes('"triggers"')) {
+  throw new Error('Card-free development template must not bind R2, Queues, Cloudflare Access, or Cron triggers.');
 }
 if (!template.includes('"DEV_PARENT_AUTH_MODE": "d1-session-v1"')) throw new Error('D1 parent session auth is not enabled in the development template.');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, mapSource));
 
-console.log('[card-free dev 3/6] Applying Phase 1-6 + D1 object/session schema…');
+console.log('[card-free dev 3/6] Applying Phase 1-6 + D1 object/session/maintenance schema…');
 await applyMigrations(d1Id);
 
 console.log('[card-free dev 4/6] Creating one-time parent bootstrap login…');
@@ -192,6 +194,7 @@ const state = {
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
+  schedulerMode: 'request-driven-d1-lease-no-cron',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
   resources: { DB: D1_NAME, objectStore: 'dev_object_store + dev_object_chunks', map: 'remote PMTiles proxy' },
@@ -208,6 +211,7 @@ console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child beta API:   https://${workerHost}`);
 console.log(`Storage:          ${state.storageMode}`);
 console.log(`Parent auth:      ${state.parentAuthMode}`);
+console.log(`Scheduler:        ${state.schedulerMode}`);
 console.log(`Map:              ${state.mapMode}`);
 console.log('ONE-TIME PARENT LOGIN (sensitive; expires in 24h and is consumed on use):');
 console.log(loginUrl);
