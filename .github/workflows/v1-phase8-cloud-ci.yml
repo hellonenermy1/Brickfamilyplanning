@@ -84,6 +84,20 @@ jobs:
           npx esbuild src/crypto.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-crypto-p8.mjs
           node scripts/test-phase8-device-revocation.mjs /tmp/brick-crypto-p8.mjs
 
+      - name: Phase 8 cross-device identity and revocation isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-security-p8.mjs
+          node scripts/test-phase8-device-isolation.mjs /tmp/brick-device-security-p8.mjs
+
+      - name: Phase 8 lost-ACK retry and duplicate history chaos
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8.mjs
+          node scripts/test-phase8-history-chaos.mjs /tmp/brick-history-p8.mjs
+
       - name: Phase 8 development architecture and WebSocket security truth gate
         shell: bash
         run: |
