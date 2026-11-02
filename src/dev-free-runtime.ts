@@ -1,7 +1,9 @@
-import { processHistoryBatch } from "./history-store";
+import { encodeTrustedDelta, gzipJson, trustedPoint } from "./history-codec";
+import type { LivePacket } from "./protocol";
 
 const CHUNK_BYTES = 900_000;
 const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
+const HISTORY_SEGMENT_MS = 15 * 60 * 1000;
 const MAP_KEY = "basemap/singapore.pmtiles";
 const META_KEY = "basemap/singapore.meta.json";
 
@@ -15,16 +17,31 @@ type StoredMeta = {
 };
 
 type ChunkRow = { body: ArrayBuffer | Uint8Array };
-
 type RangeSpec = { offset: number; length: number } | null;
-
-type DirectQueueMessage = {
-  body: unknown;
-  retried: boolean;
-  acked: boolean;
-  ack(): void;
-  retry(): void;
+type HistoryKind = "raw" | "trusted";
+type HistoryRow = {
+  device_id: string;
+  safe_device_id: string;
+  epoch: number;
+  sequence: number;
+  wall_time_ms: number;
+  segment_start_ms: number;
+  trusted_packet_json: string;
+  raw_packet_json: string;
+  created_at: number;
 };
+type HistorySegmentRow = { segment_start_ms: number; epoch: number; max_created_at: number };
+type QueueLocationBody = { type?: string; deviceId?: string; packet?: LivePacket; rawPacket?: LivePacket };
+
+type PackedPacket = [
+  number, number, number, number, number,
+  number | null, number | null, number | null,
+  number | null, number | null, number,
+  number | null, number | null, number | null, number | null,
+  number | null, number | null, number, number,
+  number, number, number, number, number, number, number, number,
+  LivePacket["routeCorridor"] | null
+];
 
 function ownBuffer(bytes: Uint8Array) {
   const copy = new Uint8Array(bytes.byteLength);
@@ -148,6 +165,123 @@ function headObject(meta: StoredMeta) {
   };
 }
 
+function safeDeviceId(id: string) { return id.replace(/[^a-zA-Z0-9_-]/g, "_"); }
+function segmentStart(ms: number) { return Math.floor(ms / HISTORY_SEGMENT_MS) * HISTORY_SEGMENT_MS; }
+function hhmm(ms: number) {
+  const d = new Date(ms);
+  return `${String(d.getUTCHours()).padStart(2, "0")}-${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+function virtualHistoryKey(kind: HistoryKind, safeDevice: string, start: number, epoch: number) {
+  const day = new Date(start).toISOString().slice(0, 10);
+  return `history/${kind}/${safeDevice}/${day}/${hhmm(start)}-e${epoch}.json.gz`;
+}
+function parseVirtualHistoryKey(key: string) {
+  const m = key.match(/^history\/(raw|trusted)\/([^/]+)\/(\d{4}-\d{2}-\d{2})\/(\d{2})-(\d{2})-e(\d+)\.json\.gz$/);
+  if (!m) return null;
+  const start = Date.parse(`${m[3]}T${m[4]}:${m[5]}:00.000Z`);
+  const epoch = Number(m[6]);
+  if (!Number.isFinite(start) || !Number.isSafeInteger(epoch) || epoch < 0) return null;
+  return { kind: m[1] as HistoryKind, safeDevice: m[2], start, epoch };
+}
+function parseVirtualHistoryPrefix(prefix: string) {
+  const m = prefix.match(/^history\/(raw|trusted)\/([^/]+)\/(\d{4}-\d{2}-\d{2})\/$/);
+  if (!m) return null;
+  const start = Date.parse(`${m[3]}T00:00:00.000Z`);
+  if (!Number.isFinite(start)) return null;
+  return { kind: m[1] as HistoryKind, safeDevice: m[2], dayStart: start, dayEnd: start + 86_400_000 };
+}
+
+function packPacket(p: LivePacket): PackedPacket {
+  const flags = (p.charging ? 1 : 0) | (p.rawAccepted ? 2 : 0) | (p.rawMock ? 4 : 0) | (p.fallback ? 8 : 0);
+  return [
+    p.version, p.epoch, p.sequence, p.elapsedRealtimeMs, p.wallTimeMs,
+    p.rawLatE7, p.rawLonE7, p.rawAccuracyCm,
+    p.trustedLatE7, p.trustedLonE7, p.uncertaintyCm,
+    p.speedCms, p.speedAccuracyCms, p.bearingCdeg, p.bearingAccuracyCdeg,
+    p.altitudeCm, p.verticalAccuracyCm, p.batteryPct, flags,
+    p.activity, p.activityConfidence, p.quality, p.source,
+    p.gnssUsedInFix, p.gnssTotal, p.gnssAverageCn0Tenth, p.stepDelta,
+    p.routeCorridor ?? null
+  ];
+}
+
+function unpackPacket(text: string): LivePacket {
+  const p = JSON.parse(text) as PackedPacket;
+  if (!Array.isArray(p) || p.length !== 28) throw new Error("invalid compact history packet");
+  const flags = Number(p[18]);
+  return {
+    version: Number(p[0]), epoch: Number(p[1]), sequence: Number(p[2]), elapsedRealtimeMs: Number(p[3]), wallTimeMs: Number(p[4]),
+    rawLatE7: p[5], rawLonE7: p[6], rawAccuracyCm: p[7],
+    trustedLatE7: p[8], trustedLonE7: p[9], uncertaintyCm: Number(p[10]),
+    speedCms: p[11], speedAccuracyCms: p[12], bearingCdeg: p[13], bearingAccuracyCdeg: p[14],
+    altitudeCm: p[15], verticalAccuracyCm: p[16], batteryPct: Number(p[17]),
+    charging: (flags & 1) !== 0, rawAccepted: (flags & 2) !== 0, rawMock: (flags & 4) !== 0, fallback: (flags & 8) !== 0,
+    activity: Number(p[19]), activityConfidence: Number(p[20]), quality: Number(p[21]), source: Number(p[22]),
+    gnssUsedInFix: Number(p[23]), gnssTotal: Number(p[24]), gnssAverageCn0Tenth: Number(p[25]), stepDelta: Number(p[26]),
+    routeCorridor: p[27] ?? undefined
+  };
+}
+
+async function virtualHistoryObject(db: D1Database, key: string) {
+  const parsed = parseVirtualHistoryKey(key);
+  if (!parsed) return null;
+  const rows = await db.prepare(
+    "SELECT device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at " +
+    "FROM dev_location_history WHERE safe_device_id=?1 AND segment_start_ms=?2 AND epoch=?3 ORDER BY sequence"
+  ).bind(parsed.safeDevice, parsed.start, parsed.epoch).all<HistoryRow>();
+  if (!rows.results.length) return null;
+  const trustedPackets = rows.results.map(row => unpackPacket(row.trusted_packet_json));
+  const rawPackets = rows.results.map(row => unpackPacket(row.raw_packet_json));
+  const deviceId = rows.results[0].device_id;
+  const storedAt = Math.max(...rows.results.map(row => row.created_at));
+  const body = parsed.kind === "raw"
+    ? await gzipJson({ v: 4, deviceId, segmentStartMs: parsed.start, storedAt, packets: rawPackets, trustedPackets })
+    : await gzipJson({ v: 4, deviceId, segmentStartMs: parsed.start, storedAt, delta: encodeTrustedDelta(trustedPackets.map(trustedPoint)) });
+  const bytes = new Uint8Array(body);
+  const etag = await sha256Hex(bytes);
+  const meta: StoredMeta = {
+    key,
+    size: bytes.byteLength,
+    etag,
+    uploaded_at: storedAt,
+    http_metadata_json: JSON.stringify({ contentType: "application/json", contentEncoding: "gzip" }),
+    custom_metadata_json: JSON.stringify({
+      deviceId,
+      kind: parsed.kind,
+      codec: parsed.kind === "raw" ? "json-gzip-v4-virtual" : "delta-gzip-v4-virtual",
+      segmentMinutes: "15",
+      epoch: String(parsed.epoch),
+      storage: "d1-append-virtual"
+    })
+  };
+  return bodyObject(bytes, meta);
+}
+
+async function virtualHistoryList(db: D1Database, prefix: string, offset: number, limit: number) {
+  const parsed = parseVirtualHistoryPrefix(prefix);
+  if (!parsed) return null;
+  const rows = await db.prepare(
+    "SELECT segment_start_ms,epoch,MAX(created_at) AS max_created_at FROM dev_location_history " +
+    "WHERE safe_device_id=?1 AND segment_start_ms>=?2 AND segment_start_ms<?3 " +
+    "GROUP BY segment_start_ms,epoch ORDER BY segment_start_ms,epoch LIMIT ?4 OFFSET ?5"
+  ).bind(parsed.safeDevice, parsed.dayStart, parsed.dayEnd, limit + 1, offset).all<HistorySegmentRow>();
+  const truncated = rows.results.length > limit;
+  const page = rows.results.slice(0, limit);
+  return {
+    objects: page.map(row => headObject({
+      key: virtualHistoryKey(parsed.kind, parsed.safeDevice, row.segment_start_ms, row.epoch),
+      size: 0,
+      etag: `virtual-${row.epoch}-${row.segment_start_ms}-${row.max_created_at}`,
+      uploaded_at: row.max_created_at,
+      http_metadata_json: JSON.stringify({ contentType: "application/json", contentEncoding: "gzip" }),
+      custom_metadata_json: JSON.stringify({ kind: parsed.kind, storage: "d1-append-virtual" })
+    })),
+    truncated,
+    cursor: truncated ? String(offset + limit) : undefined,
+    delimitedPrefixes: [] as string[]
+  };
+}
+
 class D1ObjectBucket {
   constructor(private readonly db: D1Database) {}
 
@@ -181,11 +315,15 @@ class D1ObjectBucket {
   }
 
   async head(key: string) {
+    const virtual = await virtualHistoryObject(this.db, key);
+    if (virtual) return virtual;
     const meta = await this.meta(key);
     return meta ? headObject(meta) : null;
   }
 
   async get(key: string, options: { range?: unknown } = {}) {
+    const virtual = await virtualHistoryObject(this.db, key);
+    if (virtual) return virtual;
     const meta = await this.meta(key);
     if (!meta) return null;
     const rows = await this.db.prepare("SELECT body FROM dev_object_chunks WHERE key=?1 ORDER BY chunk_index").bind(key).all<ChunkRow>();
@@ -217,8 +355,10 @@ class D1ObjectBucket {
     const prefix = options.prefix ?? "";
     const offset = Math.max(0, Number(options.cursor || "0") || 0);
     const limit = Math.max(1, Math.min(1000, Number(options.limit ?? 1000)));
+    const virtual = await virtualHistoryList(this.db, prefix, offset, limit);
+    if (virtual) return virtual;
     const rows = await this.db.prepare(
-      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key LIKE ?1 ORDER BY key LIMIT ?2 OFFSET ?3"
+      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key LIKE ?1 ESCAPE '\\' ORDER BY key LIMIT ?2 OFFSET ?3"
     ).bind(`${prefix.replace(/[\\%_]/g, "\\$&")}%`, limit + 1, offset).all<StoredMeta>();
     const truncated = rows.results.length > limit;
     const page = rows.results.slice(0, limit);
@@ -316,18 +456,15 @@ class RemoteMapBucket {
   }
 }
 
-function directMessage(body: unknown): DirectQueueMessage {
-  return {
-    body,
-    retried: false,
-    acked: false,
-    ack() { this.acked = true; },
-    retry() { this.retried = true; }
-  };
+function validLocationBody(body: unknown): body is Required<Pick<QueueLocationBody, "deviceId" | "packet" | "rawPacket">> & { type: "location" } {
+  if (!body || typeof body !== "object") return false;
+  const value = body as QueueLocationBody;
+  return value.type === "location" && typeof value.deviceId === "string" && !!value.packet && !!value.rawPacket &&
+    Number.isSafeInteger(value.packet.epoch) && Number.isSafeInteger(value.packet.sequence) && Number.isSafeInteger(value.packet.wallTimeMs);
 }
 
 class DirectEventQueue {
-  constructor(private readonly history: R2Bucket) {}
+  constructor(private readonly db: D1Database) {}
 
   async send(body: unknown) {
     const type = body && typeof body === "object" ? (body as { type?: unknown }).type : undefined;
@@ -340,10 +477,31 @@ class DirectEventQueue {
   }
 
   private async persist(bodies: unknown[]) {
-    const messages = bodies.map(directMessage);
-    const result = await processHistoryBatch({ messages: messages as unknown as readonly Message<unknown>[] }, { HISTORY: this.history });
-    if (result.retriedMessages > 0 || messages.some(message => message.retried)) {
-      throw new Error("development direct history persistence failed");
+    const locations = bodies.filter(validLocationBody);
+    if (!locations.length) return;
+    const now = Date.now();
+    for (let start = 0; start < locations.length; start += 10) {
+      const group = locations.slice(start, start + 10);
+      const bindings: unknown[] = [];
+      const values = group.map((body, index) => {
+        const base = index * 9;
+        const packet = body.packet;
+        bindings.push(
+          body.deviceId,
+          safeDeviceId(body.deviceId),
+          packet.epoch,
+          packet.sequence,
+          packet.wallTimeMs,
+          segmentStart(packet.wallTimeMs),
+          JSON.stringify(packPacket(packet)),
+          JSON.stringify(packPacket(body.rawPacket)),
+          now
+        );
+        return `(?${base + 1},?${base + 2},?${base + 3},?${base + 4},?${base + 5},?${base + 6},?${base + 7},?${base + 8},?${base + 9})`;
+      }).join(",");
+      await this.db.prepare(
+        `INSERT OR IGNORE INTO dev_location_history(device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at) VALUES ${values}`
+      ).bind(...bindings).run();
     }
   }
 }
@@ -371,7 +529,7 @@ export function developmentRuntimeEnv<T extends Record<string, unknown>>(env: T)
     ...env,
     HISTORY: history,
     MAPS: maps,
-    EVENTS: new DirectEventQueue(history) as unknown as Queue
+    EVENTS: new DirectEventQueue(db) as unknown as Queue
   };
 }
 
@@ -391,4 +549,12 @@ export async function cleanupDevelopmentObjectStore(db: D1Database, now = Date.n
     const bucket = new D1ObjectBucket(db);
     await bucket.delete(rows.results.map(row => row.key));
   }
+
+  // History rows are already compact (one append per accepted fix). Cap cleanup work so a busy day
+  // cannot itself consume the Free-plan write budget. Normal adaptive tracking remains bounded; an
+  // extreme 24/7 high-frequency test degrades by retaining extra old rows rather than dropping new data.
+  const historyCutoff = now - 35 * 86_400_000;
+  await db.prepare(
+    "DELETE FROM dev_location_history WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE wall_time_ms<?1 ORDER BY wall_time_ms LIMIT 5000)"
+  ).bind(historyCutoff).run();
 }
