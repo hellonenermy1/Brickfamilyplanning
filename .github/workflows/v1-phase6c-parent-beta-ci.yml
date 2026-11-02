@@ -61,8 +61,7 @@ jobs:
             'Run self-check',
             'Copy beta report',
             'id="debugLog"',
-            'id="portalLive"',
-            'phase6c-beta'
+            'id="portalLive"'
           ];
           for (const value of required) if (!html.includes(value)) throw new Error(`missing parent beta UI contract: ${value}`);
           if (!html.includes('pairingQrDataUrl')) throw new Error('Phase 6 pairing QR support was lost');
@@ -91,6 +90,8 @@ jobs:
           grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
           grep -F 'from "./worker-v9"' src/worker-v10.ts >/dev/null
           grep -F 'from "./parent-v6c"' src/worker-v10.ts >/dev/null
+          grep -F 'headers.set("X-Brick-Portal", "phase6c-beta")' src/worker-v10.ts >/dev/null
+          grep -F 'headers.set("X-Brick-Environment", "development")' src/worker-v10.ts >/dev/null
 
           # Production remains frozen on its original identities/entrypoint.
           grep -F '"name": "brick-family-v1"' wrangler.template.jsonc >/dev/null
