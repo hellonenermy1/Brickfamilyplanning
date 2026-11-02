@@ -41,8 +41,8 @@ export function parentV7Html() {
 
   html = replaceOnce(
     html,
-    '<div id="healthChecks" class="card"></div><div class="sectionTitle"><h3>30-day reliability</h3></div>',
-    `<div id="healthChecks" class="card"></div><div class="sectionTitle" style="margin-top:16px"><h3>Position Health</h3></div><div id="p7PositionHealthSummary" class="notice">Waiting for position health.</div><div id="p7PositionHealth" class="card"></div><div class="sectionTitle" style="margin-top:16px"><h3>Evidence Providers</h3></div><div id="p7Providers"><div class="small">Waiting for provider status.</div></div><div class="sectionTitle"><h3>30-day reliability</h3></div>`,
+    '<div id="healthChecks" class="card"></div><div class="sectionTitle" style="margin-top:16px"><h3>App release</h3></div>',
+    `<div id="healthChecks" class="card"></div><div class="sectionTitle" style="margin-top:16px"><h3>Position Health</h3></div><div id="p7PositionHealthSummary" class="notice">Waiting for position health.</div><div id="p7PositionHealth" class="card"></div><div class="sectionTitle" style="margin-top:16px"><h3>Evidence Providers</h3></div><div id="p7Providers"><div class="small">Waiting for provider status.</div></div><div class="sectionTitle" style="margin-top:16px"><h3>App release</h3></div>`,
     'Phase 7 health sections'
   );
 
