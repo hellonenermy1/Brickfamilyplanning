@@ -77,6 +77,13 @@ jobs:
           npx esbuild src/dev-parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-dev-parent-auth-p8.mjs
           node scripts/test-phase8-parent-origin.mjs /tmp/brick-dev-parent-auth-p8.mjs
 
+      - name: Phase 8 revoked-device upload and re-enrollment tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/crypto.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-crypto-p8.mjs
+          node scripts/test-phase8-device-revocation.mjs /tmp/brick-crypto-p8.mjs
+
       - name: Phase 8 development architecture and WebSocket security truth gate
         shell: bash
         run: |
@@ -96,8 +103,6 @@ jobs:
           dev = Path('src/worker-v10.ts').read_text()
           browser = Path('scripts/verify-phase7-development-browser.mjs').read_text()
 
-          # Retained parent WebSocket: parent authentication must happen before the /ws origin gate,
-          # and the origin gate itself must require GET + Upgrade:websocket + exact request origin.
           parent_block = retained.index('if (u.pathname.startsWith("/parent/"))')
           auth = retained.index('const denied = await requireParent(req, env); if (denied) return denied;', parent_block)
           ws_guard = retained.index('if (u.pathname.endsWith("/ws") && !sameOriginWebSocket(req))', parent_block)
@@ -110,8 +115,6 @@ jobs:
               if required not in ws_fn:
                   raise SystemExit(f'missing retained WebSocket origin contract: {required}')
 
-          # Development wrapper: every /parent/... route, including /ws, must validate the D1 parent
-          # session before the retained worker can see the request.
           is_parent_start = dev.index('function isParentPath(pathname: string)')
           is_parent_end = dev.index('\n}', is_parent_start) + 2
           is_parent = dev[is_parent_start:is_parent_end]
@@ -124,8 +127,6 @@ jobs:
           if not block < auth_dev < deny_dev < forward_dev:
               raise SystemExit('development parent-session auth must precede base forwarding')
 
-          # The live browser qualification must continue exercising real portal WebSocket recovery
-          # across a forced offline/online transition.
           for required in [
               "label: 'offline portal state'",
               "label: 'automatic portal recovery'",

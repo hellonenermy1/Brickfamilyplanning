@@ -6,6 +6,12 @@ function b64ToBytes(s: string): Uint8Array {
   return out;
 }
 
+function bytesToB64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
@@ -47,6 +53,28 @@ export async function sha256Hex(input: string): Promise<string> {
   return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Return one canonical padded Base64 encoding for a valid P-256 SPKI. Pairing stores only this
+ * representation so text uniqueness has cryptographic-identity meaning even if a client supplies
+ * an otherwise-valid unpadded Base64 spelling of the same DER key.
+ */
+export async function canonicalDevicePublicKey(publicKeySpkiB64: string): Promise<string | null> {
+  try {
+    const spki = b64ToBytes(publicKeySpkiB64);
+    if (spki.byteLength < 80 || spki.byteLength > 256) return null;
+    await crypto.subtle.importKey(
+      "spki",
+      toArrayBuffer(spki),
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"]
+    );
+    return bytesToB64(spki);
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyDeviceSignature(publicKeySpkiB64: string, payload: ArrayBuffer, sigB64: string): Promise<boolean> {
   try {
     const spki = b64ToBytes(publicKeySpkiB64);
@@ -71,20 +99,7 @@ export async function verifyDeviceSignature(publicKeySpkiB64: string, payload: A
 }
 
 export async function validDevicePublicKey(publicKeySpkiB64: string): Promise<boolean> {
-  try {
-    const spki = b64ToBytes(publicKeySpkiB64);
-    if (spki.byteLength < 80 || spki.byteLength > 256) return false;
-    await crypto.subtle.importKey(
-      "spki",
-      toArrayBuffer(spki),
-      { name: "ECDSA", namedCurve: "P-256" },
-      false,
-      ["verify"]
-    );
-    return true;
-  } catch {
-    return false;
-  }
+  return (await canonicalDevicePublicKey(publicKeySpkiB64)) !== null;
 }
 
 export function randomToken(bytes = 24): string {

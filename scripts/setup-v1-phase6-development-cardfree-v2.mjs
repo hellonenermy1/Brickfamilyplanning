@@ -31,15 +31,21 @@ if (config.includes('r2_buckets') || config.includes('"queues"') || config.inclu
   throw new Error('Refusing Phase 6C v2 migration: generated development config is not fully card-free.');
 }
 
-// Schema 014 is intentionally idempotent. Apply it after the base provisioner so existing beta
-// databases upgrade in place without resetting paired phones, parent sessions, or prior evidence.
-await run(npx, [
-  'wrangler', 'd1', 'execute', 'brick-family-v1-dev', '--remote',
-  '--file', 'schema/014_phase6c_virtual_history.sql', '--yes',
-  '--config', 'wrangler.development.jsonc'
-]);
+// Post-base migrations are idempotent and upgrade the existing beta DB in place without resetting
+// paired phones, parent sessions, or prior evidence. Phase 8 identity uniqueness deliberately fails
+// if historical duplicate device keys exist; silently choosing one would be unsafe.
+for (const migration of [
+  'schema/014_phase6c_virtual_history.sql',
+  'schema/015_phase8_device_identity.sql'
+]) {
+  await run(npx, [
+    'wrangler', 'd1', 'execute', 'brick-family-v1-dev', '--remote',
+    '--file', migration, '--yes',
+    '--config', 'wrangler.development.jsonc'
+  ]);
+}
 
-console.log('Phase 6C virtual-history migration applied: append-once D1 rows + synthesized history segments.');
+console.log('Phase 6C virtual-history + Phase 8 device-identity migrations applied.');
 
 // Deployment is not considered healthy merely because the login page responds. Create an
 // ephemeral hashed parent session and exercise the same authenticated APIs the browser uses.

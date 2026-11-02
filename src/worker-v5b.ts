@@ -1,5 +1,6 @@
 import core, { BrickDevice } from "./index";
 import { readBoundedBody } from "./bounded-body";
+import { canonicalDevicePublicKey } from "./crypto";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -99,6 +100,48 @@ async function pairingRateDenied(req: Request, env: RuntimeEnv): Promise<Respons
   return result.success ? null : Response.json({ error: "rate limited" }, { status: 429, headers: { "Cache-Control": "no-store" } });
 }
 
+/**
+ * Device identity is the P-256 SPKI, not a replaceable server UUID. Canonicalize it before the core
+ * pairing handler and reject any prior row regardless of revoked_at. Schema 015 supplies the race-
+ * safe UNIQUE index; this pre-check gives a deterministic 409 instead of consuming a fresh token.
+ */
+async function canonicalPairingRequest(
+  req: Request<unknown, IncomingRequestCfProperties>,
+  env: RuntimeEnv
+): Promise<Request<unknown, IncomingRequestCfProperties> | Response> {
+  const bounded = await readBoundedBody(req.clone(), 4096);
+  if (!bounded.ok || !bounded.body.byteLength) {
+    return Response.json({ error: "invalid pairing body" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  let body: Record<string, unknown>;
+  try { body = JSON.parse(new TextDecoder().decode(bounded.body)) as Record<string, unknown>; }
+  catch { return Response.json({ error: "invalid pairing JSON" }, { status: 400, headers: { "Cache-Control": "no-store" } }); }
+  const supplied = body.publicKeySpkiB64;
+  if (typeof supplied !== "string") {
+    return Response.json({ error: "invalid P-256 device public key" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  const canonical = await canonicalDevicePublicKey(supplied);
+  if (!canonical) {
+    return Response.json({ error: "invalid P-256 device public key" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  const existing = await env.DB.prepare(
+    "SELECT id,revoked_at FROM devices WHERE public_key_spki_b64=?1 LIMIT 1"
+  ).bind(canonical).first<{ id: string; revoked_at: number | null }>();
+  if (existing) {
+    return Response.json(
+      { error: "device identity already registered" },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const headers = new Headers(req.headers);
+  headers.set("Content-Type", "application/json");
+  headers.delete("Content-Length");
+  return new Request(req, {
+    headers,
+    body: JSON.stringify({ ...body, publicKeySpkiB64: canonical })
+  }) as Request<unknown, IncomingRequestCfProperties>;
+}
+
 async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
   const bounded = await readBoundedBody(req.clone(), 8192);
   if (!bounded.ok || !bounded.body.byteLength) return null;
@@ -174,6 +217,10 @@ export default {
       if (rateDenied) return rateDenied;
       const denied = await validatePairingPublicKey(req);
       if (denied) return denied;
+      const canonical = await canonicalPairingRequest(req, env);
+      if (canonical instanceof Response) return canonical;
+      if (!coreHandler.fetch) return new Response("Worker fetch handler unavailable", { status: 500 });
+      return coreHandler.fetch(canonical, coreEnv(env), ctx);
     }
 
     let m = u.pathname.match(/^\/api\/device\/([^/]+)\/location\/batch$/);
