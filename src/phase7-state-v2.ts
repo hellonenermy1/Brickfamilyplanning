@@ -50,7 +50,10 @@ export async function augmentPhase7ParentStateResponseV2(response: Response, now
       now
     );
     body.presentation = rebuilt;
-    body.healthPresentation = buildPhase7HealthPresentation(conservativeSnapshot, rebuilt);
+    body.healthPresentation = buildPhase7HealthPresentation(
+      conservativeSnapshot as Parameters<typeof buildPhase7HealthPresentation>[0],
+      rebuilt
+    );
     presentation = body.presentation as unknown as Record<string, unknown>;
   }
 
@@ -70,7 +73,10 @@ export async function augmentPhase7ParentStateResponseV2(response: Response, now
     presentation.confidence = "very_low";
     presentation.explanation = "Brick does not currently have a trustworthy position to show.";
     body.presentation = presentation;
-    body.healthPresentation = buildPhase7HealthPresentation(body, presentation);
+    body.healthPresentation = buildPhase7HealthPresentation(
+      body as Parameters<typeof buildPhase7HealthPresentation>[0],
+      presentation as Parameters<typeof buildPhase7HealthPresentation>[1]
+    );
   }
 
   const health = record(body.health);
