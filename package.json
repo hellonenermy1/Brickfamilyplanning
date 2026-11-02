@@ -4,12 +4,11 @@
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "setup:development": "node scripts/setup-v1-phase6-development.mjs",
+    "setup:development": "node scripts/setup-v1-phase6-development-free.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build:parent-assets": "node scripts/build-parent-assets.mjs",
     "map:install": "node scripts/install-private-map.mjs",
-    "map:install:development": "node scripts/install-private-map-development.mjs",
     "codespaces:check": "node scripts/codespaces-check.mjs",
     "typecheck": "tsc --noEmit"
   },
