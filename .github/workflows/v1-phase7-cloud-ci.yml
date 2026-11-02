@@ -131,11 +131,21 @@ jobs:
           grep -F 'X-Brick-Position-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
           grep -F 'X-Brick-Health-Presentation", "phase7-v1' src/phase7-parent-presentation.ts >/dev/null
           grep -F 'reportsUnsupported' src/phase7-state-v2.ts >/dev/null
+
+          # Lock the actual Phase 6/7 location-ingest safety path, not only the legacy single-packet evaluator.
+          grep -F 'evaluateSafetyBatchV6' src/location-ingest-v6.ts >/dev/null
+          grep -F 'safetyPositionEligibleV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'packet.quality === 1 || packet.quality === 2 || packet.quality === 3' src/safety-batch-v6.ts >/dev/null
+          grep -F 'tripOverdueEligibleV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'coordinateDwellStateV6' src/safety-batch-v6.ts >/dev/null
+          grep -F 'positionQualified: positionEligible' src/safety-batch-v6.ts >/dev/null
+          ! grep -F 'const usable = packets.filter' src/safety-batch-v6.ts >/dev/null
+
+          # Legacy path stays aligned for retained Phase 2-6 compatibility.
           grep -F 'safetyPositionEligible' src/phase4.ts >/dev/null
-          grep -F 'packet.quality===1||packet.quality===2||packet.quality===3' src/phase4.ts >/dev/null
           grep -F 'tripOverdueEligible' src/phase4.ts >/dev/null
           grep -F 'coordinateDwellState' src/phase4.ts >/dev/null
-          grep -F 'candidate_state=NULL,candidate_since=NULL,candidate_count=0,updated_at=?1,last_epoch=?3,last_sequence=?4' src/phase4.ts >/dev/null
+
           grep -F 'refinedHistory' src/worker-v9.ts >/dev/null
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
