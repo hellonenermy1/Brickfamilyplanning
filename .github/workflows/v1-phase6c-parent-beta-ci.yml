@@ -84,19 +84,25 @@ jobs:
           grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
           grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
           grep -F '"DEV_PARENT_AUTH_MODE": "d1-session-v1"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"name": "PARENT_LOGIN_RATE"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"CURRENT_APP_VERSION": "0.6.0-phase6c-beta4-cardfree"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
           ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
           ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
           grep -F 'dev_object_store' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_object_chunks' schema/012_phase6c_free_runtime.sql >/dev/null
-          grep -F 'dev_parent_login_tokens' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_parent_sessions' schema/012_phase6c_free_runtime.sql >/dev/null
           grep -F 'dev_maintenance_state' schema/013_phase6c_request_maintenance.sql >/dev/null
           grep -F 'developmentRuntimeEnv' src/worker-v10.ts >/dev/null
           grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
           grep -F 'stripDevParentInternalHeader' src/worker-v10.ts >/dev/null
           grep -F 'authorizeDevParentRequest' src/worker-v10.ts >/dev/null
+          grep -F 'PARENT_LOGIN_RATE' src/worker-v10.ts >/dev/null
+          grep -F 'DEV_PARENT_PIN_HASH' src/worker-v10.ts >/dev/null
+          grep -F 'reusable 6-digit beta access code' src/dev-parent-auth.ts >/dev/null
+          ! grep -F 'consumed after the first successful login' src/dev-parent-auth.ts >/dev/null
           grep -F 'claimDevMaintenance' src/worker-v10.ts >/dev/null
           grep -F 'class D1ObjectBucket' src/dev-free-runtime.ts >/dev/null
           grep -F 'class DirectEventQueue' src/dev-free-runtime.ts >/dev/null
