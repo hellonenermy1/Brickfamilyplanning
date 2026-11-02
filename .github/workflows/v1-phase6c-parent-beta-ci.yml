@@ -70,7 +70,6 @@ jobs:
           if (!html.includes('Revoke selected phone')) throw new Error('Phase 6 revocation UI support was lost');
           if (/https:\/\/unpkg\.com/i.test(html)) throw new Error('beta portal reintroduced live third-party CDN assets');
           if (/positionLat|positionLon|exact coordinates/i.test(html)) {
-            // Wording in the privacy note may mention exact coordinates; only reject diagnostic report keys.
             if (/positionLat=|positionLon=|latitude=|longitude=/i.test(html)) throw new Error('diagnostic report appears to expose exact coordinates');
           }
           console.log(`Rendered Phase 6C parent beta: ${html.length} bytes`);
@@ -102,12 +101,23 @@ jobs:
           ! grep -F 'brick-family-v1-dev' wrangler.template.jsonc >/dev/null
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
 
-      - name: Verify development worker bundles
+      - name: Verify development worker with Wrangler dry-run bundler
         shell: bash
         run: |
           set -euo pipefail
-          npx esbuild src/worker-v10.ts --bundle --platform=browser --format=esm --outfile=/tmp/brick-worker-v10.mjs
-          test -s /tmp/brick-worker-v10.mjs
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const source = fs.readFileSync('wrangler.development.template.jsonc', 'utf8');
+          const config = source
+            .replace('__D1_DATABASE_ID__', '00000000-0000-0000-0000-000000000000')
+            .replace('__CF_ACCESS_TEAM_DOMAIN__', 'https://brick-development.cloudflareaccess.com')
+            .replace('__CF_ACCESS_AUD__', 'development-dry-run-audience');
+          fs.writeFileSync('wrangler.development.dryrun.jsonc', config);
+          NODE
+          rm -rf /tmp/brick-worker-v10-dry
+          npx wrangler deploy --dry-run --config wrangler.development.dryrun.jsonc --outdir /tmp/brick-worker-v10-dry
+          test -d /tmp/brick-worker-v10-dry
+          rm -f wrangler.development.dryrun.jsonc
 
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
