@@ -108,6 +108,9 @@ jobs:
       - name: Phase 8 SOS direct durability and backlog-bypass contract
         run: node scripts/test-phase8-sos-priority-contract.mjs
 
+      - name: Phase 8 location-control authorization and replay contract
+        run: node scripts/test-phase8-location-control-contract.mjs
+
       - name: Phase 8 development architecture and WebSocket security truth gate
         shell: bash
         run: |
