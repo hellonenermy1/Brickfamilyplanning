@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.UserManager
 import androidx.work.ExistingWorkPolicy
@@ -12,6 +13,7 @@ import androidx.work.WorkManager
 import com.brick.safety.BuildConfig
 import com.brick.safety.location.BrickLocationService
 import com.brick.safety.managed.BrickDeviceAdminReceiver
+import com.brick.safety.reliability.BootReceiver
 import com.brick.safety.reliability.RecoveryScheduler
 import java.util.concurrent.TimeUnit
 
@@ -135,7 +137,8 @@ object BetaSafety {
             .putLong(KEY_STAGE_UPDATED_AT, now)
             .commit()
 
-        // Never release Device Owner if Android failed to durably record the fail-closed state.
+        // Never release Device Owner or disable runtime components if Android failed to durably
+        // record the fail-closed state first.
         if (!committed) return false
         shutdownRuntime(app)
         return true
@@ -237,7 +240,29 @@ object BetaSafety {
             .commit()
     }
 
+    /**
+     * Package-manager kill switch for the two Android entry points that can directly restart Core.
+     * This closes the race where a start/broadcast was already queued when Stage 1 was committed.
+     * Diagnostics stays enabled so Stage 2/3 can still be completed locally.
+     */
+    private fun disableRuntimeComponents(context: Context) {
+        val pm = context.packageManager
+        listOf(
+            ComponentName(context, BrickLocationService::class.java),
+            ComponentName(context, BootReceiver::class.java)
+        ).forEach { component ->
+            runCatching {
+                pm.setComponentEnabledSetting(
+                    component,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP
+                )
+            }
+        }
+    }
+
     private fun shutdownRuntime(context: Context) {
+        disableRuntimeComponents(context)
         runCatching { context.stopService(Intent(context, BrickLocationService::class.java)) }
         runCatching { RecoveryScheduler.cancelAll(context) }
         runCatching { WorkManager.getInstance(context).cancelUniqueWork(EXPIRY_WORK) }

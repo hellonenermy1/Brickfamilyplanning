@@ -1,8 +1,12 @@
 package com.brick.safety.beta
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import com.brick.safety.BuildConfig
+import com.brick.safety.location.BrickLocationService
+import com.brick.safety.reliability.BootReceiver
 import com.brick.safety.testing.BrickInstrumentationTestCase
 
 class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
@@ -10,19 +14,33 @@ class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
 
     override fun setUp() {
         super.setUp()
-        clearRetirementTestState()
+        resetRetirementTestState()
     }
 
     override fun tearDown() {
-        // Shared regression emulators must not inherit this test's deliberately retired state.
-        // The dedicated Device Owner lifecycle job verifies ownership removal before uninstalling.
-        clearRetirementTestState()
+        // Shared regression emulators must not inherit this test's deliberately retired state or the
+        // package-manager kill switch. The dedicated Device Owner lifecycle job separately verifies
+        // real ownership removal before uninstalling the package.
+        resetRetirementTestState()
         super.tearDown()
     }
 
-    private fun clearRetirementTestState() {
+    private fun resetRetirementTestState() {
         context.getSharedPreferences("brick_beta_safety", Context.MODE_PRIVATE)
             .edit().clear().commit()
+        val pm = context.packageManager
+        listOf(
+            ComponentName(context, BrickLocationService::class.java),
+            ComponentName(context, BootReceiver::class.java)
+        ).forEach { component ->
+            runCatching {
+                pm.setComponentEnabledSetting(
+                    component,
+                    PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
+                    PackageManager.DONT_KILL_APP
+                )
+            }
+        }
     }
 
     fun testPhase8BetaIsExplicitlyTestOnlyAndTimeBounded() {
@@ -36,11 +54,21 @@ class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(BuildConfig.BRICK_BETA_EXPIRY_EPOCH_MS - now <= 45L * 24L * 60L * 60L * 1000L)
     }
 
-    fun testRetirementIsMonotonicAndFailClosed() {
+    fun testRetirementIsMonotonicFailClosedAndDisablesRestartComponents() {
         assertEquals(BetaSafety.RetirementStage.ACTIVE, BetaSafety.retirementStage(context))
         assertTrue(BetaSafety.beginRetirement(context, "instrumentation"))
         assertEquals(BetaSafety.RetirementStage.DISARMED, BetaSafety.retirementStage(context))
         assertFalse(BetaSafety.isOperational(context))
+
+        val pm = context.packageManager
+        assertEquals(
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            pm.getComponentEnabledSetting(ComponentName(context, BrickLocationService::class.java))
+        )
+        assertEquals(
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            pm.getComponentEnabledSetting(ComponentName(context, BootReceiver::class.java))
+        )
 
         val release = BetaSafety.advanceManagementRelease(context)
         assertTrue(release.released)

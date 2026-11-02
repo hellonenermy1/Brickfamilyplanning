@@ -65,7 +65,7 @@ jobs:
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
           # A fresh CI AVD must not contain user accounts before Device Owner provisioning.
-          ! "$ADB" shell dumpsys account 2>/dev/null | grep -E 'Account \{|Account \{' >/dev/null
+          ! "$ADB" shell dumpsys account 2>/dev/null | grep -E 'Account \{' >/dev/null
 
       - name: Install testOnly Brick and provision real Device Owner
         shell: bash
@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           "$ADB" shell am instrument -w -r \
-            -e class 'com.brick.safety.beta.Phase8BetaSafetyInstrumentedTest#testRetirementIsMonotonicAndFailClosed' \
+            -e class 'com.brick.safety.beta.Phase8BetaSafetyInstrumentedTest#testRetirementIsMonotonicFailClosedAndDisablesRestartComponents' \
             com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-do-instrumentation.txt
           grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-do-instrumentation.txt >/dev/null
 
