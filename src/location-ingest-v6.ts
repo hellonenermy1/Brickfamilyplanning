@@ -67,7 +67,12 @@ async function queueLocations(env: LocationIngestEnv, deviceId: string, location
   await env.EVENTS.sendBatch(messages.map(body => ({ body })));
 }
 
-async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
+/**
+ * Durable V6 ordering seam. Exported so Phase 8 can exercise the exact production DB/DO transition
+ * rather than a copy of its logic. Old/offline packets are still inserted for history, but only an
+ * epoch/sequence strictly newer than the device watermark may advance the live Durable Object.
+ */
+export async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
   const highest = packets[packets.length - 1];
   const now = Date.now();
   // One multi-row INSERT replaces N individual D1 subqueries. Four bound parameters per packet
