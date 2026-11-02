@@ -161,9 +161,9 @@ class DiagnosticsActivity : AppCompatActivity() {
             setPadding(0, dp(6), 0, dp(8))
         })
 
-        root.addView(button("EMERGENCY RELEASE DEVICE OWNER") { confirmEmergencyReleaseOwner() }, params(dp(4)))
+        root.addView(button("EMERGENCY DISARM + RELEASE DEVICE OWNER") { confirmEmergencyReleaseOwner() }, params(dp(4)))
         root.addView(TextView(this).apply {
-            text = "Emergency release is a separate local escape. It does not factory-reset or wipe the phone."
+            text = "Emergency escape is fail-closed: Brick is durably disarmed first, then Device Owner/admin is released. It never factory-resets or wipes the phone."
             textSize = 12f
             setPadding(0, dp(4), 0, dp(4))
         })
@@ -286,15 +286,22 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     private fun confirmEmergencyReleaseOwner() {
         AlertDialog.Builder(this)
-            .setTitle("Emergency release Device Owner?")
-            .setMessage("Local escape only. This releases Brick's Device Owner/admin role without wiping the phone. Prefer the three-stage retirement flow when possible.")
+            .setTitle("Emergency disarm + release Device Owner?")
+            .setMessage("This is the local last-resort escape. Brick first durably enters DISARMED so tracking cannot come back, then it releases Device Owner/admin. It does NOT wipe or factory-reset the phone.")
             .setNegativeButton("Cancel", null)
-            .setPositiveButton("RELEASE") { _, _ ->
+            .setPositiveButton("DISARM + RELEASE") { _, _ ->
                 worker.execute {
-                    val result = BetaSafety.releaseDeviceOwner(applicationContext)
+                    val disarmed = BetaSafety.beginRetirement(applicationContext, "manual_phase8_emergency_release")
+                    val result = if (disarmed) BetaSafety.advanceManagementRelease(applicationContext) else null
                     runOnUiThread {
                         renderBetaSafety()
-                        toast(if (result.released) "Device Owner/admin released" else "Release incomplete: ${result.error ?: "still active"}")
+                        toast(
+                            when {
+                                !disarmed -> "Emergency disarm failed to persist — Device Owner was NOT released"
+                                result?.released == true -> "Brick disarmed and Device Owner/admin released"
+                                else -> "Brick is disarmed; release incomplete: ${result?.error ?: "owner/admin still active"}"
+                            }
+                        )
                     }
                 }
             }
