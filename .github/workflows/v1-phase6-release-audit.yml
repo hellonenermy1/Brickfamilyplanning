@@ -1,0 +1,144 @@
+name: Brick V1 Phase 6 — Release Audit
+
+on:
+  pull_request:
+    branches: [v1-p5b-closure-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_PHASE6_SHA: 00dfa7a6e2f449c4632453e678fd8f1df1c88554
+  CLOUD_PHASE6_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+concurrency:
+  group: brick-v1-phase6-release-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cloud-release-audit:
+    name: Cloud production dependency and deploy-contract audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.CLOUD_PHASE6_SHA }}
+      - name: Verify exact Cloud candidate
+        run: test "$(git rev-parse HEAD)" = "$CLOUD_PHASE6_SHA"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Verify setup and deployment contract
+        run: |
+          node --check scripts/setup.mjs
+          node --check scripts/setup-v1-phase6.mjs
+          node --check scripts/test-phase6-deploy-contract.mjs
+          node scripts/test-phase6-deploy-contract.mjs
+      - name: Verify privacy audit against production source
+        run: node scripts/audit-privacy.mjs
+
+  android-release-audit:
+    name: Android generated APK, privacy and release audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.ANDROID_PHASE6_SHA }}
+      - name: Verify exact Android candidate
+        run: test "$(git rev-parse HEAD)" = "$ANDROID_PHASE6_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+      - name: Install APK analysis tooling
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Verify Android dependency lock is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+      - name: Audit Android source privacy and embedded-secret surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'firebase[-_ ]?analytics|google[-_ ]?analytics|googletagmanager|facebook.*pixel|meta.*pixel|mixpanel|amplitude|appsflyer|adjust\.com|doubleclick' app/src app/build.gradle.kts; then
+            echo 'Analytics/ad tracker reference found in child app.' >&2
+            exit 1
+          fi
+          if grep -RniE 'Log\.(v|d|i|w|e)\([^\n]*(lat|lon|latitude|longitude|coordinate|accuracyM|rawLat|rawLon)' app/src/main --include='*.kt' --include='*.java'; then
+            echo 'Coordinate/location data appears in ordinary Android logging.' >&2
+            exit 1
+          fi
+          if grep -RniE 'BEGIN (RSA |EC |DSA )?PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|sk_live_[0-9A-Za-z]{16,}|ghp_[0-9A-Za-z]{30,}' app/src app/build.gradle.kts; then
+            echo 'Embedded credential/private-key pattern found in child app.' >&2
+            exit 1
+          fi
+      - name: Build R8 release and release lint
+        run: gradle --no-daemon :app:assembleRelease :app:lintRelease --stacktrace
+      - name: Inspect generated release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p6-release-audit
+          release_apk="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$release_apk" && test -s "$release_apk"
+          apkanalyzer_bin="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | sort | tail -n1)"
+          apksigner_bin="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n1)"
+          test -x "$apkanalyzer_bin"
+          test -x "$apksigner_bin"
+          "$apkanalyzer_bin" apk summary "$release_apk" | tee p6-release-audit/apk-summary.txt
+          "$apkanalyzer_bin" manifest permissions "$release_apk" | tee p6-release-audit/permissions.txt
+          "$apkanalyzer_bin" manifest print "$release_apk" > p6-release-audit/manifest.xml
+          sha256sum "$release_apk" | tee p6-release-audit/release-apk.sha256
+          grep -F 'com.brick.safety' p6-release-audit/apk-summary.txt >/dev/null
+          grep -F 'android.permission.INTERNET' p6-release-audit/permissions.txt >/dev/null
+          grep -F 'android.permission.ACCESS_FINE_LOCATION' p6-release-audit/permissions.txt >/dev/null
+          grep -F 'android.permission.ACCESS_BACKGROUND_LOCATION' p6-release-audit/permissions.txt >/dev/null
+          grep -F 'android.permission.FOREGROUND_SERVICE_LOCATION' p6-release-audit/permissions.txt >/dev/null
+          grep -F 'rikka.shizuku.ShizukuProvider' p6-release-audit/manifest.xml >/dev/null
+          grep -F 'com.brick.safety.location.BrickLocationService' p6-release-audit/manifest.xml >/dev/null
+          grep -F 'usesCleartextTraffic="false"' p6-release-audit/manifest.xml >/dev/null
+          grep -F 'allowBackup="false"' p6-release-audit/manifest.xml >/dev/null
+          if "$apksigner_bin" verify --verbose --print-certs "$release_apk" > p6-release-audit/signing.txt 2>&1; then
+            echo 'qualification_release_signed=true' >> p6-release-audit/signing-state.txt
+          else
+            echo 'qualification_release_signed=false' >> p6-release-audit/signing-state.txt
+            echo 'Unsigned qualification APK; production signing is handled only by the secret-backed APK release workflow.' >> p6-release-audit/signing.txt
+          fi
+          cp "$release_apk" p6-release-audit/
+          cp app/build/outputs/mapping/release/mapping.txt p6-release-audit/
+          cp app/build/reports/lint-results-release.txt p6-release-audit/ || true
+      - name: Upload generated APK audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-generated-apk-audit
+          path: p6-release-audit/
+          if-no-files-found: error
+          retention-days: 30
