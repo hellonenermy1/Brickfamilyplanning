@@ -1,6 +1,8 @@
 name: Brick V1 Phase 7 — Cloud Intelligence and UX CI
 
 on:
+  push:
+    branches: [v1-p7-cloud-ux]
   pull_request:
     branches: [v1-p6c-parent-beta-cloud]
   workflow_dispatch:
