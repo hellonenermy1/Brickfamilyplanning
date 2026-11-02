@@ -40,3 +40,8 @@ await run(npx, [
 ]);
 
 console.log('Phase 6C virtual-history migration applied: append-once D1 rows + synthesized history segments.');
+
+// Deployment is not considered healthy merely because the login page responds. Create an
+// ephemeral hashed parent session and exercise the same authenticated APIs the browser uses.
+// If an active paired phone exists, also require its state endpoint and WebSocket upgrade.
+await run(node, ['scripts/verify-development-parent-live.mjs']);
