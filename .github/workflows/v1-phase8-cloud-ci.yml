@@ -90,9 +90,25 @@ jobs:
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
 
           # Phase 8 has no WebSocket transport today. Treat that requirement as VERIFIED UNSUPPORTED,
-          # rather than pretending a WebSocket auth test exists. Any future WebSocket endpoint must
-          # deliberately remove this gate and add authenticated session/origin/isolation tests.
-          ! grep -R -nE 'WebSocketPair|new[[:space:]]+WebSocket|Upgrade["'"']?[[:space:]]*:[[:space:]]*["'"']websocket' src web
+          # not as a fake auth test. A future endpoint must remove this gate and add real auth tests.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text = "\n".join(
+              p.read_text(encoding="utf-8", errors="ignore")
+              for root in (Path("src"), Path("web"))
+              for p in root.rglob("*") if p.is_file()
+          )
+          patterns = [
+              r"\bWebSocketPair\b",
+              r"\bnew\s+WebSocket\s*\(",
+              r"(?i)\bupgrade\b.{0,80}\bwebsocket\b",
+          ]
+          hits = [pattern for pattern in patterns if re.search(pattern, text, flags=re.S)]
+          if hits:
+              raise SystemExit(f"WebSocket transport appeared without Phase 8 auth qualification: {hits}")
+          print("Phase 8 WebSocket surface: VERIFIED UNSUPPORTED")
+          PY
 
       - name: Phase 8 parent session security source gate
         shell: bash
