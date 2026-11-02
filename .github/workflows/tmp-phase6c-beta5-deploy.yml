@@ -1,0 +1,77 @@
+name: TEMP Phase 6C Beta5 Resilience Deploy
+
+on:
+  push:
+    branches: [v1-p6c-parent-beta-cloud]
+    paths: [.github/workflows/tmp-phase6c-beta5-deploy.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase6-development
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Qualify beta5 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          npm ci --no-audit --no-fund
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          bash scripts/phase6-cloud-regression.sh
+          grep -F '"CURRENT_APP_VERSION": "0.6.0-phase6c-beta5-cardfree"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'parentV6DHtml' src/worker-v10.ts >/dev/null
+          grep -F 'X-Brick-Portal", "phase6c-beta5' src/worker-v10.ts >/dev/null
+          npx esbuild src/parent-v6d.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6d.mjs
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const m=await import('file:///tmp/brick-parent-v6d.mjs');
+          const html=m.parentV6DHtml();
+          for(const s of ['Development Beta 5','Map unavailable on this browser. Brick controls and device data are still available.','Pair another phone','Create 10-minute pairing QR']) if(!html.includes(s)) throw new Error('missing beta5 contract: '+s);
+          const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/);
+          if(!inline) throw new Error('inline browser module missing');
+          fs.writeFileSync('/tmp/parent-inline.mjs',inline[1]);
+          NODE
+          node --check /tmp/parent-inline.mjs
+      - name: Deploy isolated beta5 development Worker
+        run: npm run setup:development
+      - name: Verify live boundary and required browser assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$(node --input-type=module -e "import fs from 'node:fs';console.log(JSON.parse(fs.readFileSync('setup-development-state.json','utf8')).workerHost)")"
+          test -n "$host"
+          parent_code="$(curl -sS -o /tmp/parent -w '%{http_code}' "https://$host/parent")"
+          case "$parent_code" in 301|302|303|307|308|401) ;; *) echo "unexpected unauthenticated parent status $parent_code" >&2; exit 1;; esac
+          login_code="$(curl -sS -o /tmp/login -w '%{http_code}' "https://$host/parent/login")"
+          test "$login_code" = 200
+          grep -F 'reusable 6-digit beta access code' /tmp/login >/dev/null
+          wrong_code="$(curl -sS -o /tmp/wrong -w '%{http_code}' -X POST "https://$host/parent/login" -H 'content-type: application/x-www-form-urlencoded' --data 'token=000000')"
+          test "$wrong_code" = 401
+          for p in /brick-map.mjs /brick-pair.mjs /maplibre-gl.css /maplibre-gl-worker.mjs; do
+            code="$(curl -sS -o /tmp/asset -w '%{http_code}' "https://$host$p")"
+            echo "$p=$code bytes=$(wc -c </tmp/asset)"
+            test "$code" = 200
+          done
+          api_code="$(curl -sS -o /tmp/api -w '%{http_code}' -X POST "https://$host/api/pair/complete" -H 'content-type: application/json' --data '{"token":"invalid"}')"
+          case "$api_code" in 400|401|403|404|409|422|429) ;; 5??) exit 1;; esac
+          echo "LIVE_PARENT=https://$host/parent"
+          echo "parent=$parent_code login=$login_code wrong_pin=$wrong_code child_negative=$api_code"
