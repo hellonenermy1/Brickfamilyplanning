@@ -1,0 +1,185 @@
+name: Brick V1 Phase 8 — Android Hardening CI
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  pull_request:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hardening-contract:
+    name: Phase 8 build, safety contract, privacy and regression gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact Phase 7 Android baseline is retained
+        run: git merge-base --is-ancestor 8843bdae902050c8c1fd7e67ed7ac80662d0da93 HEAD
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+
+      - name: Verify dependency lock is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Build, unit test, lint and R8
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
+
+      - name: Verify Phase 8 Device Owner escape contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          gradle_file=app/build.gradle.kts
+          beta=app/src/main/java/com/brick/safety/beta/BetaSafety.kt
+          managed=app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt
+          diagnostics=app/src/main/java/com/brick/safety/diagnostics/DiagnosticsActivity.kt
+
+          grep -F 'android:testOnly="true"' "$manifest" >/dev/null
+          grep -F 'versionCode = 9' "$gradle_file" >/dev/null
+          grep -F 'versionName = "0.8.0-phase8-beta1-test"' "$gradle_file" >/dev/null
+          for stage in ACTIVE DISARMED MANAGEMENT_RELEASED UNINSTALL_REQUESTED; do grep -F "$stage" "$beta" >/dev/null; done
+          grep -F 'commit()' "$beta" >/dev/null
+          grep -F 'clearDeviceOwnerApp(app.packageName)' "$beta" >/dev/null
+          grep -F 'removeActiveAdmin(admin)' "$beta" >/dev/null
+          grep -F 'Intent.ACTION_DELETE' "$beta" >/dev/null
+          grep -F 'STAGE 1 — DISARM BRICK' "$diagnostics" >/dev/null
+          grep -F 'STAGE 2 — RELEASE DEVICE MANAGEMENT' "$diagnostics" >/dev/null
+          grep -F 'STAGE 3 — FINISH UNINSTALL' "$diagnostics" >/dev/null
+          grep -F 'clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' "$managed" >/dev/null
+          ! grep -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' "$managed"
+
+          # A disposable Device Owner beta must never gain a phone-wipe/factory-reset escape path.
+          ! grep -R -n -E 'wipeData[[:space:]]*\(|RecoverySystem|ACTION_FACTORY_RESET|MASTER_CLEAR' app/src/main app/src/androidTest
+
+      - name: Verify retired runtime entry points fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'BetaSafety.enforceStartup(this)' app/src/main/java/com/brick/safety/BrickApplication.kt >/dev/null
+          grep -F 'BetaSafety.enforceStartup(app)' app/src/main/java/com/brick/safety/reliability/BootReceiver.kt >/dev/null
+          grep -F 'BetaSafety.enforceStartup(context)' app/src/main/java/com/brick/safety/reliability/ServiceControl.kt >/dev/null
+          grep -F 'BetaSafety.enforceStartup(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'BetaSafety.enforceStartup(applicationContext)' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'BetaSafety.isOperational(app)' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+
+      - name: Retain diagnostic privacy contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'MAX_EVENTS = 12_000' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          grep -F 'NORMAL_RETENTION_MS = 48L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          grep -F 'ERROR_RETENTION_MS = 7L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
+          ! grep -R -n -E 'anchorLatBits|anchorLonBits|latitude|longitude|deviceId\s*=|apiBase\s*=' app/src/main/java/com/brick/safety/diagnostics
+
+      - name: Verify short beta expiry
+        shell: bash
+        run: |
+          set -euo pipefail
+          expiry_ms="$(sed -n 's/.*BRICK_BETA_EXPIRY_EPOCH_MS", "\([0-9][0-9]*\)L".*/\1/p' app/build.gradle.kts)"
+          test -n "$expiry_ms"
+          now_ms="$(($(date +%s) * 1000))"
+          test "$expiry_ms" -gt "$now_ms"
+          max_ms="$((now_ms + 45 * 24 * 60 * 60 * 1000))"
+          test "$expiry_ms" -le "$max_ms"
+
+  emulator-regression:
+    name: Phase 2-8 cumulative Android instrumentation
+    needs: hardening-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+      - name: Locate Android SDK and AVD
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p8-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+      - name: Install and boot emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8 --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+      - name: Run all retained Phase 2-8 instrumentation
+        run: gradle --no-daemon :app:connectedDebugAndroidTest --stacktrace
+      - name: Preserve emulator diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p p8-failure
+          cp /tmp/brick-p8-emulator.log p8-failure/emulator.log || true
+          "$ADB" logcat -d > p8-failure/logcat.txt || true
+          cp -R app/build/reports/androidTests p8-failure/androidTests || true
+      - name: Upload emulator diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase8-android-emulator-failure
+          path: p8-failure/
+          if-no-files-found: warn
+          retention-days: 14
