@@ -1,6 +1,6 @@
 import phase9, { BrickDevice } from "./worker-v9";
-import { parentV7Html } from "./parent-v7";
-import { augmentPhase7ParentStateResponse } from "./phase7-parent-presentation";
+import { parentV7LiveHtml as parentV7Html } from "./parent-v7-live";
+import { augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse } from "./phase7-state-v2";
 import { cleanupDevelopmentObjectStore, developmentRuntimeEnv } from "./dev-free-runtime";
 import {
   authorizeDevParentRequest,
