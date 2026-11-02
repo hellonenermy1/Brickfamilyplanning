@@ -1,0 +1,65 @@
+name: TEMP Parent Devices Diagnose
+
+on:
+  push:
+    branches: [v1-p6c-parent-beta-cloud]
+    paths: [.github/workflows/tmp-parent-devices-diagnose.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Create short-lived diagnostic parent session and inspect devices endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const t=fs.readFileSync('wrangler.development.template.jsonc','utf8')
+            .replace('__D1_DATABASE_ID__','422f09cc-bbca-4f88-a81a-5468c06bd5bc')
+            .replace('__BRICK_MAP_SOURCE__','https://build.protomaps.com/20261101.pmtiles');
+          fs.writeFileSync('/tmp/wrangler.diag.jsonc',t);
+          NODE
+          TOKEN="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')"
+          HASH="$(printf '%s' "$TOKEN" | sha256sum | awk '{print $1}')"
+          NOW="$(date +%s%3N)"
+          EXP="$((NOW + 600000))"
+          cleanup(){ npx wrangler d1 execute brick-family-v1-dev --remote --command "DELETE FROM dev_parent_sessions WHERE session_hash='$HASH'" --config /tmp/wrangler.diag.jsonc >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          npx wrangler d1 execute brick-family-v1-dev --remote --command "INSERT INTO dev_parent_sessions(session_hash,created_at,expires_at,revoked_at) VALUES('$HASH',$NOW,$EXP,NULL)" --config /tmp/wrangler.diag.jsonc >/dev/null
+          URL='https://brick-family-v1-dev.lumjayvian.workers.dev/parent/api/devices'
+          STATUS="$(curl -sS -D /tmp/headers -o /tmp/body -w '%{http_code}' "$URL" -H "Cookie: brick_parent_dev=$TOKEN" -H 'Accept: application/json')"
+          CT="$(tr -d '\r' </tmp/headers | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print substr($0,index($0,$2));exit}')"
+          echo "STATUS=$STATUS"
+          echo "CONTENT_TYPE=$CT"
+          echo "BODY_BYTES=$(wc -c </tmp/body)"
+          if printf '%s' "$CT" | grep -qi 'application/json'; then
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const raw=fs.readFileSync('/tmp/body','utf8');
+          try {
+            const j=JSON.parse(raw);
+            console.log('JSON_KEYS='+Object.keys(j).join(','));
+            if(Array.isArray(j.devices)) console.log('DEVICE_COUNT='+j.devices.length);
+            if(j.error) console.log('ERROR='+String(j.error).slice(0,500));
+          } catch(e) { console.log('JSON_PARSE_FAILED='+e.message); }
+          NODE
+          else
+            echo 'NON_JSON_BODY_BEGIN'
+            head -c 1200 /tmp/body
+            echo
+            echo 'NON_JSON_BODY_END'
+          fi
