@@ -20,6 +20,8 @@ Phase 8 cloud CI requires every direct runtime and development dependency in `pa
 
 The Phase 8 development runtime currently uses the Worker + D1 card-free path. Its development template intentionally has no R2 bucket, Cloudflare Queue, Cloudflare Access binding or cron trigger. Production remains frozen on the retained Phase 6 worker entrypoint until later release qualification.
 
-There is currently no Brick WebSocket endpoint in the Phase 8 source. WebSocket authentication is therefore **VERIFIED UNSUPPORTED**, not falsely marked tested. CI rejects silently introducing a WebSocket endpoint; adding one later requires explicit authenticated session, origin and family/device-isolation tests.
+Brick **does have** a parent WebSocket route in the retained worker chain. The retained worker requires parent authorization before forwarding `/parent/...` routes and requires an exact same-origin WebSocket upgrade for `/ws`. The Phase 8 development wrapper protects every `/parent/...` path with the D1 parent session before forwarding to that retained worker. The live browser qualification also forces the browser offline and verifies the portal WebSocket returns to `LIVE` after connectivity is restored.
+
+This means WebSocket security is part of the Phase 8 parent-session surface and must remain covered. It must never be described as unsupported or absent.
 
 Cloud budget evidence must cover only services actually used by the selected runtime. Queue/R2/Access budget claims are invalid for the card-free development runtime unless those bindings are deliberately introduced and qualified later.

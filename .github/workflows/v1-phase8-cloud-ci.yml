@@ -77,7 +77,7 @@ jobs:
           npx esbuild src/dev-parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-dev-parent-auth-p8.mjs
           node scripts/test-phase8-parent-origin.mjs /tmp/brick-dev-parent-auth-p8.mjs
 
-      - name: Phase 8 development architecture truth gate
+      - name: Phase 8 development architecture and WebSocket security truth gate
         shell: bash
         run: |
           set -euo pipefail
@@ -89,25 +89,53 @@ jobs:
           grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
           ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
 
-          # Phase 8 has no WebSocket transport today. Treat that requirement as VERIFIED UNSUPPORTED,
-          # not as a fake auth test. A future endpoint must remove this gate and add real auth tests.
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          text = "\n".join(
-              p.read_text(encoding="utf-8", errors="ignore")
-              for root in (Path("src"), Path("web"))
-              for p in root.rglob("*") if p.is_file()
-          )
-          patterns = [
-              r"\bWebSocketPair\b",
-              r"\bnew\s+WebSocket\s*\(",
-              r"(?i)\bupgrade\b.{0,80}\bwebsocket\b",
-          ]
-          hits = [pattern for pattern in patterns if re.search(pattern, text, flags=re.S)]
-          if hits:
-              raise SystemExit(f"WebSocket transport appeared without Phase 8 auth qualification: {hits}")
-          print("Phase 8 WebSocket surface: VERIFIED UNSUPPORTED")
+
+          retained = Path('src/worker-v5b.ts').read_text()
+          dev = Path('src/worker-v10.ts').read_text()
+          browser = Path('scripts/verify-phase7-development-browser.mjs').read_text()
+
+          # Retained parent WebSocket: parent authentication must happen before the /ws origin gate,
+          # and the origin gate itself must require GET + Upgrade:websocket + exact request origin.
+          parent_block = retained.index('if (u.pathname.startsWith("/parent/"))')
+          auth = retained.index('const denied = await requireParent(req, env); if (denied) return denied;', parent_block)
+          ws_guard = retained.index('if (u.pathname.endsWith("/ws") && !sameOriginWebSocket(req))', parent_block)
+          if not auth < ws_guard:
+              raise SystemExit('retained parent WebSocket auth ordering regressed')
+          ws_fn_start = retained.index('function sameOriginWebSocket(req: Request)')
+          ws_fn_end = retained.index('\n}', ws_fn_start) + 2
+          ws_fn = retained[ws_fn_start:ws_fn_end]
+          for required in ['req.method !== "GET"', 'Upgrade', 'websocket', 'req.headers.get("Origin")', 'new URL(req.url).origin']:
+              if required not in ws_fn:
+                  raise SystemExit(f'missing retained WebSocket origin contract: {required}')
+
+          # Development wrapper: every /parent/... route, including /ws, must validate the D1 parent
+          # session before the retained worker can see the request.
+          is_parent_start = dev.index('function isParentPath(pathname: string)')
+          is_parent_end = dev.index('\n}', is_parent_start) + 2
+          is_parent = dev[is_parent_start:is_parent_end]
+          if 'pathname.startsWith("/parent/")' not in is_parent:
+              raise SystemExit('development parent-path wrapper no longer covers /parent/...')
+          block = dev.index('if (isParentPath(u.pathname))')
+          auth_dev = dev.index('const authorized = await authorizeDevParentRequest', block)
+          deny_dev = dev.index('if (!authorized) return devParentUnauthorized(cleanReq);', auth_dev)
+          forward_dev = dev.index('base.fetch!', deny_dev)
+          if not block < auth_dev < deny_dev < forward_dev:
+              raise SystemExit('development parent-session auth must precede base forwarding')
+
+          # The live browser qualification must continue exercising real portal WebSocket recovery
+          # across a forced offline/online transition.
+          for required in [
+              "label: 'offline portal state'",
+              "label: 'automatic portal recovery'",
+              "document.querySelector('#debugWs')",
+              'portal did not fully recover after network restore',
+          ]:
+              if required not in browser:
+                  raise SystemExit(f'live WebSocket recovery evidence disappeared: {required}')
+
+          print('Phase 8 parent WebSocket auth/origin/recovery source contract OK')
           PY
 
       - name: Phase 8 parent session security source gate
