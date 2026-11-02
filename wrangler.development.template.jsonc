@@ -26,9 +26,8 @@
   ],
   "vars": {
     "APP_ENV": "development",
-    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta2-free",
-    "CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__",
-    "CF_ACCESS_AUD": "__CF_ACCESS_AUD__",
+    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta3-cardfree",
+    "DEV_PARENT_AUTH_MODE": "d1-session-v1",
     "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
   }
 }
