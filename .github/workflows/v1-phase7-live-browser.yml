@@ -1,0 +1,65 @@
+name: Brick V1 Phase 7 — Live Browser Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v1-p7-cloud-ux]
+    paths:
+      - 'scripts/verify-phase7-development-browser.mjs'
+      - '.github/workflows/v1-phase7-live-browser.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase7-live-browser
+  cancel-in-progress: true
+
+jobs:
+  live-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BRICK_DEV_PARENT_ORIGIN: https://brick-family-v1-dev.lumjayvian.workers.dev
+      PHASE7_DEPLOYED_SOURCE_SHA: 53c040c0cb14047cd9200edadd3c9f67b4ab25b5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Verify this browser harness still targets the qualified deployed runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          git cat-file -e "$PHASE7_DEPLOYED_SOURCE_SHA^{commit}"
+          runtime_changes="$(git diff --name-only "$PHASE7_DEPLOYED_SOURCE_SHA"..HEAD | grep -Ev '^(scripts/verify-phase7-development-browser\.mjs|\.github/workflows/v1-phase7-live-browser\.yml|docs/phase7-(status|oppo-browser-acceptance)\.md)$' || true)"
+          if [ -n "$runtime_changes" ]; then
+            echo 'Runtime-affecting files changed after the deployed Phase 7 source SHA:' >&2
+            echo "$runtime_changes" >&2
+            echo 'Deploy and re-qualify before using this live browser result.' >&2
+            exit 1
+          fi
+          node --check scripts/verify-phase7-development-browser.mjs
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser
+
+      - name: Re-verify live authenticated API contract before browser interaction
+        run: node scripts/verify-phase7-development-live.mjs
+
+      - name: Exercise real deployed parent portal in Chrome
+        run: node scripts/verify-phase7-development-browser.mjs
+
+      - name: Upload browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase7-live-browser-evidence-${{ github.run_id }}
+          path: phase7-browser-evidence/
+          if-no-files-found: warn
+          retention-days: 14
