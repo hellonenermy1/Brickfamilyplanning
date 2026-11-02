@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.UserManager
+import androidx.test.platform.app.InstrumentationRegistry
 import com.brick.safety.BuildConfig
 import com.brick.safety.location.BrickLocationService
 import com.brick.safety.managed.BrickDeviceAdminReceiver
@@ -15,7 +16,7 @@ import com.brick.safety.testing.BrickInstrumentationTestCase
 
 class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
     private val context get() = instrumentation.targetContext
-    private fun externalMode(): String = instrumentation.arguments.getString("p8RetirementMode") ?: ""
+    private fun externalMode(): String = InstrumentationRegistry.getArguments().getString("p8RetirementMode") ?: ""
 
     override fun setUp() {
         super.setUp()
