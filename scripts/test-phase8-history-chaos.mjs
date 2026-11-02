@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const [historyPath] = process.argv.slice(2);
@@ -123,4 +124,28 @@ await history.processHistoryBatch({ messages: [duplicateAgain, nextAgain] }, { H
 raw = await readRaw(r2);
 assert.deepEqual(raw.packets.map(p => p.sequence), [1, 2]);
 
-console.log('Phase 8 lost-ACK, retry, duplicate and durable history chaos OK');
+// Phase 8 retention is an operational safety/privacy contract. Assert the actual deployment and
+// scheduled-cleanup source, not documentation, so a future edit cannot silently lengthen or remove it.
+const setup = fs.readFileSync('scripts/setup-v1-phase6.mjs', 'utf8');
+const phase4 = fs.readFileSync('src/phase4.ts', 'utf8');
+const ops = fs.readFileSync('src/phase5-ops.ts', 'utf8');
+const phase5c = fs.readFileSync('src/phase5c.ts', 'utf8');
+for (const marker of [
+  "id: 'brick-raw-history-30d'",
+  "prefix: 'history/raw/'",
+  'maxAge: 30 * day',
+  "id: 'brick-trusted-history-90d'",
+  "prefix: 'history/trusted/'",
+  'maxAge: 90 * day',
+  "id: 'brick-abort-multipart-7d'",
+  'maxAge: 7 * day',
+  'await ensureR2Lifecycle();'
+]) assert.ok(setup.includes(marker), `missing R2 lifecycle contract: ${marker}`);
+assert.ok(phase4.includes('COALESCE((SELECT safety_event_days FROM retention_settings WHERE device_id=safety_events.device_id),180) * 86400000'), 'safety event cleanup must honor per-device retention with 180-day default');
+assert.ok(phase4.includes('DELETE FROM device_events WHERE created_at < ?1') && phase4.includes('now-30*86400000'), 'device event replay rows must retain the 30-day cleanup boundary');
+assert.ok(ops.includes('DELETE FROM device_health_samples WHERE received_at<?1') && ops.includes('now - 35 * 86_400_000'), 'health samples must retain the 35-day cleanup boundary');
+assert.ok(ops.includes('DELETE FROM health_incidents WHERE ended_at IS NOT NULL AND ended_at<?1') && ops.includes('now - 365 * 86_400_000'), 'closed health incidents must retain the 365-day cleanup boundary');
+assert.ok(phase5c.includes('DELETE FROM crash_reports WHERE received_at<?1') && phase5c.includes('now - 365 * 86_400_000'), 'crash reports must retain the 365-day cleanup boundary');
+assert.ok(phase5c.includes('DELETE FROM audit_log WHERE created_at<?1') && phase5c.includes('now - 90 * 86_400_000'), 'audit log must retain the 90-day cleanup boundary');
+
+console.log('Phase 8 lost-ACK, retry, duplicate, retention and durable history chaos OK');
