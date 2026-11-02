@@ -47,6 +47,7 @@ function encode(value) {
 
 function fakeDb(initial = {}) {
   const counts = new Map(TABLES.map(t => [t, Number(initial[t] ?? 0)]));
+  const rows = new Map(TABLES.map(t => [t, []]));
   function statement(sql, args = []) {
     return {
       sql, args,
@@ -60,30 +61,57 @@ function fakeDb(initial = {}) {
   }
   return {
     counts,
+    rows,
     prepare(sql) { return statement(sql); },
     async batch(statements) {
-      const staged = new Map(counts);
+      const stagedCounts = new Map(counts);
+      const stagedRows = new Map([...rows].map(([table, values]) => [table, values.map(row => ({ ...row }))]));
       for (const s of statements) {
         const m = s.sql.match(/^INSERT INTO ([a-z_]+) \(([^)]+)\) VALUES \(([^)]+)\)$/i);
         if (!m) throw new Error(`unexpected batch SQL: ${s.sql}`);
         const table = m[1];
-        if (!staged.has(table)) throw new Error(`unknown table ${table}`);
-        staged.set(table, staged.get(table) + 1);
+        if (!stagedCounts.has(table)) throw new Error(`unknown table ${table}`);
+        const columns = m[2].split(',').map(x => x.trim());
+        assert.equal(columns.length, s.args.length, `bind count mismatch for ${table}`);
+        stagedRows.get(table).push(Object.fromEntries(columns.map((column, i) => [column, s.args[i]])));
+        stagedCounts.set(table, stagedCounts.get(table) + 1);
       }
       counts.clear();
-      for (const [key, value] of staged) counts.set(key, value);
+      rows.clear();
+      for (const [key, value] of stagedCounts) counts.set(key, value);
+      for (const [key, value] of stagedRows) rows.set(key, value);
       return statements.map(() => ({ success: true, meta: { changes: 1 } }));
     }
   };
 }
 
-const good = encode(snapshot());
+const goodSnapshot = snapshot({ revoked_at: 1793434000000, last_epoch: 17, last_sequence: 991 });
+goodSnapshot.tables.device_replay_state.push({
+  device_id: 'child-1',
+  last_health_sequence: 487,
+  updated_at: 1793434500000
+});
+const good = encode(goodSnapshot);
 const db = fakeDb();
 const result = await restore.restoreBackupToFreshD1({ DB: db }, good.bytes, good.sha);
 assert.equal(result.format, 'brick-d1-snapshot-v1');
 assert.equal(result.restoredRows.devices, 1);
+assert.equal(result.restoredRows.device_replay_state, 1);
 assert.equal(db.counts.get('devices'), 1);
-for (const table of TABLES.filter(t => t !== 'devices')) assert.equal(db.counts.get(table), 0);
+assert.equal(db.counts.get('device_replay_state'), 1);
+for (const table of TABLES.filter(t => !['devices', 'device_replay_state'].includes(t))) assert.equal(db.counts.get(table), 0);
+
+// Security state must survive recovery exactly. A restored revoked identity must remain revoked,
+// and replay high-water state must not reset to zero and reopen old signed-health replays.
+assert.equal(db.rows.get('devices')[0].id, 'child-1');
+assert.equal(db.rows.get('devices')[0].revoked_at, 1793434000000);
+assert.equal(db.rows.get('devices')[0].last_epoch, 17);
+assert.equal(db.rows.get('devices')[0].last_sequence, 991);
+assert.deepEqual(db.rows.get('device_replay_state')[0], {
+  device_id: 'child-1',
+  last_health_sequence: 487,
+  updated_at: 1793434500000
+});
 
 await assert.rejects(
   () => restore.restoreBackupToFreshD1({ DB: db }, good.bytes, good.sha),
@@ -108,4 +136,4 @@ await assert.rejects(
 );
 
 assert.deepEqual([...restore.RESTORE_TABLE_ORDER], TABLES);
-console.log('Phase 6 fresh-D1 backup restore contract OK');
+console.log('Phase 6 fresh-D1 backup restore contract OK, including revocation and replay high-water preservation');
