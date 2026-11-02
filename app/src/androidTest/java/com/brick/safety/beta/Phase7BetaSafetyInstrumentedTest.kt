@@ -1,11 +1,15 @@
 package com.brick.safety.beta
 
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.UserManager
 import com.brick.safety.BuildConfig
 import com.brick.safety.location.BrickLocationService
+import com.brick.safety.managed.BrickDeviceAdminReceiver
+import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.reliability.BootReceiver
 import com.brick.safety.testing.BrickInstrumentationTestCase
 
@@ -55,6 +59,16 @@ class Phase8BetaSafetyInstrumentedTest : BrickInstrumentationTestCase() {
     }
 
     fun testRetirementIsMonotonicFailClosedAndDisablesRestartComponents() {
+        val dpm = context.getSystemService(DevicePolicyManager::class.java)
+        val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
+        if (dpm.isDeviceOwnerApp(context.packageName)) {
+            // Reproduce the Phase 7 lock, then prove the Phase 8 migration actively removes it.
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)
+            assertTrue(dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_LOCATION))
+            ManagedPolicy.apply(context)
+            assertFalse(dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_LOCATION))
+        }
+
         assertEquals(BetaSafety.RetirementStage.ACTIVE, BetaSafety.retirementStage(context))
         assertTrue(BetaSafety.beginRetirement(context, "instrumentation"))
         assertEquals(BetaSafety.RetirementStage.DISARMED, BetaSafety.retirementStage(context))

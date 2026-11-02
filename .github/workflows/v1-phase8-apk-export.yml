@@ -8,13 +8,14 @@ permissions:
 
 jobs:
   export-stable-beta:
-    name: Export testOnly Device Owner beta with persistent signing only
+    name: Export testOnly Device Owner beta with pinned persistent signing
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       BRICK_KEYSTORE_PASSWORD: ${{ secrets.BRICK_ANDROID_KEYSTORE_PASSWORD }}
       BRICK_KEY_ALIAS: ${{ secrets.BRICK_ANDROID_KEY_ALIAS }}
       BRICK_KEY_PASSWORD: ${{ secrets.BRICK_ANDROID_KEY_PASSWORD }}
+      BRICK_EXPECTED_SIGNING_CERT_SHA256: ${{ secrets.BRICK_ANDROID_SIGNING_CERT_SHA256 }}
     steps:
       - uses: actions/checkout@v5
 
@@ -38,7 +39,7 @@ jobs:
           echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
           echo "BRICK_KEYSTORE_PATH=$RUNNER_TEMP/brick-phase8-stable.jks" >> "$GITHUB_ENV"
 
-      - name: Require persistent signing secrets
+      - name: Require persistent signing secrets and pinned certificate
         shell: bash
         env:
           BRICK_ANDROID_KEYSTORE_B64: ${{ secrets.BRICK_ANDROID_KEYSTORE_B64 }}
@@ -48,6 +49,10 @@ jobs:
           test -n "$BRICK_KEYSTORE_PASSWORD"
           test -n "$BRICK_KEY_ALIAS"
           test -n "$BRICK_KEY_PASSWORD"
+          test -n "$BRICK_EXPECTED_SIGNING_CERT_SHA256"
+          expected="$(printf '%s' "$BRICK_EXPECTED_SIGNING_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
+          echo "BRICK_EXPECTED_SIGNING_CERT_NORMALIZED=$expected" >> "$GITHUB_ENV"
           printf '%s' "$BRICK_ANDROID_KEYSTORE_B64" | base64 --decode > "$BRICK_KEYSTORE_PATH"
           test -s "$BRICK_KEYSTORE_PATH"
           chmod 600 "$BRICK_KEYSTORE_PATH"
@@ -68,7 +73,7 @@ jobs:
       - name: Build stable-signed release beta
         run: gradle --no-daemon :app:assembleRelease --stacktrace
 
-      - name: Verify signature and create immutable evidence
+      - name: Verify pinned certificate and create immutable evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -77,9 +82,13 @@ jobs:
           test -n "$APK" && test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee p8-beta/apk-signing-cert.txt
           ! grep -qi 'Android Debug' p8-beta/apk-signing-cert.txt
+          actual="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' p8-beta/apk-signing-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$actual" =~ ^[0-9a-f]{64}$ ]]
+          test "$actual" = "$BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"
+          printf '%s\n' "$actual" > p8-beta/apk-signing-cert-sha256.txt
           cp "$APK" p8-beta/Brick-Phase8-Hardening-Beta.apk
           sha256sum p8-beta/Brick-Phase8-Hardening-Beta.apk | tee p8-beta/apk-sha256.txt
-          printf 'git_sha=%s\nversion=0.8.0-phase8-beta1-test\nversion_code=9\nandroid_phase7_base=8843bdae902050c8c1fd7e67ed7ac80662d0da93\ntest_only=true\nsigning=persistent_release_secret_required\n' "$GITHUB_SHA" > p8-beta/provenance.txt
+          printf 'git_sha=%s\nversion=0.8.0-phase8-beta1-test\nversion_code=9\nandroid_phase7_base=8843bdae902050c8c1fd7e67ed7ac80662d0da93\ntest_only=true\nsigning=persistent_release_secret_required\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > p8-beta/provenance.txt
 
       - name: Upload stable-signed Phase 8 beta
         uses: actions/upload-artifact@v4

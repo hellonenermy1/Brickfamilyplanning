@@ -24,14 +24,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <uses-feature
-        android:name="android.hardware.bluetooth_le"
-        android:required="false" />
-
-    <!-- Optional: charging context still works when Companion Device Manager is unavailable. -->
-    <uses-feature
-        android:name="android.software.companion_device_setup"
-        android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
 
     <application
         android:name=".BrickApplication"
@@ -43,12 +37,8 @@
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
 
-        <meta-data
-            android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="barcode_ui" />
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
 
-        <!-- Official Shizuku binder receiver. The privileged provider is optional: when no Shizuku
-             binder exists, Brick continues entirely through its normal Android/Device Owner paths. -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
@@ -64,12 +54,10 @@
             </intent-filter>
         </activity>
 
-        <!-- Phase 7 beta-only console. It is deliberately a separate launcher so the normal child
-             surface remains minimal while field-test diagnostics and beta escape controls stay available. -->
         <activity
             android:name=".diagnostics.DiagnosticsActivity"
             android:exported="true"
-            android:label="Brick Phase 7 Beta Diagnostics">
+            android:label="Brick Phase 8 Hardening Diagnostics">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -103,15 +91,9 @@
             </intent-filter>
         </service>
 
-        <receiver
-            android:name=".activity.ActivityReceiver"
-            android:enabled="true"
-            android:exported="false" />
+        <receiver android:name=".activity.ActivityReceiver" android:enabled="true" android:exported="false" />
 
-        <receiver
-            android:name=".reliability.BootReceiver"
-            android:enabled="true"
-            android:exported="false">
+        <receiver android:name=".reliability.BootReceiver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
@@ -122,9 +104,7 @@
             android:name=".managed.BrickDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:exported="true">
-            <meta-data
-                android:name="android.app.device_admin"
-                android:resource="@xml/device_admin" />
+            <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
