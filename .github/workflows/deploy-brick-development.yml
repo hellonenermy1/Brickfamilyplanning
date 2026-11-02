@@ -13,8 +13,6 @@ on:
         required: true
         default: true
         type: boolean
-  pull_request:
-    branches: [v1-p6-device-control-cloud]
 
 permissions:
   contents: read
@@ -26,7 +24,6 @@ concurrency:
 jobs:
   deploy-development:
     name: Qualify and deploy isolated Phase 6C development stack
-    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'v1-p6c-parent-beta-cloud'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -47,9 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            test "$GITHUB_REF_NAME" = "v1-p6c-parent-beta-cloud" || { echo 'Run this development deploy from v1-p6c-parent-beta-cloud.' >&2; exit 1; }
-          fi
+          test "$GITHUB_REF_NAME" = "v1-p6c-parent-beta-cloud" || { echo 'Run this development deploy from v1-p6c-parent-beta-cloud.' >&2; exit 1; }
           grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
           grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
           grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
@@ -101,7 +96,7 @@ jobs:
           NODE
 
       - name: Install private Singapore map into DEVELOPMENT only
-        if: github.event_name == 'pull_request' || inputs.install_map == true
+        if: inputs.install_map == true
         run: npm run map:install:development
 
       - name: Strict final development deploy tagged with exact Git SHA
