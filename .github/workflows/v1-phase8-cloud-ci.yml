@@ -98,6 +98,13 @@ jobs:
           npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8.mjs
           node scripts/test-phase8-history-chaos.mjs /tmp/brick-history-p8.mjs
 
+      - name: Phase 8 10k offline history backlog drain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8-scale.mjs
+          node scripts/test-phase8-history-backlog-scale.mjs /tmp/brick-history-p8-scale.mjs
+
       - name: Phase 8 V6 out-of-order live state and retry idempotency
         shell: bash
         run: |
