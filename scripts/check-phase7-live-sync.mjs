@@ -30,6 +30,7 @@ const state = await import(pathToFileURL('/tmp/brick-phase7-state-v2.mjs').href 
 {
   const response = new Response(JSON.stringify({
     latest:{epoch:2,sequence:9,lat:1.301,lon:103.801,uncertaintyM:20,quality:'future_quality_token',source:'fused',receivedAt:1_999_999_999_000,wallTimeMs:1_999_999_999_000},
+    health:{healthSequence:6,receivedAt:2_000_000_000_000,operationalStatus:'healthy',serviceActive:true,journalWriteHealthy:true,safetyOutboxWriteHealthy:true,network:'wifi',locationEnabled:true,locationSubscribed:true,fineLocationPermission:true,backgroundLocationPermission:true,locationAgeMs:1000},
     derived:{deviceStatus:'healthy',positionStatus:'fresh'}
   }),{headers:{'content-type':'application/json'}});
   const out = await state.augmentPhase7ParentStateResponseV2(response,2_000_000_000_000);
