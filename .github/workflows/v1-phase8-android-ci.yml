@@ -12,23 +12,23 @@ permissions:
 
 jobs:
   hardening-contract:
-    name: Phase 8 build, safety contract, privacy and regression gate
+    name: Phase 8 build, safety, security, privacy and supply-chain gate
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
 
       - name: Verify exact Phase 7 Android baseline is retained
         run: git merge-base --is-ancestor 8843bdae902050c8c1fd7e67ed7ac80662d0da93 HEAD
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: '8.13'
 
@@ -84,11 +84,9 @@ jobs:
           grep -F 'STAGE 3 — FINISH UNINSTALL' "$diagnostics" >/dev/null
           grep -F 'clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' "$managed" >/dev/null
           ! grep -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' "$managed"
-
-          # A disposable Device Owner beta must never gain a phone-wipe/factory-reset escape path.
           ! grep -R -n -E 'wipeData[[:space:]]*\(|RecoverySystem|ACTION_FACTORY_RESET|MASTER_CLEAR' app/src/main app/src/androidTest
 
-      - name: Verify retired runtime entry points fail closed
+      - name: Verify retired runtime entry points fail closed and reboot recovery stays alive
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +96,60 @@ jobs:
           grep -F 'BetaSafety.enforceStartup(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
           grep -F 'BetaSafety.enforceStartup(applicationContext)' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
           grep -F 'BetaSafety.isOperational(app)' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          ! grep -F 'ComponentName(context, BootReceiver::class.java)' app/src/main/java/com/brick/safety/beta/BetaSafety.kt
+
+      - name: Phase 8 Android security and privacy audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          grep -F 'android:allowBackup="false"' "$manifest" >/dev/null
+          grep -F 'android:fullBackupContent="false"' "$manifest" >/dev/null
+          grep -F 'android:usesCleartextTraffic="false"' "$manifest" >/dev/null
+          grep -F 'android:dataExtractionRules="@xml/data_extraction_rules"' "$manifest" >/dev/null
+          ! grep -R -n -E 'MODE_WORLD_(READABLE|WRITEABLE)|Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(' app/src/main app/src/androidTest
+
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ns = '{http://schemas.android.com/apk/res/android}'
+          root = ET.parse('app/src/main/AndroidManifest.xml').getroot()
+          allowed = {
+              ('activity', '.ui.MainActivity', None),
+              ('activity', '.diagnostics.DiagnosticsActivity', None),
+              ('provider', 'rikka.shizuku.ShizukuProvider', 'android.permission.INTERACT_ACROSS_USERS_FULL'),
+              ('service', '.atlas.BrickCompanionLegacyService', 'android.permission.BIND_COMPANION_DEVICE_SERVICE'),
+              ('service', '.atlas.BrickCompanionAssociationService', 'android.permission.BIND_COMPANION_DEVICE_SERVICE'),
+              ('receiver', '.managed.BrickDeviceAdminReceiver', 'android.permission.BIND_DEVICE_ADMIN'),
+          }
+          actual = set()
+          app = root.find('application')
+          assert app is not None
+          for tag in ('activity', 'service', 'receiver', 'provider'):
+              for node in app.findall(tag):
+                  if node.get(ns + 'exported') == 'true':
+                      actual.add((tag, node.get(ns + 'name'), node.get(ns + 'permission')))
+          if actual != allowed:
+              raise SystemExit(f'unexpected exported component surface: actual={sorted(actual)} expected={sorted(allowed)}')
+          print('exported component allowlist OK')
+          PY
+
+          grep -F 'KeyStore.getInstance("AndroidKeyStore")' app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt >/dev/null
+          grep -F 'KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")' app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt >/dev/null
+          grep -F 'ECGenParameterSpec("secp256r1")' app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt >/dev/null
+          grep -F 'Signature.getInstance("SHA256withECDSA")' app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt >/dev/null
+          grep -F 'KeyStore.getInstance("AndroidKeyStore")' app/src/main/java/com/brick/safety/crypto/JournalCipher.kt >/dev/null
+          grep -F 'AES/GCM/NoPadding' app/src/main/java/com/brick/safety/crypto/JournalCipher.kt >/dev/null
+
+          aidl=app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl
+          grep -F 'boolean setLocationEnabled(boolean enabled);' "$aidl" >/dev/null
+          grep -F 'boolean requestPowerRepair();' "$aidl" >/dev/null
+          grep -F 'boolean attemptSosLocationEnable();' "$aidl" >/dev/null
+          ! grep -E -i '(exec|shell|command|packageName|filePath|rawCommand)' "$aidl"
+          ! grep -R -n -E '(^|[^A-Za-z])(exec|shellCommand|rawCommand)[[:space:]]*\(' app/src/main/java/com/brick/safety/privileged
+
+          ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
+          ! grep -R -n -E 'https?://[^"[:space:]]+' app/src/main/java/com/brick/safety/diagnostics
+          ! grep -R -n -E 'Authorization|Cf-Access-Jwt-Assertion|X-Brick-Signature|pairingToken' app/src/main/java/com/brick/safety/diagnostics
 
       - name: Retain diagnostic privacy contract
         shell: bash
@@ -107,6 +159,15 @@ jobs:
           grep -F 'NORMAL_RETENTION_MS = 48L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
           grep -F 'ERROR_RETENTION_MS = 7L' app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt >/dev/null
           ! grep -R -n -E 'anchorLatBits|anchorLonBits|latitude|longitude|deviceId\s*=|apiBase\s*=' app/src/main/java/com/brick/safety/diagnostics
+
+      - name: Phase 8 supply-chain pin and dependency gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'uses:[[:space:]]+[^[:space:]#]+@v[0-9]+' .github/workflows/v1-phase8-*.yml
+          ! grep -R -nE 'implementation\([^)]*[+*]|androidTestImplementation\([^)]*[+*]' app/build.gradle.kts
+          grep -F 'lockAllConfigurations()' app/build.gradle.kts >/dev/null
+          test -s app/gradle.lockfile
 
       - name: Verify short beta expiry
         shell: bash
@@ -125,12 +186,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: '8.13'
       - name: Locate Android SDK and AVD
@@ -177,7 +238,7 @@ jobs:
           cp -R app/build/reports/androidTests p8-failure/androidTests || true
       - name: Upload emulator diagnostics on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: brick-phase8-android-emulator-failure
           path: p8-failure/

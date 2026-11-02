@@ -17,14 +17,14 @@ jobs:
       BRICK_KEY_PASSWORD: ${{ secrets.BRICK_ANDROID_KEY_PASSWORD }}
       BRICK_EXPECTED_SIGNING_CERT_SHA256: ${{ secrets.BRICK_ANDROID_SIGNING_CERT_SHA256 }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: '8.13'
 
@@ -91,7 +91,7 @@ jobs:
           printf 'git_sha=%s\nversion=0.8.0-phase8-beta1-test\nversion_code=9\nandroid_phase7_base=8843bdae902050c8c1fd7e67ed7ac80662d0da93\ntest_only=true\nsigning=persistent_release_secret_required\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > p8-beta/provenance.txt
 
       - name: Upload stable-signed Phase 8 beta
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: brick-phase8-stable-signed-testonly-device-owner-beta
           path: p8-beta/

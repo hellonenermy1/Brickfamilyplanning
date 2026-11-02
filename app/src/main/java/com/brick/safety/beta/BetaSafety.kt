@@ -13,7 +13,6 @@ import androidx.work.WorkManager
 import com.brick.safety.BuildConfig
 import com.brick.safety.location.BrickLocationService
 import com.brick.safety.managed.BrickDeviceAdminReceiver
-import com.brick.safety.reliability.BootReceiver
 import com.brick.safety.reliability.RecoveryScheduler
 import java.util.concurrent.TimeUnit
 
@@ -137,8 +136,8 @@ object BetaSafety {
             .putLong(KEY_STAGE_UPDATED_AT, now)
             .commit()
 
-        // Never release Device Owner or disable runtime components if Android failed to durably
-        // record the fail-closed state first.
+        // Never release Device Owner or disable Core if Android failed to durably record the
+        // fail-closed state first.
         if (!committed) return false
         shutdownRuntime(app)
         return true
@@ -241,23 +240,17 @@ object BetaSafety {
     }
 
     /**
-     * Package-manager kill switch for the two Android entry points that can directly restart Core.
-     * This closes the race where a start/broadcast was already queued when Stage 1 was committed.
-     * Diagnostics stays enabled so Stage 2/3 can still be completed locally.
+     * Disable the direct Core start target, but deliberately keep BootReceiver enabled. The receiver
+     * is guarded by enforceStartup() before it can schedule/start Core, and keeping it alive is what
+     * lets a reboot/package replacement resume Stage 2 after a crash between retirement stages.
      */
     private fun disableRuntimeComponents(context: Context) {
-        val pm = context.packageManager
-        listOf(
-            ComponentName(context, BrickLocationService::class.java),
-            ComponentName(context, BootReceiver::class.java)
-        ).forEach { component ->
-            runCatching {
-                pm.setComponentEnabledSetting(
-                    component,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.DONT_KILL_APP
-                )
-            }
+        runCatching {
+            context.packageManager.setComponentEnabledSetting(
+                ComponentName(context, BrickLocationService::class.java),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
         }
     }
 
