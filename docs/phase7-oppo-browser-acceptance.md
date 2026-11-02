@@ -25,6 +25,7 @@ PASS only if all of the following work without console/runtime failure visible t
 8. Evidence Providers render without unsupported hardware becoming a red whole-device failure.
 9. `Why this position` shows position class, geometry, evidence freshness, source and explanation.
 10. No degraded AREA/CORRIDOR/LAST_KNOWN/UNKNOWN state is represented as a precise current marker.
+11. If a newer WebSocket fix arrives before the normalized REST read model catches up, the portal must not attach the older Phase 7 geometry/explanation/health presentation to the newer fix. A temporary pending/phone-only view followed by automatic refresh is acceptable; stale cross-fix presentation is not.
 
 ## B. Parent browser smoke — mobile-width browser
 
@@ -113,6 +114,7 @@ PASS only if:
 
 - A qualified PRECISE/ASSISTED/ANCHORED observation can establish/transition place state after existing dwell/hysteresis rules.
 - ESTIMATED/COARSE/LAST_KNOWN/UNKNOWN observations do not create enter/exit transitions from their displayed centre.
+- If a pending enter/exit dwell candidate is interrupted by any degraded/unqualified positioning interval, that pending dwell is broken. One later trusted fix must not complete dwell using time accumulated before the degraded interval.
 - Boundary noise does not spam enter/exit events.
 - Deleting/disabling the temporary Place works.
 
@@ -127,6 +129,7 @@ PASS only if:
 - start/end/cancel still work.
 - arrival requires a qualified position and existing dwell/repeat logic.
 - a degraded estimated centre alone does not mark arrival.
+- if an arrival or prolonged-stop dwell candidate is interrupted by degraded/unqualified positioning, the pending coordinate-dependent dwell is broken and must start again from later qualified evidence.
 - prolonged-stop location logic does not use a degraded guessed centre.
 - time-based overdue logic still works when position is degraded; if the test is performed, its event must omit guessed coordinates/distance.
 
