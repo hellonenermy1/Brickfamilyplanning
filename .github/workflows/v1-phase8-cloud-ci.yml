@@ -1,0 +1,82 @@
+name: Brick V1 Phase 8 — Cloud Hardening CI
+
+on:
+  push:
+    branches: [v1-p8-cloud-hardening]
+  pull_request:
+    branches: [v1-p8-cloud-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cloud-hardening:
+    name: Phase 8 cloud security, durability, privacy and retained regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact Phase 7 cloud baseline is retained
+        run: git merge-base --is-ancestor 820fb8974ae185d74b4963b31b18a7fa0eafedf6 HEAD
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install exactly locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck and build retained parent assets
+        run: |
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+
+      - name: Retain Phase 7 parent/health/live/safety contracts
+        run: |
+          node scripts/check-phase7-parent-presentation.mjs
+          node scripts/check-phase7-health-presentation.mjs
+          node scripts/check-phase7-live-sync.mjs
+          node scripts/check-phase7-safety-quality.mjs
+
+      - name: Run full retained Phase 2-6 durability/security/privacy regression
+        run: bash scripts/phase6-cloud-regression.sh
+
+      - name: Phase 8 same-origin parent mutation tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/dev-parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-dev-parent-auth-p8.mjs
+          node scripts/test-phase8-parent-origin.mjs /tmp/brick-dev-parent-auth-p8.mjs
+
+      - name: Phase 8 development architecture truth gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          ! grep -F 'worker-v10' wrangler.template.jsonc >/dev/null
+
+      - name: Phase 8 parent session security source gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=src/dev-parent-auth.ts
+          grep -F 'HttpOnly; Secure; SameSite=Strict' "$auth" >/dev/null
+          grep -F 'devParentOriginAllowed(req)' "$auth" >/dev/null
+          grep -F 'constantTimeEqual' "$auth" >/dev/null
+          grep -F 'PARENT_LOGIN_RATE' "$auth" >/dev/null
+          grep -F 'headers.delete(INTERNAL_HEADER)' "$auth" >/dev/null
+          grep -F 'headers.set(INTERNAL_HEADER, INTERNAL_VALUE)' "$auth" >/dev/null
+
+      - name: Dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high

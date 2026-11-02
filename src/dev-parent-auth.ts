@@ -58,6 +58,22 @@ function baseHeaders(contentType = "text/html; charset=utf-8") {
   };
 }
 
+/**
+ * Phase 8 CSRF defense-in-depth. SameSite=Strict remains required, but every state-changing parent
+ * request must independently prove that its Origin exactly matches the Brick origin.
+ */
+export function devParentOriginAllowed(req: Request) {
+  const method = req.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return true;
+  const value = req.headers.get("Origin")?.trim();
+  if (!value || value.length > 512) return false;
+  try {
+    return new URL(value).origin === new URL(req.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 function loginPage(message = "") {
   const safe = message.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent Beta Login</title><style>
@@ -117,6 +133,7 @@ export async function devParentSessionValid(req: Request, env: DevParentAuthEnv,
 }
 
 export async function authorizeDevParentRequest(req: Request<unknown, IncomingRequestCfProperties>, env: DevParentAuthEnv) {
+  if (!devParentOriginAllowed(req)) return null;
   if (!(await devParentSessionValid(req, env))) return null;
   const headers = new Headers(req.headers);
   headers.set(INTERNAL_HEADER, INTERNAL_VALUE);
@@ -133,6 +150,13 @@ export function devParentUnauthorized(req: Request) {
 
 export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthEnv): Promise<Response | null> {
   const url = new URL(req.url);
+  if (url.pathname.startsWith("/parent") && !devParentOriginAllowed(req)) {
+    return Response.json(
+      { error: "Same-origin Brick parent request required" },
+      { status: 403, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }
+    );
+  }
+
   if (url.pathname === "/parent/login" && req.method === "GET") {
     return new Response(loginPage(), { status: 200, headers: baseHeaders() });
   }
