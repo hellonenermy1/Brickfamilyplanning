@@ -1,0 +1,87 @@
+name: TEMP Parent Browser Runtime Diagnose
+
+on:
+  push:
+    branches: [v1-p6c-parent-beta-cloud]
+    paths: [.github/workflows/tmp-parent-browser-runtime.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Render exact portal and build assets
+        run: |
+          npm run build:parent-assets
+          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/parent-v6c.mjs
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const m=await import('file:///tmp/parent-v6c.mjs');
+          fs.writeFileSync('/tmp/parent.html',m.parentV6CHtml());
+          NODE
+      - name: Install Chromium test dependency
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.56.1
+          npx playwright install chromium
+      - name: Run exact portal module in Chromium with mocked backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/server.mjs <<'NODE'
+          import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+          const html=fs.readFileSync('/tmp/parent.html');
+          const pub=path.resolve('public');
+          const server=http.createServer((req,res)=>{
+            const u=new URL(req.url,'http://127.0.0.1:4173');
+            if(u.pathname==='/parent'||u.pathname==='/parent/'){res.writeHead(200,{'content-type':'text/html'});return res.end(html)}
+            if(u.pathname.startsWith('/parent/api/devices')){res.writeHead(200,{'content-type':'application/json'});return res.end(JSON.stringify({devices:[]}))}
+            if(u.pathname.startsWith('/parent/api/')){res.writeHead(200,{'content-type':'application/json'});return res.end('{}')}
+            const f=path.join(pub,u.pathname.replace(/^\//,''));
+            if(f.startsWith(pub)&&fs.existsSync(f)&&fs.statSync(f).isFile()){
+              const ct=f.endsWith('.mjs')?'text/javascript':f.endsWith('.css')?'text/css':'application/octet-stream';res.writeHead(200,{'content-type':ct});return fs.createReadStream(f).pipe(res)
+            }
+            res.writeHead(404);res.end('not found');
+          });server.listen(4173,'127.0.0.1');
+          NODE
+          node /tmp/server.mjs >/tmp/server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          cat >/tmp/test.mjs <<'NODE'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:1280,height:900}});
+          const errors=[];
+          page.on('console',m=>console.log('CONSOLE',m.type(),m.text()));
+          page.on('pageerror',e=>{errors.push(String(e.stack||e.message));console.log('PAGEERROR',e.stack||e.message)});
+          page.on('requestfailed',r=>console.log('REQUESTFAILED',r.url(),r.failure()?.errorText));
+          await page.goto('http://127.0.0.1:4173/parent',{waitUntil:'networkidle'});
+          console.log('TITLE',await page.title());
+          console.log('TABS',await page.locator('nav.tabs button').allTextContents());
+          console.log('ACTIVE0',await page.locator('.pane.active').getAttribute('id').catch(()=>null));
+          for(const tab of ['Health','History','Trips','Places','Debug','Now']){
+            const b=page.getByRole('button',{name:tab,exact:true}); console.log('COUNT',tab,await b.count());
+            if(await b.count()){await b.click();await page.waitForTimeout(100);console.log('ACTIVE',tab,await page.locator('.pane.active').getAttribute('id').catch(()=>null));}
+          }
+          console.log('PAIR',await page.getByText('Pair another phone',{exact:true}).count());
+          await page.screenshot({path:'/tmp/parent-runtime.png',fullPage:true});
+          await browser.close();
+          if(errors.length) process.exit(2);
+          NODE
+          node /tmp/test.mjs
+      - name: Upload runtime screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-browser-runtime
+          path: /tmp/parent-runtime.png
+          if-no-files-found: warn
+          retention-days: 2
