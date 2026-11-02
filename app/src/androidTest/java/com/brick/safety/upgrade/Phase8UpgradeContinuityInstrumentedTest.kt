@@ -88,14 +88,20 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
         val before = context.getSharedPreferences("brick_upgrade_probe", Context.MODE_PRIVATE)
             .getString("phase7PublicKey", null)
         assertNotNull(before)
-        assertEquals("AndroidKeyStore identity must survive package update", before, DeviceKeys.publicSpkiBase64())
+        assertEquals("AndroidKeyStore identity must survive package update", before!!, DeviceKeys.publicSpkiBase64())
 
         // Reflection keeps this same test APK runnable against Phase 7, where BetaSafety does not yet
-        // exist, while still proving Phase 8 interprets the persisted marker as fail-closed.
+        // exist, while still proving Phase 8 interprets the persisted marker as fail-closed. Kotlin
+        // default parameters do not create a one-argument JVM overload, so isOperational is invoked
+        // using its real (Context,long) method signature.
         val betaClass = Class.forName("com.brick.safety.beta.BetaSafety")
         val beta = betaClass.getField("INSTANCE").get(null)
         val stage = betaClass.getMethod("retirementStage", Context::class.java).invoke(beta, context).toString()
-        val operational = betaClass.getMethod("isOperational", Context::class.java).invoke(beta, context) as Boolean
+        val operational = betaClass.getMethod(
+            "isOperational",
+            Context::class.java,
+            java.lang.Long.TYPE
+        ).invoke(beta, context, System.currentTimeMillis()) as Boolean
         assertEquals("DISARMED", stage)
         assertFalse("upgrade must never reactivate a previously disarmed install", operational)
     }
