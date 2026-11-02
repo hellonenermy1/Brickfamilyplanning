@@ -1,0 +1,174 @@
+name: Deploy Brick Phase 6C Development Beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID (optional if repo secret or token sees one account)'
+        required: false
+        default: ''
+        type: string
+      install_map:
+        description: 'Install/update the private Singapore map in DEVELOPMENT R2'
+        required: true
+        default: true
+        type: boolean
+  pull_request:
+    branches: [v1-p6-device-control-cloud]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase6-development
+  cancel-in-progress: false
+
+jobs:
+  deploy-development:
+    name: Qualify and deploy isolated Phase 6C development stack
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'v1-p6c-parent-beta-cloud'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Preflight exact development source and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            test "$GITHUB_REF_NAME" = "v1-p6c-parent-beta-cloud" || { echo 'Run this development deploy from v1-p6c-parent-beta-cloud.' >&2; exit 1; }
+          fi
+          grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"APP_ENV": "development"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'brick-family-v1-dev' scripts/setup-v1-phase6-development.mjs >/dev/null
+          ! grep -F '"main": "src/worker-v10.ts"' wrangler.template.jsonc >/dev/null
+          echo "Development deploy source SHA: $GITHUB_SHA"
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run full cloud regression and parent beta render gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node --check scripts/setup-v1-phase6-development.mjs
+          node --check scripts/install-private-map-development.mjs
+          bash scripts/phase6-cloud-regression.sh
+          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
+          node --input-type=module <<'NODE'
+          const m = await import('file:///tmp/brick-parent-v6c.mjs');
+          const html = m.parentV6CHtml();
+          for (const s of ['DEVELOPMENT BETA','Development diagnostics','Live trust','Run self-check','Copy beta report']) {
+            if (!html.includes(s)) throw new Error(`missing development portal contract: ${s}`);
+          }
+          NODE
+
+      - name: Provision or reuse DEVELOPMENT resources and deploy
+        run: npm run setup:development
+
+      - name: Verify isolated setup provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s setup-development-state.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
+          if (s.sourceGitSha !== process.env.GITHUB_SHA) throw new Error(`development setup SHA ${s.sourceGitSha} != workflow ${process.env.GITHUB_SHA}`);
+          if (s.environment !== 'development' || s.releaseState !== 'development-beta') throw new Error('not a development beta state');
+          if (s.workerEntry !== 'src/worker-v10.ts' || s.workerName !== 'brick-family-v1-dev') throw new Error('wrong development worker');
+          if (s.resources?.DB !== 'brick-family-v1-dev') throw new Error('wrong development D1');
+          if (s.resources?.HISTORY_BUCKET !== 'brick-family-v1-dev-history') throw new Error('wrong development history bucket');
+          if (s.resources?.MAPS_BUCKET !== 'brick-family-v1-dev-maps') throw new Error('wrong development map bucket');
+          if (s.resources?.EVENT_QUEUE !== 'brick-family-v1-dev-events' || s.resources?.DLQ !== 'brick-family-v1-dev-dlq') throw new Error('wrong development queues');
+          if (s.access?.mode !== 'cloudflare-access-rs256') throw new Error('development Access was not verified');
+          NODE
+
+      - name: Install private Singapore map into DEVELOPMENT only
+        if: github.event_name == 'pull_request' || inputs.install_map == true
+        run: npm run map:install:development
+
+      - name: Strict final development deploy tagged with exact Git SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-dev-git-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 6C development beta source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.development.jsonc > worker-development-deployments.json
+          test -s worker-development-deployments.json
+          grep -F "$GITHUB_SHA" worker-development-deployments.json >/dev/null
+
+      - name: Verify development Access boundary and child API surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$(node --input-type=module -e "import fs from 'node:fs';console.log(JSON.parse(fs.readFileSync('setup-development-state.json','utf8')).workerHost)")"
+          test -n "$host"
+          parent_code="$(curl -sS -o /tmp/brick-parent-response -w '%{http_code}' "https://$host/parent")"
+          case "$parent_code" in
+            301|302|303|307|308|401|403) ;;
+            200) echo 'SECURITY FAILURE: development parent dashboard is public without Access.' >&2; exit 1 ;;
+            *) echo "Unexpected /parent status: $parent_code" >&2; exit 1 ;;
+          esac
+          api_code="$(curl -sS -o /tmp/brick-api-response -w '%{http_code}' -X POST "https://$host/api/pair/complete" -H 'content-type: application/json' --data '{"token":"invalid"}')"
+          case "$api_code" in
+            400|401|403|404|409|422|429) ;;
+            5??) echo "Development child API returned server error $api_code" >&2; exit 1 ;;
+            *) echo "Child API negative smoke returned $api_code" ;;
+          esac
+          echo "Access boundary status: $parent_code"
+          echo "Child API negative smoke status: $api_code"
+          echo "Parent beta: https://$host/parent"
+          echo "Child beta API: https://$host"
+
+      - name: Show development deployment result
+        if: always()
+        shell: bash
+        run: |
+          if [ -f setup-development-state.json ]; then
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
+          console.log('Brick Phase 6C DEVELOPMENT deployment');
+          console.log('Source Git SHA:     ' + (s.sourceGitSha || 'NOT VERIFIED'));
+          console.log('Environment:        ' + (s.environment || 'NOT VERIFIED'));
+          console.log('Worker:             ' + (s.workerName || 'NOT VERIFIED'));
+          console.log('Parent beta:        https://' + s.workerHost + '/parent');
+          console.log('Child beta API:     https://' + s.workerHost);
+          console.log('D1:                 ' + s.resources.DB);
+          console.log('History R2:         ' + s.resources.HISTORY_BUCKET);
+          console.log('Private map R2:     ' + s.resources.MAPS_BUCKET);
+          console.log('Event queue:        ' + s.resources.EVENT_QUEUE);
+          console.log('DLQ:                ' + s.resources.DLQ);
+          console.log('Private map:        ' + Boolean(s.privateMap?.installed));
+          NODE
+          else
+            echo 'setup-development-state.json was not created; inspect the failed step above.'
+          fi
+
+      - name: Upload non-secret development evidence
+        if: ${{ always() && hashFiles('setup-development-state.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase6c-development-deployment-${{ github.sha }}
+          path: |
+            setup-development-state.json
+            worker-development-deployments.json
+          if-no-files-found: warn
+          retention-days: 30
