@@ -1,0 +1,207 @@
+name: Deploy Brick Phase 6C Development Beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID (optional if repo secret or token sees one account)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase6-development
+  cancel-in-progress: false
+
+jobs:
+  deploy-development:
+    name: Qualify and deploy fully card-free Phase 6C development stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Preflight exact card-free development source and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p6c-parent-beta-cloud" || { echo 'Run this development deploy from v1-p6c-parent-beta-cloud.' >&2; exit 1; }
+          grep -F '"name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-v10.ts"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"database_name": "brick-family-v1-dev"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"DEV_PARENT_AUTH_MODE": "d1-session-v1"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"name": "PARENT_LOGIN_RATE"' wrangler.development.template.jsonc >/dev/null
+          grep -F '"BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"r2_buckets"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.template.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.template.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.template.jsonc >/dev/null
+          grep -F 'setup-v1-phase6-development-free.mjs' package.json >/dev/null
+          ! grep -F '"main": "src/worker-v10.ts"' wrangler.template.jsonc >/dev/null
+          echo "Development deploy source SHA: $GITHUB_SHA"
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run full cloud regression and card-free beta gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build:parent-assets
+          npm run typecheck
+          npx tsc -p tsconfig.web.json --noEmit
+          node --check scripts/setup-v1-phase6-development-free.mjs
+          bash scripts/phase6-cloud-regression.sh
+          grep -F 'class D1ObjectBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class DirectEventQueue' src/dev-free-runtime.ts >/dev/null
+          grep -F 'class RemoteMapBucket' src/dev-free-runtime.ts >/dev/null
+          grep -F 'X-Brick-Storage", "d1-free-runtime' src/worker-v10.ts >/dev/null
+          grep -F 'stripDevParentInternalHeader' src/worker-v10.ts >/dev/null
+          grep -F 'authorizeDevParentRequest' src/worker-v10.ts >/dev/null
+          grep -F 'PARENT_LOGIN_RATE' src/worker-v10.ts >/dev/null
+          grep -F 'DEV_PARENT_PIN_HASH' src/worker-v10.ts >/dev/null
+          grep -F 'reusable 6-digit beta access code' src/dev-parent-auth.ts >/dev/null
+          ! grep -F 'consumed after the first successful login' src/dev-parent-auth.ts >/dev/null
+          grep -F 'dev_parent_sessions' schema/012_phase6c_free_runtime.sql >/dev/null
+          grep -F 'dev_maintenance_state' schema/013_phase6c_request_maintenance.sql >/dev/null
+          npx esbuild src/parent-v6c.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v6c.mjs
+          node --input-type=module <<'NODE'
+          const m = await import('file:///tmp/brick-parent-v6c.mjs');
+          const html = m.parentV6CHtml();
+          for (const s of ['DEVELOPMENT BETA','Development diagnostics','Live trust','Run self-check','Copy beta report']) {
+            if (!html.includes(s)) throw new Error(`missing development portal contract: ${s}`);
+          }
+          NODE
+
+      - name: Provision or reuse fully card-free DEVELOPMENT resources and deploy
+        run: npm run setup:development
+
+      - name: Verify isolated setup provenance and no card-gated dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s setup-development-state.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
+          if (s.sourceGitSha !== process.env.GITHUB_SHA) throw new Error(`development setup SHA ${s.sourceGitSha} != workflow ${process.env.GITHUB_SHA}`);
+          if (s.environment !== 'development' || s.releaseState !== 'development-beta-cardfree') throw new Error('not the fully card-free development beta state');
+          if (s.workerEntry !== 'src/worker-v10.ts' || s.workerName !== 'brick-family-v1-dev') throw new Error('wrong development worker');
+          if (s.resources?.DB !== 'brick-family-v1-dev') throw new Error('wrong development D1');
+          if (s.storageMode !== 'd1-chunked-no-r2') throw new Error('R2-free storage mode not active');
+          if (s.queueMode !== 'direct-synchronous-no-cloudflare-queue') throw new Error('queue-free mode not active');
+          if (s.parentAuthMode !== 'd1-session-v1-no-zero-trust') throw new Error('Zero-Trust-free parent auth not active');
+          if (s.parentLoginMode !== 'reusable-6-digit-pin-v1') throw new Error('Reusable development parent PIN mode not active');
+          if (s.schedulerMode !== 'request-driven-d1-lease-no-cron') throw new Error('cron-free scheduler not active');
+          if (s.mapMode !== 'same-origin-worker-range-proxy' || !/^https:\/\//.test(s.mapSource || '')) throw new Error('map proxy mode not active');
+          NODE
+          ! grep -F 'r2_buckets' wrangler.development.jsonc >/dev/null
+          ! grep -F '"queues"' wrangler.development.jsonc >/dev/null
+          ! grep -F 'CF_ACCESS_' wrangler.development.jsonc >/dev/null
+          ! grep -F '"triggers"' wrangler.development.jsonc >/dev/null
+          npx wrangler d1 execute brick-family-v1-dev --remote --command "SELECT COUNT(*) AS n FROM dev_object_store; SELECT COUNT(*) AS n FROM dev_parent_sessions; SELECT COUNT(*) AS n FROM dev_maintenance_state" --config wrangler.development.jsonc >/tmp/brick-d1-cardfree-smoke.txt
+
+      - name: Strict final development deploy tagged with exact Git SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="brick-dev-cardfree-git-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.development.jsonc --tag "$tag" --message "Brick Phase 6C fully card-free development beta source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.development.jsonc > worker-development-deployments.json
+          test -s worker-development-deployments.json
+          grep -F "$GITHUB_SHA" worker-development-deployments.json >/dev/null
+
+      - name: Verify D1 parent-session boundary and child API surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="$(node --input-type=module -e "import fs from 'node:fs';console.log(JSON.parse(fs.readFileSync('setup-development-state.json','utf8')).workerHost)")"
+          test -n "$host"
+
+          parent_code="$(curl -sS -o /tmp/brick-parent-response -w '%{http_code}' "https://$host/parent")"
+          case "$parent_code" in
+            301|302|303|307|308|401) ;;
+            200) echo 'SECURITY FAILURE: development parent dashboard is public without a D1 session.' >&2; exit 1 ;;
+            *) echo "Unexpected /parent status: $parent_code" >&2; exit 1 ;;
+          esac
+
+          forged_code="$(curl -sS -o /tmp/brick-forged-response -w '%{http_code}' "https://$host/parent" -H 'X-Brick-Dev-Parent-Verified: session-v1')"
+          case "$forged_code" in
+            301|302|303|307|308|401) ;;
+            200) echo 'SECURITY FAILURE: forged internal parent-auth header bypassed worker-v10.' >&2; exit 1 ;;
+            *) echo "Unexpected forged-header status: $forged_code" >&2; exit 1 ;;
+          esac
+
+          login_code="$(curl -sS -o /tmp/brick-login-response -w '%{http_code}' "https://$host/parent/login")"
+          test "$login_code" = "200" || { echo "Unexpected /parent/login status: $login_code" >&2; exit 1; }
+          grep -F 'Brick Parent' /tmp/brick-login-response >/dev/null
+          grep -F 'reusable 6-digit beta access code' /tmp/brick-login-response >/dev/null
+
+          wrong_login_code="$(curl -sS -o /tmp/brick-wrong-login-response -w '%{http_code}' -X POST "https://$host/parent/login" -H 'content-type: application/x-www-form-urlencoded' --data 'token=000000')"
+          test "$wrong_login_code" = "401" || { echo "Unexpected wrong-PIN status: $wrong_login_code" >&2; exit 1; }
+
+          api_code="$(curl -sS -o /tmp/brick-api-response -w '%{http_code}' -X POST "https://$host/api/pair/complete" -H 'content-type: application/json' --data '{"token":"invalid"}')"
+          case "$api_code" in
+            400|401|403|404|409|422|429) ;;
+            5??) echo "Development child API returned server error $api_code" >&2; exit 1 ;;
+            *) echo "Child API negative smoke returned $api_code" ;;
+          esac
+          echo "Parent session boundary status: $parent_code"
+          echo "Forged-header boundary status: $forged_code"
+          echo "Parent login page status: $login_code"
+          echo "Wrong parent PIN status: $wrong_login_code"
+          echo "Child API negative smoke status: $api_code"
+          echo "Parent beta: https://$host/parent"
+          echo "Child beta API: https://$host"
+
+      - name: Show development deployment result
+        if: always()
+        shell: bash
+        run: |
+          if [ -f setup-development-state.json ]; then
+            node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-development-state.json', 'utf8'));
+          console.log('Brick Phase 6C FULLY CARD-FREE DEVELOPMENT deployment');
+          console.log('Source Git SHA:     ' + (s.sourceGitSha || 'NOT VERIFIED'));
+          console.log('Worker:             ' + (s.workerName || 'NOT VERIFIED'));
+          console.log('Parent beta:        https://' + s.workerHost + '/parent');
+          console.log('Child beta API:     https://' + s.workerHost);
+          console.log('D1:                 ' + s.resources.DB);
+          console.log('Storage:            ' + s.storageMode);
+          console.log('Queue mode:         ' + s.queueMode);
+          console.log('Parent auth:        ' + s.parentAuthMode);
+          console.log('Parent login:       ' + s.parentLoginMode);
+          console.log('Scheduler:          ' + s.schedulerMode);
+          console.log('Map mode:           ' + s.mapMode);
+          console.log('Map source:         ' + s.mapSource);
+          NODE
+          else
+            echo 'setup-development-state.json was not created; inspect the failed step above.'
+          fi
+
+      - name: Upload non-secret development evidence
+        if: ${{ always() && hashFiles('setup-development-state.json') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: brick-phase6c-cardfree-development-${{ github.sha }}
+          path: |
+            setup-development-state.json
+            worker-development-deployments.json
+          if-no-files-found: warn
+          retention-days: 30

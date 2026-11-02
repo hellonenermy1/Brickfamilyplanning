@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "brick-family-v1-dev",
+  "main": "src/worker-v10.ts",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./public"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "BRICK_DEVICE", "class_name": "BrickDevice" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["BrickDevice"] }
+  ],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "brick-family-v1-dev", "database_id": "__D1_DATABASE_ID__" }
+  ],
+  "ratelimits": [
+    { "name": "DEVICE_RATE", "namespace_id": "42001", "simple": { "limit": 120, "period": 60 } },
+    { "name": "PAIR_RATE", "namespace_id": "42002", "simple": { "limit": 20, "period": 60 } },
+    { "name": "PARENT_LOGIN_RATE", "namespace_id": "42003", "simple": { "limit": 6, "period": 60 } }
+  ],
+  "vars": {
+    "APP_ENV": "development",
+    "CURRENT_APP_VERSION": "0.6.0-phase6c-beta5-cardfree",
+    "DEV_PARENT_AUTH_MODE": "d1-session-v1",
+    "DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d",
+    "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
+  }
+}

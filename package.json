@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup.mjs",
+    "setup:development": "node scripts/setup-v1-phase6-development-cardfree-v2.mjs",
+    "setup:development:base": "node scripts/setup-v1-phase6-development-free.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build:parent-assets": "node scripts/build-parent-assets.mjs",
