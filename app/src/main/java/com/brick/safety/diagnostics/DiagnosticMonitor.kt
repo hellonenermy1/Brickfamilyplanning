@@ -16,6 +16,7 @@ import com.brick.safety.location.BrickLocationService
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
 import com.brick.safety.reliability.SafetyDispatcher
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -24,17 +25,31 @@ object DiagnosticMonitor {
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "brick-6c-diagnostics").apply { isDaemon = true }
     }
+    @Volatile private var future: ScheduledFuture<*>? = null
     private val last = LinkedHashMap<String, String>()
 
+    @Synchronized
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
         val app = context.applicationContext
         DiagnosticStore.init(app)
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "process", "process_started", "pid=${android.os.Process.myPid()}")
-        scheduler.scheduleWithFixedDelay({ sample(app) }, 2, 15, TimeUnit.SECONDS)
+        future = scheduler.scheduleWithFixedDelay({
+            if (started.get()) sample(app)
+        }, 2, 15, TimeUnit.SECONDS)
+    }
+
+    /** Deep Off must stop process-local sampling immediately, not only future WorkManager jobs. */
+    @Synchronized
+    fun stop() {
+        if (!started.getAndSet(false)) return
+        future?.cancel(false)
+        future = null
+        synchronized(last) { last.clear() }
     }
 
     private fun sample(context: Context) {
+        if (!started.get()) return
         runCatching {
             val brick = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
             val position = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
