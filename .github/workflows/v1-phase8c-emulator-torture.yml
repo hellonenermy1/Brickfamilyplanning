@@ -79,11 +79,13 @@ jobs:
           classes=(
             'com.brick.safety.data.Phase8DurabilityTortureInstrumentedTest'
             'com.brick.safety.data.Phase8LowStorageInstrumentedTest'
+            'com.brick.safety.data.Phase8BacklogScaleInstrumentedTest'
             'com.brick.safety.reliability.Phase8NetworkChaosInstrumentedTest'
             'com.brick.safety.evidence.Phase8ProviderIsolationInstrumentedTest'
             'com.brick.safety.privileged.Phase6PrivilegedBridgeInstrumentedTest'
             'com.brick.safety.diagnostics.Phase6CDiagnosticsInstrumentedTest'
             'com.brick.safety.maintenance.Phase8PostPurgeIsolationInstrumentedTest'
+            'com.brick.safety.maintenance.Phase8WorkManagerDrainInstrumentedTest'
           )
           : > /tmp/p8c-instrumentation.txt
           for class in "${classes[@]}"; do
