@@ -7,6 +7,7 @@ import com.brick.safety.atlas.CompanionPresenceStore
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
 import com.brick.safety.maintenance.WifiScheduleManager
 
 class BootReceiver : BroadcastReceiver() {
@@ -18,6 +19,10 @@ class BootReceiver : BroadcastReceiver() {
         if (!supported) return
 
         val app = context.applicationContext
+        // PURGE_BRICK is an uninstall-only state. Do not even initialize diagnostics/Deep Off/
+        // scheduling state from a system broadcast while the package is waiting to be removed.
+        if (DeprovisionManager.isPostPurge(app)) return
+
         if (DeepOffManager.isActive(app)) {
             DeepOffManager.quiesce(app)
             DiagnosticStore.log(app, DiagnosticStore.Severity.INFO, "boot", "deep_off_remains_quiesced", "action=${intent.action}")
