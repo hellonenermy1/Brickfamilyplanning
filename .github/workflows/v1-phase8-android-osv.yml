@@ -22,27 +22,33 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p phase8-release-runtime
           python3 - <<'PY'
           from pathlib import Path
           source = Path('app/gradle.lockfile').read_text().splitlines()
-          out = []
+          out = [
+              '# This file is generated in CI from app/gradle.lockfile.',
+              '# It contains only dependencies resolved into releaseRuntimeClasspath.'
+          ]
+          count = 0
           for line in source:
               if not line or line.startswith('#'):
                   continue
               configs = line.partition('=')[2].split(',')
               if 'releaseRuntimeClasspath' in configs:
                   out.append(line)
-          if not out:
+                  count += 1
+          if count == 0:
               raise SystemExit('releaseRuntimeClasspath lock subset is empty')
-          Path('phase8-release-runtime-gradle.lockfile').write_text('\n'.join(out) + '\n')
-          print(f'release runtime lock entries: {len(out)}')
+          Path('phase8-release-runtime/gradle.lockfile').write_text('\n'.join(out) + '\n')
+          print(f'release runtime lock entries: {count}')
           PY
 
       - name: Scan only dependencies that can ship in the release APK
         uses: google/osv-scanner-action/osv-scanner-action@0a65f82af05cd58cf587827b0bb0489548c18346 # v2.7.0
         with:
           scan-args: |-
-            -L phase8-release-runtime-gradle.lockfile
+            -L phase8-release-runtime/gradle.lockfile
 
   toolchain-review:
     name: Review all locked Android build/test/toolchain dependencies
