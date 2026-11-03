@@ -1,0 +1,126 @@
+name: Brick V1 Phase 8B — Android Remediation CI
+
+on:
+  push:
+    branches: [v1-p8b-remediation-android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+
+      - name: Verify dependency lock stability
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Build, unit tests, lint, AndroidTest compile and R8
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
+
+      - name: Verify production surface and frozen 8B semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          gradle_file=app/build.gradle.kts
+
+          ! grep -F 'android:testOnly="true"' "$manifest"
+          grep -F 'versionCode = 10' "$gradle_file" >/dev/null
+          grep -F 'versionName = "1.0.0-rc.1"' "$gradle_file" >/dev/null
+          grep -F 'buildConfigField("boolean", "BRICK_BETA", "false")' "$gradle_file" >/dev/null
+
+          # Diagnostics/maintenance must not be a second launcher/exported surface.
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ns='{http://schemas.android.com/apk/res/android}'
+          root=ET.parse('app/src/main/AndroidManifest.xml').getroot()
+          app=root.find('application')
+          exported=[]
+          launchers=[]
+          for tag in ('activity','service','receiver','provider'):
+              for node in app.findall(tag):
+                  name=node.get(ns+'name')
+                  if node.get(ns+'exported')=='true': exported.append((tag,name,node.get(ns+'permission')))
+                  for f in node.findall('intent-filter'):
+                      actions={x.get(ns+'name') for x in f.findall('action')}
+                      cats={x.get(ns+'name') for x in f.findall('category')}
+                      if 'android.intent.action.MAIN' in actions and 'android.intent.category.LAUNCHER' in cats:
+                          launchers.append(name)
+          assert launchers == ['.ui.MainActivity'], f'unexpected launchers: {launchers}'
+          assert not any(x[0]=='activity' and x[1]=='.diagnostics.DiagnosticsActivity' for x in exported), exported
+          print('launcher/exported surface OK')
+          PY
+
+          # One-shot Location semantics: no persistent lock or persistent desired-state symbol in production runtime.
+          ! grep -R -n -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' app/src/main/java
+          ! grep -R -n -F 'parentDesiredLocationState' app/src/main/java
+
+          # Required remediation subsystems exist in production source.
+          for f in \
+            app/src/main/java/com/brick/safety/maintenance/MaintenanceEntryGate.kt \
+            app/src/main/java/com/brick/safety/maintenance/PolicyLedger.kt \
+            app/src/main/java/com/brick/safety/maintenance/DeepOffManager.kt \
+            app/src/main/java/com/brick/safety/maintenance/DeprovisionManager.kt \
+            app/src/main/java/com/brick/safety/maintenance/WifiScheduleManager.kt \
+            app/src/main/java/com/brick/safety/maintenance/LiveTrackStateStore.kt \
+            app/src/main/java/com/brick/safety/maintenance/CapabilityProfileStore.kt \
+            app/src/main/java/com/brick/safety/reliability/CanaryWorker.kt \
+            app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt \
+            app/src/main/java/com/brick/safety/reliability/ScreenTimeWorker.kt \
+            app/src/main/java/com/brick/safety/network/LiveApi.kt \
+            app/src/main/java/com/brick/safety/network/CanaryApi.kt; do
+              test -s "$f"
+          done
+
+          # Shizuku remains typed; no generic shell/exec surface.
+          aidl=app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl
+          ! grep -E -i '(exec|shell|rawCommand|filePath)' "$aidl"
+          ! grep -R -n -E 'Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(' app/src/main
+
+          # No ordinary analytics/ad SDKs.
+          ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
+
+      - name: Check source for unresolved placeholders in production code
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Allow TODO only inside comments/tests if explicitly reviewed later; production throwing stubs are blockers.
+          ! grep -R -n -E 'TODO\("|NotImplementedError|UnsupportedOperationException\("TODO|return[[:space:]]+null[[:space:]]*//[[:space:]]*(TODO|FIXME)' app/src/main/java
