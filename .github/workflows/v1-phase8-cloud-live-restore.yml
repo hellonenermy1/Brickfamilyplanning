@@ -1,10 +1,10 @@
-name: Brick V1 Phase 8 — Live D1 Destructive Restore Rehearsal
+name: Brick V1 Phase 8 — Live Brick Backup Destructive Restore Rehearsal
 
 on:
   workflow_dispatch:
     inputs:
       cloudflare_account_id:
-        description: 'Cloudflare Account ID for a disposable D1 restore rehearsal'
+        description: 'Cloudflare Account ID for disposable D1 restore rehearsal'
         required: true
         type: string
 
@@ -17,9 +17,9 @@ concurrency:
 
 jobs:
   live-d1-restore:
-    name: Disposable D1 seed -> destructive mutation -> Time Travel restore -> exact compare
+    name: Real migrations -> Brick backup -> delete source -> fresh D1 restore -> exact compare
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
       BRICK_RESTORE_STATE_PATH: phase8-live-restore-state.json
@@ -28,6 +28,17 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install exactly locked build dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Bundle the exact Brick restore implementation under test
+        run: npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-live.mjs
 
       - name: Require exact Phase 8 cloud branch and credentials
         shell: bash
@@ -39,12 +50,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
           test -n "${CLOUDFLARE_API_TOKEN:-}"
-          node --check scripts/phase8-live-d1-restore.mjs
+          node --check scripts/phase8-live-brick-backup-restore.mjs
 
-      - name: Execute disposable live D1 destructive restore rehearsal
+      - name: Execute live Brick application backup and destructive restore rehearsal
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: node scripts/phase8-live-d1-restore.mjs
+        run: node scripts/phase8-live-brick-backup-restore.mjs /tmp/brick-backup-restore-live.mjs
 
       - name: Verify non-secret restore evidence
         shell: bash
@@ -55,58 +66,70 @@ jobs:
           import fs from 'node:fs';
           const e = JSON.parse(fs.readFileSync(process.env.BRICK_RESTORE_EVIDENCE_PATH, 'utf8'));
           if (e.sourceGitSha !== process.env.GITHUB_SHA) throw new Error('restore evidence SHA mismatch');
-          if (e.exactStateComparison !== true) throw new Error('exact restore comparison was not proven');
+          if (e.backupFormat !== 'brick-d1-snapshot-v1') throw new Error('wrong Brick backup format');
+          if (!/^[0-9a-f]{64}$/.test(String(e.backupSha256 || ''))) throw new Error('backup SHA-256 missing');
+          if (!Number.isFinite(e.backupBytes) || e.backupBytes <= 0) throw new Error('backup bytes missing');
+          if (e.sourceDatabaseDeleted !== true) throw new Error('destructive source deletion was not proven');
+          if (e.restoredIntoFreshDatabase !== true || e.exactStateComparison !== true) throw new Error('fresh exact application restore was not proven');
+          if (e.identityUniqueIndexVerified !== true) throw new Error('Phase 8 identity uniqueness was not verified after restore');
           if (e.productionDatabaseTouched !== false || e.fixtureOnly !== true) throw new Error('rehearsal safety boundary missing');
-          if (!Array.isArray(e.restoredCriticalClasses) || e.restoredCriticalClasses.length < 5) throw new Error('critical restore classes incomplete');
-          if (!e.bookmark || !e.undoBookmark) throw new Error('Time Travel bookmarks missing');
+          if (!Array.isArray(e.appliedSchemas) || !e.appliedSchemas.includes('schema/015_phase8_device_identity.sql')) throw new Error('real Phase 8 migration chain missing');
+          if (!Array.isArray(e.backupTables) || e.backupTables.length !== 12) throw new Error('Brick backup table set incomplete');
+          if (!Array.isArray(e.restoredCriticalClasses) || e.restoredCriticalClasses.length !== 12) throw new Error('critical restore classes incomplete');
+          for (const table of e.backupTables) {
+            if (Number(e.restoredRows?.[table]) !== 1) throw new Error(`restore row proof missing for ${table}`);
+          }
           if (!Number.isFinite(e.databaseFileSizeBytes) || e.databaseFileSizeBytes < 0) throw new Error('D1 size measurement missing');
-          console.log('Disposable live D1 restore evidence verified.');
+          console.log('Live Brick application backup/destructive restore evidence verified.');
           NODE
 
-      - name: Delete disposable D1 database
+      - name: Delete all disposable D1 databases
         if: always()
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          set +e
+          set -euo pipefail
           if [ ! -s "$BRICK_RESTORE_STATE_PATH" ]; then
-            echo 'No disposable database was created.'
+            echo 'No disposable database state was created.'
             exit 0
           fi
           node --input-type=module - <<'NODE'
           import fs from 'node:fs';
-          const state = JSON.parse(fs.readFileSync(process.env.BRICK_RESTORE_STATE_PATH, 'utf8'));
+          const statePath = process.env.BRICK_RESTORE_STATE_PATH;
+          const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
           const token = process.env.CLOUDFLARE_API_TOKEN;
           const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-          if (!token || !account || !state.databaseId) process.exit(0);
-          const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${state.databaseId}`, {
-            method: 'DELETE',
-            headers: { authorization: `Bearer ${token}` },
-            signal: AbortSignal.timeout(30_000)
-          });
-          if (response.ok) {
-            console.log('Disposable D1 database deleted.');
-            process.exit(0);
+          if (!token || !account) throw new Error('cleanup credentials missing');
+          let failures = 0;
+          for (const db of state.databases || []) {
+            if (!db?.id || db.deleted === true) continue;
+            const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${db.id}`, {
+              method: 'DELETE',
+              headers: { authorization: `Bearer ${token}` },
+              signal: AbortSignal.timeout(30_000)
+            });
+            if (response.ok || response.status === 404) {
+              db.deleted = true;
+              console.log(`Deleted disposable D1 ${db.role || db.name || db.id}`);
+            } else {
+              failures++;
+              const body = await response.text().catch(() => '');
+              console.error(`Cleanup failed for ${db.id}: HTTP ${response.status} ${body.slice(0, 500)}`);
+            }
           }
-          const body = await response.text().catch(() => '');
-          console.error(`Disposable D1 cleanup failed: HTTP ${response.status} ${body.slice(0, 500)}`);
-          process.exit(1);
+          state.cleanupAttempted = true;
+          state.cleanupSucceeded = failures === 0;
+          fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+          if (fs.existsSync(process.env.BRICK_RESTORE_EVIDENCE_PATH)) {
+            const p = process.env.BRICK_RESTORE_EVIDENCE_PATH;
+            const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+            e.cleanupAttempted = true;
+            e.cleanupSucceeded = failures === 0;
+            fs.writeFileSync(p, JSON.stringify(e, null, 2));
+          }
+          if (failures) process.exit(1);
           NODE
-
-      - name: Mark cleanup in evidence
-        if: always()
-        shell: bash
-        run: |
-          if [ -s "$BRICK_RESTORE_EVIDENCE_PATH" ]; then
-            node --input-type=module - <<'NODE'
-          import fs from 'node:fs';
-          const p = process.env.BRICK_RESTORE_EVIDENCE_PATH;
-          const e = JSON.parse(fs.readFileSync(p, 'utf8'));
-          e.cleanupAttempted = true;
-          fs.writeFileSync(p, JSON.stringify(e, null, 2));
-          NODE
-          fi
 
       - name: Upload non-secret live restore evidence
         if: always()
