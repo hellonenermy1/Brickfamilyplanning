@@ -83,14 +83,16 @@ jobs:
             'com.brick.safety.evidence.Phase8ProviderIsolationInstrumentedTest'
             'com.brick.safety.privileged.Phase6PrivilegedBridgeInstrumentedTest'
             'com.brick.safety.diagnostics.Phase6CDiagnosticsInstrumentedTest'
+            'com.brick.safety.maintenance.Phase8PostPurgeIsolationInstrumentedTest'
           )
           : > /tmp/p8c-instrumentation.txt
           for class in "${classes[@]}"; do
             echo "===== $class =====" | tee -a /tmp/p8c-instrumentation.txt
-            "$ADB" shell am instrument -w \
+            output="$($ADB shell am instrument -w \
               -e class "$class" \
-              com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee -a /tmp/p8c-instrumentation.txt
-            tail -n 12 /tmp/p8c-instrumentation.txt | grep -E 'OK \([0-9]+ test|OK \([0-9]+ tests' >/dev/null
+              com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner)"
+            printf '%s\n' "$output" | tee -a /tmp/p8c-instrumentation.txt
+            grep -E 'OK \([0-9]+ test|OK \([0-9]+ tests' <<<"$output" >/dev/null
           done
 
       - name: Capture package and database state
