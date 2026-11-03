@@ -8,6 +8,7 @@ import { refineCurrentState, type ParentCurrentState } from "./phase5-current-re
 import { cleanupPhase5RefinedHistory, listRefinedHistory, processRefinementsForDevice } from "./phase5-refined-history";
 import { augmentPhase7ParentStateResponseV2 } from "./phase7-state-v2";
 import { augmentPhase8ParentTruth } from "./phase8-parent-truth";
+import { augmentPhase8HistoryProvenance } from "./phase8-history-provenance";
 import { parentV8Html } from "./parent-v8";
 export { BrickDevice };
 
@@ -157,7 +158,8 @@ export default {
       const fromMs = Number(u.searchParams.get("from"));
       const toMs = Number(u.searchParams.get("to"));
       if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return response;
-      return augmentParentHistoryWithRefinedLayer(response, env, deviceId, fromMs, toMs);
+      const provenance = await augmentPhase8HistoryProvenance(response, env, deviceId, fromMs, toMs);
+      return augmentParentHistoryWithRefinedLayer(provenance, env, deviceId, fromMs, toMs);
     }
 
     return base.fetch!(req, env, ctx);
