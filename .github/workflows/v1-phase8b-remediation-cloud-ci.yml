@@ -1,0 +1,95 @@
+name: Brick V1 Phase 8B — Cloud Remediation CI
+
+on:
+  push:
+    branches: [v1-p8b-remediation-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@395ad3262231945c25e8478f88424a9bce944be0 # v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Typecheck Worker and parent code
+        run: npm run typecheck
+
+      - name: Build parent assets
+        run: npm run build:parent-assets
+
+      - name: Verify production entry and P8B wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"main": "src/worker-p8b.ts"' wrangler.template.jsonc >/dev/null
+          grep -F '"CURRENT_APP_VERSION": "1.0.0-rc.1"' wrangler.template.jsonc >/dev/null
+          grep -F "web/brick-map-p8b.ts" scripts/build-parent-assets.mjs >/dev/null
+          test -s public/brick-map.mjs
+          grep -F 'parentP8BHtml' src/worker-p8b.ts >/dev/null
+          grep -F 'parentReverseOneMap' src/worker-p8b.ts >/dev/null
+          grep -F 'parentCommutes' src/worker-p8b.ts >/dev/null
+          grep -F 'handleFastLive' src/worker-v9.ts >/dev/null
+          grep -F 'handleCanary' src/worker-v9.ts >/dev/null
+          grep -F 'parentSetLiveTrack' src/worker-v9.ts >/dev/null
+          grep -F 'parentSetWifiSchedules' src/worker-v9.ts >/dev/null
+          grep -F 'maybeHandleFallEvent' src/worker-p8b.ts >/dev/null
+          grep -F 'ingestScreenTime' src/worker-p8b.ts >/dev/null
+          grep -F 'ONEMAP_EMAIL' src/onemap-client.ts >/dev/null
+          grep -F 'ONEMAP_PASSWORD' src/onemap-client.ts >/dev/null
+          ! grep -R -n -E 'ONEMAP_(EMAIL|PASSWORD)[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+' web public || true
+
+      - name: Apply all D1 migrations to a clean SQLite database
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sqlite3
+          rm -f /tmp/brick-p8b.db
+          for f in $(find schema -maxdepth 1 -type f -name '*.sql' | sort); do
+            echo "Applying $f"
+            sqlite3 /tmp/brick-p8b.db < "$f"
+          done
+          sqlite3 /tmp/brick-p8b.db '.schema' > /tmp/schema.txt
+          for table in device_live_track_control device_wifi_schedules device_wifi_schedule_result device_capability_profile screen_time_daily commute_summaries provider_cache provider_rate_window; do
+            grep -E "CREATE TABLE( IF NOT EXISTS)? ${table}" /tmp/schema.txt >/dev/null
+          done
+
+      - name: Existing deterministic regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/test-history-codec.mjs
+          node scripts/test-phase5-live-state-order.mjs
+          node scripts/test-phase8-location-control-contract.mjs
+          node scripts/test-phase8-parent-origin.mjs
+          node scripts/test-phase8-sos-priority-contract.mjs
+          node scripts/audit-privacy.mjs
+
+      - name: Wrangler dry-run production bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp wrangler.template.jsonc /tmp/wrangler-p8b.jsonc
+          sed -i 's/__D1_DATABASE_ID__/00000000-0000-0000-0000-000000000001/g' /tmp/wrangler-p8b.jsonc
+          sed -i 's/__CF_ACCESS_TEAM_DOMAIN__/example.cloudflareaccess.com/g' /tmp/wrangler-p8b.jsonc
+          sed -i 's/__CF_ACCESS_AUD__/0000000000000000000000000000000000000000000000000000000000000000/g' /tmp/wrangler-p8b.jsonc
+          npx wrangler deploy --dry-run --config /tmp/wrangler-p8b.jsonc --outdir /tmp/brick-dist
+          test -n "$(find /tmp/brick-dist -type f -maxdepth 2 | head -n1)"
+
+      - name: No production placeholders or obvious fake handlers
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -n -E 'TODO\(|NotImplemented|throw new Error\(["'"']TODO|placeholder only|hardcoded success' src web
