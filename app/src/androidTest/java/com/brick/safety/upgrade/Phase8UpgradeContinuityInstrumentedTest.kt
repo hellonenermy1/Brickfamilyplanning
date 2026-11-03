@@ -22,6 +22,32 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
     private val context get() = instrumentation.targetContext.applicationContext
     private fun mode(): String = InstrumentationRegistry.getArguments().getString("p8UpgradeMode") ?: ""
 
+    /**
+     * The exact Phase 7 Journal has a one-argument Java constructor. Phase 8 added an optional
+     * instrumentation-only fault injector, which changes the JVM constructor shape even though
+     * Kotlin source can still say Journal(context). This test APK must run against both target APKs,
+     * so resolve the constructor shape at runtime instead of linking the Phase 8-only synthetic
+     * default-argument constructor into the Phase 7 seed step.
+     */
+    private fun openCompatibleJournal(): Journal {
+        val constructors = Journal::class.java.declaredConstructors
+        val phase7 = constructors.firstOrNull { ctor ->
+            val p = ctor.parameterTypes
+            p.size == 1 && p[0] == Context::class.java
+        }
+        if (phase7 != null) {
+            phase7.isAccessible = true
+            return phase7.newInstance(context) as Journal
+        }
+
+        val phase8 = constructors.firstOrNull { ctor ->
+            val p = ctor.parameterTypes
+            p.size == 2 && p[0] == Context::class.java
+        } ?: throw AssertionError("No compatible Journal constructor in installed target APK")
+        phase8.isAccessible = true
+        return phase8.newInstance(context, null) as Journal
+    }
+
     fun testSeedPhase7State() {
         if (mode() != "seed") return
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -49,7 +75,7 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
                 .commit()
         )
 
-        Journal(context).use { journal ->
+        openCompatibleJournal().use { journal ->
             assertTrue(journal.append(EPOCH, SEQ, PAYLOAD.toByteArray()))
             assertEquals(SEQ, journal.nextPending(10).single().seq)
         }
@@ -78,7 +104,7 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
         assertEquals("11111111-1111-4111-8111-111111111111", parent.getString("nonce", null))
         assertEquals(123_456L, parent.getLong("issuedAtMs", -1L))
 
-        Journal(context).use { journal ->
+        openCompatibleJournal().use { journal ->
             val row = journal.nextPending(10).single()
             assertEquals(EPOCH, row.epoch)
             assertEquals(SEQ, row.seq)
