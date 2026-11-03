@@ -39,12 +39,31 @@ object ServiceControl {
             return
         }
 
-        if (prefs.getBoolean("sosActive", false)) {
-            val locationOff = runCatching { !app.getSystemService(LocationManager::class.java).isLocationEnabled }.getOrDefault(false)
+        if (SafetyDispatcher.isSosActive(app)) {
+            val locationOff = runCatching {
+                !app.getSystemService(LocationManager::class.java).isLocationEnabled
+            }.getOrDefault(false)
             if (locationOff) {
                 runCatching { PrivilegedBridgeRuntime.current().attemptSosLocationEnable() }
-                    .onSuccess { DiagnosticStore.log(app, DiagnosticStore.Severity.WARN, "service", "sos_privileged_location_attempt", "requested=$it") }
-                    .onFailure { DiagnosticStore.log(app, DiagnosticStore.Severity.WARN, "service", "sos_privileged_location_failed", it.javaClass.simpleName, it) }
+                    .onSuccess {
+                        DiagnosticStore.log(
+                            app,
+                            DiagnosticStore.Severity.WARN,
+                            "service",
+                            "sos_privileged_location_attempt",
+                            "requested=$it"
+                        )
+                    }
+                    .onFailure {
+                        DiagnosticStore.log(
+                            app,
+                            DiagnosticStore.Severity.WARN,
+                            "service",
+                            "sos_privileged_location_failed",
+                            it.javaClass.simpleName,
+                            it
+                        )
+                    }
             }
         }
 
@@ -55,10 +74,26 @@ object ServiceControl {
             )
             DiagnosticStore.log(app, DiagnosticStore.Severity.INFO, "service", "foreground_start_requested")
         } catch (t: Throwable) {
-            DiagnosticStore.log(app, DiagnosticStore.Severity.ERROR, "service", "foreground_start_failed", t.javaClass.simpleName, t)
+            DiagnosticStore.log(
+                app,
+                DiagnosticStore.Severity.ERROR,
+                "service",
+                "foreground_start_failed",
+                t.javaClass.simpleName,
+                t
+            )
             throw t
         }
         runCatching { RecoveryScheduler.ensureScheduled(app) }
-            .onFailure { DiagnosticStore.log(app, DiagnosticStore.Severity.WARN, "recovery", "scheduler_setup_failed", it.javaClass.simpleName, it) }
+            .onFailure {
+                DiagnosticStore.log(
+                    app,
+                    DiagnosticStore.Severity.WARN,
+                    "recovery",
+                    "scheduler_setup_failed",
+                    it.javaClass.simpleName,
+                    it
+                )
+            }
     }
 }
