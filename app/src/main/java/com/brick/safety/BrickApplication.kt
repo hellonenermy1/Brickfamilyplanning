@@ -13,6 +13,7 @@ import com.brick.safety.fusion.Phase5HypothesisRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
 import com.brick.safety.maintenance.DeepOffManager
 import com.brick.safety.maintenance.DeviceRoleStore
+import com.brick.safety.maintenance.P8BControlRuntime
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.RecoveryScheduler
@@ -40,6 +41,7 @@ class BrickApplication : Application() {
             return
         }
 
+        P8BControlRuntime.initialize(this)
         DiagnosticMonitor.start(this)
         CrashReporter.install(this)
         Phase5LearnedPlaceRuntime.initialize(this)
