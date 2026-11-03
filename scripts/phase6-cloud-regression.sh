@@ -11,13 +11,14 @@ node --check scripts/setup-v1-phase6.mjs
 node --check scripts/test-phase6-deploy-contract.mjs
 node scripts/test-phase6-deploy-contract.mjs
 
-# Phase 6 security, recovery and durability regressions plus Phase 8 identity-upgrade compatibility.
+# Phase 6 security, recovery and durability regressions plus Phase 8 identity/retention compatibility.
 node --check scripts/test-phase6-access.mjs
 node --check scripts/test-phase6-ops.mjs
 node --check scripts/test-backup-restore.mjs
 node --check scripts/test-dlq-recovery.mjs
 node --check scripts/test-public-pairing-limits.mjs
 node --check scripts/test-phase8-historical-identity.mjs
+node --check scripts/test-phase8-retention-contract.mjs
 npx esbuild src/access-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-access-auth.mjs
 npx esbuild src/battery-health.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-battery-health.mjs
 npx esbuild src/backup-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-v6.mjs
@@ -25,12 +26,14 @@ npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --out
 npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-v6.mjs
 npx esbuild src/device-json-security.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-device-json-security.mjs
 npx esbuild src/phase8-device-identity.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase8-device-identity.mjs
+npx esbuild src/phase4.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase4-retention.mjs
 node scripts/test-phase6-access.mjs file:///tmp/brick-access-auth.mjs
 node scripts/test-phase6-ops.mjs /tmp/brick-battery-health.mjs /tmp/brick-backup-v6.mjs
 node scripts/test-backup-restore.mjs /tmp/brick-backup-restore-v6.mjs
 node scripts/test-dlq-recovery.mjs /tmp/brick-queue-v6.mjs
 node scripts/test-public-pairing-limits.mjs /tmp/brick-device-json-security.mjs
 node scripts/test-phase8-historical-identity.mjs /tmp/brick-phase8-device-identity.mjs
+node scripts/test-phase8-retention-contract.mjs /tmp/brick-phase4-retention.mjs
 
 # A revoked device must be routed read-only before any Phase 6 parent mutation handler.
 node --input-type=module <<'NODE'
