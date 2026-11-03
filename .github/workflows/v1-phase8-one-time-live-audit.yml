@@ -110,21 +110,25 @@ jobs:
           if (!Array.isArray(restore.backupTables) || restore.backupTables.length !== 12) throw new Error('restore table coverage incomplete');
 
           if (usage.sourceGitSha !== sha) throw new Error('usage evidence SHA mismatch');
-          if (usage.worker?.name !== 'brick-family-v1' || usage.d1?.name !== 'brick-family-v1') throw new Error('usage evidence is not for canonical Brick resources');
-          if (usage.d1?.deployed !== true) throw new Error('canonical Brick D1 deployment truth missing');
-          if (!Number.isFinite(usage.d1?.analyticsDatabaseSizeBytesMax)) throw new Error('D1 storage evidence missing');
+          if (usage.worker?.name !== 'brick-family-v1' || usage.worker?.settingsVerified !== true) throw new Error('canonical Worker deployment settings not verified');
+          if (usage.d1?.name !== 'brick-family-v1' || usage.d1?.deployed !== true || usage.d1?.boundToCanonicalWorker !== true) throw new Error('canonical D1 deployment/binding truth missing');
+          if (!Number.isFinite(usage.d1?.restFileSizeBytes) || !Number.isFinite(usage.d1?.analyticsDatabaseSizeBytesMax)) throw new Error('D1 storage evidence missing');
           for (const name of ['brick-family-v1-history','brick-family-v1-maps']) {
             if (!(name in usage.r2)) throw new Error(`R2 evidence missing ${name}`);
-            if (!['OBSERVED_IN_ANALYTICS','NOT_OBSERVED_IN_WINDOW'].includes(usage.r2[name]?.deploymentState)) throw new Error(`R2 deployment truth invalid for ${name}`);
+            if (!['BOUND_TO_CANONICAL_WORKER','NOT_BOUND_TO_CANONICAL_WORKER'].includes(usage.r2[name]?.deploymentState)) {
+              throw new Error(`R2 deployment truth invalid for ${name}`);
+            }
+            if (typeof usage.r2[name]?.boundToCanonicalWorker !== 'boolean') throw new Error(`R2 binding flag missing ${name}`);
           }
           for (const name of ['brick-family-v1-events','brick-family-v1-dlq']) {
             if (!(name in usage.queues)) throw new Error(`Queue deployment truth missing ${name}`);
             if (typeof usage.queues[name]?.deployed !== 'boolean') throw new Error(`Queue deployed flag missing ${name}`);
+            if (typeof usage.queues[name]?.boundToCanonicalWorker !== 'boolean') throw new Error(`Queue binding flag missing ${name}`);
           }
           const deployed = usage.deploymentTruth?.queuesDeployed || [];
           const absent = usage.deploymentTruth?.queuesNotDeployed || [];
           if (deployed.length + absent.length !== 2) throw new Error('queue deployment truth is incomplete');
-          console.log(`Phase 8 live restore and usage evidence verified. Deployed queues: ${deployed.join(', ') || 'none'}; undeployed planned queues: ${absent.join(', ') || 'none'}.`);
+          console.log(`Phase 8 live restore and usage evidence verified. Bound queues: ${deployed.join(', ') || 'none'}; queues not bound to canonical Worker: ${absent.join(', ') || 'none'}.`);
           NODE
 
       - name: Delete any disposable D1 database left by the rehearsal
@@ -154,6 +158,8 @@ jobs:
           }
           state.cleanupAttempted = true;
           state.cleanupSucceeded = failures === 0;
+          if (state.sourceId) state.sourceDeleted = state.databases?.find(db => db.id === state.sourceId)?.deleted === true;
+          if (state.targetId) state.targetDeleted = state.databases?.find(db => db.id === state.targetId)?.deleted === true;
           fs.writeFileSync(p, JSON.stringify(state, null, 2));
           if (fs.existsSync(process.env.BRICK_RESTORE_EVIDENCE_PATH)) {
             const ep = process.env.BRICK_RESTORE_EVIDENCE_PATH;
