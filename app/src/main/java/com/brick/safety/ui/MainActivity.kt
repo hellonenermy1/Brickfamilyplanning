@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.databinding.ActivityMainBinding
 import com.brick.safety.diagnostics.DiagnosticsActivity
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.MaintenanceEntryGate
 import com.brick.safety.managed.ManagedPolicy
@@ -47,6 +48,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (DeprovisionManager.isPostPurge(this)) {
+            startActivity(Intent(this, DiagnosticsActivity::class.java))
+            finish()
+            return
+        }
+
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
@@ -77,7 +84,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        refresh()
+        if (!DeprovisionManager.isPostPurge(this) && ::b.isInitialized) refresh()
     }
 
     private fun scanPairingQr() {
@@ -337,6 +344,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
+        if (DeprovisionManager.isPostPurge(this)) return
         val role = DeviceRoleStore.role(this)
         val deepOff = DeepOffManager.isActive(this)
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
