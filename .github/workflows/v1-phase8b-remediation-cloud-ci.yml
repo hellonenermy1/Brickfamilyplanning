@@ -33,22 +33,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F '"main": "src/worker-p8b.ts"' wrangler.template.jsonc >/dev/null
-          grep -F '"CURRENT_APP_VERSION": "1.0.0-rc.1"' wrangler.template.jsonc >/dev/null
-          grep -F "web/brick-map-p8b.ts" scripts/build-parent-assets.mjs >/dev/null
-          test -s public/brick-map.mjs
-          grep -F 'parentP8BHtml' src/worker-p8b.ts >/dev/null
-          grep -F 'parentReverseOneMap' src/worker-p8b.ts >/dev/null
-          grep -F 'parentCommutes' src/worker-p8b.ts >/dev/null
-          grep -F 'handleFastLive' src/worker-v9.ts >/dev/null
-          grep -F 'handleCanary' src/worker-v9.ts >/dev/null
-          grep -F 'parentSetLiveTrack' src/worker-v9.ts >/dev/null
-          grep -F 'parentSetWifiSchedules' src/worker-v9.ts >/dev/null
-          grep -F 'maybeHandleFallEvent' src/worker-p8b.ts >/dev/null
-          grep -F 'ingestScreenTime' src/worker-p8b.ts >/dev/null
-          grep -F 'ONEMAP_EMAIL' src/onemap-client.ts >/dev/null
-          grep -F 'ONEMAP_PASSWORD' src/onemap-client.ts >/dev/null
-          ! grep -R -n -E 'ONEMAP_(EMAIL|PASSWORD)[[:space:]]*[:=][[:space:]]*["'"'][^"'"']+' web public || true
+          check() {
+            local label="$1" file="$2" needle="$3"
+            if ! grep -F -- "$needle" "$file" >/dev/null; then
+              echo "P8B wiring check failed: $label ($file missing: $needle)" >&2
+              exit 1
+            fi
+            echo "OK: $label"
+          }
+          check "production worker entry" wrangler.template.jsonc '"main": "src/worker-p8b.ts"'
+          check "production app version" wrangler.template.jsonc '"CURRENT_APP_VERSION": "1.0.0-rc.1"'
+          check "P8B map asset entry" scripts/build-parent-assets.mjs 'web/brick-map-p8b.ts'
+          test -s public/brick-map.mjs || { echo 'P8B wiring check failed: built map asset missing' >&2; exit 1; }
+          check "P8B parent HTML" src/worker-p8b.ts 'parentP8BHtml'
+          check "OneMap parent reverse" src/worker-p8b.ts 'parentReverseOneMap'
+          check "commute API" src/worker-p8b.ts 'parentCommutes'
+          check "Fast Live route" src/worker-v9.ts 'handleFastLive'
+          check "canary route" src/worker-v9.ts 'handleCanary'
+          check "Live Track parent control" src/worker-v9.ts 'parentSetLiveTrack'
+          check "Wi-Fi schedule parent control" src/worker-v9.ts 'parentSetWifiSchedules'
+          check "fall event ingest" src/worker-p8b.ts 'maybeHandleFallEvent'
+          check "screen-time ingest" src/worker-p8b.ts 'ingestScreenTime'
+          check "backend OneMap email secret binding" src/onemap-client.ts 'ONEMAP_EMAIL'
+          check "backend OneMap password secret binding" src/onemap-client.ts 'ONEMAP_PASSWORD'
+
+          # OneMap credential bindings must remain backend-only. The browser source and generated
+          # parent bundle must not even reference the secret binding names.
+          if grep -R -n -F 'ONEMAP_EMAIL' web public || grep -R -n -F 'ONEMAP_PASSWORD' web public; then
+            echo 'P8B secret-boundary check failed: OneMap credential binding leaked to browser surface' >&2
+            exit 1
+          fi
+          echo 'OK: OneMap secret boundary'
 
       - name: Apply all D1 migrations to a clean SQLite database
         shell: bash
@@ -86,7 +101,7 @@ jobs:
           sed -i 's/__CF_ACCESS_TEAM_DOMAIN__/example.cloudflareaccess.com/g' /tmp/wrangler-p8b.jsonc
           sed -i 's/__CF_ACCESS_AUD__/0000000000000000000000000000000000000000000000000000000000000000/g' /tmp/wrangler-p8b.jsonc
           npx wrangler deploy --dry-run --config /tmp/wrangler-p8b.jsonc --outdir /tmp/brick-dist
-          test -n "$(find /tmp/brick-dist -type f -maxdepth 2 | head -n1)"
+          test -n "$(find /tmp/brick-dist -maxdepth 2 -type f | head -n1)"
 
       - name: No production placeholders or obvious fake handlers
         shell: bash
