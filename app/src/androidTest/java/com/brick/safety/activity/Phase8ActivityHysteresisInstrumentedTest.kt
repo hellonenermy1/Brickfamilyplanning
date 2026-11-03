@@ -20,10 +20,7 @@ class Phase8ActivityHysteresisInstrumentedTest : BrickInstrumentationTestCase() 
             ActivityMode.UNKNOWN,
             ActivityModeFilter.transitionMode(ActivityMode.WALKING, ActivityMode.VEHICLE)
         )
-        assertEquals(
-            ActivityMode.UNKNOWN,
-            ActivityModeFilter.sampledMode(ActivityMode.UNKNOWN, ActivityMode.VEHICLE, 40)
-        )
+        assertNull(ActivityModeFilter.sampledMode(ActivityMode.UNKNOWN, ActivityMode.VEHICLE, 40))
         assertEquals(
             ActivityMode.VEHICLE,
             ActivityModeFilter.sampledMode(ActivityMode.UNKNOWN, ActivityMode.VEHICLE, 75)
