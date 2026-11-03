@@ -12,6 +12,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -19,27 +20,34 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.brick.safety.BuildConfig
-import com.brick.safety.beta.BetaSafety
+import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
+import com.brick.safety.maintenance.DeviceRoleStore
+import com.brick.safety.maintenance.PolicyLedger
+import com.brick.safety.maintenance.WifiOneShotControl
+import com.brick.safety.managed.DesiredLocationState
 import com.brick.safety.managed.ManagedPolicy
-import java.time.Instant
+import com.brick.safety.managed.ParentLocationStateStore
+import java.util.UUID
 import java.util.concurrent.Executors
 
+/**
+ * Local-only Maintenance & Recovery Console. AndroidManifest keeps this activity non-exported and it
+ * is opened only by MainActivity's exact hidden tap/wait state machine. No PIN, key, or backend is
+ * involved in entry.
+ */
 class DiagnosticsActivity : AppCompatActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
-    private lateinit var sessionText: TextView
-    private lateinit var betaSafetyText: TextView
-    private lateinit var errorBanner: TextView
-    private lateinit var reportView: TextView
-    private lateinit var sessionButton: Button
-    private lateinit var disarmButton: Button
-    private lateinit var releaseButton: Button
-    private lateinit var uninstallButton: Button
-    @Volatile private var latestReport: String = ""
+    private lateinit var stateView: TextView
+    private lateinit var timelineView: TextView
+    private lateinit var deepOffButton: Button
+    private lateinit var deprovisionButton: Button
+    @Volatile private var latestPrivacyReport = ""
 
     private val autoRefresh = object : Runnable {
         override fun run() {
-            refreshReport()
+            refreshState()
             main.postDelayed(this, 5_000L)
         }
     }
@@ -47,11 +55,9 @@ class DiagnosticsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DiagnosticStore.init(this)
-        DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "diagnostics_opened")
+        DiagnosticStore.log(DiagnosticStore.Severity.INFO, "maintenance", "console_opened")
         setContentView(buildUi())
-        renderSession()
-        renderBetaSafety()
-        refreshReport()
+        refreshState()
     }
 
     override fun onResume() {
@@ -74,254 +80,226 @@ class DiagnosticsActivity : AppCompatActivity() {
     private fun buildUi(): View {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
+        fun params(top: Int = 8) = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(top) }
+        fun button(label: String, action: () -> Unit) = Button(this).apply { text = label; isAllCaps = false; setOnClickListener { action() } }
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(24))
-        }
-
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(18), dp(18), dp(28)) }
         root.addView(TextView(this).apply {
-            text = "BRICK PHASE 8 HARDENING BETA"
+            text = "Brick Maintenance & Recovery"
             textSize = 23f
             setTypeface(typeface, Typeface.BOLD)
         })
         root.addView(TextView(this).apply {
-            text = "Disposable Device Owner test build • testOnly=true • no phone wipe/factory reset"
+            text = "Local-only recovery console · no backend secret · changes are one-shot/provenance-aware"
             textSize = 12f
             setPadding(0, dp(4), 0, dp(12))
         })
 
-        sessionText = TextView(this).apply {
-            textSize = 14f
-            setTypeface(typeface, Typeface.BOLD)
-        }
-        root.addView(sessionText)
+        stateView = TextView(this).apply { textSize = 13f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true) }
+        root.addView(stateView)
 
-        betaSafetyText = TextView(this).apply {
-            textSize = 13f
-            setPadding(0, dp(8), 0, dp(4))
-        }
-        root.addView(betaSafetyText)
-
-        errorBanner = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.rgb(175, 35, 35))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            visibility = View.GONE
-        }
-        root.addView(errorBanner, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(10)
-        })
-
-        sessionButton = button("START TEST SESSION") {
-            if (DiagnosticStore.activeSessionId() == null) {
-                val id = DiagnosticStore.startSession(this)
-                toast("Started $id")
-            } else {
-                val id = DiagnosticStore.endSession(this)
-                toast("Ended ${id ?: "session"}")
-            }
-            renderSession()
-            refreshReport()
-        }
-        root.addView(sessionButton, params(dp(12)))
-
-        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_HORIZONTAL }
-        controls.addView(button("MARK STEP") {
-            val n = DiagnosticStore.addMarker(this)
-            toast("Marker $n saved")
-            refreshReport()
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        controls.addView(button("REFRESH") { refreshReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
-        root.addView(controls, params(dp(8)))
-
-        val export = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_HORIZONTAL }
-        export.addView(button("COPY FULL REPORT") { copyReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        export.addView(button("SHARE REPORT") { shareReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
-        root.addView(export, params(dp(8)))
-
+        root.addView(section("ONE-SHOT MAINTENANCE", dp(18)))
+        val locationRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        locationRow.addView(button("Location ON") { locationOneShot(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        locationRow.addView(button("Location OFF") { locationOneShot(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        root.addView(locationRow, params(4))
+        val wifiRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        wifiRow.addView(button("Wi-Fi ON") { wifiOneShot(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        wifiRow.addView(button("Wi-Fi OFF") { wifiOneShot(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        root.addView(wifiRow, params(6))
         root.addView(TextView(this).apply {
-            text = "PHASE 8 THREE-STAGE RETIREMENT"
-            textSize = 15f
-            setTypeface(typeface, Typeface.BOLD)
-            setPadding(0, dp(18), 0, dp(4))
+            text = "Mobile data / SIM actuators: UNSUPPORTED — field verification required on each target OPPO before enablement."
+            textSize = 12f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, dp(6), 0, 0)
         })
 
-        disarmButton = button("STAGE 1 — DISARM BRICK") { confirmDisarm() }
-        releaseButton = button("STAGE 2 — RELEASE DEVICE MANAGEMENT") { confirmReleaseStage() }
-        uninstallButton = button("STAGE 3 — FINISH UNINSTALL") { confirmUninstall() }
-        root.addView(disarmButton, params(dp(4)))
-        root.addView(releaseButton, params(dp(6)))
-        root.addView(uninstallButton, params(dp(6)))
-
+        root.addView(section("DEEP OFF", dp(18)))
+        deepOffButton = button("Deep Off") { toggleDeepOff() }
+        root.addView(deepOffButton, params(4))
         root.addView(TextView(this).apply {
-            text = "Stage 1 is written durably first and stops Brick runtime. Stage 2 releases Device Owner/admin and verifies the result. Stage 3 only opens Android's uninstall screen after release is verified. Cancelling uninstall never reactivates Brick."
+            text = "Deep Off durably quiesces Brick and survives reboot. Reactivation is explicit and does not restore radio choices Brick did not change."
             textSize = 12f
-            setPadding(0, dp(6), 0, dp(8))
         })
 
-        root.addView(button("EMERGENCY DISARM + RELEASE DEVICE OWNER") { confirmEmergencyReleaseOwner() }, params(dp(4)))
+        root.addView(section("ROLE / RE-PROVISION", dp(18)))
+        root.addView(button("Provision this phone as parent/guardian") { askParentPortal() }, params(4))
+        root.addView(button("Reset role for re-provisioning") { confirmResetRole() }, params(6))
+
+        root.addView(section("FIVE-STAGE DEPROVISION", dp(18)))
+        deprovisionButton = button("Advance deprovision") { confirmAdvanceDeprovision() }
+        root.addView(deprovisionButton, params(4))
         root.addView(TextView(this).apply {
-            text = "Emergency escape is fail-closed: Brick is durably disarmed first, then Device Owner/admin is released. It never factory-resets or wipes the phone."
+            text = "AUTHORISE/FREEZE → QUIESCE → UNDO DEVICE MANAGEMENT → PURGE BRICK → UNINSTALL. Policies are reversed before ownership release."
             textSize = 12f
-            setPadding(0, dp(4), 0, dp(4))
         })
 
-        reportView = TextView(this).apply {
-            text = "Loading diagnostics…"
-            textSize = 12f
-            typeface = Typeface.MONOSPACE
-            setTextIsSelectable(true)
-            setPadding(0, dp(16), 0, dp(16))
-        }
-        root.addView(reportView)
+        root.addView(section("SYSTEM STATE TIMELINE", dp(18)))
+        timelineView = TextView(this).apply { textSize = 11f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true) }
+        root.addView(timelineView)
+
+        root.addView(section("PRIVACY-REDUCED DIAGNOSTICS", dp(18)))
+        val exportRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        exportRow.addView(button("Copy report") { copyReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        exportRow.addView(button("Share report") { shareReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        root.addView(exportRow, params(4))
+
         return ScrollView(this).apply { addView(root) }
     }
 
-    private fun button(label: String, click: () -> Unit): Button = Button(this).apply {
+    private fun section(label: String, topPadding: Int) = TextView(this).apply {
         text = label
-        isAllCaps = false
-        setOnClickListener { click() }
+        textSize = 15f
+        setTypeface(typeface, Typeface.BOLD)
+        setPadding(0, topPadding, 0, 4)
     }
 
-    private fun params(top: Int) = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-        topMargin = top
-    }
-
-    private fun renderSession() {
-        val id = DiagnosticStore.activeSessionId()
-        sessionText.text = if (id == null) "Test session: NOT RUNNING" else "Test session: $id"
-        sessionButton.text = if (id == null) "START TEST SESSION" else "END TEST SESSION"
-    }
-
-    private fun renderBetaSafety() {
-        val owner = ManagedPolicy.isDeviceOwner(this)
-        val stage = BetaSafety.retirementStage(this)
-        val expired = BetaSafety.isExpired()
-        betaSafetyText.text = buildString {
-            append("Build: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n")
-            append("Channel: ${BuildConfig.BRICK_BETA_CHANNEL}\n")
-            append("Auto-expiry: ${Instant.ofEpochMilli(BetaSafety.expiryEpochMs())}\n")
-            append("Device Owner: $owner • retirement: ${stage.name} • expired: $expired")
+    private fun locationOneShot(enabled: Boolean) {
+        if (DeepOffManager.isActive(this)) { toast("Reactivate Brick before a maintenance radio action"); return }
+        worker.execute {
+            val now = System.currentTimeMillis()
+            val id = "maintloc-${UUID.randomUUID()}"
+            val stored = runCatching {
+                ParentLocationStateStore.applyVerified(
+                    applicationContext,
+                    if (enabled) DesiredLocationState.ON else DesiredLocationState.OFF,
+                    id,
+                    UUID.randomUUID().toString(),
+                    now,
+                    now + 10 * 60_000L,
+                    now
+                )
+            }.getOrDefault(false)
+            if (stored) runCatching { ManagedPolicy.apply(applicationContext) }
+            val result = ParentLocationStateStore.read(applicationContext)
+            runOnUiThread {
+                toast("Location ${if (enabled) "ON" else "OFF"}: ${result.status}${result.actualAfter?.let { " · actual=$it" } ?: ""}")
+                refreshState()
+            }
         }
-        disarmButton.isEnabled = stage == BetaSafety.RetirementStage.ACTIVE
-        releaseButton.isEnabled = stage == BetaSafety.RetirementStage.DISARMED
-        uninstallButton.isEnabled = stage == BetaSafety.RetirementStage.MANAGEMENT_RELEASED ||
-            stage == BetaSafety.RetirementStage.UNINSTALL_REQUESTED
     }
 
-    private fun refreshReport() {
+    private fun wifiOneShot(enabled: Boolean) {
+        if (DeepOffManager.isActive(this)) { toast("Reactivate Brick before a maintenance radio action"); return }
+        worker.execute {
+            val result = WifiOneShotControl.apply(applicationContext, enabled)
+            DiagnosticStore.log(applicationContext, if (result.success) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.WARN,
+                "maintenance", "wifi_one_shot", "target=$enabled actual=${result.actualEnabled} result=${result.detail}")
+            runOnUiThread { toast("Wi-Fi ${if (enabled) "ON" else "OFF"}: ${if (result.success) "confirmed" else result.detail}"); refreshState() }
+        }
+    }
+
+    private fun toggleDeepOff() {
+        worker.execute {
+            val active = DeepOffManager.isActive(applicationContext)
+            val ok = if (active) DeepOffManager.reactivate(applicationContext) else DeepOffManager.enter(applicationContext)
+            DiagnosticStore.log(applicationContext, if (ok) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.ERROR,
+                "deep_off", if (active) "reactivation_requested" else "deep_off_entered", "ok=$ok")
+            runOnUiThread { toast(if (ok) { if (active) "Brick reactivated" else "Deep Off active" } else "Deep Off action failed"); refreshState() }
+        }
+    }
+
+    private fun askParentPortal() {
+        val input = EditText(this).apply { hint = "https://your-brick-domain"; setText(DeviceRoleStore.parentPortal(this@DiagnosticsActivity) ?: "") }
+        AlertDialog.Builder(this)
+            .setTitle("Provision parent/guardian role")
+            .setMessage("This phone will stop child tracking and open the authenticated parent portal instead.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("PROVISION") { _, _ ->
+                val ok = DeviceRoleStore.provisionParentGuardian(this, input.text.toString())
+                toast(if (ok) "Parent/guardian role provisioned" else "Secure HTTPS portal URL required")
+                refreshState()
+            }.show()
+    }
+
+    private fun confirmResetRole() {
+        AlertDialog.Builder(this)
+            .setTitle("Reset role for re-provisioning?")
+            .setMessage("Tracking is quiesced and child pairing identity on this installation is cleared. History in the backend is not renamed or silently reassigned.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("RESET") { _, _ ->
+                val ok = DeviceRoleStore.resetForReprovision(this)
+                toast(if (ok) "Role reset" else "Role reset failed")
+                refreshState()
+            }.show()
+    }
+
+    private fun confirmAdvanceDeprovision() {
+        val stage = DeprovisionManager.stage(this)
+        val next = when (stage) {
+            DeprovisionManager.Stage.NONE -> "AUTHORISE/FREEZE"
+            DeprovisionManager.Stage.AUTHORISE_FREEZE -> "QUIESCE"
+            DeprovisionManager.Stage.QUIESCE -> "UNDO DEVICE MANAGEMENT"
+            DeprovisionManager.Stage.UNDO_DEVICE_MANAGEMENT -> "PURGE BRICK"
+            DeprovisionManager.Stage.PURGE_BRICK -> "UNINSTALL"
+            DeprovisionManager.Stage.UNINSTALL -> "UNINSTALL already requested"
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Advance to $next?")
+            .setMessage("Deprovisioning is monotonic. Read the stage name carefully before continuing.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("CONTINUE") { _, _ ->
+                worker.execute {
+                    val result = when (stage) {
+                        DeprovisionManager.Stage.NONE -> DeprovisionManager.authoriseFreeze(applicationContext)
+                        DeprovisionManager.Stage.AUTHORISE_FREEZE -> DeprovisionManager.quiesce(applicationContext)
+                        DeprovisionManager.Stage.QUIESCE -> DeprovisionManager.undoDeviceManagement(applicationContext)
+                        DeprovisionManager.Stage.UNDO_DEVICE_MANAGEMENT -> DeprovisionManager.purgeBrick(applicationContext)
+                        DeprovisionManager.Stage.PURGE_BRICK, DeprovisionManager.Stage.UNINSTALL -> DeprovisionManager.uninstall(applicationContext)
+                    }
+                    runOnUiThread { toast("${result.stage}: ${result.detail}"); refreshState() }
+                }
+            }.show()
+    }
+
+    private fun refreshState() {
         if (worker.isShutdown) return
         worker.execute {
-            val report = runCatching { DiagnosticStore.fullReport(this) }
-                .getOrElse { "DIAGNOSTIC REPORT FAILED\n${it.stackTraceToString()}" }
-            val error = runCatching { DiagnosticStore.latestError(this) }.getOrNull()
-            latestReport = report
+            val role = DeviceRoleStore.role(applicationContext)
+            val deep = DeepOffManager.snapshot(applicationContext)
+            val command = ParentLocationStateStore.read(applicationContext)
+            val ledger = PolicyLedger.active(applicationContext)
+            val deprov = DeprovisionManager.stage(applicationContext)
+            val owner = ManagedPolicy.isDeviceOwner(applicationContext)
+            val report = DiagnosticStore.fullReport(applicationContext)
+            val events = DiagnosticStore.recentEvents(applicationContext, 40).takeLast(40)
+            latestPrivacyReport = report
+            val state = buildString {
+                appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+                appendLine("Role: $role")
+                appendLine("Deep Off: ${deep.active}${if (deep.enteredAtMs > 0) " · since ${deep.enteredAtMs}" else ""}")
+                appendLine("Device Owner: $owner")
+                appendLine("Policy Ledger active: ${ledger.size}")
+                appendLine("Last Location command: ${command.status}${command.target?.let { " target=$it" } ?: ""}${command.actualAfter?.let { " actual=$it" } ?: ""}")
+                appendLine("Deprovision: $deprov")
+            }
+            val timeline = buildString {
+                if (events.isEmpty()) append("No maintenance/system events recorded yet.")
+                events.forEach { e -> appendLine("${e.wallMs} ${e.severity} ${e.component}/${e.event} ${e.detail.take(160)}") }
+            }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                reportView.text = report
-                if (error == null) {
-                    errorBanner.visibility = View.GONE
-                } else {
-                    errorBanner.visibility = View.VISIBLE
-                    errorBanner.text = "LAST ERROR • ${error.component}/${error.event}\n${error.detail.take(500)}\nTap COPY FULL REPORT and send it if this looks relevant."
-                }
-                renderSession()
-                renderBetaSafety()
+                stateView.text = state
+                timelineView.text = timeline
+                deepOffButton.text = if (deep.active) "Reactivate Brick" else "Enter Deep Off"
+                deprovisionButton.text = "Advance deprovision · $deprov"
             }
         }
-    }
-
-    private fun confirmDisarm() {
-        AlertDialog.Builder(this)
-            .setTitle("Stage 1 — Disarm Brick?")
-            .setMessage("This permanently retires this installed beta. Brick will stop normal tracking/recovery and will not reactivate after reboot. It does NOT wipe or factory-reset the phone.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("DISARM") { _, _ ->
-                worker.execute {
-                    val ok = BetaSafety.beginRetirement(applicationContext, "manual_phase8_stage1")
-                    runOnUiThread {
-                        renderBetaSafety()
-                        toast(if (ok) "Stage 1 complete: Brick disarmed" else "Stage 1 failed to persist — management was NOT released")
-                    }
-                }
-            }
-            .show()
-    }
-
-    private fun confirmReleaseStage() {
-        AlertDialog.Builder(this)
-            .setTitle("Stage 2 — Release device management?")
-            .setMessage("Brick must already be disarmed. This releases Device Owner/admin and verifies Android no longer reports either role. No phone data is wiped.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("RELEASE") { _, _ ->
-                worker.execute {
-                    val result = BetaSafety.advanceManagementRelease(applicationContext)
-                    runOnUiThread {
-                        renderBetaSafety()
-                        toast(if (result.released) "Stage 2 complete: management released" else "Release incomplete: ${result.error ?: "owner/admin still active"}")
-                    }
-                }
-            }
-            .show()
-    }
-
-    private fun confirmUninstall() {
-        AlertDialog.Builder(this)
-            .setTitle("Stage 3 — Finish uninstall?")
-            .setMessage("Android's own uninstall screen will open only after Brick verifies Device Owner/admin are released. Cancelling uninstall leaves Brick retired, not tracking.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("OPEN UNINSTALL") { _, _ ->
-                worker.execute {
-                    val ok = BetaSafety.requestUninstall(applicationContext)
-                    runOnUiThread {
-                        renderBetaSafety()
-                        if (!ok) toast("Uninstall blocked until management release is verified")
-                    }
-                }
-            }
-            .show()
-    }
-
-    private fun confirmEmergencyReleaseOwner() {
-        AlertDialog.Builder(this)
-            .setTitle("Emergency disarm + release Device Owner?")
-            .setMessage("This is the local last-resort escape. Brick first durably enters DISARMED so tracking cannot come back, then it releases Device Owner/admin. It does NOT wipe or factory-reset the phone.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("DISARM + RELEASE") { _, _ ->
-                worker.execute {
-                    val disarmed = BetaSafety.beginRetirement(applicationContext, "manual_phase8_emergency_release")
-                    val result = if (disarmed) BetaSafety.advanceManagementRelease(applicationContext) else null
-                    runOnUiThread {
-                        renderBetaSafety()
-                        toast(
-                            when {
-                                !disarmed -> "Emergency disarm failed to persist — Device Owner was NOT released"
-                                result?.released == true -> "Brick disarmed and Device Owner/admin released"
-                                else -> "Brick is disarmed; release incomplete: ${result?.error ?: "owner/admin still active"}"
-                            }
-                        )
-                    }
-                }
-            }
-            .show()
     }
 
     private fun copyReport() {
-        val report = latestReport.ifBlank { DiagnosticStore.fullReport(this) }
+        val report = latestPrivacyReport.ifBlank { DiagnosticStore.fullReport(this) }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Brick Phase 8 diagnostic report", report))
-        DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "report_copied", "chars=${report.length}")
-        toast("Full report copied")
+        clipboard.setPrimaryClip(ClipData.newPlainText("Brick privacy-reduced diagnostic report", report))
+        toast("Privacy-reduced report copied")
     }
 
     private fun shareReport() {
-        val report = latestReport.ifBlank { DiagnosticStore.fullReport(this) }
-        DiagnosticStore.log(DiagnosticStore.Severity.INFO, "ui", "report_shared", "chars=${report.length}")
+        val report = latestPrivacyReport.ifBlank { DiagnosticStore.fullReport(this) }
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Brick Phase 8 hardening beta diagnostic report")
+            putExtra(Intent.EXTRA_SUBJECT, "Brick privacy-reduced diagnostic report")
             putExtra(Intent.EXTRA_TEXT, report)
         }, "Share Brick diagnostic report"))
     }
