@@ -5,9 +5,17 @@ import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summ
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
 import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
+import {
+  childClaimPin,
+  childPinStatus,
+  parentConfirmPin,
+  parentPinStatus,
+  parentStartPin,
+  type PinPairingEnv
+} from "./pin-pairing";
 export { BrickDevice };
 
-type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv & {
+type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv & PinPairingEnv & {
   HISTORY: R2Bucket;
   MAPS: R2Bucket;
   EVENTS: Queue;
@@ -39,6 +47,23 @@ export default {
       if (!type.includes("text/html")) return response;
       const headers = new Headers(response.headers); headers.set("Cache-Control", "no-store");
       return new Response(parentP8BHtml(await response.text()), { status: response.status, statusText: response.statusText, headers });
+    }
+
+    // Fallback PIN pairing never binds on the public child claim. The code is consumed into a
+    // pending session; a separately authenticated parent confirmation creates the device.
+    if (req.method === "POST" && u.pathname === "/api/pair/pin/claim") return childClaimPin(req, env);
+    if (req.method === "POST" && u.pathname === "/api/pair/pin/status") return childPinStatus(req, env);
+    if (u.pathname === "/parent/api/pair/pin/start" && req.method === "POST") {
+      const denied = await parentGuard(req, env); if (denied) return denied;
+      return parentStartPin(req, env);
+    }
+    const pinParent = u.pathname.match(/^\/parent\/api\/pair\/pin\/([0-9a-f-]+)$/i);
+    if (pinParent) {
+      const denied = await parentGuard(req, env); if (denied) return denied;
+      const sessionId = pinParent[1];
+      if (req.method === "GET") return parentPinStatus(env, sessionId);
+      if (req.method === "POST") return parentConfirmPin(req, env, sessionId);
+      return json({ error: "method not allowed" }, 405);
     }
 
     // Device safety/summary ingestion stays outside parent auth and verifies the signed device request
