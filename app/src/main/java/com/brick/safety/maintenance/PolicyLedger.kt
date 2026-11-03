@@ -9,9 +9,8 @@ import java.util.UUID
  * Durable provenance for system/policy changes Brick deliberately makes.
  *
  * The ledger stores only small policy/state metadata, never coordinates, radio identifiers, secrets,
- * or arbitrary shell commands. A record remains active until the exact reversal path marks it
- * reverted. This lets Deep Off/deprovision distinguish Brick-caused state from later user/system
- * changes and avoid blindly restoring stale values.
+ * or arbitrary shell commands. Active provenance is never evicted; only reverted history may be
+ * compacted. A caller must not apply a new Brick policy when record() returns null.
  */
 object PolicyLedger {
     private const val PREFS = "brick_policy_ledger_v1"
@@ -47,11 +46,25 @@ object PolicyLedger {
 
         // Do not create duplicate active provenance for the same effective Brick state.
         for (i in array.length() - 1 downTo 0) {
-            val item = array.optJSONObject(i) ?: continue
+            val item = array.optJSONObject(i) ?: return null
             if (item.optString("policy") == policy && item.isNull("revertedAtMs") &&
                 item.optString("brickValue", null) == brickValue) {
                 return item.optString("id").takeIf { it.isNotBlank() }
             }
+        }
+
+        // Make room only by dropping the oldest reverted history. Active provenance is never evicted.
+        while (array.length() >= MAX_RECORDS) {
+            var revertedIndex = -1
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: return null
+                if (!item.isNull("revertedAtMs")) {
+                    revertedIndex = i
+                    break
+                }
+            }
+            if (revertedIndex < 0) return null
+            array.remove(revertedIndex)
         }
 
         val id = UUID.randomUUID().toString()
@@ -64,7 +77,6 @@ object PolicyLedger {
             .put("source", source.take(80))
             .put("revertedAtMs", JSONObject.NULL)
         array.put(entry)
-        trim(array)
         return if (prefs.edit().putString(KEY_RECORDS, array.toString()).commit()) id else null
     }
 
@@ -128,21 +140,22 @@ object PolicyLedger {
         if (raw.isNullOrBlank()) return true
         return runCatching {
             val array = JSONArray(raw)
+            if (array.length() > MAX_RECORDS) return@runCatching false
+            val ids = HashSet<String>()
             for (i in 0 until array.length()) {
                 val o = array.optJSONObject(i) ?: return@runCatching false
                 val id = o.optString("id")
                 val policy = o.optString("policy")
                 val appliedAt = o.optLong("appliedAtMs", -1L)
-                if (id.isBlank() || policy.isBlank() || appliedAt <= 0L) return@runCatching false
+                if (id.isBlank() || !ids.add(id) || !policy.matches(Regex("[A-Za-z0-9._:-]{1,120}")) || appliedAt <= 0L) {
+                    return@runCatching false
+                }
                 if (!o.has("revertedAtMs") || !o.has("previousValue") || !o.has("brickValue")) return@runCatching false
+                if (!o.isNull("revertedAtMs") && o.optLong("revertedAtMs", -1L) <= 0L) return@runCatching false
             }
             true
         }.getOrDefault(false)
     }
 
     private fun readArray(raw: String?): JSONArray = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
-
-    private fun trim(array: JSONArray) {
-        while (array.length() > MAX_RECORDS) array.remove(0)
-    }
 }
