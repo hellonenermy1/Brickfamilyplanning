@@ -74,9 +74,12 @@ object FallDetectorRuntime : SensorEventListener {
     }
 
     fun refreshHighAlert(context: Context) {
-        val p = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
-        val until = p.getLong("fallHighUntilMs", 0L)
-        if (until <= System.currentTimeMillis()) p.edit().putBoolean("fallHighActive", false).remove("fallHighUntilMs").apply()
+        val app = context.applicationContext
+        val until = SafetyDispatcher.highFallUntilMs(app)
+        app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .putBoolean("fallHighActive", until > System.currentTimeMillis())
+            .putLong("fallHighUntilMs", until)
+            .apply()
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -141,13 +144,16 @@ object FallDetectorRuntime : SensorEventListener {
                 return
             }
 
-            val priority = if (confidence == Confidence.HIGH) SafetyDispatcher.PRIORITY_CRITICAL else SafetyDispatcher.PRIORITY_IMPORTANT
-            val saved = SafetyDispatcher.enqueue(context, "fall_detected", detail, priority) != null
-            if (saved && confidence == Confidence.HIGH) {
-                context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
-                    .putBoolean("fallHighActive", true)
-                    .putLong("fallHighUntilMs", System.currentTimeMillis() + HIGH_PROTECTION_MS)
-                    .apply()
+            val saved = if (confidence == Confidence.HIGH) {
+                val highUntilMs = System.currentTimeMillis() + HIGH_PROTECTION_MS
+                SafetyDispatcher.enqueueHighFall(context, detail, highUntilMs) != null
+            } else {
+                SafetyDispatcher.enqueue(
+                    context,
+                    "fall_detected",
+                    detail,
+                    SafetyDispatcher.PRIORITY_IMPORTANT
+                ) != null
             }
             DiagnosticStore.log(
                 context,
