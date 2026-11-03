@@ -4,6 +4,12 @@ export type HistoryPoint = {
   epoch: number;
   sequence: number;
   wallTimeMs: number;
+  /**
+   * Optional server-side provenance added by Phase 8 when reading a history segment. This is not
+   * part of the compressed coordinate delta because it describes ingestion, not movement. Older
+   * v2/v4 history remains readable with the field absent.
+   */
+  serverReceivedAtMs?: number;
   trustedLatE7: number | null;
   trustedLonE7: number | null;
   uncertaintyCm: number;
