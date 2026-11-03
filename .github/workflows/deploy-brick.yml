@@ -22,10 +22,9 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
     steps:
       - name: Checkout selected Phase 8 ref
@@ -39,15 +38,25 @@ jobs:
 
       - name: Preflight credentials and exact source
         shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'Missing workflow input: cloudflare_account_id' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p8-cloud-hardening" || { echo 'Phase 8 production deployment must run from v1-p8-cloud-hardening' >&2; exit 1; }
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "Deploying exact Phase 8 source SHA: $GITHUB_SHA"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Refuse tracked private-key material
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! git ls-files | grep -Ei '\.(jks|keystore|p12|pfx|pem|key)$|\.jks\.b64$'
+          ! git grep -n -E -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
 
       - name: Enforce current Phase 8 architecture and migration path
         shell: bash
@@ -85,10 +94,12 @@ jobs:
           node --check scripts/setup-v1-phase6.mjs
           node --check scripts/install-private-map.mjs
           node --check scripts/verify-cloudflare-deployment.mjs
-          npm audit --omit=dev --audit-level=high
+          npm audit --audit-level=high
           bash scripts/phase6-cloud-regression.sh
 
       - name: Provision resources, migrate through schema 015, and deploy Phase 8
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npm run setup
 
       - name: Verify setup provenance before release tagging
@@ -110,10 +121,14 @@ jobs:
 
       - name: Install private Singapore map
         if: ${{ inputs.install_map }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npm run map:install
 
       - name: Strict final deploy tagged with exact Git SHA
         shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
           tag="brick-git-${GITHUB_SHA:0:12}"
@@ -125,6 +140,7 @@ jobs:
 
       - name: Verify deployed resources and public attack surface
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           BRICK_REQUIRE_PRIVATE_MAP: ${{ inputs.install_map }}
         run: node scripts/verify-cloudflare-deployment.mjs
 
