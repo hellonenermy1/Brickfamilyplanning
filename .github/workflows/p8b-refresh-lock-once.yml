@@ -29,7 +29,13 @@ jobs:
 
       - name: Ensure compile SDK
         shell: bash
-        run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" >/dev/null
+        run: |
+          set -euo pipefail
+          set +o pipefail
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" >/dev/null
+          sdk_status=${PIPESTATUS[1]}
+          set -o pipefail
+          exit "$sdk_status"
 
       - name: Regenerate lock for approved JVM test dependency
         shell: bash
