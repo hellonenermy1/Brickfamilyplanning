@@ -178,3 +178,39 @@ Findings are recorded before fixes. Closure requires a separate fix commit, regr
 **Regression test:** pending
 **Retest evidence:** pending
 **Status:** OPEN
+
+---
+
+## P8C-006 — Paired device silently regenerates a missing signing key and breaks cryptographic identity continuity
+
+**Requirement ID:** `PLT-008`, `PLT-009`, `PLT-010`; 8C.16 key loading/failure/rotation/revocation
+**Phase:** 8C
+**Subsystem:** Android Keystore / device identity / authenticated delivery
+**Severity:** P1 HIGH
+
+**Expected:** A paired Brick device keeps the asymmetric identity bound by the backend to its opaque device ID. Key loss/invalidation must fail honestly and enter an explicit authorised recovery/re-enrollment path; it must not silently create a different identity while continuing to claim the old device ID.
+
+**Actual:** `DeviceKeys.getOrCreate()` calls `ks.getKey(ALIAS, null) ?: generate`, so if the `brick-device-signing-v1` alias is missing it automatically creates a new EC key. Pairing sends `DeviceKeys.publicSpkiBase64()` and then stores only `deviceId`/`apiBase`; no paired-key fingerprint is stored/checked on later startup or before signing. All normal authenticated requests continue using the old stored `deviceId` with signatures from the replacement key.
+
+**Evidence:**
+- `app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt` — `getOrCreate`, `sign`, `publicSpkiBase64`.
+- `BrickApi.completePairing()` — sends current SPKI to pairing endpoint.
+- `MainActivity` pairing completion — stores backend `deviceId` and `apiBase` but no paired public-key fingerprint.
+- acceptance contract `PLT-008..010` binds a unique Keystore keypair to backend device identity and requires telemetry/commands/ACKs to remain on that cryptographic identity.
+
+**Source file(s):** `DeviceKeys.kt`, `BrickApi.kt`, `MainActivity.kt`
+**Relevant function(s):** `DeviceKeys.getOrCreate`, `DeviceKeys.sign`, `DeviceKeys.publicSpkiBase64`, pairing completion
+**Commit SHA:** `204a141e90c078b6c2008778bd6c01bcbb8a4622`
+
+**Reproduction:** Pair a device, then make the AndroidKeyStore alias unavailable/deleted while leaving app preferences containing `deviceId` and `apiBase`. The next signing operation creates a replacement keypair. Requests identify as the existing device but are signed by an unbound key, so backend authentication rejects them indefinitely.
+
+**Impact:** Authenticated location/safety/health delivery can permanently stop after key loss while Brick has no explicit identity-fault state or authorised recovery path. Silent key regeneration also obscures the security event.
+
+**Root cause:** Provisioning-time key creation and runtime key loading use the same `getOrCreate()` primitive; paired-state continuity is not bound locally to the provisioned public key.
+
+**Required correction:** Separate key creation from paired runtime loading. Persist a non-secret fingerprint of the paired public key after successful provisioning; paired runtime must require the existing key and fingerprint to match. Missing/mismatched/invalid key becomes an explicit identity fault and requires authorised re-enrollment/migration rather than silent replacement. Add key-loss/mismatch regression coverage.
+
+**Fix commit:** pending
+**Regression test:** pending
+**Retest evidence:** pending
+**Status:** OPEN
