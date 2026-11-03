@@ -14,7 +14,11 @@ class SafetyOutbox(
     context: Context,
     private val writeFaultInjector: ((operation: String) -> Unit)? = null
 ) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
-    companion object { private const val FAILURE_HOLD_MS = 120_000L }
+    companion object {
+        private const val FAILURE_HOLD_MS = 120_000L
+        // Unknown safety state must block lower-priority history work rather than be mistaken for empty.
+        const val UNKNOWN_PENDING_COUNT = Int.MAX_VALUE
+    }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -145,7 +149,7 @@ class SafetyOutbox(
             }
         } catch (_: Throwable) {
             noteHealthy(false)
-            Stats(0, null, 0)
+            Stats(UNKNOWN_PENDING_COUNT, null, 0)
         }
     }
 }
