@@ -1,0 +1,114 @@
+name: Brick V1 Phase 8C — Emulator Durability Torture
+
+on:
+  push:
+    branches: [v1-p8c-android-deep-audit]
+    paths:
+      - '.github/workflows/v1-phase8c-emulator-torture.yml'
+      - 'app/src/main/**'
+      - 'app/src/androidTest/**'
+      - 'app/src/test/**'
+      - 'app/build.gradle.kts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-torture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p8c-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Install AOSP image and build instrumentation APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;default;x86_64'
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --console=plain
+
+      - name: Boot clean Android 15 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8c --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8c -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8c-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          "$ADB" install -t app/build/outputs/apk/debug/app-debug.apk
+          "$ADB" install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+      - name: Execute Phase 8C durability/isolation instrumentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          classes=(
+            'com.brick.safety.data.Phase8DurabilityTortureInstrumentedTest'
+            'com.brick.safety.data.Phase8LowStorageInstrumentedTest'
+            'com.brick.safety.reliability.Phase8NetworkChaosInstrumentedTest'
+            'com.brick.safety.evidence.Phase8ProviderIsolationInstrumentedTest'
+            'com.brick.safety.privileged.Phase6PrivilegedBridgeInstrumentedTest'
+            'com.brick.safety.diagnostics.Phase6CDiagnosticsInstrumentedTest'
+          )
+          : > /tmp/p8c-instrumentation.txt
+          for class in "${classes[@]}"; do
+            echo "===== $class =====" | tee -a /tmp/p8c-instrumentation.txt
+            "$ADB" shell am instrument -w \
+              -e class "$class" \
+              com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee -a /tmp/p8c-instrumentation.txt
+            tail -n 12 /tmp/p8c-instrumentation.txt | grep -E 'OK \([0-9]+ test|OK \([0-9]+ tests' >/dev/null
+          done
+
+      - name: Capture package and database state
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p p8c-emulator-evidence
+          cp /tmp/p8c-instrumentation.txt p8c-emulator-evidence/instrumentation.txt 2>/dev/null || true
+          cp /tmp/brick-p8c-emulator.log p8c-emulator-evidence/emulator.txt 2>/dev/null || true
+          timeout 10s "$ADB" shell dumpsys package com.brick.safety > p8c-emulator-evidence/package.txt 2>&1 || true
+          timeout 15s "$ADB" logcat -d > p8c-emulator-evidence/logcat.txt 2>&1 || true
+
+      - name: Upload emulator evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p8c-emulator-torture-${{ github.run_id }}
+          path: p8c-emulator-evidence
+          retention-days: 30
+          if-no-files-found: warn
