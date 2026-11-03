@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   device-owner-lifecycle:
-    name: Pre-setup DO -> Stage 1 -> reboot -> automatic Stage 2 -> Stage 3 UI
+    name: Clean AOSP DO -> Stage 1 -> reboot -> automatic Stage 2 -> Stage 3 UI
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -88,10 +88,6 @@ jobs:
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
-          # Install the DPC before the pre-setup reboot. The bare AOSP emulator has no interactive
-          # SetupWizard and can auto-finalize USER_SETUP_COMPLETE a few seconds after boot. Installing
-          # after that reboot creates a race that makes dpm report the generic "accounts" precondition
-          # error even when AccountManager is empty.
           "$ADB" install -t "$APP_APK"
           "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
           "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
@@ -102,18 +98,13 @@ jobs:
           "$ADB" shell settings put global device_provisioned 0
           "$ADB" reboot
 
-      - name: Provision real Device Owner before AOSP can auto-finalize setup
+      - name: Provision real Device Owner with synchronized AOSP test state
         shell: bash
         run: |
           set -euo pipefail
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$ADB" wait-for-device
 
-          # adb becomes reachable before all framework services are registered. Continuously assert
-          # pre-setup state, but do not declare readiness until AccountManager, DevicePolicyManager,
-          # PackageManager and Settings have all converged. Requiring settings read-back prevents the
-          # post-reboot race where `adb shell settings` exists as a command but its binder service is
-          # not registered yet. Android still performs the real Device Owner eligibility checks.
           ready=0
           for i in $(seq 1 90); do
             "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
@@ -135,10 +126,6 @@ jobs:
           done
           test "$ready" = "1"
 
-          # DevicePolicyManager also requires user 0 to be running and unlocked. On a just-rebooted
-          # AOSP emulator the framework services can be ready a few seconds before CE storage/user 0
-          # reaches RUNNING_UNLOCKED. Keep setup genuinely incomplete while waiting for that real OS
-          # state; do not bypass DevicePolicyManager's eligibility checks.
           unlocked=0
           for i in $(seq 1 90); do
             "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
@@ -157,32 +144,56 @@ jobs:
           "$ADB" shell settings put global device_provisioned 0
           test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
           test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
-          "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
           "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-reboot.txt
           grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-reboot.txt >/dev/null
           "$ADB" shell pm list users | tee /tmp/p8-do-users-after-reboot.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
           ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
 
-          # Reassert immediately before provisioning too. Android still performs the actual Device
-          # Owner validation; the workflow only stabilizes the emulator's setup-state race.
-          "$ADB" shell settings put secure user_setup_complete 0
-          "$ADB" shell settings put global device_provisioned 0
+          # AOSP's DevicePolicyManager caches setup/account eligibility. On a development emulator,
+          # synchronize that test-only state the same way Android's own provisioning tests do before
+          # asking the real DPM shell command to set Brick as owner. This helper exists only in the
+          # androidTest APK; production Brick never calls hidden/test-only framework APIs.
+          test "$("$ADB" shell getprop ro.debuggable | tr -d '\r')" = "1"
+          "$ADB" install -t "$TEST_APK"
+          "$ADB" logcat -c
+          cleanup_hidden_api() {
+            "$ADB" shell settings delete global hidden_api_policy >/dev/null 2>&1 || true
+          }
+          trap cleanup_hidden_api EXIT
+          "$ADB" shell settings put global hidden_api_policy 1
+          "$ADB" shell am instrument -w \
+            -e p8ProvisioningMode sync \
+            -e class 'com.brick.safety.beta.Phase8ProvisioningHarnessInstrumentedTest#testSynchronizeDevicePolicyProvisioningCaches' \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-do-provisioning-sync.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-do-provisioning-sync.txt >/dev/null
+
+          cache_ready=0
+          for i in $(seq 1 30); do
+            if "$ADB" logcat -d 2>/dev/null | grep -Fq 'Finished calculating hasIncompatibleAccountsTask'; then
+              cache_ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$cache_ready" = "1"
+          cleanup_hidden_api
+          trap - EXIT
+
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before-owner.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before-owner.txt >/dev/null
+          "$ADB" shell dumpsys device_policy | tee /tmp/p8-do-policy-before.txt
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before-set.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-before-set.txt >/dev/null
+
           "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
-
-          for i in $(seq 1 120); do
-            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
-            sleep 2
-          done
-          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
           "$ADB" shell settings put secure user_setup_complete 1
           "$ADB" shell settings put global device_provisioned 1
           test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "1"
           test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "1"
-          "$ADB" install -t "$TEST_APK"
 
       - name: Execute Stage 1 only and prove ownership remains until after durable disarm
         shell: bash
@@ -240,7 +251,7 @@ jobs:
           set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          for f in accounts-before accounts-after-reboot users-before users-after-reboot user-unlocked set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+          for f in accounts-before accounts-after-reboot accounts-before-owner users-before users-after-reboot user-unlocked provisioning-sync policy-before set-owner owners-initial owners-before-set owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
             cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
           done
           if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
@@ -248,6 +259,7 @@ jobs:
             timeout 10s "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys user > p8-do-failure/user-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys device_policy > p8-do-failure/device-policy-current.txt 2>&1 || true
             timeout 10s "$ADB" shell pm list users > p8-do-failure/users-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
             timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
