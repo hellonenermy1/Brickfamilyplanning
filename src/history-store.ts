@@ -1,9 +1,10 @@
 import type { LivePacket } from "./protocol";
 import { encodeTrustedDelta, gzipJson, readJsonObject, trustedPoint } from "./history-codec";
 
-type QueueBody = { type?: string; deviceId?: string; packet?: LivePacket; rawPacket?: LivePacket };
+type QueueBody = { type?: string; deviceId?: string; packet?: LivePacket; rawPacket?: LivePacket; receivedAtMs?: number };
 type Env = { HISTORY: R2Bucket };
 export type QueueMessageView = { messages: readonly Message<unknown>[] };
+type ReceiptRow = [number, number];
 
 type StoredRawSegment = {
   v?: number;
@@ -12,6 +13,7 @@ type StoredRawSegment = {
   storedAt?: number;
   packets?: LivePacket[];
   trustedPackets?: LivePacket[];
+  receipts?: ReceiptRow[];
 };
 
 type Group = {
@@ -19,7 +21,7 @@ type Group = {
   day: string;
   epoch: number;
   segmentStartMs: number;
-  entries: { message: Message<unknown>; packet: LivePacket; rawPacket: LivePacket }[];
+  entries: { message: Message<unknown>; packet: LivePacket; rawPacket: LivePacket; receivedAtMs: number | null }[];
 };
 
 export type HistoryBatchResult = {
@@ -54,13 +56,19 @@ function validPacket(p: unknown): p is LivePacket {
   return Number.isSafeInteger(x.epoch) && Number.isSafeInteger(x.sequence) && Number.isSafeInteger(x.wallTimeMs);
 }
 
-async function existingSegment(env: Env, key: string): Promise<{ raw: LivePacket[]; trusted: LivePacket[] }> {
+function validReceipt(value: unknown): value is ReceiptRow {
+  return Array.isArray(value) && value.length === 2 && Number.isSafeInteger(value[0]) && value[0] > 0 &&
+    Number.isSafeInteger(value[1]) && value[1] > 0;
+}
+
+async function existingSegment(env: Env, key: string): Promise<{ raw: LivePacket[]; trusted: LivePacket[]; receipts: ReceiptRow[] }> {
   const obj = await env.HISTORY.get(key);
-  if (!obj) return { raw: [], trusted: [] };
+  if (!obj) return { raw: [], trusted: [], receipts: [] };
   const parsed = await readJsonObject<StoredRawSegment>(obj);
   const raw = Array.isArray(parsed.packets) ? parsed.packets.filter(validPacket) : [];
   const trusted = Array.isArray(parsed.trustedPackets) ? parsed.trustedPackets.filter(validPacket) : raw;
-  return { raw, trusted };
+  const receipts = Array.isArray(parsed.receipts) ? parsed.receipts.filter(validReceipt) : [];
+  return { raw, trusted, receipts };
 }
 
 function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: number): LivePacket[] {
@@ -70,6 +78,24 @@ function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: num
   const merged = [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
   if (merged.length > MAX_PACKETS_PER_SEGMENT) throw new Error("history segment packet bound exceeded");
   return merged;
+}
+
+function mergeReceipts(existing: ReceiptRow[], entries: Group["entries"], packets: LivePacket[]): ReceiptRow[] {
+  const allowed = new Set(packets.map(packet => packet.sequence));
+  const bySequence = new Map<number, number>();
+  for (const [sequence, receivedAtMs] of existing) {
+    if (!allowed.has(sequence)) continue;
+    const current = bySequence.get(sequence);
+    if (current === undefined || receivedAtMs < current) bySequence.set(sequence, receivedAtMs);
+  }
+  for (const entry of entries) {
+    if (entry.receivedAtMs === null || !allowed.has(entry.packet.sequence)) continue;
+    const current = bySequence.get(entry.packet.sequence);
+    // First server receipt is the provenance we care about. HTTP/Queue retries may only preserve or
+    // improve that timestamp, never make an old packet look newer.
+    if (current === undefined || entry.receivedAtMs < current) bySequence.set(entry.packet.sequence, entry.receivedAtMs);
+  }
+  return [...bySequence.entries()].sort((a, b) => a[0] - b[0]);
 }
 
 function originalForQueue(body: QueueBody, packet: LivePacket): LivePacket {
@@ -109,6 +135,7 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
       continue;
     }
     const rawPacket = originalForQueue(body, packet);
+    const receivedAtMs = Number.isSafeInteger(body.receivedAtMs) && body.receivedAtMs! > 0 ? body.receivedAtMs! : null;
     const start = segmentStart(packet.wallTimeMs);
     const day = new Date(start).toISOString().slice(0, 10);
     const key = `${body.deviceId}|${start}|${packet.epoch}`;
@@ -117,7 +144,7 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
       group = { deviceId: body.deviceId, day, epoch: packet.epoch, segmentStartMs: start, entries: [] };
       groups.set(key, group);
     }
-    group.entries.push({ message, packet, rawPacket });
+    group.entries.push({ message, packet, rawPacket, receivedAtMs });
   }
 
   for (const group of groups.values()) {
@@ -127,28 +154,30 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
       const old = await existingSegment(env, keys.raw);
       const rawPackets = mergePackets(old.raw, group.entries.map(x => x.rawPacket), group.epoch);
       const trustedPackets = mergePackets(old.trusted, group.entries.map(x => x.packet), group.epoch);
+      const receipts = mergeReceipts(old.receipts, group.entries, trustedPackets);
       const storedAt = Date.now();
       const points = trustedPackets.map(trustedPoint);
       const [rawBody, trustedBody] = await Promise.all([
         gzipJson({
-          v: 4,
+          v: 5,
           deviceId: group.deviceId,
           segmentStartMs: group.segmentStartMs,
           storedAt,
           packets: rawPackets,
-          trustedPackets
+          trustedPackets,
+          receipts
         }),
-        gzipJson({ v: 4, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, delta: encodeTrustedDelta(points) })
+        gzipJson({ v: 5, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, receipts, delta: encodeTrustedDelta(points) })
       ]);
 
       await Promise.all([
         env.HISTORY.put(keys.raw, rawBody, {
           httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v4", segmentMinutes: "15", epoch: String(group.epoch) }
+          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
         }),
         env.HISTORY.put(keys.trusted, trustedBody, {
           httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v4", segmentMinutes: "15", epoch: String(group.epoch) }
+          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
         })
       ]);
 
