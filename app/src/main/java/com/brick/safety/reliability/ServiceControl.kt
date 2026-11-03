@@ -8,12 +8,19 @@ import com.brick.safety.beta.BetaSafety
 import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.location.BrickLocationService
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
 
 object ServiceControl {
     fun ensureTracking(context: Context) {
         val app = context.applicationContext
+        if (DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD) {
+            RecoveryScheduler.cancelAll(app)
+            runCatching { app.stopService(Intent(app, BrickLocationService::class.java)) }
+            DiagnosticStore.log(app, DiagnosticStore.Severity.INFO, "service", "tracking_blocked_non_child_role")
+            return
+        }
         if (DeepOffManager.isActive(app)) {
             DeepOffManager.quiesce(app)
             DiagnosticStore.log(app, DiagnosticStore.Severity.INFO, "service", "tracking_blocked_deep_off")
@@ -33,9 +40,7 @@ object ServiceControl {
         }
 
         if (prefs.getBoolean("sosActive", false)) {
-            val locationOff = runCatching {
-                !app.getSystemService(LocationManager::class.java).isLocationEnabled
-            }.getOrDefault(false)
+            val locationOff = runCatching { !app.getSystemService(LocationManager::class.java).isLocationEnabled }.getOrDefault(false)
             if (locationOff) {
                 runCatching { PrivilegedBridgeRuntime.current().attemptSosLocationEnable() }
                     .onSuccess { DiagnosticStore.log(app, DiagnosticStore.Severity.WARN, "service", "sos_privileged_location_attempt", "requested=$it") }
