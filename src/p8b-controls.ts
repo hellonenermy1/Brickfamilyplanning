@@ -94,16 +94,48 @@ export async function augmentHealthWithP8BControls(response: Response, env: P8BC
   return new Response(JSON.stringify({ ...base, ...(liveTrackCommand ? { liveTrackCommand } : {}), wifiSchedules }), { status: response.status, headers });
 }
 
+function capabilitySnapshotFromHealth(b: Record<string, unknown>, now: number) {
+  const keys = [
+    "fineLocationPermission","backgroundLocationPermission","activityRecognitionPermission","bluetoothScanPermission","nearbyWifiPermission",
+    "notificationPermission","batteryOptimizationExempt","backgroundRestricted","accelerometerAvailable","gyroscopeAvailable","magnetometerAvailable",
+    "rotationVectorAvailable","stepCounterAvailable","stepDetectorAvailable","privilegedProvider","privilegedAvailable","privilegedConnected",
+    "privilegedPermissionGranted","privilegedCapabilities","atlasWifiProviderCapability","atlasRttProviderCapability","atlasBleProviderCapability",
+    "atlasCellularProviderCapability","atlasLanProviderCapability","atlasGnssProviderCapability","atlasNetworkProviderCapability","atlasDeviceContextProviderCapability"
+  ];
+  const out: Record<string, unknown> = { version: 1, updatedAtMs: now };
+  for (const key of keys) if (b[key] !== undefined) out[key] = b[key];
+  return out;
+}
+
+async function storeCapabilityProfile(env: P8BControlEnv, deviceId: string, profile: Record<string, unknown>, now: number) {
+  const version = Number(profile.version), updated = Number(profile.updatedAtMs), text = JSON.stringify(profile);
+  if (!Number.isInteger(version) || version < 1 || !Number.isSafeInteger(updated) || updated <= 0 || text.length > 16_000) return;
+  await env.DB.prepare(`INSERT INTO device_capability_profile(device_id,profile_version,profile_json,device_updated_at,received_at) VALUES(?1,?2,?3,?4,?5)
+    ON CONFLICT(device_id) DO UPDATE SET profile_version=excluded.profile_version,profile_json=excluded.profile_json,device_updated_at=excluded.device_updated_at,received_at=excluded.received_at`)
+    .bind(deviceId, version, text, updated, now).run();
+}
+
 export async function noteP8BHealth(req: CloneJson, env: P8BControlEnv, deviceId: string) {
   let b: Record<string, unknown>; try { b = await req.clone().json<Record<string, unknown>>(); } catch { return; }
   const now = Date.now();
+
+  // Prefer explicit command history when present. For current V1 clients the authenticated actual
+  // state itself is also sufficient to complete the single pending command because there can be only
+  // one current command per device and the phone only changes this cadence after validating it.
   const liveId = typeof b.liveTrackCommandId === "string" ? b.liveTrackCommandId : null;
   const liveStatus = typeof b.liveTrackCommandStatus === "string" ? b.liveTrackCommandStatus : null;
+  const actualLive = typeof b.liveTrackActive === "boolean" ? b.liveTrackActive : null;
   if (liveId && (liveStatus === "completed" || liveStatus === "failed")) {
-    const actual = typeof b.liveTrackActive === "boolean" ? b.liveTrackActive : null;
     const reason = typeof b.liveTrackResultDetail === "string" ? b.liveTrackResultDetail.slice(0,120) : null;
     await env.DB.prepare("UPDATE device_live_track_control SET command_status=?1,last_actual_active=?2,completed_at=?3,result_reason=?4 WHERE device_id=?5 AND command_id=?6")
-      .bind(liveStatus, actual === null ? null : actual ? 1 : 0, now, reason, deviceId, liveId).run();
+      .bind(liveStatus, actualLive === null ? null : actualLive ? 1 : 0, now, reason, deviceId, liveId).run();
+  } else if (actualLive !== null) {
+    const pending = await env.DB.prepare("SELECT command_id,requested_active,expires_at FROM device_live_track_control WHERE device_id=?1 AND command_status='pending'")
+      .bind(deviceId).first<{ command_id: string; requested_active: number; expires_at: number }>();
+    if (pending && pending.expires_at > now && actualLive === (pending.requested_active === 1)) {
+      await env.DB.prepare("UPDATE device_live_track_control SET command_status='completed',last_actual_active=?1,completed_at=?2,result_reason='signed_phone_actual_confirmed' WHERE device_id=?3 AND command_id=?4 AND command_status='pending'")
+        .bind(actualLive ? 1 : 0, now, deviceId, pending.command_id).run();
+    }
   }
 
   const wr = b.wifiScheduleResult;
@@ -120,13 +152,6 @@ export async function noteP8BHealth(req: CloneJson, env: P8BControlEnv, deviceId
   }
 
   const cp = b.capabilityProfile;
-  if (cp && typeof cp === "object" && !Array.isArray(cp)) {
-    const x = cp as Record<string, unknown>; const version = Number(x.version); const updated = Number(x.updatedAtMs);
-    const text = JSON.stringify(cp);
-    if (Number.isInteger(version) && version >= 1 && Number.isSafeInteger(updated) && updated > 0 && text.length <= 16_000) {
-      await env.DB.prepare(`INSERT INTO device_capability_profile(device_id,profile_version,profile_json,device_updated_at,received_at) VALUES(?1,?2,?3,?4,?5)
-        ON CONFLICT(device_id) DO UPDATE SET profile_version=excluded.profile_version,profile_json=excluded.profile_json,device_updated_at=excluded.device_updated_at,received_at=excluded.received_at`)
-        .bind(deviceId, version, text, updated, now).run();
-    }
-  }
+  if (cp && typeof cp === "object" && !Array.isArray(cp)) await storeCapabilityProfile(env, deviceId, cp as Record<string, unknown>, now);
+  else await storeCapabilityProfile(env, deviceId, capabilitySnapshotFromHealth(b, now), now);
 }
