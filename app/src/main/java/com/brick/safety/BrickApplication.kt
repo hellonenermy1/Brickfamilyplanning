@@ -19,6 +19,7 @@ import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.FallDetectorRuntime
 import com.brick.safety.reliability.RecoveryScheduler
+import com.brick.safety.reliability.SafetyDispatcher
 import kotlin.math.max
 
 class BrickApplication : Application() {
@@ -43,6 +44,8 @@ class BrickApplication : Application() {
             return
         }
 
+        runCatching { SafetyDispatcher.restoreSosMirror(this) }
+            .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.ERROR, "safety", "sos_state_restore_failed", it.javaClass.simpleName, it) }
         P8BControlRuntime.initialize(this)
         DiagnosticMonitor.start(this)
         CrashReporter.install(this)
