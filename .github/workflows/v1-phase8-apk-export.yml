@@ -102,6 +102,7 @@ jobs:
           grep -F 'android:allowBackup="false"' p8-beta/merged-manifest.xml >/dev/null
           grep -F 'android:usesCleartextTraffic="false"' p8-beta/merged-manifest.xml >/dev/null
           ! grep -F 'Phase8RetirementHarnessReceiver' p8-beta/merged-manifest.xml
+          ! grep -F 'Phase8ResourceHarnessReceiver' p8-beta/merged-manifest.xml
 
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee p8-beta/apk-signing-cert.txt
           ! grep -qi 'Android Debug' p8-beta/apk-signing-cert.txt
