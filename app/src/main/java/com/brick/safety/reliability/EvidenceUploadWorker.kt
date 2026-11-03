@@ -6,6 +6,8 @@ import androidx.work.WorkerParameters
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.evidence.EvidenceDispatcher
 import com.brick.safety.evidence.EvidenceDrainStop
+import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeviceRoleStore
 
 object EvidenceRetryPolicy {
     const val CORE_BACKLOG_DELAY_SECONDS = 60L
@@ -19,15 +21,8 @@ object EvidenceRetryPolicy {
     }
 }
 
-/** Dedicated low-priority durable evidence drain. It can never revive a retired Brick beta. */
-class EvidenceUploadWorker(
-    appContext: Context,
-    params: WorkerParameters
-) : Worker(appContext, params) {
-    companion object {
-        private const val PREF_FAILURE_STREAK = "evidenceUploadFailureStreak"
-    }
-
+class EvidenceUploadWorker(appContext: Context, params: WorkerParameters) : Worker(appContext, params) {
+    companion object { private const val PREF_FAILURE_STREAK = "evidenceUploadFailureStreak" }
     private val prefs = applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     private fun resetFailureStreak() {
@@ -41,6 +36,7 @@ class EvidenceUploadWorker(
     }
 
     override fun doWork(): Result {
+        if (DeepOffManager.isActive(applicationContext) || DeviceRoleStore.role(applicationContext) != DeviceRoleStore.Role.CHILD) return Result.success()
         if (!BetaSafety.enforceStartup(applicationContext)) return Result.success()
         return try {
             EvidenceDispatcher(applicationContext, scheduleRecovery = false).use { dispatcher ->
@@ -50,19 +46,13 @@ class EvidenceUploadWorker(
                     resetFailureStreak()
                 } else {
                     val delaySeconds = when (outcome.stop) {
-                        EvidenceDrainStop.BUDGET_EXHAUSTED -> {
-                            resetFailureStreak(); EvidenceRetryPolicy.CATCH_UP_DELAY_SECONDS
-                        }
-                        EvidenceDrainStop.CORE_BACKLOG -> {
-                            resetFailureStreak(); EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS
-                        }
+                        EvidenceDrainStop.BUDGET_EXHAUSTED -> { resetFailureStreak(); EvidenceRetryPolicy.CATCH_UP_DELAY_SECONDS }
+                        EvidenceDrainStop.CORE_BACKLOG -> { resetFailureStreak(); EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS }
                         EvidenceDrainStop.TRANSPORT_FAILURE,
                         EvidenceDrainStop.ACK_FAILURE,
                         EvidenceDrainStop.JOURNAL_FAILURE,
                         EvidenceDrainStop.IDENTITY_UNAVAILABLE -> nextFailureDelaySeconds()
-                        EvidenceDrainStop.EMPTY -> {
-                            resetFailureStreak(); EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS
-                        }
+                        EvidenceDrainStop.EMPTY -> { resetFailureStreak(); EvidenceRetryPolicy.CORE_BACKLOG_DELAY_SECONDS }
                     }
                     RecoveryScheduler.scheduleEvidenceFollowUp(applicationContext, delaySeconds)
                 }
