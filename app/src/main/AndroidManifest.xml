@@ -57,7 +57,7 @@
         <activity
             android:name=".diagnostics.DiagnosticsActivity"
             android:exported="false"
-            android:label="Brick Maintenance & Recovery" />
+            android:label="Brick Maintenance &amp; Recovery" />
 
         <service
             android:name=".location.BrickLocationService"
