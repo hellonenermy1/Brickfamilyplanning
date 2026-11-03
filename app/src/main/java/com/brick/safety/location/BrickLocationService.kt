@@ -27,6 +27,8 @@ import com.brick.safety.managed.DesiredLocationState
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.managed.ParentLocationStateStore
 import com.brick.safety.network.BrickApi
+import com.brick.safety.reliability.CoreUploadRetryPolicy
+import com.brick.safety.reliability.DurableLocationDelivery
 import com.brick.safety.reliability.HealthEvidence
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
@@ -52,6 +54,7 @@ class BrickLocationService : Service() {
         private const val BLE_SCAN_DEGRADED_MS = 30_000L
         private const val LOCATION_V2_BYTES = 90
         private const val LOCATION_BATCH_SIZE = 50
+        private const val PREF_UPLOAD_FAILURE_STREAK = "coreUploadFailureStreak"
     }
 
     private val networkIo = Executors.newSingleThreadExecutor()
@@ -82,17 +85,19 @@ class BrickLocationService : Service() {
     @Volatile private var recoveryCount = 0
     @Volatile private var locationSubscribed = false
     @Volatile private var trackingIntervalMs = 3_000L
+    @Volatile private var nextUploadAttemptElapsed = 0L
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            if (networkAvailable()) kickUploadPump()
+            // A genuinely new usable network is a reason to bypass the previous transport's backoff.
+            if (networkAvailable()) kickUploadPump(force = true)
             lastHealthElapsed = 0L
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                kickUploadPump()
+                kickUploadPump(force = true)
             }
             lastHealthElapsed = 0L
         }
@@ -129,7 +134,7 @@ class BrickLocationService : Service() {
         if (androidLocationEnabled()) startTracking(desiredIntervalMs())
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
-        kickUploadPump()
+        kickUploadPump(force = true)
         startSupervisor()
         startFallbackTicker()
     }
@@ -143,7 +148,10 @@ class BrickLocationService : Service() {
         if (isSosActive()) requestFreshSosFix()
         checkBatterySafety()
         maybeScanBleAnchors(SystemClock.elapsedRealtime())
-        kickUploadPump()
+        // A newly queued safety event should get one prompt attempt even if ordinary history is in
+        // transport backoff. Subsequent failures are still bounded by the persistent retry policy.
+        val urgentWake = intent?.action == ACTION_ENSURE_RUNNING && SafetyDispatcher.pendingCount(this) > 0
+        kickUploadPump(force = urgentWake)
         return START_STICKY
     }
 
@@ -224,28 +232,21 @@ class BrickLocationService : Service() {
     private fun isV2(p: Journal.Pending): Boolean = p.payload.size == LOCATION_V2_BYTES && p.payload.firstOrNull()?.toInt() == 2
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
-        return try {
-            val ack = BrickApi.sendLocation(baseUrl, deviceId, p.payload)
-            if (ack != p.seq) throw IllegalStateException("ACK mismatch")
-            if (!journal.ackExact(p.epoch, p.seq)) throw IllegalStateException("local exact ACK failed")
-            lastAckElapsed = SystemClock.elapsedRealtime()
-            true
-        } catch (_: Exception) {
-            false
+        val sent = DurableLocationDelivery.sendOne(journal, p) { payload ->
+            BrickApi.sendLocation(baseUrl, deviceId, payload)
         }
+        if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
+        return sent
     }
 
     private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
         if (batch.isEmpty()) return true
-        return try {
-            val uploads = batch.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) }
-            val acked = BrickApi.sendLocationBatch(baseUrl, deviceId, uploads)
-            if (!journal.ackBatch(acked)) throw IllegalStateException("local batch ACK failed")
-            lastAckElapsed = SystemClock.elapsedRealtime()
-            true
-        } catch (_: Exception) {
-            false
+        val sent = DurableLocationDelivery.sendBatch(journal, batch) { pending ->
+            val uploads = pending.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) }
+            BrickApi.sendLocationBatch(baseUrl, deviceId, uploads)
         }
+        if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
+        return sent
     }
 
     private fun nextV2Batch(pending: List<Journal.Pending>): List<Journal.Pending> {
@@ -266,20 +267,40 @@ class BrickLocationService : Service() {
         runCatching { BrickApi.sendLiveLocationPreview(baseUrl, deviceId, newest.payload) }
     }
 
-    private fun drainCrashReports(baseUrl: String, deviceId: String) {
-        val pending = runCatching { crashOutbox.pending(10) }.getOrDefault(emptyList())
+    /** Returns false if crash-report storage or transport failed; history may still make progress. */
+    private fun drainCrashReports(baseUrl: String, deviceId: String): Boolean {
+        val pending = runCatching { crashOutbox.pending(10) }.getOrElse { return false }
         for (report in pending) {
             val sent = runCatching {
                 BrickApi.sendCrashPayload(baseUrl, deviceId, report.payload, report.reportId)
                 crashOutbox.ack(report.reportId)
             }.isSuccess
-            if (!sent) break
+            if (!sent) return false
+        }
+        return true
+    }
+
+    private fun resetCoreUploadFailureStreak() {
+        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
+        if (prefs.getInt(PREF_UPLOAD_FAILURE_STREAK, 0) != 0) {
+            prefs.edit().putInt(PREF_UPLOAD_FAILURE_STREAK, 0).apply()
         }
     }
 
-    private fun kickUploadPump() {
+    private fun nextCoreUploadFailureDelayMs(): Long {
+        val prefs = getSharedPreferences("brick", MODE_PRIVATE)
+        val next = (prefs.getInt(PREF_UPLOAD_FAILURE_STREAK, 0) + 1).coerceIn(1, 64)
+        prefs.edit().putInt(PREF_UPLOAD_FAILURE_STREAK, next).apply()
+        return CoreUploadRetryPolicy.delayMs(next)
+    }
+
+    private fun kickUploadPump(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && nextUploadAttemptElapsed > now) return
         if (!uploadPumpRunning.compareAndSet(false, true)) return
+
         networkIo.execute {
+            var failed = false
             try {
                 val prefs = getSharedPreferences("brick", MODE_PRIVATE)
                 val deviceId = prefs.getString("deviceId", null) ?: return@execute
@@ -287,24 +308,47 @@ class BrickLocationService : Service() {
                 if (!networkAvailable()) return@execute
 
                 SafetyDispatcher.drain(this, 100)
-                if (SafetyDispatcher.pendingCount(this) > 0) return@execute
+                if (SafetyDispatcher.pendingCount(this) > 0) {
+                    failed = true
+                    return@execute
+                }
 
-                drainCrashReports(baseUrl, deviceId)
-                previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)
+                if (!drainCrashReports(baseUrl, deviceId)) failed = true
+                val pendingCount = runCatching { journal.stats().pendingCount }.getOrElse {
+                    failed = true
+                    return@execute
+                }
+                previewNewestIfBacklogged(baseUrl, deviceId, pendingCount)
 
                 while (true) {
-                    val pending = journal.nextPending(LOCATION_BATCH_SIZE)
+                    val pending = runCatching { journal.nextPending(LOCATION_BATCH_SIZE) }.getOrElse {
+                        failed = true
+                        return@execute
+                    }
                     if (pending.isEmpty()) break
                     val batch = nextV2Batch(pending)
                     val sent = if (batch.isNotEmpty()) sendBatch(baseUrl, deviceId, batch) else sendOne(baseUrl, deviceId, pending.first())
-                    if (!sent) return@execute
+                    if (!sent) {
+                        failed = true
+                        return@execute
+                    }
                 }
+            } catch (_: Throwable) {
+                failed = true
             } finally {
                 uploadPumpRunning.set(false)
                 val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
-                val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false)
-                if ((pendingSafety || pendingCrash || journal.stats().pendingCount > 0) && networkAvailable() && !supervisor.isShutdown) {
-                    supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)
+                val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true)
+                val pendingCore = runCatching { journal.stats().pendingCount > 0 }.getOrDefault(true)
+                val hasPending = pendingSafety || pendingCrash || pendingCore
+
+                if (!hasPending) {
+                    nextUploadAttemptElapsed = 0L
+                    resetCoreUploadFailureStreak()
+                } else if (networkAvailable() && !supervisor.isShutdown) {
+                    val delayMs = if (failed) nextCoreUploadFailureDelayMs() else 2_000L
+                    nextUploadAttemptElapsed = SystemClock.elapsedRealtime() + delayMs
+                    supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)
                 }
             }
         }
@@ -352,7 +396,8 @@ class BrickLocationService : Service() {
 
             checkBatterySafety()
             maybeScanBleAnchors(now)
-            if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0 || runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(false))) kickUploadPump()
+            val pendingCore = runCatching { journal.stats().pendingCount > 0 }.getOrDefault(true)
+            if (networkAvailable() && (pendingCore || SafetyDispatcher.pendingCount(this) > 0 || runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true))) kickUploadPump()
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
         }, 10, 15, TimeUnit.SECONDS)
     }
@@ -467,7 +512,7 @@ class BrickLocationService : Service() {
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         val deviceId = prefs.getString("deviceId", null) ?: return
         val baseUrl = prefs.getString("apiBase", null) ?: return
-        val stats = journal.stats()
+        val stats = runCatching { journal.stats() }.getOrNull()
         val activity = activityEngine.snapshot()
         val gnss = gnssMonitor.snapshot()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -480,9 +525,9 @@ class BrickLocationService : Service() {
             .put("serviceUptimeMs", now - serviceStartedElapsed)
             .put("locationAgeMs", if (lastLocationElapsed == 0L) JSONObject.NULL else now - lastLocationElapsed)
             .put("ackAgeMs", if (lastAckElapsed == 0L) JSONObject.NULL else now - lastAckElapsed)
-            .put("pendingRecords", stats.pendingCount)
+            .put("pendingRecords", stats?.pendingCount ?: -1)
             .put("pendingSafetyEvents", SafetyDispatcher.pendingCount(this))
-            .put("oldestPendingAgeMs", stats.oldestPendingMs?.let { System.currentTimeMillis() - it } ?: JSONObject.NULL)
+            .put("oldestPendingAgeMs", stats?.oldestPendingMs?.let { System.currentTimeMillis() - it } ?: JSONObject.NULL)
             .put("network", networkKind())
             .put("locationEnabled", locationEnabled)
             .put("locationDesiredEnabled", desiredLocationEnabled)
