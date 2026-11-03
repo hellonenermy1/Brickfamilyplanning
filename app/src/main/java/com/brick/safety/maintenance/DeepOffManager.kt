@@ -29,11 +29,27 @@ object DeepOffManager {
         val policyLedgerActiveCount: Int
     )
 
-    fun isActive(context: Context): Boolean =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ACTIVE, false)
+    /**
+     * PURGE_BRICK is stronger than Deep Off. Treat it as permanently quiesced without consulting or
+     * recreating the purged Deep Off preference file.
+     */
+    fun isActive(context: Context): Boolean {
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return true
+        return app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ACTIVE, false)
+    }
 
     fun snapshot(context: Context): Snapshot {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) {
+            return Snapshot(
+                active = true,
+                enteredAtMs = 0L,
+                paired = false,
+                serviceComponentState = app.packageManager.getComponentEnabledSetting(ComponentName(app, BrickLocationService::class.java)),
+                policyLedgerActiveCount = 0
+            )
+        }
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val component = ComponentName(app, BrickLocationService::class.java)
         return Snapshot(
@@ -48,6 +64,7 @@ object DeepOffManager {
     @Synchronized
     fun enter(context: Context): Boolean {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return false
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_ACTIVE, false)) {
             quiesce(app)
@@ -81,6 +98,7 @@ object DeepOffManager {
     @Synchronized
     fun reactivate(context: Context): Boolean {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return false
         val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!prefs.getBoolean(KEY_ACTIVE, false)) return true
 
@@ -126,11 +144,13 @@ object DeepOffManager {
 
     fun quiesce(context: Context) {
         val app = context.applicationContext
-        // Stop process-local sensor/diagnostic loops first so Deep Off is truthful immediately even
-        // if the maintenance Activity remains open in the same process.
+        // Stop process-local loops first. In post-purge mode do not touch any purged Brick store or
+        // schedule; the only durable state allowed to remain is the deprovision stage itself.
         runCatching { FallDetectorRuntime.stop() }
         runCatching { DiagnosticMonitor.stop() }
         runCatching { app.stopService(Intent(app, BrickLocationService::class.java)) }
+        if (DeprovisionManager.isPostPurge(app)) return
+
         runCatching { RecoveryScheduler.cancelAll(app) }
         runCatching {
             app.packageManager.setComponentEnabledSetting(
