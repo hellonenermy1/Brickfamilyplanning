@@ -37,7 +37,13 @@ class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
             }
         }
         check(durable == BACKLOG_ROWS) { "resource fixture only persisted $durable/$BACKLOG_ROWS rows" }
-        ServiceControl.ensureTracking(app)
-        Log.i("BrickP8Resource", "seeded=$durable api=loopback-refusal service=start-requested")
+
+        // Report the durable fixture before attempting Android foreground-service startup. Android 14+
+        // can reject an FGS start when runtime prerequisites are missing; that must not make CI confuse
+        // "1000 rows were persisted" with "service startup was rejected".
+        Log.i("BrickP8Resource", "seeded=$durable api=loopback-refusal")
+        runCatching { ServiceControl.ensureTracking(app) }
+            .onSuccess { Log.i("BrickP8Resource", "service=start-requested") }
+            .onFailure { Log.e("BrickP8Resource", "service=start-failed type=${it.javaClass.simpleName}", it) }
     }
 }
