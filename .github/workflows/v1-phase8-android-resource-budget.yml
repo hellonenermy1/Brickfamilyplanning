@@ -89,15 +89,22 @@ jobs:
         run: |
           set -euo pipefail
           "$ADB" logcat -c
+          "$ADB" shell run-as com.brick.safety rm -f files/phase8_resource_seed_status.txt >/dev/null 2>&1 || true
           "$ADB" shell am broadcast --receiver-foreground --include-stopped-packages \
             -a com.brick.safety.testing.PHASE8_RESOURCE_SEED \
             -n com.brick.safety/.testing.Phase8ResourceHarnessReceiver | tee resource-evidence/seed.txt
 
-          for i in $(seq 1 60); do
-            if "$ADB" logcat -d | grep -F 'BrickP8Resource' | grep -F 'seeded=1000' >/dev/null; then break; fi
+          status=''
+          for i in $(seq 1 90); do
+            status="$("$ADB" shell run-as com.brick.safety cat files/phase8_resource_seed_status.txt 2>/dev/null | tr -d '\r' || true)"
+            case "$status" in
+              seeded=1000*) break ;;
+              failed=*) printf '%s\n' "$status" >&2; exit 1 ;;
+            esac
             sleep 1
           done
-          "$ADB" logcat -d | grep -F 'BrickP8Resource' | grep -F 'seeded=1000' >/dev/null
+          printf '%s\n' "$status" | tee resource-evidence/seed-status.txt
+          [[ "$status" == seeded=1000* ]]
 
           # If the receiver's normal ServiceControl start was rejected by an OEM/API policy, ADB shell
           # is allowed to issue the same explicit FGS start for this emulator-only measurement. The
@@ -139,8 +146,6 @@ jobs:
             test "$pid" = "$baseline_pid"
 
             mem="$("$ADB" shell dumpsys meminfo com.brick.safety | tr -d '\r')"
-            # Android's summary line is: TOTAL PSS: <n> TOTAL RSS: <n>. Select the value after RSS:
-            # rather than a fixed field, which previously read PSS and was format-fragile.
             rss="$(printf '%s\n' "$mem" | awk '/TOTAL RSS:/{for (i=1; i<=NF; i++) if ($i=="RSS:") {print $(i+1); exit}}')"
             if ! [[ "$rss" =~ ^[0-9]+$ ]]; then
               rss="$(printf '%s\n' "$mem" | awk '/TOTAL PSS:/{print $3; exit}')"
@@ -151,8 +156,6 @@ jobs:
             if ! [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then cpu=0; fi
             cpu_milli="$(awk -v c="$cpu" 'BEGIN { printf "%d", c*1000 }')"
 
-            # Parse du on the runner side. Android toybox may separate size/path with spaces rather
-            # than a tab, so `cut -f1` can return "1234 ." and falsely fail the numeric guard.
             storage="$("$ADB" shell run-as com.brick.safety du -sk . 2>/dev/null | tr -d '\r' | awk 'NR==1 {print $1}')"
             [[ "$storage" =~ ^[0-9]+$ ]]
             printf '%s,%s,%s,%s\n' "$i" "$rss" "$cpu" "$storage" >> resource-evidence/samples.csv
@@ -169,9 +172,6 @@ jobs:
           test "$elapsed" -ge 175
           avg_cpu_milli="$(awk -v s="$start_ticks" -v e="$end_ticks" -v hz="$hz" -v sec="$elapsed" 'BEGIN { if (sec <= 0 || hz <= 0) exit 1; printf "%d", ((e-s)/hz/sec*100)*1000 }')"
 
-          # Read the preference XML as plain text and parse on the runner. Keeping grep/sed out of
-          # the remote sh -c avoids Android toybox quoting differences turning valid measurements
-          # into a CI failure after the full three-minute run.
           prefs="$("$ADB" shell run-as com.brick.safety cat shared_prefs/brick.xml 2>/dev/null | tr -d '\r' || true)"
           streak="$(printf '%s\n' "$prefs" \
             | grep -o 'name="coreUploadFailureStreak" value="[0-9]*"' \
