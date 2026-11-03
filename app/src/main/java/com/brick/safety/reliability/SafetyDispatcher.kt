@@ -13,6 +13,8 @@ object SafetyDispatcher {
     const val PRIORITY_CRITICAL = 100
     const val PRIORITY_SOS = 200
 
+    @Volatile private var cachedSosActive: Boolean? = null
+
     private data class Snapshot(
         val latitude: Double?, val longitude: Double?, val accuracyM: Double?, val positionAgeMs: Long?,
         val batteryPct: Int, val charging: Boolean
@@ -66,7 +68,14 @@ object SafetyDispatcher {
             .put("positionAvailable", snapshot.latitude != null && snapshot.longitude != null)
         if (snapshot.positionAgeMs != null) enriched.put("positionAgeMs", snapshot.positionAgeMs)
 
-        val envelope = BrickApi.createSafetyEnvelope(kind, eventSequence, enriched, snapshot.latitude, snapshot.longitude, snapshot.accuracyM)
+        val envelope = BrickApi.createSafetyEnvelope(
+            kind,
+            eventSequence,
+            enriched,
+            snapshot.latitude,
+            snapshot.longitude,
+            snapshot.accuracyM
+        )
         val saved = SafetyOutbox(context).use { outbox ->
             if (sosActiveState == null) {
                 outbox.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority)
@@ -75,54 +84,110 @@ object SafetyDispatcher {
             }
         }
         if (!saved) {
-            DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "outbox_save_failed", "kind=$kind priority=$effectivePriority")
+            DiagnosticStore.log(
+                context,
+                DiagnosticStore.Severity.ERROR,
+                "safety",
+                "outbox_save_failed",
+                "kind=$kind priority=$effectivePriority"
+            )
             return null
         }
         if (sosActiveState != null) {
-            // Compatibility mirror only. SafetyOutbox is the authoritative SOS state source.
+            // The transaction above is authoritative. Cache only after it succeeds; this cache dies
+            // with the process and is reloaded from SQLite on the next process start.
+            cachedSosActive = sosActiveState
+            // Compatibility mirror only. SafetyOutbox remains the durability source.
             brickPrefs.edit().putBoolean("sosActive", sosActiveState).commit()
         }
-        DiagnosticStore.log(context, if (effectivePriority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
-            "safety", "event_saved", "kind=$kind priority=$effectivePriority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}")
+        DiagnosticStore.log(
+            context,
+            if (effectivePriority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
+            "safety",
+            "event_saved",
+            "kind=$kind priority=$effectivePriority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}"
+        )
         runCatching { ServiceControl.ensureTracking(context) }
-            .onFailure { DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "tracking_wake_failed", "kind=$kind", it) }
+            .onFailure {
+                DiagnosticStore.log(
+                    context,
+                    DiagnosticStore.Severity.ERROR,
+                    "safety",
+                    "tracking_wake_failed",
+                    "kind=$kind",
+                    it
+                )
+            }
         return envelope.eventId
     }
 
     fun isSosActive(context: Context): Boolean {
-        val legacy = context.getSharedPreferences("brick", Context.MODE_PRIVATE).getBoolean("sosActive", false)
-        return runCatching { SafetyOutbox(context).use { it.sosActive(legacy) } }.getOrElse {
+        cachedSosActive?.let { return it }
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val legacy = prefs.getBoolean("sosActive", false)
+        val active = runCatching { SafetyOutbox(context).use { it.sosActive(legacy) } }.getOrElse {
             noteOutboxUnavailable(context)
-            legacy
+            return legacy
         }
+        // Do not freeze an uncertain fallback in memory when the outbox already reports unhealthy;
+        // repeated reads then get a chance to recover. Healthy reads are cached to keep the 1 Hz
+        // location/supervisor paths from opening SQLite on every SOS state check.
+        if (prefs.getBoolean("safetyOutboxWriteHealthy", true)) cachedSosActive = active
+        return active
     }
 
     fun restoreSosMirror(context: Context): Boolean {
+        cachedSosActive = null
         val active = isSosActive(context)
         context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().putBoolean("sosActive", active).commit()
         return active
     }
 
-    fun drain(context: Context, limit: Int = 50, minPriority: Int = Int.MIN_VALUE, maxPriority: Int = Int.MAX_VALUE): Int {
+    fun drain(
+        context: Context,
+        limit: Int = 50,
+        minPriority: Int = Int.MIN_VALUE,
+        maxPriority: Int = Int.MAX_VALUE
+    ): Int {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val deviceId = prefs.getString("deviceId", null) ?: return 0
         val apiBase = prefs.getString("apiBase", null) ?: return 0
         var delivered = 0
         SafetyOutbox(context).use { outbox ->
             val pending = runCatching { outbox.pending(limit, minPriority, maxPriority) }.getOrElse {
-                noteOutboxUnavailable(context); return 0
+                noteOutboxUnavailable(context)
+                return 0
             }
             for (event in pending) {
                 try {
                     BrickApi.sendSafetyPayload(apiBase, deviceId, event.payload, event.eventId)
                     if (!outbox.ack(event.eventId)) {
-                        DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "local_ack_failed", "kind=${event.kind}")
+                        DiagnosticStore.log(
+                            context,
+                            DiagnosticStore.Severity.ERROR,
+                            "safety",
+                            "local_ack_failed",
+                            "kind=${event.kind}"
+                        )
                         break
                     }
                     delivered++
-                    DiagnosticStore.log(context, DiagnosticStore.Severity.INFO, "safety", "event_delivered", "kind=${event.kind}")
+                    DiagnosticStore.log(
+                        context,
+                        DiagnosticStore.Severity.INFO,
+                        "safety",
+                        "event_delivered",
+                        "kind=${event.kind}"
+                    )
                 } catch (t: Exception) {
-                    DiagnosticStore.log(context, DiagnosticStore.Severity.WARN, "safety", "delivery_failed", "kind=${event.kind} type=${t.javaClass.simpleName} message=${t.message?.take(500) ?: "none"}", t)
+                    DiagnosticStore.log(
+                        context,
+                        DiagnosticStore.Severity.WARN,
+                        "safety",
+                        "delivery_failed",
+                        "kind=${event.kind} type=${t.javaClass.simpleName} message=${t.message?.take(500) ?: "none"}",
+                        t
+                    )
                     break
                 }
             }
@@ -130,12 +195,19 @@ object SafetyDispatcher {
         return delivered
     }
 
-    fun pendingCount(context: Context): Int = runCatching { SafetyOutbox(context).use { it.stats().pendingCount } }
-        .getOrElse { noteOutboxUnavailable(context); 1 }
+    fun pendingCount(context: Context): Int =
+        runCatching { SafetyOutbox(context).use { it.stats().pendingCount } }
+            .getOrElse {
+                noteOutboxUnavailable(context)
+                1
+            }
 
     fun pendingCriticalCount(context: Context): Int = runCatching {
         SafetyOutbox(context).use { it.pendingCountAtLeast(PRIORITY_CRITICAL) }
-    }.getOrElse { noteOutboxUnavailable(context); 1 }
+    }.getOrElse {
+        noteOutboxUnavailable(context)
+        1
+    }
 
     private fun snapshot(context: Context): Snapshot {
         val battery = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -150,7 +222,10 @@ object SafetyDispatcher {
         val lon = Double.fromBits(prefs.getLong("anchorLonBits", 0L))
         val accuracy = prefs.getFloat("anchorAccuracyM", Float.NaN).toDouble()
         val valid = lat.isFinite() && lon.isFinite() && lat in -90.0..90.0 && lon in -180.0..180.0
-        return if (valid) Snapshot(lat, lon, accuracy.takeIf { it.isFinite() && it >= 0.0 }, age, pct, charging)
-        else Snapshot(null, null, null, null, pct, charging)
+        return if (valid) {
+            Snapshot(lat, lon, accuracy.takeIf { it.isFinite() && it >= 0.0 }, age, pct, charging)
+        } else {
+            Snapshot(null, null, null, null, pct, charging)
+        }
     }
 }
