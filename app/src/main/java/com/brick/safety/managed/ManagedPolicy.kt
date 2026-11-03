@@ -61,19 +61,22 @@ object ManagedPolicy {
             runCatching {
                 val current = dpm.getPermissionGrantState(admin, context.packageName, permission)
                 if (current != DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED) {
-                    PolicyLedger.record(
+                    val ledgerId = PolicyLedger.record(
                         context,
                         "permission:$permission",
                         current.toString(),
                         DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED.toString(),
                         "base_device_owner_policy"
                     )
-                    dpm.setPermissionGrantState(
-                        admin,
-                        context.packageName,
-                        permission,
-                        DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
-                    )
+                    // Never perform a Brick policy mutation without durable provenance.
+                    if (ledgerId != null) {
+                        dpm.setPermissionGrantState(
+                            admin,
+                            context.packageName,
+                            permission,
+                            DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
+                        )
+                    }
                 }
             }
         }
@@ -82,25 +85,37 @@ object ManagedPolicy {
             runCatching {
                 val autoTimeBefore = Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) != 0
                 if (!autoTimeBefore) {
-                    PolicyLedger.record(context, "auto_time", "false", "true", "base_time_integrity")
-                    dpm.setAutoTimeEnabled(admin, true)
+                    val ledgerId = PolicyLedger.record(context, "auto_time", "false", "true", "base_time_integrity")
+                    if (ledgerId != null) dpm.setAutoTimeEnabled(admin, true)
                 }
             }
             runCatching {
                 val restrictions = dpm.getUserRestrictions(admin)
                 if (!restrictions.getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false)) {
-                    PolicyLedger.record(
+                    val ledgerId = PolicyLedger.record(
                         context,
                         "restriction:${UserManager.DISALLOW_CONFIG_DATE_TIME}",
                         "false",
                         "true",
                         "base_time_integrity"
                     )
-                    dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                    if (ledgerId != null) dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
                 }
             }
         } else {
-            runCatching { dpm.setAutoTimeRequired(admin, true) }
+            runCatching {
+                val requiredBefore = dpm.getAutoTimeRequired()
+                if (!requiredBefore) {
+                    val ledgerId = PolicyLedger.record(
+                        context,
+                        "auto_time_required",
+                        "false",
+                        "true",
+                        "base_time_integrity_api29"
+                    )
+                    if (ledgerId != null) dpm.setAutoTimeRequired(admin, true)
+                }
+            }
         }
     }
 
@@ -121,7 +136,10 @@ object ManagedPolicy {
         var method = "already_current"
 
         if (actual != desiredOn && owner && Build.VERSION.SDK_INT >= 30) {
-            val attempted = runCatching { dpm.setLocationEnabled(admin, desiredOn); true }.getOrDefault(false)
+            val attempted = runCatching {
+                dpm.setLocationEnabled(admin, desiredOn)
+                true
+            }.getOrDefault(false)
             if (attempted) method = "device_owner"
             actual = runCatching { lm.isLocationEnabled }.getOrNull()
         }
