@@ -11,6 +11,7 @@ import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.fusion.Phase5CoarseNetworkRuntime
 import com.brick.safety.fusion.Phase5HypothesisRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
+import com.brick.safety.maintenance.CapabilityProfileStore
 import com.brick.safety.maintenance.DeepOffManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.P8BControlRuntime
@@ -49,6 +50,8 @@ class BrickApplication : Application() {
         Phase5HypothesisRuntime.initialize(this)
         runCatching { ShizukuBridgeController.initialize(this) }
             .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "shizuku", "initialize_failed", it.javaClass.simpleName, it) }
+        runCatching { CapabilityProfileStore.refresh(this) }
+            .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "capability", "profile_refresh_failed", it.javaClass.simpleName, it) }
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 startedActivities += 1
