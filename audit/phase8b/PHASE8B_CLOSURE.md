@@ -1,246 +1,192 @@
-# Brick V1 — Phase 8B Closure
+# Brick V1 — Phase 8B Closure — FINAL
 
-## Final phase status
-
-# **PHASE 8B — DONE / AUDIT COMPLETE**
+# **PHASE 8B — DONE / PASS**
 
 ## Exit verdict
 
-# **IMPLEMENTATION COMPLETENESS: FAIL — NOT RELEASE READY**
+# **IMPLEMENTATION REALITY SOURCE GATE: PASS**
 
-Phase 8B's job was to determine implementation reality against the frozen 525-requirement V1 contract without granting credit for filenames, UI cards, routes, comments or green CI alone.
+Phase 8B began by auditing the frozen 525-requirement V1 contract against the real Android/Cloud/parent implementation. The first audit correctly failed the product gate. Phase 8B then continued through remediation, retest, integrated-candidate construction and a complete 525-row rescore.
 
-That audit is complete: every current requirement has a source-level verdict and there are **zero UNKNOWN rows**.
+The source/config/reachability implementation gate now passes.
 
-This does **not** mean Brick passed implementation completeness. It did not.
+This is **not** production qualification and does not skip 8C–8F or Phase 9.
 
 Closure date: **2026-11-03**
 
 Audit branch: `v1-p8b-implementation-audit`
 
-Implementation heads audited:
+Final integrated candidate:
 
-- Android: `v1-p8-android-hardening` @ `3de76dc2996b9a38050365d2217da2e4597f8fde`
-- Cloud/Parent: `v1-p8-cloud-hardening` @ `b06a766f6906bdb9ea954267fb7f2d9c73d0910c`
+- branch: `v1-p8b-integrated-candidate`
+- SHA: `204a141e90c078b6c2008778bd6c01bcbb8a4622`
 
-Contract baseline:
-
-- Phase 8A closure `0ddf2e1e8efbbcb838911ae1acb07b43ccb37579`
-- 525 current requirements
+Contract baseline: Phase 8A frozen **525 current requirements**.
 
 ---
 
-## 1. Final 525-row result
+## 1. Integrated release-candidate identity
+
+Android and Cloud remediation were initially green on separate branches. Phase 8B did **not** accept that as sufficient release identity.
+
+A single integrated candidate was constructed, preserving both remediation histories, and both complete Phase 8B gates were rerun against the exact same SHA.
+
+Final integrated CI:
+
+- Android Phase 8B remediation CI run **41635204427** — **SUCCESS** on `204a141e90c078b6c2008778bd6c01bcbb8a4622`.
+- Cloud Phase 8B remediation CI run **41635203816** — **SUCCESS** on `204a141e90c078b6c2008778bd6c01bcbb8a4622`.
+
+Android gate passed dependency-lock stability, debug/release builds, JVM unit tests, lint, AndroidTest compilation, release/R8, production-surface semantics and placeholder checks.
+
+Cloud gate passed locked dependency install, TypeScript typecheck, parent build, production wiring, all D1 migrations, deterministic regressions, fallback-PIN contract, parent truth/map/Explain-Location contract, origin security, SOS priority, privacy audit, Wrangler production dry-run and placeholder/fake-handler scan.
+
+---
+
+## 2. Final 525-row result
 
 | Verdict | Count |
 |---|---:|
 | IMPLEMENTED | 2 |
-| IMPLEMENTED — UNVERIFIED | 392 |
-| PARTIAL | 28 |
-| MISSING | 63 |
-| BROKEN | 16 |
+| IMPLEMENTED — UNVERIFIED | 496 |
 | INTENTIONALLY REMOVED — VERIFIED | 24 |
+| MISSING — OPTIONAL / NON-BLOCKING AT 8B | 3 |
+| PARTIAL | 0 |
+| BROKEN | 0 |
+| UNREACHABLE | 0 |
+| UNKNOWN | 0 |
 | **TOTAL** | **525** |
 
-Unknown/unclassified: **0**.
+Mandatory requirements remaining in `MISSING`, `BROKEN`, `PARTIAL`, `UNREACHABLE` or `UNKNOWN`: **0**.
 
-Compact exact verdict-ledger SHA-256:
+The three optional source omissions are deliberately retained:
 
-`622038b9d31b87bac787e559ecf6720ac7994f315286da4428453d376ef45d86`
+- `HIS-019` — optional conservative flight inference;
+- `HIS-020` — optional landing/arrival notice associated with that capability;
+- `SEC-012` — optional mTLS defense-in-depth.
 
-The exact per-ID verdicts are committed as:
+They do not block the frozen V1 Phase 8B source gate.
 
-- `verdicts_A.csv`
-- `verdicts_B.csv`
-- `verdicts_C.csv`
-- `verdicts_D.csv`
-- `verdicts_E.csv`
-
-Evidence-family definitions are in `PHASE8B_EVIDENCE_KEYS.md`.
+Final reconstruction uses the historical five-part ledger plus the exactly 104 overrides in `PHASE8B_FINAL_RESCORE_OVERRIDES.csv`. See `PHASE8B_FINAL_RESCORE.md`.
 
 ---
 
-## 2. Important positive result
+## 3. Major remediation closed during Phase 8B
 
-Brick is **not** a fake or mostly UI-only project.
+The final candidate now has real/reachable source paths for the major gaps found by the original audit, including:
 
-The following foundations are real and substantially wired:
-
-- Android foreground/background tracking lifecycle;
-- local encrypted durable location journal;
-- sequence/ACK/idempotency delivery semantics;
-- durable SOS / I'M SAFE path;
-- activity and motion engines;
-- GNSS/fused validation;
-- Phase 3 odometry/particle/route/sequence stack;
-- Phase 4 Atlas and Signal Trust foundations;
-- isolated Wi-Fi/RTT/BLE/cellular/LAN/GNSS/network/device evidence providers;
-- durable Evidence Journal and low-priority evidence uploader;
-- Phase 5 fusion/places/radio-route foundations;
-- private rotating-ID Witness provider;
-- typed optional Shizuku boundary;
-- Cloudflare signed ingestion, D1, R2, Queue/DLQ, Durable Object/WebSocket foundations;
-- history, trip and geofence foundations;
-- MapLibre/private PMTiles parent map;
-- parent freshness/source truth layer;
-- Cloudflare Access JWT validation;
-- permanent RSA-4096 Brick v1 Android signing identity.
-
-Those areas are mostly `IMPLEMENTED — UNVERIFIED`, not PASS. Their deep correctness belongs to 8C/8D/8E/8F/9.
-
----
-
-## 3. Major release-blocking implementation gaps
-
-Phase 8B found material current-contract gaps, including:
-
-### Production candidate still beta/test
-
-The Android manifest still uses `android:testOnly="true"`; version/config remains `0.8.0-phase8-beta1-test`; the cloud production template advertises the same beta/test version. A permanent signing identity exists, but the current source baseline is not yet a final production candidate.
-
-### Wrong maintenance surface
-
-The old Phase 8 hardening diagnostics/retirement activity is still a directly exported second launcher. The current hidden Maintenance & Recovery Console requirements are missing.
-
-### Deep Off / current deprovisioner missing
-
-The old three-stage beta retirement exists, but provenance-aware reversible Deep Off, complete Policy Ledger and the current five-stage deprovisioner are absent/partial.
-
-### One-shot Location semantics are still stale
-
-Android, backend and parent UI still retain a persistent historical `desired` Location model after command completion. A legitimate child override can remain represented as a mismatch and trigger needless policy work.
-
-### Active reacquisition is incomplete
-
-Fallback can begin before the frozen bounded reacquisition path, ordinary fresh-current-fix reacquisition is missing, and no generation barrier guarantees an old fallback decision cannot publish after a newer measured fix.
-
-### Scheduled Wi-Fi missing
-
-All `WIFICTL-001..008` are missing.
-
-### Fall detection / Emergency Evidence Bundle missing
-
-The SOS/I'M SAFE path exists, but `SAFE-007..012` and `SAFE-014..018` are missing.
-
-### Fast Live Path is not fully isolated
-
-A live preview endpoint and DO/WebSocket exist, but the normal accepted-fix path can perform Queue/D1 work before advancing authoritative current state. Required end-to-end stage timing instrumentation is absent, and parent-to-phone Live Track activation is missing.
-
-### Exact work priority is wrong
-
-Crash diagnostics are drained before durable location in the Android upload pump, violating:
-
-`SOS > Critical safety > Location > Health > Evidence learning > Diagnostics`.
-
-### OneMap current architecture missing
-
-The existing MapLibre/private PMTiles map is real, but current OneMap-primary/provider-auth/token/rate/cache/fallback requirements are absent or partial.
-
-### Other gaps
-
-- Android parent/guardian role and role migration absent;
-- post-enrolment device rename absent;
-- screen-time collection/sync/portal absent;
-- explicit daily synthetic canary/retest subsystem absent;
-- automatic commute summaries absent;
-- optional flight inference/landing notice not implemented and not yet `VERIFIED UNSUPPORTED`;
-- optional mTLS defense-in-depth not implemented;
-- no ordinary JVM unit-test source set for Android deterministic logic.
+- V1 RC production Android/Cloud identity rather than disposable test/beta identity;
+- one normal Android launcher and hidden local Maintenance & Recovery entry;
+- explicit child / parent-guardian / unprovisioned APK roles;
+- Maintenance state/timeline and privacy-reduced diagnostics;
+- Policy Ledger, reversible provenance-aware Deep Off and five-stage deprovisioning;
+- one-shot Location lifecycle with completed command history and later child override truth;
+- removal of persistent desired-state repair semantics and needless repeated policy writes;
+- bounded active reacquisition/current-fix/subscription repair and stale-fallback generation guard;
+- local durable scheduled Wi-Fi with grace/reboot/time-zone recovery, child override and safety deferral;
+- daily silent canaries with exact failed-check bounded retest;
+- durable capability profiles and post-enrolment rename;
+- privacy-minimal screen-time summaries;
+- conservative automatic commute summaries from trusted history;
+- multi-signal fall inference, confidence behavior and protected emergency evidence;
+- LOW-fall local-only behavior and HIGH-fall prominent parent alert path;
+- dedicated Fast Live current-state path, live timing metadata and background-work separation;
+- exact work priority `SOS > Critical safety > Location > Health > Evidence learning > Diagnostics`;
+- authenticated parent Live Track control and phone actual-state confirmation;
+- OneMap-primary Singapore MapLibre path, approved private fallback, backend-only authenticated enrichment, token/cache/rate/retry isolation and stale-safe coalescing;
+- explicit Recenter/Follow behavior and structured Singapore address fields;
+- parent-confirmed short-lived single-use fallback PIN pairing with rate limiting, hashed PIN storage and high-entropy child claim secret;
+- `Explain This Location` using real provider/age/motion/conflict/missing-evidence truth rather than fake confidence.
 
 ---
 
-## 4. Forbidden-path result
+## 4. Finding closure
 
-All 24 forbidden requirements are `INTENTIONALLY REMOVED — VERIFIED` at the **inspected source/config level**.
+Historical implementation findings `P8B-001..021` are closed at source level in `PHASE8B_FINDINGS.md` and `PHASE8B_FINDINGS_CONTINUED.md`.
 
-No intended production path was found for generic Shizuku shell, public crowdsourced Find-My/fingerprint network, camera/microphone/EXIF localization, root/custom-ROM dependency, family-car tracking, unrelated ad/analytics SDKs, automatic emergency-services dispatch from fall inference, permanent normal 1-second tracking or fake AI precision.
+Remediation-build/test findings `P8B-R001..R006` are closed in `PHASE8B_REMEDIATION_FINDINGS.md`.
 
-This negative result is not final runtime proof. 8C-8F must recheck packaged APK, binder/exported surfaces, deployed endpoints and network behavior.
+Additional manual post-CI source findings `P8B-R007..R015` are closed in `PHASE8B_POST_CI_SOURCE_FINDINGS.md`.
 
----
-
-## 5. Fake/dead/wiring audit result
-
-`PHASE8B_FAKE_DEAD_CONFIG_AUDIT.md` records the adversarial implementation-reality pass.
-
-Key result:
-
-- core positioning/data/backend features are genuinely wired;
-- cloud worker v10 is intentionally development-only and not production-selected;
-- old beta retirement/diagnostics is real but semantically stale;
-- missing new features were not granted credit from adjacent permissions/files;
-- stale one-shot Location and Fast Live paths are classified BROKEN/PARTIAL rather than hidden by green tests.
+Open mandatory Phase 8B source/reachability findings: **0**.
 
 ---
 
-## 6. Test/CI reality
+## 5. Production reachability / legacy sweep
 
-Positive:
+`PHASE8B_FINAL_REACHABILITY_SWEEP.md` records the final adversarial source/config pass.
 
-- exact Android head has successful GitHub Actions including same-certificate Phase 7->8 upgrade continuity;
-- substantial Android instrumentation tests exist;
-- exact cloud head has successful Phase 8 Cloud Hardening CI.
+Result at Phase 8B scope:
 
-Limitations:
-
-- CI only proves the paths it actually exercises;
-- old tests can pass while newer frozen requirements are missing;
-- Android has no ordinary `app/src/test` JVM unit-test tree;
-- cloud package has no generic `npm test` target and relies primarily on workflow/script testing;
-- real OPPO qualification remains Phase 9.
-
----
-
-## 7. Phase 8B exit-gate result
-
-Requirement IDs classified: **525 / 525 — PASS**
-
-UNKNOWN verdicts: **0 — PASS**
-
-Fake/file-name-only credit removed: **PASS**
-
-Production reachability/config inspected: **PASS for source-audit scope**
-
-Forbidden-source paths checked: **PASS for source/config scope**
-
-Missing/partial/broken implementation truth documented: **PASS**
-
-Implementation complete against contract: **FAIL**
-
-Release ready: **FAIL**
-
-Therefore:
-
-# **PHASE 8B AUDIT: DONE**
-
-# **PHASE 8B PRODUCT EXIT VERDICT: FAIL / REMEDIATION REQUIRED**
+- new features are connected to the APK/Worker/parent production paths rather than only existing as files;
+- production Worker is the P8B Worker;
+- production Android surface is not testOnly and has one launcher;
+- superseded persistent Location desired-state semantics are not the current path;
+- no normal Location/Wi-Fi configuration lock is introduced;
+- Shizuku remains typed/allowlisted, not generic shell;
+- OneMap authenticated secrets remain backend-only;
+- obvious production placeholders/fake handlers are rejected by CI;
+- historical beta/debug code does not define current V1 production semantics.
 
 ---
 
-## 8. Progression rule
+## 6. Forbidden-path result
 
-The original strict audit plan states that unexpected `MISSING`, `BROKEN` or `UNREACHABLE` implementation blocks formal deeper-audit progression as a release candidate.
+All **24 forbidden requirements** remain `INTENTIONALLY REMOVED — VERIFIED` at the inspected source/config level.
 
-Accordingly, Brick must **not** be treated as having passed the 8B product gate merely because this audit is complete.
+No intended production source path was found for generic remote shell, public crowdsourced location/fingerprint network, camera/microphone/EXIF localization, root/custom-ROM dependency, family-car tracking, unrelated ad/analytics SDKs, automatic emergency-services dispatch from fall inference, permanent normal one-second tracking or fake AI precision.
 
-The next work should use these findings as the remediation/deep-audit input:
-
-- 8C owns Android-side correctness, lifecycle, Device Owner/Shizuku, positioning/reacquisition, data durability, safety, maintenance/Deep Off/deprovision and Android security/resource behavior;
-- 8D owns Cloudflare/backend, Fast Live backend ordering, OneMap backend boundary, auth/protocol/storage/Queue/R2/DO/security/deployment;
-- 8E owns parent portal truth, maps, OneMap UX, Location command presentation, history/playback/health/alerts/responsive behavior;
-- 8F re-runs complete cross-system/adversarial flows after fixes.
-
-Formal release-candidate progression remains blocked until the applicable P1 missing/broken requirements are implemented/fixed and retested.
+Later phases must recheck packaged APK, binder/exported surface, deployed endpoints and real network behavior.
 
 ---
 
-## 9. Finding records
+## 7. What Phase 8B PASS means
 
-Detailed findings are in:
+Phase 8B now proves, at source/config/reachability level:
 
-- `PHASE8B_FINDINGS.md`
-- `PHASE8B_FINDINGS_CONTINUED.md`
+- 525 / 525 current requirement IDs are classified;
+- UNKNOWN = 0;
+- mandatory MISSING = 0;
+- mandatory BROKEN = 0;
+- mandatory PARTIAL = 0;
+- mandatory UNREACHABLE = 0;
+- critical remediation paths are present and wired;
+- Android and Cloud full remediation CI are green on the same integrated SHA;
+- forbidden source/config paths remain absent.
 
-Those finding records remain **OPEN** intentionally; an open finding does not mean the 8B audit itself is still in progress. It means remediation has not yet been proven by fix commit + regression test + retest.
+# **PHASE 8B EXIT GATE: PASS**
 
-# **PHASE 8B CLOSED — AUDIT COMPLETE, IMPLEMENTATION NOT READY.**
+---
+
+## 8. What Phase 8B PASS does NOT mean
+
+The **496 `IMPLEMENTED — UNVERIFIED` requirements are deliberately not accepted yet**.
+
+Phase 8B does not prove:
+
+- real OPPO/ColorOS lifecycle behavior;
+- Device Owner/Shizuku behavior on both target devices;
+- actual Wi-Fi schedule actuation on target hardware;
+- physical fall false-positive performance;
+- real battery/thermal/resource budgets;
+- 23R measured P95 latency;
+- real OneMap production credential/provider behavior;
+- full browser interaction/responsiveness/accessibility;
+- long offline/backlog/storage/reboot endurance;
+- real Witness/Ground qualification;
+- production deployment/endurance acceptance.
+
+Those belong to 8C, 8D, 8E, 8F and Phase 9.
+
+Brick therefore remains at most a **release-candidate implementation**, not `PRODUCTION QUALIFIED`.
+
+---
+
+## 9. Handoff
+
+Next phase:
+
+# **8C — Android Deep Audit**
+
+8C receives the exact integrated candidate and must deeply verify Android lifecycle, process death/reboot, Device Owner/Shizuku, location/reacquisition/fusion wiring, durability, maintenance/Deep Off/deprovision, safety, notifications, permissions/security, resource use and target-device-dependent behavior without re-granting credit from source existence alone.
+
+# **PHASE 8B CLOSED — DONE / PASS.**
