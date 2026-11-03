@@ -8,6 +8,7 @@ import com.brick.safety.beta.BetaSafety
 import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.location.BrickLocationService
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
@@ -15,6 +16,8 @@ import com.brick.safety.privileged.PrivilegedBridgeRuntime
 object ServiceControl {
     fun ensureTracking(context: Context) {
         val app = context.applicationContext
+        // PURGE_BRICK is an uninstall-only state. Do not touch role/Deep Off/beta/diagnostics stores.
+        if (DeprovisionManager.isPostPurge(app)) return
         if (DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD) {
             RecoveryScheduler.cancelAll(app)
             runCatching { app.stopService(Intent(app, BrickLocationService::class.java)) }
