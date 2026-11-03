@@ -5,6 +5,7 @@ Contract conflicts are resolved from approved source precedence, not from curren
 Status meanings:
 
 - `RESOLVED — SUPERSEDED`: older wording is historical and must not be audited as current behavior.
+- `RESOLVED — AMENDED`: the older requirement remains materially relevant but later wording changes its exact semantics.
 - `RESOLVED CONTRACT / IMPLEMENTATION CHECK PENDING`: current contract is clear; Phase 8B must determine whether implementation matches it.
 - `OPEN`: contract truth is still genuinely unresolved.
 
@@ -18,21 +19,19 @@ Status meanings:
 
 **Resolution:** `RESOLVED — SUPERSEDED`.
 
-The old persistent-desired-state semantics are historical. New current requirements must be represented by new canonical amendment IDs while the old IDs remain marked superseded for traceability.
-
 Phase 8B must verify there is no surviving enforcement/repair loop that reverses a legitimate later child toggle.
 
 ---
 
 ## P8A-C002 — Separate Brick `GPS on` notification vs consolidated quiet FGS notification
 
-**Older requirement:** Phase 1 ledger `NOTIF-001` requires a Brick notification with text `GPS on`; related entries define it as silent/low importance.
+**Older requirement:** Phase 1/checklist material includes a distinct Brick GPS-on status concept.
 
 **Later approved requirement:** an ordinary one-shot Location command should not create a separate Brick GPS-on notification. When continuous background location legally requires foreground-service visibility, use one consolidated minimum-compliant notification: low importance, silent, no vibration, no heads-up and no per-position repost. Required Android/ColorOS/device-policy disclosures must not be hidden.
 
-**Resolution:** `RESOLVED — SUPERSEDED`.
+**Resolution:** `RESOLVED — SUPERSEDED` where older wording requires a second standalone GPS-status notification.
 
-`NOTIF-001` is historical and must not be used as a current acceptance requirement. The consolidated notification/disclosure policy becomes current.
+The current requirement is one minimum-compliant consolidated Brick foreground-service notification where Android requires it, not a layered second GPS-status notification.
 
 ---
 
@@ -48,17 +47,17 @@ Phase 8B must verify there is no surviving enforcement/repair loop that reverses
 
 **Resolution:** `RESOLVED CONTRACT / IMPLEMENTATION CHECK PENDING`.
 
-The later five-phase/deep-off requirements are current. The older three-stage retirement mechanism may still be a valid lower-level implementation or test escape path, but Phase 8A does **not** declare it equivalent. Phase 8B must prove whether all current requirements are implemented or identify gaps.
+The older state machine may still be useful as a lower-level implementation/test escape path, but it is not assumed equivalent. Phase 8B must prove all current Deep Off/deprovision requirements or report gaps.
 
 ---
 
 ## P8A-C004 — OSM/self-hosted primary map wording vs current OneMap-first Singapore map architecture
 
-**Older requirement:** Phase 1 ledger `MAP-002` / `GEOREV-001` describes OSM-derived/private map/address infrastructure as the primary V1 direction.
+**Older requirement:** Phase 1 and checklist rows such as older `PORT-007/031` wording describe OSM-derived/private map/address infrastructure as the primary V1 direction.
 
 **Later approved requirement:** MapLibre remains the renderer, OneMap high-detail/current supported Singapore mapping is the primary basemap/enrichment architecture, and an approved OSM/Protomaps-style fallback preserves Brick overlays if OneMap fails. Authenticated OneMap enrichment is backend-owned; credentials/tokens must not ship in the APK/browser bundle; enrichment is asynchronous and cannot block live positioning.
 
-**Resolution:** `RESOLVED — SUPERSEDED` for the old primary-provider wording.
+**Resolution:** `RESOLVED — AMENDED`.
 
 Retained privacy principles remain current: no unnecessary child/family telemetry to map providers, provider attribution preserved, live position must not depend on reverse geocoding, and fallback must preserve tracking state.
 
@@ -68,17 +67,17 @@ Retained privacy principles remain current: no unnecessary child/family telemetr
 
 **Implementation evidence:** Phase 7 status explicitly records a card-free development runtime with no mandatory R2, Queue, Access/Zero Trust or Cron binding.
 
-**Current V1 master-plan scope:** still explicitly includes Durable Objects, WebSockets, Queue/DLQ, D1/R2 and Access in the final V1 architecture/feature scope.
+**Current V1 contract:** the master plan and final acceptance checklist still explicitly require the intended production responsibilities for Durable Objects, WebSockets, Queue/DLQ, D1/R2 and parent Access/authentication.
 
 **Resolution:** `RESOLVED CONTRACT / IMPLEMENTATION CHECK PENDING`.
 
-The card-free Phase 7 runtime is an implementation/development state, not an approved contract rewrite. Phase 8A therefore retains the full current V1 cloud requirements. Phase 8B must determine the real current implementation and report any missing/alternate services rather than quietly changing the contract.
+The card-free Phase 7 runtime is an implementation/development state, not an approved product-contract rewrite. Phase 8B must report missing/alternate production services rather than changing the contract to fit deployed code.
 
 ---
 
 ## P8A-C006 — Legacy Phase 8A/8B naming vs current six-part audit
 
-**Older documents:** `PHASE8-CLOSURE.md` uses "Phase 8A" for Android acceptance and "Phase 8B" for cloud acceptance.
+**Older documents:** legacy Phase 8 hardening uses "Phase 8A" for Android acceptance and "Phase 8B" for cloud acceptance.
 
 **Current audit program:**
 
@@ -91,27 +90,85 @@ The card-free Phase 7 runtime is an implementation/development state, not an app
 
 **Resolution:** `RESOLVED — SUPERSEDED NOMENCLATURE`.
 
-Historical document headings remain unchanged as historical evidence, but all new audit artifacts use the current six-part meaning.
+Historical document headings remain historical evidence; all new audit artifacts use the current meanings.
 
 ---
 
 ## P8A-C007 — "Desired vs actual" parent wording vs one-shot command history
 
-**Older UI wording:** some Phase 7 evidence refers to "desired vs actual vs acknowledged Location".
+**Older wording:** historical Phase 7/checklist wording includes `desired/requested vs actual vs acknowledged` and in some cases `repair-pending mismatch` as if the last requested state remains enforced.
 
-**Later approved requirement:** parent UI shows current actual Android Location, last parent command, command result and confirmation time. A completed command is historical context, not persistent desired state.
+**Later approved requirement:** parent UI shows current actual Android Location, the last one-shot command, its result and confirmation time. A completed command is historical context. A later deliberate child/user toggle becomes current truth and is not a repair failure.
 
-**Resolution:** `RESOLVED — SUPERSEDED WORDING`.
+**Resolution:** `RESOLVED — AMENDED`.
 
-Current portal contract must not imply that a completed command remains an enforced desired state.
+`repair pending` is valid only for a genuinely pending/failed current command or broken subsystem, not simply because the current child-selected state differs from the historical last command.
+
+---
+
+## P8A-C008 — Checklist `PORT-014` stale requested/actual semantics
+
+**Checklist wording:** `PORT-014` says portal shows requested parent Location state, actual phone state, confirmation age and repair-pending mismatch.
+
+**Later master-plan wording:** completed one-shot command does not create persistent desired state; current actual state is authoritative after a later user toggle.
+
+**Resolution:** `RESOLVED — AMENDED`.
+
+Current interpretation of `PORT-014`:
+
+- while a command is pending, requested target + actual state + age/result may be shown;
+- after command completion, the command becomes history/context;
+- later user state is shown as actual without automatic repair-pending status.
+
+This is preserved explicitly because the final checklist itself contains stale wording.
+
+---
+
+## P8A-C009 — Checklist `SHZ-020` separate GPS-on timing vs later consolidated notification rule
+
+**Checklist wording:** `SHZ-020` permits a separate quiet `Brick / GPS on` status if managed Location remains ON about 20 minutes or more.
+
+**Later master-plan wording:** do not layer a second GPS-status notification on top of the one minimum-compliant foreground-service notification; ordinary one-shot commands should normally be silent.
+
+**Resolution:** `RESOLVED — SUPERSEDED` for the separate second-notification interpretation.
+
+Current contract does not require a standalone GPS-on notification at the 20-minute mark. If the existing consolidated foreground-service notification needs to truthfully reflect ongoing tracking/Location state, its content may do so while remaining one notification and complying with Android requirements.
+
+---
+
+## P8A-C010 — Checklist `REL-010` persistent `desired/internal Location` wording
+
+**Checklist wording:** System Truth Location cross-check references Brick `desired/internal` state against Android master state and callbacks.
+
+**Later master-plan rule:** there is no persistent desired Location state after a one-shot command completes.
+
+**Resolution:** `RESOLVED — AMENDED`.
+
+Current interpretation:
+
+- during a live pending command, compare requested target to actual state;
+- after completion, compare actual Android state to tracker permissions/subscription/callback/position health;
+- do not manufacture a permanent desired-state mismatch from historical command data.
+
+---
+
+## P8A-C011 — Checklist/private OSM wording vs OneMap provider boundary
+
+**Checklist wording:** older portal rows refer generally to a private MapLibre/OSM-derived strategy.
+
+**Later approved rule:** OneMap is the primary supported high-detail Singapore basemap/enrichment provider, with provider-independent Brick overlays and approved OSM/Protomaps-style fallback. Authenticated OneMap credentials stay backend-side.
+
+**Resolution:** `RESOLVED — AMENDED`.
+
+Security/privacy intent survives; only provider priority and exact enrichment boundary change.
 
 ---
 
 ## Current conflict totals
 
-- Identified: 7
-- Resolved at contract level: 7
-- Open contract conflicts: 0
-- Implementation-equivalence checks deferred to Phase 8B: P8A-C003, P8A-C005 and any future implementation conflicts discovered during 8A source reconciliation.
+- Identified: **11**
+- Resolved at contract level: **11**
+- Open contract conflicts: **0**
+- Implementation-equivalence checks deferred to Phase 8B: especially P8A-C003 and P8A-C005, plus all amended rows that must be traced to production implementation.
 
-This count is provisional until every registered requirement source has been reconciled.
+This count remains provisional until the 469 checklist IDs and latest amendment set have been fully reconciled one-by-one.
