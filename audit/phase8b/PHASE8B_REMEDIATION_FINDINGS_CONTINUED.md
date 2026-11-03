@@ -47,3 +47,67 @@ This file continues `PHASE8B_REMEDIATION_FINDINGS.md` from P8B-R007 onward. Same
 **Required correction:** replace the fragile compound shell-quoted regex with a small deterministic Node source-scan script or equivalently quote-safe checks; keep the same prohibited marker intent.
 
 **Status:** OPEN — finding recorded before CI correction.
+
+---
+
+## P8B-R010 — Fall pipeline violates LOW-only-local semantics and emergency evidence is incomplete
+
+**Severity:** P1 HIGH — the frozen safety contract is source-level incomplete even though Android/cloud compile and CI gates are green.
+
+**Observed baseline:** Android `710fad287ad9088b1c275ee19abff4bb4a9b5160`, cloud `3e58c33104e04831446b08ab58e7cf5757bb6b32`.
+
+**Evidence:** `FallDetectorRuntime.evaluateCandidate()` calls `SafetyDispatcher.enqueue(..., "fall_detected", ...)` for LOW, MEDIUM and HIGH confidence; LOW therefore leaves the phone and enters the durable cloud safety pipeline. The frozen SAFE contract requires LOW to log locally without parent spam. The emitted detail currently contains impact/gyro/post-impact-motion/activity aggregates, while the frozen emergency evidence bundle also requires available accepted/raw position quality, speed/mode, motion context, GNSS quality, connectivity/power and repair/health context. `SafetyDispatcher` enriches battery/current position but not the remaining available evidence classes.
+
+**Expected:** LOW stays local-only; MEDIUM/HIGH may enter the durable safety pipeline according to policy. HIGH is critical. The event detail must carry a privacy-minimized bounded emergency evidence summary from already-available Brick state, never raw indefinite sensor streams, mic or camera.
+
+**Required correction:** make LOW diagnostic-only; enrich MEDIUM/HIGH with bounded motion/activity, position age/quality, speed/mode where available, GNSS/provider/connectivity/power/recovery health summaries; preserve durable offline outbox/ACK and critical priority for HIGH.
+
+**Status:** OPEN — finding recorded before fix.
+
+---
+
+## P8B-R011 — Deep Off does not fully quiesce process-local work and restoration can overwrite a later component-state change
+
+**Severity:** P1 HIGH — source does not yet satisfy the frozen Deep Off stop-all-work/provenance rule.
+
+**Observed baseline:** Android `710fad287ad9088b1c275ee19abff4bb4a9b5160`.
+
+**Evidence:** `DeepOffManager.quiesce()` stops `BrickLocationService`, cancels `RecoveryScheduler`/Wi-Fi work and disables the service component, but does not stop the already-running `FallDetectorRuntime` or `DiagnosticMonitor` started by `BrickApplication`. `reactivate()` unconditionally restores the snapshotted service component state instead of first verifying that the current component state still equals the value Brick itself applied during Deep Off; a later external/user/system change could therefore be overwritten.
+
+**Expected:** entering Deep Off halts all Brick active runtime work that can continue in-process, survives reboot, never auto-reactivates, and restores a Brick-caused temporary state only if that state has not been superseded since Brick applied it.
+
+**Required correction:** add explicit process-runtime quiesce/restart hooks for fall monitoring and diagnostic sampling, persist the Brick-applied component state in the snapshot, and restore the original component state only when current state still equals Brick's Deep Off value.
+
+**Status:** OPEN — finding recorded before fix.
+
+---
+
+## P8B-R012 — Android ordinary JVM unit-test source set is still absent
+
+**Severity:** P2 MEDIUM — CI invokes `testDebugUnitTest`, but there is no `app/src/test` source tree, so the task does not provide meaningful local JVM regression coverage.
+
+**Observed baseline:** Android `710fad287ad9088b1c275ee19abff4bb4a9b5160`.
+
+**Evidence:** the repository tree contains instrumentation tests under `app/src/androidTest` but no `app/src/test`. `app/build.gradle.kts` has `androidTestImplementation` only and no ordinary unit-test dependency. A passing empty unit-test Gradle task is not evidence for the pure logic introduced by 8B.
+
+**Expected:** at least the pure, deterministic safety/control state-machine logic added for 8B has ordinary JVM tests that run in CI.
+
+**Required correction:** add locked JUnit dependency and focused JVM tests for the pure hidden-maintenance entry state machine (including invalid-sequence reset, exact seven taps + >=10s wait + final tap, and armed-window expiry), then keep `testDebugUnitTest` in the full Android gate.
+
+**Status:** OPEN — finding recorded before fix.
+
+---
+
+## P8B-R013 — OneMap reverse-geocode path can still follow Live Track cadence while moving
+
+**Severity:** P1 HIGH — ONEMAP-006 requires enrichment coalescing so approximately 2-second Live Track updates cannot create approximately 2-second reverse-geocode provider calls.
+
+**Observed baseline:** cloud `3e58c33104e04831446b08ab58e7cf5757bb6b32`.
+
+**Evidence:** `web/brick-map-p8b.ts` calls `/parent/api/onemap/reverse` for each `resolveBrickPlace(lon,lat)`. Backend caching uses a key rounded to five decimals (roughly metre-scale). A moving device can therefore produce a new cache key on each ~2-second location update, and `reverseOneMap()` has no minimum enrichment cadence/coalescing guard beyond the broad 240-calls/min provider ceiling.
+
+**Expected:** provider enrichment is spatially/temporally coalesced independently from Fast Live rendering; coordinates/current marker render immediately while reverse geocoding runs at a bounded slower cadence and stale responses cannot overwrite a newer point.
+
+**Required correction:** add a bounded browser-side reverse-geocode coalescer/cache keyed to movement/time and stale-request generation, while retaining backend cache/rate limits and private fallback.
+
+**Status:** OPEN — finding recorded before fix.
