@@ -115,9 +115,13 @@ jobs:
             app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt \
             app/src/main/java/com/brick/safety/reliability/ScreenTimeWorker.kt \
             app/src/main/java/com/brick/safety/network/LiveApi.kt \
-            app/src/main/java/com/brick/safety/network/CanaryApi.kt; do
+            app/src/main/java/com/brick/safety/network/CanaryApi.kt \
+            app/src/main/java/com/brick/safety/network/PinPairingApi.kt; do
               test -s "$f"
           done
+          grep -F 'PinPairingApi.completeFallback(base, token)' app/src/main/java/com/brick/safety/ui/MainActivity.kt >/dev/null
+          grep -F '/api/pair/pin/claim' app/src/main/java/com/brick/safety/network/PinPairingApi.kt >/dev/null
+          grep -F '/api/pair/pin/status' app/src/main/java/com/brick/safety/network/PinPairingApi.kt >/dev/null
 
           aidl=app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl
           ! grep -E -i '(exec|shell|rawCommand|filePath)' "$aidl"
