@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Verify automatic recovery wiring
+      - name: Verify automatic recovery and bounded retry wiring
         shell: bash
         run: |
           set -euo pipefail
@@ -26,6 +26,7 @@ jobs:
           from pathlib import Path
 
           location = Path('app/src/main/java/com/brick/safety/location/BrickLocationService.kt').read_text()
+          delivery = Path('app/src/main/java/com/brick/safety/reliability/DurableLocationDelivery.kt').read_text()
           boot = Path('app/src/main/java/com/brick/safety/reliability/BootReceiver.kt').read_text()
           recovery = Path('app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt').read_text()
           scheduler = Path('app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt').read_text()
@@ -35,31 +36,49 @@ jobs:
               'override fun onAvailable(network: Network)',
               'override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities)',
               'networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)',
+              'kickUploadPump(force = true)',
               'return START_STICKY',
               'SafetyDispatcher.drain(this, 100)',
-              'if (SafetyDispatcher.pendingCount(this) > 0) return@execute',
-              'previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)',
-              'supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)',
-              'if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0',
+              'failed = true',
+              'nextCoreUploadFailureDelayMs()',
+              'nextUploadAttemptElapsed',
+              'CoreUploadRetryPolicy.delayMs(next)',
+              'DurableLocationDelivery.sendOne',
+              'DurableLocationDelivery.sendBatch',
           ]
           for marker in required_location:
               assert marker in location, f'missing location recovery marker: {marker}'
 
-          # The reconnect callbacks must actually lead to the same upload pump used by normal tracking.
+          for marker in [
+              'BASE_DELAY_MS = 5_000L',
+              'MAX_DELAY_MS = 5L * 60L * 1_000L',
+              'journal.ackExact',
+              'journal.ackBatch',
+              'acked.toSet() != expected.toSet()'
+          ]:
+              assert marker in delivery, f'missing durable delivery marker: {marker}'
+
+          # Reconnect callbacks may bypass a stale transport backoff exactly when Android reports a
+          # usable network, while ordinary supervisor/record wakes must respect the retry gate.
           available = location.index('override fun onAvailable(network: Network)')
           capabilities = location.index('override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities)')
           callback_end = location.index('override fun onCreate()', capabilities)
-          assert 'kickUploadPump()' in location[available:capabilities], 'network onAvailable no longer wakes upload pump'
-          assert 'kickUploadPump()' in location[capabilities:callback_end], 'validated-network callback no longer wakes upload pump'
+          assert 'kickUploadPump(force = true)' in location[available:capabilities], 'network onAvailable no longer wakes upload pump'
+          assert 'kickUploadPump(force = true)' in location[capabilities:callback_end], 'validated-network callback no longer wakes upload pump'
+          assert 'if (!force && nextUploadAttemptElapsed > now) return' in location, 'ordinary wakes no longer respect transport backoff'
+          assert 'supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)' in location, 'bounded delayed retry missing'
+          assert 'supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)' not in location, 'fixed two-second failure retry storm reintroduced'
 
-          # SOS/safety must be drained before crash reports and location history, and any remaining
-          # safety item must block normal history from consuming the reconnect window.
-          pump = location.index('private fun kickUploadPump()')
+          # SOS/safety stays ahead of crash reports/history, and unreadable/pending safety work is
+          # fail-closed instead of allowing normal history to jump the priority queue.
+          pump = location.index('private fun kickUploadPump(force: Boolean = false)')
           safety_drain = location.index('SafetyDispatcher.drain(this, 100)', pump)
-          safety_block = location.index('if (SafetyDispatcher.pendingCount(this) > 0) return@execute', safety_drain)
-          crash_drain = location.index('drainCrashReports(baseUrl, deviceId)', safety_block)
+          safety_pending = location.index('SafetyDispatcher.pendingCount(this) > 0', safety_drain)
+          safety_failure = location.index('failed = true', safety_pending)
+          crash_drain = location.index('drainCrashReports(baseUrl, deviceId)', safety_failure)
           history_loop = location.index('while (true)', crash_drain)
-          assert pump < safety_drain < safety_block < crash_drain < history_loop, 'SOS-first upload ordering drifted'
+          assert pump < safety_drain < safety_pending < safety_failure < crash_drain < history_loop, 'SOS-first upload ordering drifted'
+          assert 'getOrElse {' in safety and 'return 1' in safety, 'safety outbox read failures are no longer fail-closed'
 
           for marker in [
               'Intent.ACTION_BOOT_COMPLETED',
@@ -78,24 +97,32 @@ jobs:
           ]:
               assert marker in scheduler, f'missing WorkManager recovery marker: {marker}'
 
-          # Safety enqueue is durable-before-wake: the encrypted outbox append must happen before
-          # tracking is requested, so a process/network failure cannot turn SOS into a memory-only event.
+          # Safety enqueue is durable-before-wake.
           append = safety.index('outbox.append(envelope.eventId, envelope.kind, envelope.payload, priority)')
           wake = safety.index('ServiceControl.ensureTracking(context)', append)
           assert append < wake, 'safety wake occurs before durable outbox persistence'
-          print('Android automatic recovery wiring contract OK')
+          print('Android automatic recovery + bounded retry contract OK')
           PY
 
-      - name: Verify retained executable durability tests exist
+      - name: Verify executable durability, chaos and low-storage tests exist
         shell: bash
         run: |
           set -euo pipefail
           test -f app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/data/Phase8LowStorageInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/managed/Phase8CommandValidationInstrumentedTest.kt
           test -f app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt
           grep -F 'FOURTEEN_DAYS_MS' app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt >/dev/null
           grep -F 'testCorruptHighPrioritySafetyRowCannotStarveSos' app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt >/dev/null
+          grep -F 'PRAGMA max_page_count' app/src/androidTest/java/com/brick/safety/data/Phase8LowStorageInstrumentedTest.kt >/dev/null
+          grep -F 'UnknownHostException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
+          grep -F 'SSLHandshakeException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
+          grep -F 'SocketTimeoutException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
+          grep -F 'synthetic rate limit' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
+          grep -F 'testFutureExpiredAndImpossibleLifetimeCommandsAreRejectedAtDurableBoundary' app/src/androidTest/java/com/brick/safety/managed/Phase8CommandValidationInstrumentedTest.kt >/dev/null
           grep -F 'testWrongOrMissingAckNeverDeletesPendingEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
           grep -F 'testTransitionWithoutConfidenceDegradesToUnknownUntilSampleConfirms' app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt >/dev/null
 
