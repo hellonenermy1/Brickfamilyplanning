@@ -1,0 +1,165 @@
+name: Brick V1 Phase 8 — One-Time Live Cloud Audit
+
+on:
+  push:
+    branches: [v1-p8-cloud-hardening]
+    paths:
+      - '.github/workflows/v1-phase8-one-time-live-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase8-one-time-live-audit
+  cancel-in-progress: false
+
+jobs:
+  live-audit:
+    name: Discover Brick account, rehearse disposable restore, measure production usage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install exactly locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Require Cloudflare audit credential and discover the unique Brick account
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || {
+            echo 'CLOUDFLARE_API_TOKEN repository secret is not configured.' >&2
+            exit 1
+          }
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+          async function cf(url) {
+            const r = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
+            const body = await r.json().catch(() => ({}));
+            if (!r.ok || body.success === false) throw new Error(`Cloudflare ${r.status}: ${JSON.stringify(body.errors || body)}`);
+            return body.result;
+          }
+          const accounts = await cf('https://api.cloudflare.com/client/v4/accounts?per_page=50');
+          if (!Array.isArray(accounts) || accounts.length === 0) throw new Error('token can access no Cloudflare accounts');
+          const matches = [];
+          for (const account of accounts) {
+            const dbs = await cf(`https://api.cloudflare.com/client/v4/accounts/${account.id}/d1/database?per_page=100`);
+            if (Array.isArray(dbs) && dbs.some(db => db?.name === 'brick-family-v1')) {
+              matches.push({ id: account.id, name: account.name || 'unnamed' });
+            }
+          }
+          if (matches.length !== 1) throw new Error(`expected exactly one Cloudflare account containing D1 brick-family-v1, found ${matches.length}`);
+          const account = matches[0];
+          fs.appendFileSync(process.env.GITHUB_ENV, `CLOUDFLARE_ACCOUNT_ID=${account.id}\n`);
+          fs.writeFileSync('phase8-cloud-account-discovery.json', JSON.stringify({
+            sourceGitSha: process.env.GITHUB_SHA,
+            matchedAccountCount: 1,
+            canonicalD1Found: true,
+            accountName: account.name,
+            accountIdSha256: (await import('node:crypto')).createHash('sha256').update(account.id).digest('hex')
+          }, null, 2));
+          console.log(`Discovered one Brick Cloudflare account: ${account.name}. Raw account ID is not written to evidence.`);
+          NODE
+
+      - name: Bundle exact Brick restore implementation
+        run: npx esbuild src/backup-restore-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-backup-restore-live.mjs
+
+      - name: Run destructive application restore rehearsal only on disposable D1 databases
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BRICK_RESTORE_STATE_PATH: phase8-live-restore-state.json
+          BRICK_RESTORE_EVIDENCE_PATH: phase8-live-restore-evidence.json
+        run: node scripts/phase8-live-brick-backup-restore.mjs /tmp/brick-backup-restore-live.mjs
+
+      - name: Collect read-only production Cloudflare operation and storage evidence
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BRICK_METRICS_DAYS: '7'
+          BRICK_METRICS_EVIDENCE_PATH: phase8-cloud-usage-metrics.json
+        run: node scripts/phase8-cloud-usage-metrics.mjs
+
+      - name: Verify both live evidence files before cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const sha = process.env.GITHUB_SHA;
+          const restore = JSON.parse(fs.readFileSync('phase8-live-restore-evidence.json', 'utf8'));
+          const usage = JSON.parse(fs.readFileSync('phase8-cloud-usage-metrics.json', 'utf8'));
+          if (restore.sourceGitSha !== sha) throw new Error('restore evidence SHA mismatch');
+          if (restore.sourceDatabaseDeleted !== true || restore.restoredIntoFreshDatabase !== true || restore.exactStateComparison !== true) {
+            throw new Error('destructive fresh-D1 restore proof incomplete');
+          }
+          if (restore.productionDatabaseTouched !== false || restore.fixtureOnly !== true) throw new Error('restore safety boundary failed');
+          if (!Array.isArray(restore.backupTables) || restore.backupTables.length !== 12) throw new Error('restore table coverage incomplete');
+          if (usage.sourceGitSha !== sha) throw new Error('usage evidence SHA mismatch');
+          if (usage.worker?.name !== 'brick-family-v1' || usage.d1?.name !== 'brick-family-v1') throw new Error('usage evidence is not for canonical Brick resources');
+          if (!Number.isFinite(usage.d1?.analyticsDatabaseSizeBytesMax)) throw new Error('D1 storage evidence missing');
+          for (const name of ['brick-family-v1-history','brick-family-v1-maps']) if (!(name in usage.r2)) throw new Error(`R2 evidence missing ${name}`);
+          for (const name of ['brick-family-v1-events','brick-family-v1-dlq']) if (!(name in usage.queues)) throw new Error(`Queue evidence missing ${name}`);
+          console.log('Phase 8 live restore and usage evidence verified before cleanup.');
+          NODE
+
+      - name: Delete any disposable D1 database left by the rehearsal
+        if: always()
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BRICK_RESTORE_STATE_PATH: phase8-live-restore-state.json
+          BRICK_RESTORE_EVIDENCE_PATH: phase8-live-restore-evidence.json
+        run: |
+          set -euo pipefail
+          if [ ! -s "$BRICK_RESTORE_STATE_PATH" ]; then exit 0; fi
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const p = process.env.BRICK_RESTORE_STATE_PATH;
+          const state = JSON.parse(fs.readFileSync(p, 'utf8'));
+          const account = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          let failures = 0;
+          for (const db of state.databases || []) {
+            if (!db?.id || db.deleted === true) continue;
+            const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${db.id}`, {
+              method: 'DELETE', headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30000)
+            });
+            if (r.ok || r.status === 404) db.deleted = true;
+            else { failures++; console.error(`Could not delete disposable D1 ${db.role || db.id}: HTTP ${r.status}`); }
+          }
+          state.cleanupAttempted = true;
+          state.cleanupSucceeded = failures === 0;
+          fs.writeFileSync(p, JSON.stringify(state, null, 2));
+          if (fs.existsSync(process.env.BRICK_RESTORE_EVIDENCE_PATH)) {
+            const ep = process.env.BRICK_RESTORE_EVIDENCE_PATH;
+            const e = JSON.parse(fs.readFileSync(ep, 'utf8'));
+            e.cleanupAttempted = true;
+            e.cleanupSucceeded = failures === 0;
+            fs.writeFileSync(ep, JSON.stringify(e, null, 2));
+          }
+          if (failures) process.exit(1);
+          NODE
+
+      - name: Upload non-secret Phase 8 live evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-one-time-live-audit-${{ github.sha }}
+          path: |
+            phase8-cloud-account-discovery.json
+            phase8-live-restore-evidence.json
+            phase8-live-restore-state.json
+            phase8-cloud-usage-metrics.json
+          if-no-files-found: warn
+          retention-days: 30
