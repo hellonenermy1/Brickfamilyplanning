@@ -131,7 +131,8 @@ jobs:
         run: |
           set -euo pipefail
           npx esbuild src/location-ingest-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-ingest-p8.mjs
-          node scripts/test-phase8-v6-live-monotonicity.mjs /tmp/brick-location-ingest-p8.mjs
+          npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-order-v6-p8.mjs
+          node scripts/test-phase8-v6-live-monotonicity.mjs /tmp/brick-location-ingest-p8.mjs /tmp/brick-live-order-v6-p8.mjs
 
       - name: Phase 8 live event-time monotonicity across reboot epochs
         shell: bash
@@ -141,7 +142,7 @@ jobs:
           npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-order-p8.mjs
           node scripts/test-phase8-live-event-time.mjs /tmp/brick-location-event-time-p8.mjs /tmp/brick-live-order-p8.mjs
           grep -F 'if (!shouldAdvanceLiveState(state, current)) return false;' src/device-do.ts >/dev/null
-          grep -F 'liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);' src/location-ingest-v6.ts >/dev/null
+          grep -F 'liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(liveCandidate);' src/location-ingest-v6.ts >/dev/null
 
       - name: Phase 8 integrated ingest retry torture
         shell: bash
@@ -149,7 +150,8 @@ jobs:
           set -euo pipefail
           npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8-torture.mjs
           npx esbuild src/location-ingest-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-p8-torture.mjs
-          node scripts/test-phase8-integrated-ingest-torture.mjs /tmp/brick-history-p8-torture.mjs /tmp/brick-location-p8-torture.mjs
+          npx esbuild src/live-state-order.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-live-order-p8-torture.mjs
+          node scripts/test-phase8-integrated-ingest-torture.mjs /tmp/brick-history-p8-torture.mjs /tmp/brick-location-p8-torture.mjs /tmp/brick-live-order-p8-torture.mjs
 
       - name: Phase 8 SOS direct durability and backlog-bypass contract
         run: node scripts/test-phase8-sos-priority-contract.mjs
