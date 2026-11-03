@@ -97,8 +97,8 @@ jobs:
               text = Path(name).read_text()
               if 'workflow_dispatch:' not in text:
                   raise SystemExit(f'{name}: live evidence workflow is no longer explicit/manual')
-              # Do not embed a GitHub ${{ ... }} expression in this checker: Actions expands and masks
-              # such expressions before the shell runs. Structural placement is the property we need.
+              # GitHub evaluates expression syntax inside multiline run text too, so this checker only
+              # verifies the structural placement of the token variable without embedding an expression.
               if 'CLOUDFLARE_API_TOKEN:' not in text:
                   raise SystemExit(f'{name}: scoped Cloudflare credential wiring missing')
               before_steps = text.split('    steps:', 1)[0]
