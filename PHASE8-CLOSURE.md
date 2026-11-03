@@ -7,7 +7,7 @@ Current state: **INTEGRATION VERIFIED — FORMAL PHASE 8 CLOSURE BLOCKED ONLY BY
 - Android code candidate: `ced2a0c6d040e4cca6f5012a0a3aeab2eb7f5ad8`.
 - Cloud code candidate: `58e722707da51f93f1b66d092393e6dd729c5728`.
 
-The evidence-document commits after the Android candidate are documentation-only and do not change the tested app code.
+Commits after the Android code candidate only update Phase 8 evidence/acceptance tooling; they do not change application source or runtime behavior. The stable-signing export gate was additionally hardened to inspect the built release APK's merged manifest/package/version/debuggable state and prove the debug-only retirement harness is absent before accepting the artifact.
 
 ## Phase 8A — Android acceptance state
 
