@@ -79,6 +79,8 @@ jobs:
           grep -F "'brick-family-v1-dlq'" "$metrics" >/dev/null
           grep -F 'workersInvocationsAdaptive' "$metrics" >/dev/null
           grep -F 'd1AnalyticsAdaptiveGroups' "$metrics" >/dev/null
+          grep -F 'd1StorageAdaptiveGroups' "$metrics" >/dev/null
+          grep -F 'databaseSizeBytes' "$metrics" >/dev/null
           grep -F 'r2OperationsAdaptiveGroups' "$metrics" >/dev/null
           grep -F 'queueMessageOperationsAdaptiveGroups' "$metrics" >/dev/null
 
@@ -95,9 +97,10 @@ jobs:
               text = Path(name).read_text()
               if 'workflow_dispatch:' not in text:
                   raise SystemExit(f'{name}: live evidence workflow is no longer explicit/manual')
-              if 'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}' not in text:
+              # Do not embed a GitHub ${{ ... }} expression in this checker: Actions expands and masks
+              # such expressions before the shell runs. Structural placement is the property we need.
+              if 'CLOUDFLARE_API_TOKEN:' not in text:
                   raise SystemExit(f'{name}: scoped Cloudflare credential wiring missing')
-              # The token must not be declared in the job-level env block before steps.
               before_steps = text.split('    steps:', 1)[0]
               if 'CLOUDFLARE_API_TOKEN' in before_steps:
                   raise SystemExit(f'{name}: Cloudflare token leaked to job-level env')
