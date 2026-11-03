@@ -2,7 +2,7 @@ name: Brick V1 Phase 8B — Cloud Remediation CI
 
 on:
   push:
-    branches: [v1-p8b-remediation-cloud]
+    branches: [v1-p8b-remediation-cloud, v1-p8b-integrated-candidate]
   workflow_dispatch:
 
 permissions:
