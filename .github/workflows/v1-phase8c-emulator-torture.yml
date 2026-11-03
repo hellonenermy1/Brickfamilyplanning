@@ -83,6 +83,7 @@ jobs:
             'com.brick.safety.reliability.Phase8NetworkChaosInstrumentedTest'
             'com.brick.safety.evidence.Phase8ProviderIsolationInstrumentedTest'
             'com.brick.safety.privileged.Phase6PrivilegedBridgeInstrumentedTest'
+            'com.brick.safety.crypto.Phase8DeviceKeyContinuityInstrumentedTest'
             'com.brick.safety.diagnostics.Phase6CDiagnosticsInstrumentedTest'
             'com.brick.safety.maintenance.Phase8PolicyLedgerIntegrityInstrumentedTest'
             'com.brick.safety.maintenance.Phase8PostPurgeIsolationInstrumentedTest'
