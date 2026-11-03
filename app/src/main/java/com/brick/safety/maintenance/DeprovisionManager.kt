@@ -121,8 +121,11 @@ object DeprovisionManager {
         // its executor, while the UserService has an idle-exit guard as a final fallback.
         runCatching { ShizukuBridgeController.shutdown() }
 
-        runCatching { RecoveryScheduler.cancelAll(app) }.getOrElse {
-            return Result(stage(app), false, "failed to cancel Brick scheduled work: ${it.javaClass.simpleName}")
+        // WorkManager cancellation is explicitly best-effort. PURGE may not proceed until every
+        // Brick-owned unique chain has reached a terminal state, its cancellation operations have
+        // completed, terminal rows are pruned, and a final query proves no Brick WorkInfo remains.
+        if (!RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)) {
+            return Result(stage(app), false, "Brick scheduled work did not quiesce within the verified boundary")
         }
 
         for (name in brickDatabases) {
