@@ -13,8 +13,11 @@ class SafetyOutbox(
     companion object {
         private const val FAILURE_HOLD_MS = 120_000L
         private const val SOS_STATE_KEY = "sos_active"
+        private const val HIGH_FALL_UNTIL_KEY = "high_fall_until_ms"
         const val UNKNOWN_PENDING_COUNT = Int.MAX_VALUE
     }
+
+    private data class StateMutation(val name: String, val value: String)
 
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
@@ -64,30 +67,53 @@ class SafetyOutbox(
     }
 
     fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean =
-        appendInternal(eventId, kind, payload, priority, sosActive = null)
+        appendInternal(eventId, kind, payload, priority, "append", stateMutation = null)
 
-    /**
-     * Persists the SOS event and the authoritative local SOS active/inactive state in one SQLite
-     * transaction. SharedPreferences is only a compatibility mirror and is never the durability
-     * boundary for SOS mode.
-     */
+    /** Persists the SOS event and authoritative SOS state in the same SQLite transaction. */
     fun appendSosTransition(
         eventId: String,
         kind: String,
         payload: ByteArray,
         priority: Int,
         active: Boolean
-    ): Boolean = appendInternal(eventId, kind, payload, priority, sosActive = active)
+    ): Boolean = appendInternal(
+        eventId,
+        kind,
+        payload,
+        priority,
+        "append_sos_transition",
+        StateMutation(SOS_STATE_KEY, if (active) "1" else "0")
+    )
+
+    /** Persists a HIGH-fall event and its bounded protection deadline in one transaction. */
+    fun appendHighFall(
+        eventId: String,
+        kind: String,
+        payload: ByteArray,
+        priority: Int,
+        highUntilMs: Long
+    ): Boolean {
+        require(highUntilMs > 0L)
+        return appendInternal(
+            eventId,
+            kind,
+            payload,
+            priority,
+            "append_high_fall",
+            StateMutation(HIGH_FALL_UNTIL_KEY, highUntilMs.toString())
+        )
+    }
 
     private fun appendInternal(
         eventId: String,
         kind: String,
         payload: ByteArray,
         priority: Int,
-        sosActive: Boolean?
+        operation: String,
+        stateMutation: StateMutation?
     ): Boolean {
         return try {
-            writeFaultInjector?.invoke(if (sosActive == null) "append" else "append_sos_transition")
+            writeFaultInjector?.invoke(operation)
             val db = writableDatabase
             db.beginTransaction()
             val saved = try {
@@ -101,10 +127,10 @@ class SafetyOutbox(
                 val durableEvent = rowId != -1L || containsEvent(db, eventId)
                 if (!durableEvent) {
                     false
-                } else if (sosActive != null) {
+                } else if (stateMutation != null) {
                     val stateRow = db.insertWithOnConflict("safety_state", null, ContentValues().apply {
-                        put("name", SOS_STATE_KEY)
-                        put("value", if (sosActive) "1" else "0")
+                        put("name", stateMutation.name)
+                        put("value", stateMutation.value)
                         put("updated_ms", System.currentTimeMillis())
                     }, SQLiteDatabase.CONFLICT_REPLACE)
                     if (stateRow == -1L) {
@@ -141,26 +167,56 @@ class SafetyOutbox(
      * preference once so an already-active SOS is not lost during rollout.
      */
     fun sosActive(legacyFallback: Boolean): Boolean = try {
-        readableDatabase.rawQuery("SELECT value FROM safety_state WHERE name=? LIMIT 1", arrayOf(SOS_STATE_KEY)).use { c ->
-            if (c.moveToFirst()) return c.getString(0) == "1"
-        }
-        val db = writableDatabase
-        db.beginTransaction()
-        try {
-            db.insertWithOnConflict("safety_state", null, ContentValues().apply {
-                put("name", SOS_STATE_KEY)
-                put("value", if (legacyFallback) "1" else "0")
-                put("updated_ms", System.currentTimeMillis())
-            }, SQLiteDatabase.CONFLICT_IGNORE)
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
+        readState(SOS_STATE_KEY)?.let { return it == "1" }
+        if (!insertStateIfAbsent(SOS_STATE_KEY, if (legacyFallback) "1" else "0")) {
+            noteHealthy(false)
         }
         legacyFallback
     } catch (_: Throwable) {
         noteHealthy(false)
         legacyFallback
     }
+
+    /**
+     * Returns the durable HIGH-fall protection deadline. Existing upgraded installs may migrate the
+     * old preference once; expired values remain harmless and evaluate false at the caller.
+     */
+    fun highFallUntilMs(legacyFallback: Long): Long = try {
+        readState(HIGH_FALL_UNTIL_KEY)?.toLongOrNull()?.coerceAtLeast(0L)?.let { return it }
+        val fallback = legacyFallback.coerceAtLeast(0L)
+        if (!insertStateIfAbsent(HIGH_FALL_UNTIL_KEY, fallback.toString())) {
+            noteHealthy(false)
+        }
+        fallback
+    } catch (_: Throwable) {
+        noteHealthy(false)
+        legacyFallback.coerceAtLeast(0L)
+    }
+
+    private fun readState(name: String): String? =
+        readableDatabase.rawQuery("SELECT value FROM safety_state WHERE name=? LIMIT 1", arrayOf(name)).use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+
+    private fun insertStateIfAbsent(name: String, value: String): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        return try {
+            val row = db.insertWithOnConflict("safety_state", null, ContentValues().apply {
+                put("name", name)
+                put("value", value)
+                put("updated_ms", System.currentTimeMillis())
+            }, SQLiteDatabase.CONFLICT_IGNORE)
+            val ok = row != -1L || readStateExists(db, name)
+            if (ok) db.setTransactionSuccessful()
+            ok
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun readStateExists(db: SQLiteDatabase, name: String): Boolean =
+        db.rawQuery("SELECT 1 FROM safety_state WHERE name=? LIMIT 1", arrayOf(name)).use { it.moveToFirst() }
 
     fun pending(
         limit: Int = 50,
