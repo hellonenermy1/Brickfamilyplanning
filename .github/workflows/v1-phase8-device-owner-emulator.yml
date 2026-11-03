@@ -135,6 +135,24 @@ jobs:
           done
           test "$ready" = "1"
 
+          # DevicePolicyManager also requires user 0 to be running and unlocked. On a just-rebooted
+          # AOSP emulator the framework services can be ready a few seconds before CE storage/user 0
+          # reaches RUNNING_UNLOCKED. Keep setup genuinely incomplete while waiting for that real OS
+          # state; do not bypass DevicePolicyManager's eligibility checks.
+          unlocked=0
+          for i in $(seq 1 90); do
+            "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
+            "$ADB" shell settings put global device_provisioned 0 >/dev/null 2>&1 || true
+            user_dump="$("$ADB" shell dumpsys user 2>/dev/null | tr -d '\r' || true)"
+            if grep -Fq 'State: RUNNING_UNLOCKED' <<<"$user_dump"; then
+              unlocked=1
+              printf '%s\n' "$user_dump" > /tmp/p8-do-user-unlocked.txt
+              break
+            fi
+            sleep 1
+          done
+          test "$unlocked" = "1"
+
           "$ADB" shell settings put secure user_setup_complete 0
           "$ADB" shell settings put global device_provisioned 0
           test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
@@ -222,13 +240,14 @@ jobs:
           set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          for f in accounts-before accounts-after-reboot users-before users-after-reboot set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+          for f in accounts-before accounts-after-reboot users-before users-after-reboot user-unlocked set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
             cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
           done
           if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
             timeout 10s "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
             timeout 10s "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys user > p8-do-failure/user-current.txt 2>&1 || true
             timeout 10s "$ADB" shell pm list users > p8-do-failure/users-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
             timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
