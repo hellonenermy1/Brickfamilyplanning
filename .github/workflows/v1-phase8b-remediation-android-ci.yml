@@ -2,7 +2,7 @@ name: Brick V1 Phase 8B — Android Remediation CI
 
 on:
   push:
-    branches: [v1-p8b-remediation-android]
+    branches: [v1-p8b-remediation-android, v1-p8b-integrated-candidate]
   workflow_dispatch:
 
 permissions:
@@ -79,7 +79,6 @@ jobs:
           grep -F 'versionName = "1.0.0-rc.1"' "$gradle_file" >/dev/null
           grep -F 'buildConfigField("boolean", "BRICK_BETA", "false")' "$gradle_file" >/dev/null
 
-          # Diagnostics/maintenance must not be a second launcher/exported surface.
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           ns='{http://schemas.android.com/apk/res/android}'
@@ -101,11 +100,9 @@ jobs:
           print('launcher/exported surface OK')
           PY
 
-          # One-shot Location semantics: no persistent lock or persistent desired-state symbol in production runtime.
           ! grep -R -n -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' app/src/main/java
           ! grep -R -n -F 'parentDesiredLocationState' app/src/main/java
 
-          # Required remediation subsystems exist in production source.
           for f in \
             app/src/main/java/com/brick/safety/maintenance/MaintenanceEntryGate.kt \
             app/src/main/java/com/brick/safety/maintenance/PolicyLedger.kt \
@@ -122,17 +119,13 @@ jobs:
               test -s "$f"
           done
 
-          # Shizuku remains typed; no generic shell/exec surface.
           aidl=app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl
           ! grep -E -i '(exec|shell|rawCommand|filePath)' "$aidl"
           ! grep -R -n -E 'Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(' app/src/main
-
-          # No ordinary analytics/ad SDKs.
           ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
 
       - name: Check source for unresolved placeholders in production code
         shell: bash
         run: |
           set -euo pipefail
-          # Allow TODO only inside comments/tests if explicitly reviewed later; production throwing stubs are blockers.
           ! grep -R -n -E 'TODO\("|NotImplementedError|UnsupportedOperationException\("TODO|return[[:space:]]+null[[:space:]]*//[[:space:]]*(TODO|FIXME)' app/src/main/java
