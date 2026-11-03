@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.brick.safety.maintenance.DeprovisionManager
 
 /**
  * Presence state for devices explicitly associated with Brick through Android's Companion Device
@@ -22,8 +23,9 @@ internal object CompanionPresenceStore {
 
     @Synchronized
     fun noteAssociation(context: Context, associationId: Int, present: Boolean) {
-        if (associationId < 0) return
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app) || associationId < 0) return
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val key = "$ASSOCIATION_PREFIX$associationId"
         val edit = prefs.edit()
         if (present) edit.putBoolean(key, true) else edit.remove(key)
@@ -32,10 +34,14 @@ internal object CompanionPresenceStore {
 
     @Synchronized
     fun noteLegacyAddress(context: Context, rawAddress: String, present: Boolean) {
+        val app = context.applicationContext
+        // Check before AtlasPrivacyId.reduce(); otherwise a late system callback could recreate the
+        // purged Atlas HMAC key even if we later refused to write the preference.
+        if (DeprovisionManager.isPostPurge(app)) return
         val reduced = runCatching {
             AtlasPrivacyId.reduce("comp", "address:${rawAddress.trim().lowercase()}")
         }.getOrNull() ?: return
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val key = "$LEGACY_PREFIX$reduced"
         val edit = prefs.edit()
         if (present) edit.putBoolean(key, true) else edit.remove(key)
@@ -43,7 +49,9 @@ internal object CompanionPresenceStore {
     }
 
     fun presentAssociationIds(context: Context): Set<Int> {
-        val all = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return emptySet()
+        val all = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
         return all.entries.mapNotNull { (key, value) ->
             if (!key.startsWith(ASSOCIATION_PREFIX) || value != true) return@mapNotNull null
             key.removePrefix(ASSOCIATION_PREFIX).toIntOrNull()?.takeIf { it >= 0 }
@@ -51,7 +59,9 @@ internal object CompanionPresenceStore {
     }
 
     fun presentLegacyIds(context: Context): Set<String> {
-        val all = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return emptySet()
+        val all = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
         return all.entries.mapNotNull { (key, value) ->
             if (!key.startsWith(LEGACY_PREFIX) || value != true) return@mapNotNull null
             key.removePrefix(LEGACY_PREFIX).takeIf { it.matches(Regex("[A-Za-z0-9._:-]{6,96}")) }
@@ -60,7 +70,9 @@ internal object CompanionPresenceStore {
 
     @Synchronized
     fun retainAssociations(context: Context, validAssociationIds: Set<Int>, validLegacyIds: Set<String>) {
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val edit = prefs.edit()
         for (key in prefs.all.keys) {
             when {
@@ -80,7 +92,9 @@ internal object CompanionPresenceStore {
     /** Presence is ephemeral. Associations survive reboot; a previous-boot 'present' bit must not. */
     @Synchronized
     fun clearPresence(context: Context) {
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
     }
 }
 
@@ -112,10 +126,12 @@ internal class CompanionObservationRegistry {
 @RequiresApi(Build.VERSION_CODES.S)
 class BrickCompanionLegacyService : CompanionDeviceService() {
     override fun onDeviceAppeared(address: String) {
+        if (DeprovisionManager.isPostPurge(this)) return
         CompanionPresenceStore.noteLegacyAddress(this, address, true)
     }
 
     override fun onDeviceDisappeared(address: String) {
+        if (DeprovisionManager.isPostPurge(this)) return
         CompanionPresenceStore.noteLegacyAddress(this, address, false)
     }
 }
@@ -125,10 +141,12 @@ class BrickCompanionLegacyService : CompanionDeviceService() {
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 class BrickCompanionAssociationService : CompanionDeviceService() {
     override fun onDeviceAppeared(associationInfo: AssociationInfo) {
+        if (DeprovisionManager.isPostPurge(this)) return
         CompanionPresenceStore.noteAssociation(this, associationInfo.id, true)
     }
 
     override fun onDeviceDisappeared(associationInfo: AssociationInfo) {
+        if (DeprovisionManager.isPostPurge(this)) return
         CompanionPresenceStore.noteAssociation(this, associationInfo.id, false)
     }
 }
@@ -174,6 +192,9 @@ internal class CompanionPresenceController(context: Context) {
 
     @Synchronized
     fun snapshotAndEnsureObserving(): CompanionAssociationSnapshot {
+        if (DeprovisionManager.isPostPurge(appContext)) {
+            return CompanionAssociationSnapshot(0, emptyList(), "deprovisioned")
+        }
         val cdm = manager ?: return CompanionAssociationSnapshot(0, emptyList(), "companion_setup_unsupported")
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return CompanionAssociationSnapshot(0, emptyList(), "presence_api_unsupported")
