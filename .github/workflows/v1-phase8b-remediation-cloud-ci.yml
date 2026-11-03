@@ -79,7 +79,11 @@ jobs:
           done
 
       - name: Regression — history codec
-        run: node scripts/test-history-codec.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/history-codec.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-history-codec.mjs
+          node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
 
       - name: Regression — Phase 5 live-state ordering
         run: node scripts/test-phase5-live-state-order.mjs
