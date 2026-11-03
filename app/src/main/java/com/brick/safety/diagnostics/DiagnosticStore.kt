@@ -53,11 +53,46 @@ object DiagnosticStore {
     private const val MAX_DETAIL = 4_000
     private const val MAX_ERROR = 16_000
 
+    // Diagnostics are intentionally useful but non-identifying. Redaction happens at the single DB
+    // boundary so a future caller cannot accidentally persist a URL, device/event UUID, exact
+    // coordinate, bearer/signature token or key merely by passing an exception through log().
+    private val URL_RE = Regex("""(?i)\bhttps?://[^\s\"'<>]+""")
+    private val UUID_RE = Regex("""(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b""")
+    private val SECRET_FIELD_RE = Regex(
+        """(?i)\b(authorization|cf-access-jwt-assertion|x-brick-signature|pairing[_-]?token|api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret)\b\s*[:=]\s*(?:bearer\s+)?[^\s,;]+"""
+    )
+    private val NAMED_COORD_RE = Regex("""(?i)\b(lat(?:itude)?|lon(?:gitude)?)\s*[:=]\s*-?\d{1,3}(?:\.\d+)?""")
+    private val COORD_PAIR_RE = Regex("""(?<!\d)-?\d{1,2}\.\d{4,}\s*[,/]\s*-?\d{1,3}\.\d{4,}(?!\d)""")
+    private val JWT_RE = Regex("""\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]{8,})?\b""")
+    private val HEX_SECRET_RE = Regex("""(?i)\b[0-9a-f]{32,}\b""")
+    private val BASE64_SECRET_RE = Regex("""(?<![A-Za-z0-9+/=])(?=[A-Za-z0-9+/=]{24,})(?=[A-Za-z0-9+/=]*[+/=])[A-Za-z0-9+/=]{24,}(?![A-Za-z0-9+/=])""")
+
     @Volatile private var initialized = false
     private lateinit var appContext: Context
     private lateinit var helper: Db
     private val writes = AtomicInteger(0)
     private val lock = Any()
+
+    private fun redact(raw: String, maxLength: Int): String {
+        // Bound work before applying regexes so an unexpected giant exception body cannot turn
+        // diagnostics sanitization itself into a memory/CPU problem.
+        var value = raw.take((maxLength * 2).coerceAtLeast(maxLength))
+        value = URL_RE.replace(value, "<url>")
+        value = SECRET_FIELD_RE.replace(value) { match ->
+            "${match.groupValues[1]}=<redacted>"
+        }
+        value = NAMED_COORD_RE.replace(value) { match ->
+            "${match.groupValues[1]}=<coord>"
+        }
+        value = COORD_PAIR_RE.replace(value, "<coordinates>")
+        value = UUID_RE.replace(value, "<id>")
+        value = JWT_RE.replace(value, "<token>")
+        value = HEX_SECRET_RE.replace(value, "<secret>")
+        value = BASE64_SECRET_RE.replace(value, "<secret>")
+        return value.take(maxLength)
+    }
+
+    internal fun redactForTest(value: String): String = redact(value, MAX_ERROR)
 
     fun init(context: Context) {
         if (initialized) return
@@ -94,8 +129,8 @@ object DiagnosticStore {
                     put("severity", severity.name)
                     put("component", component.take(80))
                     put("event", event.take(120))
-                    put("detail", detail.take(MAX_DETAIL))
-                    put("error", error?.stackTraceToString()?.take(MAX_ERROR))
+                    put("detail", redact(detail, MAX_DETAIL))
+                    put("error", error?.stackTraceToString()?.let { redact(it, MAX_ERROR) })
                 }
                 helper.writableDatabase.insertOrThrow("events", null, values)
                 if (writes.incrementAndGet() % 100 == 0) pruneLocked()
@@ -295,7 +330,7 @@ object DiagnosticStore {
 
         if (!compact) {
             sb.appendLine()
-            sb.appendLine("EVENT LOG (oldest to newest; no coordinates are stored here)")
+            sb.appendLine("EVENT LOG (oldest to newest; sensitive values are redacted at write time)")
             recentEvents(app, eventLimit).forEach { appendEvent(sb, it, includeStack = true) }
         } else {
             sb.appendLine()
