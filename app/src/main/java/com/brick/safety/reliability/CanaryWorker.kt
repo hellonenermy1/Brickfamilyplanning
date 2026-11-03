@@ -71,7 +71,7 @@ private object CanaryEngine {
     }
 
     fun scheduleRetest(context: Context, failed: List<Outcome>) {
-        val names = failed.filterNot { it.ok }.map { it.check.wire }.distinct().toTypedArray()
+        val names: Array<String?> = failed.filterNot { it.ok }.map { it.check.wire as String? }.distinct().toTypedArray()
         if (names.isEmpty()) return
         val request = OneTimeWorkRequestBuilder<CanaryRetestWorker>()
             .setInputData(Data.Builder().putStringArray("checks", names).build())
