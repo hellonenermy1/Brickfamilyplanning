@@ -53,7 +53,7 @@
   ],
   "vars": {
     "APP_ENV": "production",
-    "CURRENT_APP_VERSION": "0.6.0-phase6-rc",
+    "CURRENT_APP_VERSION": "0.8.0-phase8-beta1-test",
     "CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__",
     "CF_ACCESS_AUD": "__CF_ACCESS_AUD__"
   }
