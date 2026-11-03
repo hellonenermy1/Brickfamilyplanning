@@ -55,15 +55,26 @@ const endTime = end.toISOString();
 const startDate = startTime.slice(0, 10);
 const endDate = endTime.slice(0, 10);
 
+// Establish deployment truth from the canonical Worker's live bindings first. This avoids requiring
+// account-level Queue/R2 APIs for resources that are planned in source but are not actually attached
+// to the deployed cardless Worker. Cloudflare's Worker settings endpoint is authoritative for active
+// script bindings and does not require us to infer deployment from a no-sample analytics window.
+const workerSettings = await cf(`/accounts/${accountId}/workers/scripts/${workerName}/settings`);
+const bindings = Array.isArray(workerSettings?.bindings) ? workerSettings.bindings : [];
+const d1Bindings = bindings.filter(binding => binding?.type === 'd1');
+const r2Bindings = bindings.filter(binding => binding?.type === 'r2_bucket');
+const queueBindings = bindings.filter(binding => binding?.type === 'queue');
+
 const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
 const database = Array.isArray(databases) ? databases.find(db => db?.name === d1Name) : null;
 if (!database?.uuid) throw new Error(`Production D1 database ${d1Name} was not found`);
 const dbInfo = await cf(`/accounts/${accountId}/d1/database/${database.uuid}`);
 
-// Queue/R2 helpers exist in the repository, but Phase 8 must measure deployment truth rather than
-// assuming every planned binding exists. Queue inventory is authoritative for what is deployed now.
-const queues = await cf(`/accounts/${accountId}/queues?per_page=100`);
-const queueByName = new Map((Array.isArray(queues) ? queues : []).map(q => [q.queue_name, q]));
+const canonicalD1Binding = d1Bindings.find(binding => binding?.name === 'DB');
+const boundDatabaseId = canonicalD1Binding?.database_id || canonicalD1Binding?.id || null;
+if (!canonicalD1Binding || boundDatabaseId !== database.uuid) {
+  throw new Error('Canonical Worker DB binding does not point at production D1 brick-family-v1');
+}
 
 const workerQuery = `
 query BrickWorker($accountTag: string!, $scriptName: string!, $start: Time!, $end: Time!) {
@@ -88,11 +99,11 @@ query BrickD1($accountTag: string!, $databaseId: string!, $start: Date!, $end: D
 }`;
 const d1Data = await gql(d1Query, { accountTag: accountId, databaseId: database.uuid, start: startDate, end: endDate });
 const d1Groups = d1Data?.viewer?.accounts?.[0]?.d1AnalyticsAdaptiveGroups || [];
-const d1Totals = d1Groups.reduce((acc, g) => {
+const d1Totals = d1Groups.reduce((acc, group) => {
   for (const key of ['readQueries', 'writeQueries', 'rowsRead', 'rowsWritten', 'queryBatchResponseBytes', 'queryBatchTimeMs']) {
-    acc[key] += Number(g?.sum?.[key] || 0);
+    acc[key] += Number(group?.sum?.[key] || 0);
   }
-  acc.queryBatchTimeMsP90Max = Math.max(acc.queryBatchTimeMsP90Max, Number(g?.quantiles?.queryBatchTimeMsP90 || 0));
+  acc.queryBatchTimeMsP90Max = Math.max(acc.queryBatchTimeMsP90Max, Number(group?.quantiles?.queryBatchTimeMsP90 || 0));
   return acc;
 }, { readQueries: 0, writeQueries: 0, rowsRead: 0, rowsWritten: 0, queryBatchResponseBytes: 0, queryBatchTimeMs: 0, queryBatchTimeMsP90Max: 0 });
 
@@ -113,6 +124,17 @@ const d1AnalyticsStorageMaxBytes = d1StorageGroups.reduce(
 
 const r2 = {};
 for (const bucketName of r2Buckets) {
+  const binding = r2Bindings.find(item => item?.bucket_name === bucketName);
+  if (!binding) {
+    r2[bucketName] = {
+      deploymentState: 'NOT_BOUND_TO_CANONICAL_WORKER',
+      boundToCanonicalWorker: false,
+      operations: [],
+      latestStorage: null
+    };
+    continue;
+  }
+
   const r2Query = `
   query BrickR2($accountTag: string!, $bucketName: string!, $start: Time!, $end: Time!) {
     viewer { accounts(filter: { accountTag: $accountTag }) {
@@ -128,32 +150,50 @@ for (const bucketName of r2Buckets) {
   }`;
   const data = await gql(r2Query, { accountTag: accountId, bucketName, start: startTime, end: endTime });
   const account = data?.viewer?.accounts?.[0] || {};
-  const operations = (account.r2OperationsAdaptiveGroups || []).map(g => ({
-    actionType: g?.dimensions?.actionType || null,
-    actionStatus: g?.dimensions?.actionStatus || null,
-    requests: Number(g?.sum?.requests || 0)
+  const operations = (account.r2OperationsAdaptiveGroups || []).map(group => ({
+    actionType: group?.dimensions?.actionType || null,
+    actionStatus: group?.dimensions?.actionStatus || null,
+    requests: Number(group?.sum?.requests || 0)
   }));
   const latestStorage = account.r2StorageAdaptiveGroups?.[0] || null;
   r2[bucketName] = {
-    // GraphQL cannot distinguish an existing idle bucket from an absent bucket when both return no
-    // samples, so keep the state honest instead of inventing a deployment claim.
-    deploymentState: (operations.length > 0 || latestStorage) ? 'OBSERVED_IN_ANALYTICS' : 'NOT_OBSERVED_IN_WINDOW',
+    deploymentState: 'BOUND_TO_CANONICAL_WORKER',
+    boundToCanonicalWorker: true,
+    observedInAnalyticsWindow: operations.length > 0 || Boolean(latestStorage),
     operations,
     latestStorage
   };
 }
 
 const queueMetrics = {};
+const boundQueueNames = new Set(queueBindings.map(binding => binding?.queue_name).filter(Boolean));
+const hasAnyBrickQueueBinding = queueNames.some(name => boundQueueNames.has(name));
+let queueByName = new Map();
+
+// Account Queue inventory/metrics are needed only when the live Worker actually uses Brick Queues.
+// On the cardless deployment they are intentionally skipped instead of failing an otherwise valid
+// production audit because an unused product API is not entitled by the audit token/account.
+if (hasAnyBrickQueueBinding) {
+  const queues = await cf(`/accounts/${accountId}/queues?per_page=100`);
+  queueByName = new Map((Array.isArray(queues) ? queues : []).map(queue => [queue.queue_name, queue]));
+}
+
 for (const name of queueNames) {
+  const bound = boundQueueNames.has(name);
   const queue = queueByName.get(name);
-  if (!queue?.queue_id) {
+  if (!bound) {
     queueMetrics[name] = {
       deployed: false,
+      boundToCanonicalWorker: false,
+      deploymentState: 'NOT_BOUND_TO_CANONICAL_WORKER',
       queueId: null,
       realtimeBacklog: null,
       operations: []
     };
     continue;
+  }
+  if (!queue?.queue_id) {
+    throw new Error(`Canonical Worker is bound to ${name}, but live Queue inventory does not contain it`);
   }
 
   const queueId = queue.queue_id;
@@ -173,14 +213,24 @@ for (const name of queueNames) {
   const data = await gql(queueQuery, { accountTag: accountId, queueId, start: startTime, end: endTime });
   queueMetrics[name] = {
     deployed: true,
+    boundToCanonicalWorker: true,
+    deploymentState: 'BOUND_TO_CANONICAL_WORKER',
     queueId,
     realtimeBacklog: realtime,
     operations: data?.viewer?.accounts?.[0]?.queueMessageOperationsAdaptiveGroups || []
   };
 }
 
+const safeBindingSummary = bindings
+  .filter(binding => ['d1', 'r2_bucket', 'queue', 'durable_object_namespace'].includes(binding?.type))
+  .map(binding => ({
+    name: binding.name || null,
+    type: binding.type || null,
+    resourceName: binding.queue_name || binding.bucket_name || null
+  }));
+
 const evidence = {
-  version: 3,
+  version: 4,
   sourceGitSha: process.env.GITHUB_SHA || null,
   measuredAt: new Date().toISOString(),
   windowDays: days,
@@ -188,6 +238,8 @@ const evidence = {
   windowEnd: endTime,
   worker: {
     name: workerName,
+    settingsVerified: true,
+    activeBindingSummary: safeBindingSummary,
     observedInWindow: worker !== null,
     requests: Number(worker?.sum?.requests || 0),
     errors: Number(worker?.sum?.errors || 0),
@@ -198,6 +250,7 @@ const evidence = {
   d1: {
     name: d1Name,
     deployed: true,
+    boundToCanonicalWorker: true,
     id: database.uuid,
     restFileSizeBytes: Number(dbInfo?.file_size || 0),
     analyticsDatabaseSizeBytesMax: d1AnalyticsStorageMaxBytes,
@@ -207,16 +260,20 @@ const evidence = {
   r2,
   queues: queueMetrics,
   deploymentTruth: {
+    source: 'live Worker script/version settings bindings; account Queue inventory only when actively bound',
+    r2Bound: r2Buckets.filter(name => r2[name]?.boundToCanonicalWorker === true),
+    r2NotBound: r2Buckets.filter(name => r2[name]?.boundToCanonicalWorker !== true),
     queuesDeployed: queueNames.filter(name => queueMetrics[name]?.deployed === true),
     queuesNotDeployed: queueNames.filter(name => queueMetrics[name]?.deployed === false),
-    rule: 'Undeployed planned services are recorded as absent and are not assigned invented operation/storage budgets.'
+    rule: 'Planned services not bound to the canonical deployed Worker are recorded as inactive and are not assigned invented usage/storage metrics.'
   },
   notes: [
     'GraphQL analytics can be adaptively sampled and are operational evidence, not a billing invoice.',
     'D1 storage uses d1StorageAdaptiveGroups databaseSizeBytes plus REST file size as a point-in-time cross-check.',
-    'Queue inventory comes from the live account; undeployed queues are recorded explicitly rather than treated as an error.',
-    'R2 no-sample windows are labeled NOT_OBSERVED_IN_WINDOW because analytics alone cannot distinguish absent from idle.',
-    'This file contains no API token or authentication secret.'
+    'Worker binding metadata is the primary truth for whether the production Brick Worker actively uses D1, R2 or Queue producer resources.',
+    'Queue inventory/metrics are queried only if the canonical Worker has a Brick Queue binding; unused cardless-plan Queue APIs cannot invalidate D1/Worker evidence.',
+    'No-sample analytics windows are not treated as proof that a bound resource is absent.',
+    'This file contains no API token, secret binding values or authentication secret.'
   ]
 };
 
