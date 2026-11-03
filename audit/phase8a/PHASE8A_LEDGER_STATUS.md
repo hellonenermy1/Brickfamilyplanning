@@ -1,66 +1,69 @@
 # Brick V1 — Phase 8A Ledger Status
 
-This file exists to prevent accidental double-counting or treating exploratory audit artifacts as the final contract.
+Status: **FINAL / PASS**
 
-## Canonical current starting point
+This file prevents accidental double-counting and identifies the authoritative reconstruction of the Brick V1 contract after Phase 8A.
 
-The current Phase 8A contract reconstruction starts from:
+## Canonical reconstruction
 
-1. **469 unique checklist IDs** in `Brick_V1_Final_Product_AI_Acceptance_Checklist.pdf` (`SRC-002`), then
-2. applies **higher-precedence later approved amendments** from the current nine-phase master plan (`SRC-001`).
+1. Start from the pinned **469 unique checklist IDs** in `Brick_V1_Final_Product_AI_Acceptance_Checklist.pdf` (`SRC-002`).
+2. Mark exactly 3 historical rows superseded: `DPM-003`, `SHZ-007`, `SHZ-020`.
+3. Apply current wording to the 14 existing IDs listed in `PHASE8A_AMENDED_EXISTING_REQUIREMENTS.md`.
+4. Add exactly 59 genuinely additive requirements from the current `PHASE8A_NEW_01...07` files.
+5. Apply `PHASE8A_23R_LATENCY_AMENDMENT.md` to resolve the formerly missing numeric 23R budget.
+6. Preserve all 24 forbidden, all 14 optional-if-supported and both future-interface requirements.
 
-The 469-point checklist is not itself final where its wording conflicts with later amendments.
+## Final count
+
+- Current unique V1 requirements: **525**
+- Mandatory: **485**
+- Forbidden: **24**
+- Optional-if-supported: **14**
+- Future-interface: **2**
+- Superseded historical rows retained for traceability: **3**
+- Total normalized working rows including superseded history: **528**
 
 ## Historical / supporting ledgers
 
 ### Phase 1 `V1_REQUIREMENTS.md`
 
-- 456 atomic rows including 15 explicit non-goals.
-- Important historical/base traceability source.
-- Not the final whole-product contract because it predates later 23P/23Q material.
+456 historical atomic rows including 15 explicit non-goals. Important traceability source, but not the final contract because it predates later 23P/23Q content.
 
 ### `PHASE8A_REQUIREMENT_AMENDMENTS.md`
 
-- 88 atomic latest-amendment candidates generated before the 469 checklist was recovered.
-- Useful source-preserving overlay.
-- **Not additive by simple arithmetic**: some rows replace/amend existing checklist IDs, while others are genuinely new.
-- Must be reconciled ID-by-ID against the 469 baseline before final count.
+88 early amendment candidates created before the 469-point checklist was recovered. This is supporting working evidence only; it is not additive to the final count.
 
 ### `PHASE8A_REQUIREMENT_AMENDMENTS_R2.md`
 
-- 112 exploratory atomized rows created while the older 456-row ledger appeared to be the broadest available source.
-- After recovering the final 469-point checklist, many Round-2 rows are already represented there (EvidenceObservation, provider interface, sensor health, release/APK checks, qualification matrices, etc.).
-- Therefore **Round 2 is NON-CANONICAL WORKING EVIDENCE** and must never be added numerically to the current contract.
-- Any Round-2 detail not represented by either the 469 checklist or the current latest-amendment overlay is re-evaluated explicitly before adoption.
+112 exploratory rows created before the final checklist was recovered. Many duplicate checklist semantics. NON-CANONICAL working evidence only.
 
 ## Forbidden arithmetic
 
-The following is wrong and must never appear as a V1 requirement count:
+Never calculate the contract as:
 
 `456 + 88 + 112 + 469`
 
-Those sources substantially overlap.
+Those sources overlap substantially.
 
-## Current reconciliation facts
+## Final validation facts
 
-- Final checklist IDs recovered: 469/469 unique.
-- Checklist class totals: 429 mandatory, 24 forbidden, 14 optional-if-supported, 2 future-interface.
-- Phase 1 base rows: 456 historical rows.
-- Latest-amendment candidate IDs: 88.
-- Contract conflicts identified/resolved so far: 11.
-- Open source gaps: 1 (`23R` numeric P95 budget).
-- Checklist contains later 23P/23Q requirements absent from Phase 1, including fall/emergency evidence, System Truth/self-healing, multi-device portal and other later requirements.
-- Latest master plan contains newer requirements absent/stale in the 469 checklist, especially one-shot Location semantics, scheduled Wi-Fi, active reacquisition, Maintenance/Deep Off/deprovision, Fast Live Path specifics and OneMap-first Singapore map architecture.
+- 469/469 baseline IDs classified.
+- Current IDs: 525/525 unique.
+- Exact duplicate current requirement texts: 0.
+- Contract conflicts: 11 identified / 11 resolved.
+- Unmapped latest-plan subsections: 0.
+- Missing owner/dependency/test mappings: 0.
+- Open source gaps: 0.
+- Regenerated normalized ledger SHA-256: `8683b85f8b61aa3769b338048e7deb17d1fff3bc7773b6d454c7a61bce013bbd`.
 
-## Phase 8A closure rule
+## 23R resolved values
 
-Do not publish a final unique current V1 requirement count until:
+- accepted fix -> visible parent marker P95 <= **1.5 s**;
+- backend current state -> visible parent marker P95 <= **500 ms**;
+- Live Track activation -> phone fast-mode confirmation/explicit failure P95 <= **2.0 s**.
 
-1. all 469 checklist IDs have been classified `CURRENT`, `CURRENT — AMENDED`, or `SUPERSEDED`;
-2. every latest master-plan clause has a mapping to an existing checklist ID or a new current amendment ID;
-3. all explicit forbidden/non-goal rows remain mapped and regression-owned;
-4. all source conflicts are resolved;
-5. all source gaps are resolved or explicitly amended by the user/contract authority;
-6. the final dependency/owner/acceptance mapping has no unmapped current requirement.
+## Result
 
-Until then, Phase 8A status is `IN PROGRESS`, never PASS.
+**PHASE 8A CONTRACT LEDGER: FROZEN / PASS**
+
+Implementation existence, wiring and production configuration are intentionally not claimed here; those begin in Phase 8B.
