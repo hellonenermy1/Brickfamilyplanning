@@ -72,3 +72,39 @@ This file continues the permanent Phase 8C finding sequence. Findings are record
 **Regression test:** pending
 **Retest evidence:** pending
 **Status:** OPEN
+
+---
+
+## P8C-009 — Android 10 auto-time policy is applied without provenance or a reversal path
+
+**Requirement ID:** `DEPROV-002`, `DEPROV-003`; related Phase 8C.13 Device Owner policy audit and `DEEPOFF-005`
+**Phase:** 8C
+**Subsystem:** Device Owner / time-integrity policy / deprovisioning
+**Severity:** P1 HIGH
+
+**Expected:** Every Brick-created Device Owner policy mutation has durable provenance before mutation and an explicit safe reversal path before Device Owner release. This applies across the supported minSdk range, including Android 10 / API 29.
+
+**Actual:** On API 30+, `ManagedPolicy.applyBasePolicy()` records auto-time and date/time restriction provenance before calling the platform. On API 29, the fallback branch directly calls deprecated `DevicePolicyManager.setAutoTimeRequired(admin, true)` without creating a Policy Ledger entry. `DeprovisionManager.reverseBrickPolicies()` has no `auto_time_required` case, so a Brick-created API-29 policy is neither tracked nor explicitly reversed before ownership release.
+
+**Evidence:**
+- `app/build.gradle.kts`: minSdk 29.
+- `ManagedPolicy.kt`: API <30 branch directly calls `dpm.setAutoTimeRequired(admin, true)`.
+- `DeprovisionManager.kt`: reversal cases cover `DISALLOW_CONFIG_DATE_TIME`, `auto_time`, and permission grants, but not `auto_time_required`.
+- Android Enterprise documentation confirms `setAutoTimeRequired()` / `getAutoTimeRequired()` are the pre-Android-11 APIs and were deprecated in Android 11 in favor of newer auto-time APIs.
+
+**Source file(s):** `ManagedPolicy.kt`, `DeprovisionManager.kt`
+**Relevant function(s):** `applyBasePolicy`, `reverseBrickPolicies`
+**Baseline commit SHA:** `204a141e90c078b6c2008778bd6c01bcbb8a4622`
+
+**Reproduction:** On an API-29 Device Owner installation where auto time is not required, run `ManagedPolicy.apply()`. Brick can set auto-time-required without a ledger record. Then advance deprovision through UNDO DEVICE MANAGEMENT; no ledger entry exists to trigger an API-29 reversal.
+
+**Impact:** Brick can relinquish Device Owner after leaving a Brick-created time policy behind, violating the reversible-policy/deprovision contract on a supported Android version.
+
+**Root cause:** The API-29 compatibility branch predates the Policy Ledger model and was not brought under the same provenance/reversal rules as API 30+.
+
+**Required correction:** Read the pre-change API-29 `getAutoTimeRequired()` state; persist an `auto_time_required` ledger record before mutation; apply only if that record was durably saved; add a deprovision reversal case that restores the previous state only when the current value is still the Brick-applied value. Add source/CI regression coverage for API-29 policy provenance.
+
+**Fix commit:** pending
+**Regression test:** pending
+**Retest evidence:** pending
+**Status:** OPEN
