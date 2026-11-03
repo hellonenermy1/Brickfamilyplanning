@@ -55,9 +55,11 @@ function fakeR2() {
 
 function fakeDb(initialSequence) {
   const seen = new Set();
+  const preciseEndpoints = new Set();
   let latest = { epoch: 9, sequence: initialSequence };
   return {
     seen,
+    preciseEndpoints,
     latest: () => latest,
     prepare(sql) { return { bind(...args) { return { sql, args }; } }; },
     async batch(statements) {
@@ -76,6 +78,12 @@ function fakeDb(initialSequence) {
           const advances = latest.epoch < epoch || (latest.epoch === epoch && latest.sequence < sequence);
           if (advances) latest = { epoch, sequence };
           results.push({ meta: { changes: advances ? 1 : 0 } });
+        } else if (s.sql.startsWith('INSERT OR IGNORE INTO phase5_precise_endpoints')) {
+          const [deviceId, epoch, sequence] = s.args;
+          const key = `${deviceId}:${epoch}:${sequence}`;
+          const duplicate = preciseEndpoints.has(key);
+          if (!duplicate) preciseEndpoints.add(key);
+          results.push({ meta: { changes: duplicate ? 0 : 1 } });
         } else {
           throw new Error(`unexpected SQL: ${s.sql}`);
         }
@@ -115,9 +123,11 @@ const env = {
 // 1) Multi-day/offline-style delayed data is accepted into history identity, but current remains 50.
 let persisted = await ingest.persistAccepted(env, 'child-torture', [old1, old2]);
 assert.equal(persisted.insertedCount, 2);
+assert.equal(persisted.preciseEndpointCount, 2);
 assert.equal(persisted.liveAdvanced, false);
 assert.deepEqual(db.latest(), { epoch: 9, sequence: 50 });
 assert.deepEqual(live, []);
+assert.equal(db.preciseEndpoints.size, 2);
 
 // 2) Cloud durable history write partially fails. Queue message MUST retry, never ACK.
 r2.failNextPuts(1);
@@ -147,20 +157,24 @@ assert.deepEqual(await rawSequences(r2), [40, 41]);
 // 5) A genuinely new location arrives after recovery and advances live exactly once.
 persisted = await ingest.persistAccepted(env, 'child-torture', [newest]);
 assert.equal(persisted.insertedCount, 1);
+assert.equal(persisted.preciseEndpointCount, 1);
 assert.equal(persisted.liveAdvanced, true);
 assert.deepEqual(db.latest(), { epoch: 9, sequence: 51 });
 assert.deepEqual(live, [51]);
+assert.equal(db.preciseEndpoints.size, 3);
 
 // 6) Delayed old backlog arrives *after* the newest fix. It remains history only and cannot regress live.
 persisted = await ingest.persistAccepted(env, 'child-torture', [packet(42, now - 110_000)]);
 assert.equal(persisted.liveAdvanced, false);
 assert.deepEqual(db.latest(), { epoch: 9, sequence: 51 });
 assert.deepEqual(live, [51]);
+assert.equal(db.preciseEndpoints.size, 4);
 
-// 7) Retry of newest after a lost response is idempotent: no second live transition.
+// 7) Retry of newest after a lost response is idempotent: no second live transition and no duplicate endpoint.
 persisted = await ingest.persistAccepted(env, 'child-torture', [newest]);
 assert.equal(persisted.insertedCount, 0);
 assert.equal(persisted.liveAdvanced, false);
 assert.deepEqual(live, [51]);
+assert.equal(db.preciseEndpoints.size, 4);
 
 console.log('Phase 8 integrated ingest torture OK: partial durable failure -> retry convergence -> duplicate dedupe -> monotonic live state');
