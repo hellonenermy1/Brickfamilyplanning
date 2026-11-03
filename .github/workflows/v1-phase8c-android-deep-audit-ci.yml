@@ -1,0 +1,148 @@
+name: Brick V1 Phase 8C — Android Deep Audit CI
+
+on:
+  push:
+    branches: [v1-p8c-android-deep-audit]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-deep-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+
+      - name: Install compile SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0'
+
+      - name: Verify dependency lock stability
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          gradle --no-daemon :app:dependencies --write-locks
+          after="$(sha256sum app/gradle.lockfile | awk '{print $1}')"
+          test "$before" = "$after"
+          git diff --exit-code -- app/gradle.lockfile
+
+      - name: Build, unit tests, lint, AndroidTest compile and R8
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon \
+            :app:assembleDebug \
+            :app:assembleDebugAndroidTest \
+            :app:testDebugUnitTest \
+            :app:lintDebug \
+            :app:assembleRelease \
+            :app:lintRelease \
+            --stacktrace --console=plain 2>&1 | tee gradle-p8c.log
+
+      - name: Phase 8C source regression contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest=app/src/main/AndroidManifest.xml
+          gradle_file=app/build.gradle.kts
+          service=app/src/main/java/com/brick/safety/location/BrickLocationService.kt
+          safety=app/src/main/java/com/brick/safety/data/SafetyOutbox.kt
+          dispatcher=app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt
+          wifi=app/src/main/java/com/brick/safety/maintenance/WifiScheduleManager.kt
+          policy=app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt
+          deprov=app/src/main/java/com/brick/safety/maintenance/DeprovisionManager.kt
+          app=app/src/main/java/com/brick/safety/BrickApplication.kt
+
+          ! grep -F 'android:testOnly="true"' "$manifest"
+          grep -F 'versionCode = 10' "$gradle_file" >/dev/null
+          grep -F 'versionName = "1.0.0-rc.1"' "$gradle_file" >/dev/null
+          grep -F 'buildConfigField("boolean", "BRICK_BETA", "false")' "$gradle_file" >/dev/null
+
+          grep -F 'CREATE TABLE IF NOT EXISTS safety_state' "$safety" >/dev/null
+          grep -F 'appendSosTransition' "$safety" >/dev/null
+          grep -F 'cachedSosActive' "$dispatcher" >/dev/null
+          grep -F 'SafetyDispatcher.isSosActive(this)' "$service" >/dev/null
+
+          grep -F 'lastLocationCallbackElapsed' "$service" >/dev/null
+          grep -F 'sample.rawAccepted && sample.source == PositionSource.FUSED' "$service" >/dev/null
+          grep -F 'retryReacquisitionDue' "$service" >/dev/null
+          grep -F 'registration.addOnSuccessListener { locationSubscribed = true }' "$service" >/dev/null
+
+          grep -F 'awaitWifiState' "$wifi" >/dev/null
+          grep -F 'VERIFY_TIMEOUT_MS' "$wifi" >/dev/null
+
+          grep -F '"auto_time_required"' "$policy" >/dev/null
+          grep -F 'dpm.getAutoTimeRequired()' "$policy" >/dev/null
+          grep -F '"auto_time_required"' "$deprov" >/dev/null
+          grep -F 'PolicyLedger.integrityValid(context)' "$deprov" >/dev/null
+          grep -F 'isPostPurge(this)' "$app" >/dev/null
+
+          ! grep -R -n -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' app/src/main/java
+          ! grep -R -n -F 'parentDesiredLocationState' app/src/main/java
+          ! grep -R -n -E 'Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(' app/src/main
+
+          aidl=app/src/main/aidl/com/brick/safety/privileged/IBrickPrivilegedService.aidl
+          ! grep -E -i '(exec|shell|rawCommand|filePath)' "$aidl"
+          ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
+          ! grep -R -n -E 'TODO\("|NotImplementedError|UnsupportedOperationException\("TODO|return[[:space:]]+null[[:space:]]*//[[:space:]]*(TODO|FIXME)' app/src/main/java
+
+      - name: Manifest exported-surface contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ns='{http://schemas.android.com/apk/res/android}'
+          root=ET.parse('app/src/main/AndroidManifest.xml').getroot()
+          app=root.find('application')
+          exported=[]
+          launchers=[]
+          for tag in ('activity','service','receiver','provider'):
+              for node in app.findall(tag):
+                  name=node.get(ns+'name')
+                  if node.get(ns+'exported')=='true':
+                      exported.append((tag,name,node.get(ns+'permission')))
+                  for f in node.findall('intent-filter'):
+                      actions={x.get(ns+'name') for x in f.findall('action')}
+                      cats={x.get(ns+'name') for x in f.findall('category')}
+                      if 'android.intent.action.MAIN' in actions and 'android.intent.category.LAUNCHER' in cats:
+                          launchers.append(name)
+          assert launchers == ['.ui.MainActivity'], f'unexpected launchers: {launchers}'
+          assert not any(t=='activity' and n=='.diagnostics.DiagnosticsActivity' for t,n,p in exported), exported
+          print('launcher/exported surface OK:', exported)
+          PY
+
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p8c-android-gradle-log-${{ github.run_id }}
+          path: gradle-p8c.log
+          if-no-files-found: warn
+          retention-days: 14
