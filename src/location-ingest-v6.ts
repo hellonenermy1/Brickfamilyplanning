@@ -100,8 +100,14 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   const insert = env.DB.prepare(
     `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES ${values}`
   ).bind(...bindings);
+  // Any authenticated location upload proves recent device contact, even when it is delayed backlog
+  // whose logical epoch/sequence is older than the current watermark. Keep last_seen_at independent
+  // from the idempotency watermark while advancing last_epoch/last_sequence only when logically newer.
   const advance = env.DB.prepare(
-    "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
+    "UPDATE devices SET " +
+    "last_epoch=CASE WHEN (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2)) THEN ?1 ELSE last_epoch END," +
+    "last_sequence=CASE WHEN (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2)) THEN ?2 ELSE last_sequence END," +
+    "last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL"
   ).bind(logicalHighest.epoch, logicalHighest.sequence, now, deviceId);
   const endpointStatements = preciseEndpointStatements(env.DB, deviceId, packets, now);
   // Endpoint indexing is part of the durable DB write before ACK. The heavier R2 smoothing pass is
