@@ -5,7 +5,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.UserManager
+import android.provider.Settings
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.managed.BrickDeviceAdminReceiver
 import com.brick.safety.reliability.RecoveryScheduler
@@ -16,20 +18,11 @@ object DeprovisionManager {
     private const val KEY_STAGE = "stage"
     private const val KEY_UPDATED_AT = "updatedAtMs"
 
-    enum class Stage {
-        NONE,
-        AUTHORISE_FREEZE,
-        QUIESCE,
-        UNDO_DEVICE_MANAGEMENT,
-        PURGE_BRICK,
-        UNINSTALL
-    }
-
+    enum class Stage { NONE, AUTHORISE_FREEZE, QUIESCE, UNDO_DEVICE_MANAGEMENT, PURGE_BRICK, UNINSTALL }
     data class Result(val stage: Stage, val ok: Boolean, val detail: String)
 
     fun stage(context: Context): Stage {
-        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STAGE, Stage.NONE.name)
+        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_STAGE, Stage.NONE.name)
         return runCatching { Stage.valueOf(raw ?: Stage.NONE.name) }.getOrDefault(Stage.NONE)
     }
 
@@ -46,7 +39,7 @@ object DeprovisionManager {
     fun quiesce(context: Context): Result {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.AUTHORISE_FREEZE.ordinal) return Result(stage(app), false, "authorisation required")
-        DeepOffManager.enter(app)
+        if (!DeepOffManager.enter(app)) return Result(stage(app), false, "Deep Off could not be made durable")
         val ok = persist(app, Stage.QUIESCE)
         return Result(stage(app), ok, if (ok) "Brick runtime quiesced" else "failed to persist quiesce stage")
     }
@@ -66,20 +59,13 @@ object DeprovisionManager {
     fun purgeBrick(context: Context): Result {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.UNDO_DEVICE_MANAGEMENT.ordinal) return Result(stage(app), false, "management release required")
-
-        // Purge location/evidence/safety/diagnostic state before uninstall. The deprovision state is
-        // deliberately stored in its own preference file and retained until Android uninstalls Brick.
-        val databases = listOf(
-            "brick_journal.db", "brick_safety_outbox.db", "brick_crash_outbox.db",
-            "brick_evidence.db", "brick_diagnostics.db"
-        )
+        val databases = listOf("brick_journal.db", "brick_safety_outbox.db", "brick_crash_outbox.db", "brick_evidence.db", "brick_diagnostics.db")
         databases.forEach { runCatching { app.deleteDatabase(it) } }
         listOf(
-            "brick", "brick_position", "brick_parent_location", "brick_managed_policy_p8",
-            "brick_diag_state", "brick_diag_flags", "brick_policy_ledger_v1", "brick_deep_off_v1"
+            "brick", "brick_position", "brick_parent_location", "brick_managed_policy_p8", "brick_diag_state", "brick_diag_flags",
+            "brick_policy_ledger_v1", "brick_deep_off_v1", "brick_live_track_v1", "brick_wifi_schedule_v1", "brick_canary_v1", "brick_device_role_v1"
         ).forEach { name -> runCatching { app.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit() } }
         runCatching { RecoveryScheduler.cancelAll(app) }
-
         val ok = persist(app, Stage.PURGE_BRICK)
         return Result(stage(app), ok, if (ok) "Brick local state purged" else "failed to persist purge stage")
     }
@@ -89,8 +75,7 @@ object DeprovisionManager {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.PURGE_BRICK.ordinal) return Result(stage(app), false, "purge required")
         if (!persist(app, Stage.UNINSTALL)) return Result(stage(app), false, "failed to persist uninstall stage")
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return runCatching {
             app.startActivity(intent)
             Result(Stage.UNINSTALL, true, "Android uninstall handoff opened")
@@ -104,19 +89,25 @@ object DeprovisionManager {
         val owner = runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
         if (!owner) return true
 
-        // Safety cleanup for historical Brick versions, then provenance-aware reversal below.
+        // Historical hard-lock repair. Current V1 one-shot controls never create these restrictions.
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CHANGE_WIFI_STATE) }
 
         for (entry in PolicyLedger.active(context)) {
             val reversed = when {
                 entry.policy == "restriction:${UserManager.DISALLOW_CONFIG_DATE_TIME}" -> {
-                    val restrictions = runCatching { dpm.getUserRestrictions(admin) }.getOrNull()
-                    val current = restrictions?.getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false)
-                    // Revert only if the current state still matches Brick's recorded value.
-                    if (current == true && entry.brickValue == "true") {
-                        runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }.isSuccess
-                    } else true
+                    val current = runCatching { dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false) }.getOrNull()
+                    if (current == true && entry.brickValue == "true") runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }.isSuccess else true
+                }
+                entry.policy == "auto_time" -> {
+                    if (Build.VERSION.SDK_INT < 30) true else {
+                        val current = runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) != 0 }.getOrNull()
+                        val brick = entry.brickValue?.toBooleanStrictOrNull()
+                        val previous = entry.previousValue?.toBooleanStrictOrNull()
+                        if (current != null && brick != null && previous != null && current == brick) {
+                            runCatching { dpm.setAutoTimeEnabled(admin, previous) }.isSuccess
+                        } else true
+                    }
                 }
                 entry.policy.startsWith("permission:") -> {
                     val permission = entry.policy.removePrefix("permission:")
@@ -124,12 +115,10 @@ object DeprovisionManager {
                     val previousState = entry.previousValue?.toIntOrNull()
                     if (brickState == null || previousState == null) true else {
                         val current = runCatching { dpm.getPermissionGrantState(admin, context.packageName, permission) }.getOrNull()
-                        if (current == brickState) {
-                            runCatching { dpm.setPermissionGrantState(admin, context.packageName, permission, previousState) }.getOrDefault(false)
-                        } else true
+                        if (current == brickState) runCatching { dpm.setPermissionGrantState(admin, context.packageName, permission, previousState) }.getOrDefault(false) else true
                     }
                 }
-                else -> true // Unknown/future entries are not blindly modified.
+                else -> true
             }
             if (!reversed) return false
             if (!PolicyLedger.markReverted(context, entry.id)) return false
@@ -139,8 +128,7 @@ object DeprovisionManager {
 
     private fun persist(context: Context, target: Stage): Boolean {
         val current = stage(context)
-        if (current.ordinal > target.ordinal) return true
-        if (current.ordinal == target.ordinal) return true
+        if (current.ordinal >= target.ordinal) return true
         return context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_STAGE, target.name)
             .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
