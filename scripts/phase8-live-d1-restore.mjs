@@ -47,8 +47,20 @@ function rows(result) {
   return result.flatMap(r => Array.isArray(r?.results) ? r.results : []);
 }
 
+function normalize(value) {
+  if (Array.isArray(value)) return value.map(normalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])]));
+  }
+  return value;
+}
+
 function canonical(value) {
-  return JSON.stringify(value, Object.keys(value).sort());
+  return JSON.stringify(normalize(value));
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(canonical(value)).digest('hex');
 }
 
 async function snapshot(databaseId) {
@@ -132,6 +144,7 @@ VALUES('phase8_restore_seed','audit-device-1','{"safe":"fixture"}',1700000002000
 `;
 const seedResult = await query(databaseId, seedSql);
 const before = await snapshot(databaseId);
+const beforeHash = sha256(before);
 assert(before.devices.length === 1, 'seed device missing');
 assert(before.replay.length === 1, 'seed replay state missing');
 assert(before.locationControl.length === 1, 'seed control state missing');
@@ -150,7 +163,7 @@ VALUES('rogue-device','rogue-key',NULL,1800000001000);
 `;
 const mutationResult = await query(databaseId, destructiveSql);
 const mutated = await snapshot(databaseId);
-assert(canonical(mutated) !== canonical(before), 'destructive mutation did not change the fixture');
+assert(sha256(mutated) !== beforeHash, 'destructive mutation did not change the fixture values');
 assert(mutated.devices.length === 2, 'destructive mutation fixture was not applied');
 assert(mutated.replay.length === 0 && mutated.locationControl.length === 0 && mutated.audit.length === 0, 'destructive deletes did not apply');
 
@@ -160,11 +173,14 @@ const restore = await cf(`/accounts/${accountId}/d1/database/${databaseId}/time_
 assert(typeof restore?.previous_bookmark === 'string' && restore.previous_bookmark.length > 10, 'restore did not return an undo bookmark');
 
 let restored = null;
+let restoredHash = null;
 for (let i = 0; i < 30; i++) {
   try {
     const candidate = await snapshot(databaseId);
-    if (canonical(candidate) === canonical(before)) {
+    const candidateHash = sha256(candidate);
+    if (candidateHash === beforeHash && canonical(candidate) === canonical(before)) {
       restored = candidate;
+      restoredHash = candidateHash;
       break;
     }
   } catch {
@@ -173,6 +189,7 @@ for (let i = 0; i < 30; i++) {
   await new Promise(resolve => setTimeout(resolve, 2_000));
 }
 assert(restored !== null, 'restored D1 state did not converge exactly to the saved bookmark');
+assert(restoredHash === beforeHash, 'restored D1 snapshot hash does not equal the pre-mutation snapshot hash');
 
 const info = await cf(`/accounts/${accountId}/d1/database/${databaseId}`);
 const queryMeta = [...seedResult, ...mutationResult].map(r => r?.meta || {});
@@ -185,7 +202,7 @@ const totals = queryMeta.reduce((acc, meta) => {
 }, { rowsRead: 0, rowsWritten: 0, sqlDurationMs: 0, maxSizeAfter: 0 });
 
 const evidence = {
-  version: 1,
+  version: 2,
   sourceGitSha: sourceSha,
   runId,
   runAttempt: attempt,
@@ -195,7 +212,9 @@ const evidence = {
   bookmark,
   restoreBookmark: restore?.bookmark || null,
   undoBookmark: restore?.previous_bookmark || null,
-  exactStateComparison: true,
+  beforeSnapshotSha256: beforeHash,
+  restoredSnapshotSha256: restoredHash,
+  exactStateComparison: restoredHash === beforeHash && canonical(restored) === canonical(before),
   restoredCriticalClasses: ['device_identity', 'replay_high_water', 'location_control', 'audit_log', 'unique_identity_index'],
   operationMetrics: totals,
   databaseFileSizeBytes: Number(info?.file_size || 0),
@@ -204,4 +223,4 @@ const evidence = {
   cleanupRequired: true
 };
 await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2));
-console.log('Phase 8 disposable live D1 Time Travel restore rehearsal passed.');
+console.log('Phase 8 disposable live D1 Time Travel restore rehearsal passed with exact deep state equality.');
