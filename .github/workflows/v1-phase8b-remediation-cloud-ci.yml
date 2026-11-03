@@ -96,7 +96,11 @@ jobs:
         run: node scripts/test-phase8-location-control-contract.mjs
 
       - name: Regression — parent origin protection
-        run: node scripts/test-phase8-parent-origin.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/dev-parent-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-dev-parent-auth.mjs
+          node scripts/test-phase8-parent-origin.mjs /tmp/brick-dev-parent-auth.mjs
 
       - name: Regression — SOS priority
         run: node scripts/test-phase8-sos-priority-contract.mjs
