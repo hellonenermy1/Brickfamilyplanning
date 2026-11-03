@@ -119,7 +119,11 @@ jobs:
           test -f app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt
           grep -F 'FOURTEEN_DAYS_MS' app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt >/dev/null
           grep -F 'testCorruptHighPrioritySafetyRowCannotStarveSos' app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt >/dev/null
-          grep -F 'PRAGMA max_page_count' app/src/androidTest/java/com/brick/safety/data/Phase8LowStorageInstrumentedTest.kt >/dev/null
+          # Low-storage coverage now uses deterministic SQLiteFullException injection at the exact
+          # durable mutation boundary. This is stronger and less emulator-filesystem-dependent than
+          # the old PRAGMA max_page_count harness, so verify the current executable fault path.
+          grep -F 'SQLiteFullException' app/src/androidTest/java/com/brick/safety/data/Phase8LowStorageInstrumentedTest.kt >/dev/null
+          grep -F 'writeFaultInjector = fullDisk()' app/src/androidTest/java/com/brick/safety/data/Phase8LowStorageInstrumentedTest.kt >/dev/null
           grep -F 'UnknownHostException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
           grep -F 'SSLHandshakeException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
           grep -F 'SocketTimeoutException' app/src/androidTest/java/com/brick/safety/reliability/Phase8NetworkChaosInstrumentedTest.kt >/dev/null
