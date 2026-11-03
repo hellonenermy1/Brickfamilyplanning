@@ -14,6 +14,7 @@ object SafetyDispatcher {
     const val PRIORITY_SOS = 200
 
     @Volatile private var cachedSosActive: Boolean? = null
+    @Volatile private var cachedHighFallUntilMs: Long? = null
 
     private data class Snapshot(
         val latitude: Double?, val longitude: Double?, val accuracyM: Double?, val positionAgeMs: Long?,
@@ -32,7 +33,7 @@ object SafetyDispatcher {
             "sos_cancelled" -> false
             else -> null
         }
-        return enqueueInternal(context, kind, detail, priority, sosActiveState = sosState)
+        return enqueueInternal(context, kind, detail, priority, sosActiveState = sosState, highFallUntilMs = null)
     }
 
     fun enqueueSosTransition(context: Context, active: Boolean, detail: JSONObject = JSONObject()): String? =
@@ -41,15 +42,29 @@ object SafetyDispatcher {
             if (active) "sos_started" else "sos_cancelled",
             detail,
             PRIORITY_SOS,
-            sosActiveState = active
+            sosActiveState = active,
+            highFallUntilMs = null
         )
+
+    fun enqueueHighFall(context: Context, detail: JSONObject, highUntilMs: Long): String? {
+        require(highUntilMs > System.currentTimeMillis())
+        return enqueueInternal(
+            context,
+            "fall_detected",
+            detail,
+            PRIORITY_CRITICAL,
+            sosActiveState = null,
+            highFallUntilMs = highUntilMs
+        )
+    }
 
     private fun enqueueInternal(
         context: Context,
         kind: String,
         detail: JSONObject,
         priority: Int,
-        sosActiveState: Boolean?
+        sosActiveState: Boolean?,
+        highFallUntilMs: Long?
     ): String? {
         val effectivePriority = if (kind == "sos_started" || kind == "sos_cancelled") PRIORITY_SOS else priority
         val brickPrefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
@@ -77,10 +92,22 @@ object SafetyDispatcher {
             snapshot.accuracyM
         )
         val saved = SafetyOutbox(context).use { outbox ->
-            if (sosActiveState == null) {
-                outbox.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority)
-            } else {
-                outbox.appendSosTransition(envelope.eventId, envelope.kind, envelope.payload, effectivePriority, sosActiveState)
+            when {
+                sosActiveState != null -> outbox.appendSosTransition(
+                    envelope.eventId,
+                    envelope.kind,
+                    envelope.payload,
+                    effectivePriority,
+                    sosActiveState
+                )
+                highFallUntilMs != null -> outbox.appendHighFall(
+                    envelope.eventId,
+                    envelope.kind,
+                    envelope.payload,
+                    effectivePriority,
+                    highFallUntilMs
+                )
+                else -> outbox.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority)
             }
         }
         if (!saved) {
@@ -93,13 +120,21 @@ object SafetyDispatcher {
             )
             return null
         }
+
         if (sosActiveState != null) {
-            // The transaction above is authoritative. Cache only after it succeeds; this cache dies
-            // with the process and is reloaded from SQLite on the next process start.
             cachedSosActive = sosActiveState
             // Compatibility mirror only. SafetyOutbox remains the durability source.
             brickPrefs.edit().putBoolean("sosActive", sosActiveState).commit()
         }
+        if (highFallUntilMs != null) {
+            cachedHighFallUntilMs = highFallUntilMs
+            // Compatibility/diagnostic mirror only. SafetyOutbox remains authoritative.
+            brickPrefs.edit()
+                .putBoolean("fallHighActive", true)
+                .putLong("fallHighUntilMs", highFallUntilMs)
+                .commit()
+        }
+
         DiagnosticStore.log(
             context,
             if (effectivePriority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
@@ -129,18 +164,41 @@ object SafetyDispatcher {
             noteOutboxUnavailable(context)
             return legacy
         }
-        // Do not freeze an uncertain fallback in memory when the outbox already reports unhealthy;
-        // repeated reads then get a chance to recover. Healthy reads are cached to keep the 1 Hz
-        // location/supervisor paths from opening SQLite on every SOS state check.
         if (prefs.getBoolean("safetyOutboxWriteHealthy", true)) cachedSosActive = active
         return active
     }
 
-    fun restoreSosMirror(context: Context): Boolean {
+    fun highFallUntilMs(context: Context): Long {
+        cachedHighFallUntilMs?.let { return it }
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val legacy = prefs.getLong("fallHighUntilMs", 0L).coerceAtLeast(0L)
+        val until = runCatching { SafetyOutbox(context).use { it.highFallUntilMs(legacy) } }.getOrElse {
+            noteOutboxUnavailable(context)
+            return legacy
+        }
+        if (prefs.getBoolean("safetyOutboxWriteHealthy", true)) cachedHighFallUntilMs = until
+        return until
+    }
+
+    fun isHighFallActive(context: Context, nowMs: Long = System.currentTimeMillis()): Boolean =
+        highFallUntilMs(context) > nowMs
+
+    fun restoreSafetyMirrors(context: Context) {
         cachedSosActive = null
-        val active = isSosActive(context)
-        context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().putBoolean("sosActive", active).commit()
-        return active
+        cachedHighFallUntilMs = null
+        val sos = isSosActive(context)
+        val highUntil = highFallUntilMs(context)
+        context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .putBoolean("sosActive", sos)
+            .putBoolean("fallHighActive", highUntil > System.currentTimeMillis())
+            .putLong("fallHighUntilMs", highUntil)
+            .commit()
+    }
+
+    /** Compatibility alias for older call sites during the Phase 8C transition. */
+    fun restoreSosMirror(context: Context): Boolean {
+        restoreSafetyMirrors(context)
+        return isSosActive(context)
     }
 
     fun drain(
