@@ -31,3 +31,19 @@ This file continues `PHASE8B_REMEDIATION_FINDINGS.md` from P8B-R007 onward. Same
 **Required correction:** create the temporary generated config in the repository root (or otherwise preserve config-relative resolution), run `wrangler deploy --dry-run`, verify bundle output, then remove the generated config.
 
 **Status:** OPEN — finding recorded before CI correction.
+
+---
+
+## P8B-R009 — Cloud placeholder scan has broken shell quoting and cannot execute
+
+**Severity:** P2 MEDIUM — the production Worker now dry-runs successfully, but the final fake/placeholder source scan fails in the shell parser instead of inspecting source.
+
+**Observed baseline:** `v1-p8b-remediation-cloud` at `c0c6bcb1b68f684b23cde5e035924ce065031aea`.
+
+**Evidence:** GitHub Actions run `41627528964` passes install, typecheck, parent assets, production wiring, all migrations, every deterministic regression, privacy audit, and Wrangler production bundle dry-run. The final `No production placeholders or obvious fake handlers` step exits with shell error `unexpected EOF while looking for matching` quote because the YAML/bash command nests single- and double-quote fragments inside one extended-regex literal.
+
+**Expected:** the final source scan must actually inspect `src` and `web` for unresolved TODO/NotImplemented/placeholder/hardcoded-success markers and fail only when a real prohibited marker is found.
+
+**Required correction:** replace the fragile compound shell-quoted regex with a small deterministic Node source-scan script or equivalently quote-safe checks; keep the same prohibited marker intent.
+
+**Status:** OPEN — finding recorded before CI correction.
