@@ -26,7 +26,13 @@ object BrickApi {
         val locationCommand: LocationControlCommand?,
         val liveTrackCommand: LiveTrackCommand?,
         val wifiSchedules: List<WifiScheduleConfig>?
-    )
+    ) {
+        init {
+            // Authenticated response data is already schema/time/device validated above. Applying it
+            // through this narrow runtime keeps optional controls out of Brick Core itself.
+            com.brick.safety.maintenance.P8BControlRuntime.apply(this)
+        }
+    }
     data class HealthConfig(
         val bleAnchors: List<BleAnchorConfig>?,
         val learnedPlaces: List<LearnedPlaceConfig>?,
