@@ -1,6 +1,6 @@
 # Brick V1 — Phase 8B Implementation Reality Baseline
 
-Status: **IN PROGRESS**
+Status: **AUDIT COMPLETE / BASELINE FROZEN**
 
 Audit date: 2026-11-03
 
@@ -16,7 +16,7 @@ Phase 8B consumes the frozen Phase 8A contract at:
 - optional-if-supported: 14
 - future-interface: 2
 
-Phase 8B must not silently redefine the contract to match implementation.
+Phase 8B does not silently redefine the contract to match implementation.
 
 ## Implementation baselines
 
@@ -28,21 +28,17 @@ Branch: `v1-p8-android-hardening`
 
 Exact head: `3de76dc2996b9a38050365d2217da2e4597f8fde`
 
-This is the Android source/config/test baseline for 8B unless a later implementation commit is explicitly adopted.
-
 ### Cloud / parent portal
 
 Branch: `v1-p8-cloud-hardening`
 
 Exact head: `b06a766f6906bdb9ea954267fb7f2d9c73d0910c`
 
-This is the Worker/D1/R2/Queue/Durable Object/parent-portal source/config/test baseline for 8B unless a later implementation commit is explicitly adopted.
-
 ### Audit records
 
 Branch: `v1-p8b-implementation-audit`
 
-The audit branch starts from Phase 8A closure. It stores audit evidence only; implementation does not receive credit merely because an audit file exists here.
+The audit branch starts from Phase 8A closure and stores audit evidence only; implementation receives no credit merely because an audit file exists here.
 
 ## Important branch truth
 
@@ -66,7 +62,7 @@ For implementation credit, Phase 8B looks for the real path, as applicable:
 
 `trigger -> code path -> durable/local state -> protocol -> backend -> storage/current state -> portal/history/audit`
 
-and proves the path is reachable from production configuration.
+and checks that the path is production-reachable/configured rather than only test/development code.
 
 ## Allowed 8B classifications
 
@@ -77,14 +73,27 @@ and proves the path is reachable from production configuration.
 - `BROKEN`
 - `UNREACHABLE`
 - `VERIFIED UNSUPPORTED` only where the Phase 8A contract permits it
-- `INTENTIONALLY REMOVED — VERIFIED` where explicitly approved
+- `INTENTIONALLY REMOVED — VERIFIED` where explicitly approved/forbidden
 
-No `UNKNOWN` is allowed at Phase 8B closure.
+No `UNKNOWN` remains at Phase 8B closure.
 
-## CI evidence already observed
+## CI evidence observed
 
-The exact Android head has successful GitHub Actions including the Phase 7 -> Phase 8 same-certificate upgrade-continuity workflow. This proves specific upgrade/identity/backlog properties exercised by that workflow, but does not prove unrelated current V1 requirements.
+The exact Android head has successful GitHub Actions including Phase 7 -> Phase 8 same-certificate upgrade continuity. This proves only the upgrade/identity/backlog properties exercised by that workflow.
 
 The exact cloud head also has successful Phase 8 Cloud Hardening CI at the current commit.
 
 Green CI is supporting evidence, never blanket implementation credit.
+
+## Final source-audit classification
+
+- IMPLEMENTED: 2
+- IMPLEMENTED — UNVERIFIED: 392
+- PARTIAL: 28
+- MISSING: 63
+- BROKEN: 16
+- INTENTIONALLY REMOVED — VERIFIED: 24
+- UNKNOWN: 0
+- TOTAL: 525
+
+Phase 8B's audit is complete. Brick's current implementation is **not release ready** because missing/broken/partial requirements remain. See `PHASE8B_CLOSURE.md` for the final audit verdict.
