@@ -99,6 +99,29 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
         }
     }
 
+    fun testSafeCheckInSurvivesReopenUntilExactAck() {
+        val eventId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        SafetyOutbox(context).use { outbox ->
+            assertTrue(outbox.append(eventId, "safe_checkin", "im-safe".toByteArray(), 1))
+            val pending = outbox.pending(10).single()
+            assertEquals(eventId, pending.eventId)
+            assertEquals("safe_checkin", pending.kind)
+            assertEquals(1, pending.priority)
+        }
+
+        SafetyOutbox(context).use { reopened ->
+            val pending = reopened.pending(10).single()
+            assertEquals(eventId, pending.eventId)
+            assertEquals("safe_checkin", pending.kind)
+            assertTrue(reopened.ack(eventId))
+        }
+
+        SafetyOutbox(context).use { reopenedAgain ->
+            assertEquals(0, reopenedAgain.stats().pendingCount)
+            assertFalse(reopenedAgain.ack(eventId))
+        }
+    }
+
     fun testCorruptHighPrioritySafetyRowCannotStarveSos() {
         val corruptId = "22222222-2222-4222-8222-222222222222"
         val sosId = "33333333-3333-4333-8333-333333333333"
