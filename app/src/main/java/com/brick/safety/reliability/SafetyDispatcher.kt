@@ -21,6 +21,13 @@ object SafetyDispatcher {
         val charging: Boolean
     )
 
+    private fun noteOutboxUnavailable(context: Context) {
+        context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .putBoolean("safetyOutboxWriteHealthy", false)
+            .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis())
+            .apply()
+    }
+
     fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
         val brickPrefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val eventSequence = brickPrefs.getLong("safetySequence", 0L) + 1L
@@ -73,7 +80,11 @@ object SafetyDispatcher {
         val apiBase = prefs.getString("apiBase", null) ?: return 0
         var delivered = 0
         SafetyOutbox(context).use { outbox ->
-            for (event in outbox.pending(limit)) {
+            val pending = runCatching { outbox.pending(limit) }.getOrElse {
+                noteOutboxUnavailable(context)
+                return 0
+            }
+            for (event in pending) {
                 try {
                     BrickApi.sendSafetyPayload(apiBase, deviceId, event.payload, event.eventId)
                     if (!outbox.ack(event.eventId)) {
@@ -91,7 +102,17 @@ object SafetyDispatcher {
         return delivered
     }
 
-    fun pendingCount(context: Context): Int = SafetyOutbox(context).use { it.stats().pendingCount }
+    /**
+     * A safety-outbox read failure is treated as "safety may be pending" rather than zero. That is
+     * deliberately fail-closed: ordinary location/history work must not jump ahead merely because
+     * low storage/corruption made the priority queue unreadable.
+     */
+    fun pendingCount(context: Context): Int = runCatching {
+        SafetyOutbox(context).use { it.stats().pendingCount }
+    }.getOrElse {
+        noteOutboxUnavailable(context)
+        1
+    }
 
     private fun snapshot(context: Context): Snapshot {
         val battery = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
