@@ -72,11 +72,12 @@ jobs:
 
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
-      - name: Boot fresh AOSP emulator and stage Brick before pre-setup reboot
+      - name: Boot fresh AOSP emulator and install Brick test packages
         shell: bash
         run: |
           set -euo pipefail
           APP_APK=app/build/outputs/apk/debug/app-debug.apk
+          TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
           sudo chmod 666 /dev/kvm || true
           "$ADB" start-server
@@ -89,73 +90,49 @@ jobs:
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
 
           "$ADB" install -t "$APP_APK"
+          "$ADB" install -t "$TEST_APK"
           "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
           "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
           grep -F 'Accounts: 0' /tmp/p8-do-accounts-before.txt >/dev/null
           "$ADB" shell pm list users | tee /tmp/p8-do-users-before.txt
+          test "$(grep -c 'UserInfo{' /tmp/p8-do-users-before.txt)" = "1"
 
-          "$ADB" shell settings put secure user_setup_complete 0
-          "$ADB" shell settings put global device_provisioned 0
-          "$ADB" reboot
-
-      - name: Provision real Device Owner with synchronized AOSP test state
+      - name: Synchronize Android provisioning cache and provision real Device Owner
         shell: bash
         run: |
           set -euo pipefail
-          TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$ADB" wait-for-device
 
           ready=0
-          for i in $(seq 1 90); do
-            "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
-            "$ADB" shell settings put global device_provisioned 0 >/dev/null 2>&1 || true
+          for i in $(seq 1 120); do
             account_service="$("$ADB" shell service check account 2>/dev/null | tr -d '\r' || true)"
             policy_service="$("$ADB" shell service check device_policy 2>/dev/null | tr -d '\r' || true)"
             package_path="$("$ADB" shell pm path com.brick.safety 2>/dev/null | tr -d '\r' || true)"
-            setup_state="$("$ADB" shell settings get secure user_setup_complete 2>/dev/null | tr -d '\r' || true)"
-            provisioned_state="$("$ADB" shell settings get global device_provisioned 2>/dev/null | tr -d '\r' || true)"
+            user_dump="$("$ADB" shell dumpsys user 2>/dev/null | tr -d '\r' || true)"
             if grep -Fq 'found' <<<"$account_service" && \
                grep -Fq 'found' <<<"$policy_service" && \
                grep -Fq 'package:' <<<"$package_path" && \
-               [ "$setup_state" = "0" ] && \
-               [ "$provisioned_state" = "0" ]; then
+               grep -Fq 'State: RUNNING_UNLOCKED' <<<"$user_dump"; then
               ready=1
+              printf '%s\n' "$user_dump" > /tmp/p8-do-user-unlocked.txt
               break
             fi
             sleep 1
           done
           test "$ready" = "1"
 
-          unlocked=0
-          for i in $(seq 1 90); do
-            "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
-            "$ADB" shell settings put global device_provisioned 0 >/dev/null 2>&1 || true
-            user_dump="$("$ADB" shell dumpsys user 2>/dev/null | tr -d '\r' || true)"
-            if grep -Fq 'State: RUNNING_UNLOCKED' <<<"$user_dump"; then
-              unlocked=1
-              printf '%s\n' "$user_dump" > /tmp/p8-do-user-unlocked.txt
-              break
-            fi
-            sleep 1
-          done
-          test "$unlocked" = "1"
-
-          "$ADB" shell settings put secure user_setup_complete 0
-          "$ADB" shell settings put global device_provisioned 0
-          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
-          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
-          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-reboot.txt
-          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-reboot.txt >/dev/null
-          "$ADB" shell pm list users | tee /tmp/p8-do-users-after-reboot.txt
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-boot.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-boot.txt >/dev/null
+          "$ADB" shell pm list users | tee /tmp/p8-do-users-after-boot.txt
+          test "$(grep -c 'UserInfo{' /tmp/p8-do-users-after-boot.txt)" = "1"
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
           ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
 
-          # AOSP's DevicePolicyManager caches setup/account eligibility. On a development emulator,
-          # synchronize that test-only state the same way Android's own provisioning tests do before
-          # asking the real DPM shell command to set Brick as owner. This helper exists only in the
-          # androidTest APK; production Brick never calls hidden/test-only framework APIs.
+          # Android 14+ caches account compatibility for owner provisioning. AOSP CTS explicitly
+          # recalculates this cache before Device Owner tests. Mirror that test-only behavior without
+          # changing USER_SETUP_COMPLETE or DEVICE_PROVISIONED; shell provisioning is allowed after
+          # setup when there are no extra users or incompatible accounts.
           test "$("$ADB" shell getprop ro.debuggable | tr -d '\r')" = "1"
-          "$ADB" install -t "$TEST_APK"
           "$ADB" logcat -c
           cleanup_hidden_api() {
             "$ADB" shell settings delete global hidden_api_policy >/dev/null 2>&1 || true
@@ -180,20 +157,11 @@ jobs:
           cleanup_hidden_api
           trap - EXIT
 
-          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before-owner.txt
-          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before-owner.txt >/dev/null
-          "$ADB" shell dumpsys device_policy | tee /tmp/p8-do-policy-before.txt
-          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before-set.txt
-          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-before-set.txt >/dev/null
-
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-sync.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-sync.txt >/dev/null
           "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
-
-          "$ADB" shell settings put secure user_setup_complete 1
-          "$ADB" shell settings put global device_provisioned 1
-          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "1"
-          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "1"
 
       - name: Execute Stage 1 only and prove ownership remains until after durable disarm
         shell: bash
@@ -251,7 +219,7 @@ jobs:
           set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          for f in accounts-before accounts-after-reboot accounts-before-owner users-before users-after-reboot user-unlocked provisioning-sync policy-before set-owner owners-initial owners-before-set owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+          for f in accounts-before accounts-after-boot accounts-after-sync users-before users-after-boot user-unlocked provisioning-sync set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
             cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
           done
           if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
