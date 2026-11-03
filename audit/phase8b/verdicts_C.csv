@@ -1,0 +1,117 @@
+id,verdict,evidence_key,notes
+SAFE-001,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-002,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-003,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-004,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-005,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-006,IMPLEMENTED — UNVERIFIED,SAFETY,
+SAFE-007,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-008,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-009,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-010,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-011,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-012,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-013,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SAFE-014,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-015,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-016,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-017,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+SAFE-018,MISSING,P8B-010,Fall inference/behavior/emergency evidence bundle implementation not found.
+HIS-001,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-002,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-003,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-004,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-005,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-006,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-007,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-008,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-009,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-010,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-011,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-012,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-013,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-014,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-015,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-016,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-017,MISSING,P8B-021,"Trip/geofence functionality exists, but automatic commute-summary subsystem not found."
+HIS-018,IMPLEMENTED — UNVERIFIED,CLOUD_HISTORY,
+HIS-019,MISSING,ABSENT_OPTIONAL_FLIGHT,Optional flight inference/landing notice not implemented; no VERIFIED UNSUPPORTED claim made.
+HIS-020,MISSING,ABSENT_OPTIONAL_FLIGHT,Optional flight inference/landing notice not implemented; no VERIFIED UNSUPPORTED claim made.
+PORT-001,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-002,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-003,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-004,PARTIAL,P8B-008,MapLibre/private PMTiles foundation exists; current OneMap-first/fallback/provider-boundary contract is incomplete.
+PORT-005,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-006,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-007,PARTIAL,P8B-008,MapLibre/private PMTiles foundation exists; current OneMap-first/fallback/provider-boundary contract is incomplete.
+PORT-008,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-009,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-010,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-011,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-012,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-013,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-014,BROKEN,P8B-006,Portal still presents persistent Parent setting / matchesDesired semantics after one-shot completion.
+PORT-015,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-016,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-017,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-018,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-019,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-020,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-021,MISSING,P8B-019,No screen-time portal feature found.
+PORT-022,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-023,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-024,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-025,PARTIAL,PORTAL,"Source/freshness/provider health are exposed, but full GNSS/Atlas/cell/motion/conflict/missing-evidence explanation UI is not proven in source audit."
+PORT-026,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-027,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-028,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-029,PARTIAL,P8B-013,"WebSocket live state exists, but current location path is not fully isolated as frozen Fast Live path."
+PORT-030,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-031,PARTIAL,P8B-008,MapLibre/private PMTiles foundation exists; current OneMap-first/fallback/provider-boundary contract is incomplete.
+PORT-032,IMPLEMENTED — UNVERIFIED,PORTAL,
+PORT-033,IMPLEMENTED — UNVERIFIED,PORTAL,
+BE-001,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-002,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-003,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-004,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-005,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-006,BROKEN,P8B-013,Queue/D1 work can precede Durable Object current-state update; live/history separation is not strict enough.
+BE-007,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-008,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-009,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-010,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-011,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-012,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-013,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-014,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-015,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-016,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-017,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-018,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-019,IMPLEMENTED — UNVERIFIED,CLOUD_BACKEND,
+BE-020,BROKEN,P8B-013,Queue/D1 work can precede Durable Object current-state update; live/history separation is not strict enough.
+SEC-001,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-002,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-003,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-004,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-005,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-006,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SEC-007,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-008,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-009,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-010,PARTIAL,CLOUD_PAIRING,Pairing token is short-lived/single-use/rate-limited; no distinct production fallback PIN flow proven.
+SEC-011,PARTIAL,CLOUD_PAIRING,"Parent Access creates pairing token, but explicit fallback-PIN parent confirmation flow is not proven."
+SEC-012,MISSING,OPTIONAL,mTLS optional defense-in-depth not implemented; not a core identity failure.
+SEC-013,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-014,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-015,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SEC-016,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-017,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-018,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SEC-019,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-020,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-021,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-022,IMPLEMENTED — UNVERIFIED,SECURITY,
+SEC-023,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SEC-024,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+SEC-025,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
