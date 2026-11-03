@@ -8,18 +8,17 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
 
     <!-- Android 11 and older use the legacy normal BLE permissions. Android 12+ uses Nearby Devices. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <!-- Brick uses nearby Wi-Fi/BLE observations for location context, so neverForLocation is intentionally NOT declared. -->
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <!-- Phase 5 Witness Mesh performs bounded BLE scan/advertise work inside the existing safety FGS. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -33,7 +32,6 @@
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Brick"
-        android:testOnly="true"
         android:theme="@style/Theme.Brick"
         android:usesCleartextTraffic="false">
 
@@ -54,15 +52,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Local-only Maintenance & Recovery Console. It is reachable only through the in-app
+             hidden entry state machine and is deliberately not exported or a launcher surface. -->
         <activity
             android:name=".diagnostics.DiagnosticsActivity"
-            android:exported="true"
-            android:label="Brick Phase 8 Hardening Diagnostics">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:label="Brick Maintenance & Recovery" />
 
         <service
             android:name=".location.BrickLocationService"
@@ -97,6 +92,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
             </intent-filter>
         </receiver>
 
