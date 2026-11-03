@@ -1,6 +1,8 @@
 name: Brick V1 Phase 8 — Stable Signed Device Owner Beta Export
 
 on:
+  push:
+    branches: [v1-p8-android-hardening]
   workflow_dispatch:
 
 permissions:

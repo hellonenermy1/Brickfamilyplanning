@@ -1,6 +1,8 @@
 name: Brick V1 Phase 8 — Persistent Signing Upgrade Continuity
 
 on:
+  push:
+    branches: [v1-p8-android-hardening]
   workflow_dispatch:
 
 permissions:
