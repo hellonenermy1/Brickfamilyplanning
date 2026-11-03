@@ -56,9 +56,6 @@ jobs:
           check "screen-time ingest" src/worker-p8b.ts 'ingestScreenTime'
           check "backend OneMap email secret binding" src/onemap-client.ts 'ONEMAP_EMAIL'
           check "backend OneMap password secret binding" src/onemap-client.ts 'ONEMAP_PASSWORD'
-
-          # OneMap credential bindings must remain backend-only. The browser source and generated
-          # parent bundle must not even reference the secret binding names.
           if grep -R -n -F 'ONEMAP_EMAIL' web public || grep -R -n -F 'ONEMAP_PASSWORD' web public; then
             echo 'P8B secret-boundary check failed: OneMap credential binding leaked to browser surface' >&2
             exit 1
@@ -81,16 +78,23 @@ jobs:
             grep -E "CREATE TABLE( IF NOT EXISTS)? ${table}" /tmp/schema.txt >/dev/null
           done
 
-      - name: Existing deterministic regression tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/test-history-codec.mjs
-          node scripts/test-phase5-live-state-order.mjs
-          node scripts/test-phase8-location-control-contract.mjs
-          node scripts/test-phase8-parent-origin.mjs
-          node scripts/test-phase8-sos-priority-contract.mjs
-          node scripts/audit-privacy.mjs
+      - name: Regression — history codec
+        run: node scripts/test-history-codec.mjs
+
+      - name: Regression — Phase 5 live-state ordering
+        run: node scripts/test-phase5-live-state-order.mjs
+
+      - name: Regression — one-shot Location control
+        run: node scripts/test-phase8-location-control-contract.mjs
+
+      - name: Regression — parent origin protection
+        run: node scripts/test-phase8-parent-origin.mjs
+
+      - name: Regression — SOS priority
+        run: node scripts/test-phase8-sos-priority-contract.mjs
+
+      - name: Regression — privacy audit
+        run: node scripts/audit-privacy.mjs
 
       - name: Wrangler dry-run production bundle
         shell: bash
