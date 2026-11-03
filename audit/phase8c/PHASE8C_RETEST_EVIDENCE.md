@@ -26,7 +26,7 @@ Observed source paths that can still execute after `PURGE_BRICK` while the packa
 1. `BootReceiver.onReceive()` handles BOOT_COMPLETED, MY_PACKAGE_REPLACED, TIMEZONE_CHANGED and TIME_SET without checking `DeprovisionManager.isPostPurge()` first. It can call `DeepOffManager`, `BetaSafety`, `DiagnosticStore`, `WifiScheduleManager`, `ServiceControl` and `RecoveryScheduler`. In a post-purge process, `DiagnosticStore.log(context, ...)` can initialize and recreate `brick_diagnostics.db`.
 2. `ActivityReceiver.onReceive()` can write `ActivityState` after a pending Activity Recognition callback.
 3. `BrickCompanionLegacyService` / `BrickCompanionAssociationService` can write companion-presence preferences from system presence callbacks.
-4. WorkManager cancellation is not an atomic kill boundary for a worker already starting/running. `RecoveryWorker`, `EvidenceUploadWorker`, `CanaryWorker`, `CanaryRetestWorker`, `ScreenTimeWorker`, and `WifiScheduleWorker` do not currently check post-purge state before touching other Brick state. `EvidenceUploadWorker` also retains a `brick` preference handle as instance state.
+4. WorkManager cancellation is not an atomic kill boundary for a worker already starting/running. `RecoveryWorker`, `EvidenceUploadWorker`, `CanaryWorker`, `CanaryRetestWorker`, `ScreenTimeWorker`, `WifiScheduleWorker`, and the legacy `BetaExpiryWorker` do not currently check post-purge state before touching other Brick state.
 5. `RecoveryScheduler` scheduling entry points check Deep Off/role/beta state before any post-purge gate, so an unexpected caller can touch/recreate purged stores.
 6. `ServiceControl.ensureTracking()` likewise checks role/Deep Off/beta before a post-purge gate.
 
@@ -48,3 +48,38 @@ The first remediation treated post-purge mode as an `Application`/console concer
 
 **Retest status:** FAILED — P8C-008 remains OPEN.
 **Next action:** remediate all discovered entry points, then rerun this invariant.
+
+---
+
+## P8C-005 retest — FAILED / PURGE INVENTORY STILL INCOMPLETE
+
+**Requirement ID:** `DEPROV-001`
+**Retest scope:** completeness of the verified local-state purge inventory.
+
+### Retest result
+
+**FAIL.** The earlier correction added several previously omitted stores and began verifying deletion results, but the production source still contains Brick-owned persistent state not represented in `DeprovisionManager`'s purge inventory.
+
+Confirmed omissions from source inspection:
+
+- SharedPreferences `brick_activity` in `ActivityState`.
+- SharedPreferences `brick_companion_presence` in `CompanionPresenceStore`.
+- SharedPreferences `brick_beta_safety` in `BetaSafety` (legacy/beta state can survive upgrades even though the RC build has `BRICK_BETA=false`).
+- Encrypted file `files/brick_learned_places_v1.bin` in `LearnedPlaceRegistry`.
+- Android Keystore alias `brick_atlas_hmac_v1` in `AtlasPrivacyId`.
+
+These are concrete omissions; this retest does not claim the list is exhaustive until the persistent-data inventory sweep is complete.
+
+### Impact
+
+`PURGE_BRICK` can report success while Brick-owned activity/companion/beta metadata, learned-place configuration, or a long-lived Atlas privacy HMAC key survives. That violates the purge claim and leaves an unknown persistent-data path, which independently blocks the Phase 8C exit gate.
+
+### Required correction
+
+- Complete the production persistence inventory before finalizing the purge list.
+- Add every verified Brick-owned database, SharedPreferences file, internal file and Keystore alias that must not survive deprovision.
+- Verify absence after deletion.
+- Add a regression contract that ties known persistent-store names/aliases to the purge inventory so a newly added store cannot silently escape deprovision review.
+
+**Retest status:** FAILED — P8C-005 remains OPEN.
+**Next action:** finish persistence inventory, remediate the purge list, then rerun purge-completeness checks.
