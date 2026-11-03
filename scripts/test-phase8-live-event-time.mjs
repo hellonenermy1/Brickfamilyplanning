@@ -9,8 +9,8 @@ const order = await import(pathToFileURL(orderPath).href + `?order=${Date.now()}
 const T = 2_000_000_000_000;
 assert.equal(order.shouldAdvanceLiveState({ epoch: 8, sequence: 1, wallTimeMs: T - 60_000 }, { epoch: 7, sequence: 100, wallTimeMs: T }), false, 'new epoch must not regress event time');
 assert.equal(order.shouldAdvanceLiveState({ epoch: 8, sequence: 1, wallTimeMs: T }, { epoch: 7, sequence: 100, wallTimeMs: T }), true, 'equal event time may advance logical order');
-assert.equal(order.shouldAdvanceLiveState({ epoch: 7, sequence: 101, wallTimeMs: T - 1 }, { epoch: 7, sequence: 100, wallTimeMs: T }), false, 'same epoch newer sequence must not regress event time');
-assert.equal(order.shouldAdvanceLiveState({ epoch: 7, sequence: 101, wallTimeMs: T + 1 }, { epoch: 7, sequence: 100, wallTimeMs: T }), true);
+assert.equal(order.shouldAdvanceLiveState({ epoch: 7, sequence: 101, wallTimeMs: T + 1 }, { epoch: 8, sequence: 1, wallTimeMs: T }), true, 'newer capture time must win even when an older epoch arrives later');
+assert.equal(order.shouldAdvanceLiveState({ epoch: 7, sequence: 101, wallTimeMs: T - 1 }, { epoch: 8, sequence: 1, wallTimeMs: T }), false, 'older capture must never replace current');
 assert.equal(order.shouldAdvanceLiveState({ epoch: 8, sequence: 1, wallTimeMs: 0 }, { epoch: 7, sequence: 100, wallTimeMs: T }), false, 'invalid event time must fail closed when supplied');
 assert.equal(order.shouldAdvanceLiveState({ epoch: 8, sequence: 1 }, { epoch: 7, sequence: 100 }), true, 'legacy no-wall-time callers retain logical ordering semantics');
 
@@ -83,8 +83,7 @@ const env = {
   }
 };
 
-// Device DB watermark advances into the reboot epoch for idempotency, but the live read model refuses
-// the stale captured event. The API must report that truth instead of claiming liveAdvanced=true.
+// D1 advances into a reboot epoch for idempotency, but the live read model refuses the stale capture.
 let result = await ingest.persistAccepted(env, 'child-time', [packet(8, 1, T - 60_000)]);
 assert.deepEqual(db.watermark(), { epoch: 8, sequence: 1 });
 assert.equal(result.insertedCount, 1);
@@ -92,12 +91,21 @@ assert.equal(result.liveAdvanced, false);
 assert.deepEqual(live, { epoch: 7, sequence: 100, wallTimeMs: T });
 assert.equal(acceptedLive.length, 0);
 
-// The next packet in the new epoch has a genuinely newer capture time. It advances normally even
-// though sequence restarted after reboot.
-result = await ingest.persistAccepted(env, 'child-time', [packet(8, 2, T + 5_000)]);
-assert.deepEqual(db.watermark(), { epoch: 8, sequence: 2 });
+// Then an unsent packet from the old epoch arrives with a genuinely NEWER capture time. D1's logical
+// watermark correctly stays at epoch 8, but the new history insert still reaches the DO and advances
+// the parent read model by event time.
+result = await ingest.persistAccepted(env, 'child-time', [packet(7, 101, T + 5_000)]);
+assert.deepEqual(db.watermark(), { epoch: 8, sequence: 1 });
+assert.equal(result.insertedCount, 1);
 assert.equal(result.liveAdvanced, true);
-assert.deepEqual(live, { epoch: 8, sequence: 2, wallTimeMs: T + 5_000 });
+assert.deepEqual(live, { epoch: 7, sequence: 101, wallTimeMs: T + 5_000 });
 assert.equal(acceptedLive.length, 1);
 
-console.log('Phase 8 live event-time monotonicity OK: reboot/offline backlog cannot move latest backwards');
+// A later genuinely newer packet from epoch 8 advances both logical watermark and live event time.
+result = await ingest.persistAccepted(env, 'child-time', [packet(8, 2, T + 10_000)]);
+assert.deepEqual(db.watermark(), { epoch: 8, sequence: 2 });
+assert.equal(result.liveAdvanced, true);
+assert.deepEqual(live, { epoch: 8, sequence: 2, wallTimeMs: T + 10_000 });
+assert.equal(acceptedLive.length, 2);
+
+console.log('Phase 8 live event-time monotonicity OK: cross-epoch offline backlog cannot move latest backwards or hide a newer capture');
