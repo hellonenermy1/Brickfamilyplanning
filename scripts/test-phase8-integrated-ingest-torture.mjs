@@ -1,32 +1,44 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 
-const [historyPath, ingestPath] = process.argv.slice(2);
-if (!historyPath || !ingestPath) throw new Error('usage: test-phase8-integrated-ingest-torture.mjs <history-store> <location-ingest>');
+const [historyPath, ingestPath, orderPath] = process.argv.slice(2);
+if (!historyPath || !ingestPath || !orderPath) throw new Error('usage: test-phase8-integrated-ingest-torture.mjs <history-store> <location-ingest> <live-state-order>');
 const history = await import(pathToFileURL(historyPath).href + `?h=${Date.now()}`);
 const ingest = await import(pathToFileURL(ingestPath).href + `?i=${Date.now()}`);
+const liveOrder = await import(pathToFileURL(orderPath).href + `?o=${Date.now()}`);
 
 function packet(sequence, wallTimeMs) {
   return {
     version: 2,
     epoch: 9,
     sequence,
+    elapsedRealtimeMs: sequence * 5000,
     wallTimeMs,
-    elapsedMs: sequence * 5000,
+    rawLatE7: 13_000_000 + sequence,
+    rawLonE7: 103_800_000 + sequence,
+    rawAccuracyCm: 1200,
     trustedLatE7: 13_000_000 + sequence,
     trustedLonE7: 103_800_000 + sequence,
     uncertaintyCm: 1200,
     speedCms: 500,
     speedAccuracyCms: 100,
     bearingCdeg: 9000,
+    bearingAccuracyCdeg: 500,
+    altitudeCm: null,
+    verticalAccuracyCm: null,
     batteryPct: 70,
     charging: false,
+    rawAccepted: true,
+    rawMock: false,
     activity: 2,
     activityConfidence: 90,
     quality: 1,
     source: 1,
     fallback: false,
-    rawAccepted: true
+    gnssUsedInFix: 10,
+    gnssTotal: 15,
+    gnssAverageCn0Tenth: 350,
+    stepDelta: 0
   };
 }
 
@@ -43,12 +55,20 @@ function fakeR2() {
     async get(key) {
       const row = objects.get(key);
       if (!row) return null;
-      return { body: new Blob([row.bytes]).stream(), async text() { return new TextDecoder().decode(row.bytes); } };
+      return {
+        httpMetadata: row.httpMetadata,
+        body: new Blob([row.bytes]).stream(),
+        async text() { return new TextDecoder().decode(row.bytes); }
+      };
     },
-    async put(key, body) {
+    async put(key, body, options = {}) {
       if (failures > 0) { failures--; throw new Error('injected durable-store failure'); }
-      const bytes = body instanceof Uint8Array ? body : new Uint8Array(await new Response(body).arrayBuffer());
-      objects.set(key, { bytes: bytes.slice() });
+      const bytes = body instanceof ArrayBuffer
+        ? new Uint8Array(body)
+        : body instanceof Uint8Array
+          ? body
+          : new Uint8Array(await new Response(body).arrayBuffer());
+      objects.set(key, { bytes: bytes.slice(), httpMetadata: options.httpMetadata ?? {} });
     }
   };
 }
@@ -111,16 +131,31 @@ const newest = packet(51, now - 5_000);
 const r2 = fakeR2();
 const db = fakeDb(50);
 const live = [];
+let liveCurrent = { epoch: 9, sequence: 50, wallTimeMs: now - 10_000 };
 const env = {
   DB: db,
   HISTORY: r2,
   MAPS: {},
   EVENTS: {},
   DEVICE_RATE: {},
-  BRICK_DEVICE: { idFromName(x) { return x; }, get() { return { async setLatest(p) { live.push(p.sequence); return true; } }; } }
+  BRICK_DEVICE: {
+    idFromName(x) { return x; },
+    get() {
+      return {
+        async setLatest(p) {
+          const advance = liveOrder.shouldAdvanceLiveState(p, liveCurrent);
+          if (advance) {
+            liveCurrent = { epoch: p.epoch, sequence: p.sequence, wallTimeMs: p.wallTimeMs };
+            live.push(p.sequence);
+          }
+          return advance;
+        }
+      };
+    }
+  }
 };
 
-// 1) Multi-day/offline-style delayed data is accepted into history identity, but current remains 50.
+// 1) Delayed offline data is accepted into history identity, but its old capture time cannot regress live.
 let persisted = await ingest.persistAccepted(env, 'child-torture', [old1, old2]);
 assert.equal(persisted.insertedCount, 2);
 assert.equal(persisted.preciseEndpointCount, 2);
@@ -131,17 +166,18 @@ assert.equal(db.preciseEndpoints.size, 2);
 
 // 2) Cloud durable history write partially fails. Queue message MUST retry, never ACK.
 r2.failNextPuts(1);
-const failedA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1 });
-const failedB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2 });
+const firstReceipt = now - 1_000;
+const failedA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1, receivedAtMs: firstReceipt });
+const failedB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2, receivedAtMs: firstReceipt });
 let result = await history.processHistoryBatch({ messages: [failedA, failedB] }, { HISTORY: r2 });
 assert.equal(result.processedMessages, 0);
 assert.equal(result.retriedMessages, 2);
 assert.equal(failedA.acked + failedB.acked, 0);
 assert.equal(failedA.retried + failedB.retried, 2);
 
-// 3) Network/server returns: same logical messages retry and converge raw+trusted replicas before ACK.
-const retryA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1 });
-const retryB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2 });
+// 3) Same logical Queue messages retry and converge raw+trusted replicas before ACK.
+const retryA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1, receivedAtMs: firstReceipt });
+const retryB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2, receivedAtMs: firstReceipt });
 result = await history.processHistoryBatch({ messages: [retryA, retryB] }, { HISTORY: r2 });
 assert.equal(result.processedMessages, 2);
 assert.equal(result.retriedMessages, 0);
@@ -149,12 +185,12 @@ assert.equal(retryA.acked + retryB.acked, 2);
 assert.deepEqual(await rawSequences(r2), [40, 41]);
 
 // 4) Lost ACK causes duplicate redelivery. Storage stays one logical copy of each packet.
-const dupA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1 });
-const dupB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2 });
+const dupA = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old1, rawPacket: old1, receivedAtMs: now + 5_000 });
+const dupB = queueMessage({ type: 'location', deviceId: 'child-torture', packet: old2, rawPacket: old2, receivedAtMs: now + 5_000 });
 await history.processHistoryBatch({ messages: [dupA, dupB] }, { HISTORY: r2 });
 assert.deepEqual(await rawSequences(r2), [40, 41]);
 
-// 5) A genuinely new location arrives after recovery and advances live exactly once.
+// 5) A genuinely newer location arrives after recovery and advances live exactly once.
 persisted = await ingest.persistAccepted(env, 'child-torture', [newest]);
 assert.equal(persisted.insertedCount, 1);
 assert.equal(persisted.preciseEndpointCount, 1);
@@ -177,4 +213,4 @@ assert.equal(persisted.liveAdvanced, false);
 assert.deepEqual(live, [51]);
 assert.equal(db.preciseEndpoints.size, 4);
 
-console.log('Phase 8 integrated ingest torture OK: partial durable failure -> retry convergence -> duplicate dedupe -> monotonic live state');
+console.log('Phase 8 integrated ingest torture OK: partial durable failure -> retry convergence -> duplicate dedupe -> event-time-monotonic live state');
