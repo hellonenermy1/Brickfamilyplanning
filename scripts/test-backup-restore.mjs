@@ -8,12 +8,14 @@ if (!restorePath) throw new Error('usage: test-backup-restore.mjs <backup-restor
 const restore = await import(pathToFileURL(restorePath).href + `?v=${Date.now()}`);
 
 const TABLES = [
-  'devices', 'geofences', 'geofence_state', 'ble_anchors', 'trips', 'retention_settings',
+  'devices', 'device_location_control', 'geofences', 'geofence_state', 'ble_anchors', 'trips', 'retention_settings',
   'safety_events', 'health_incidents', 'crash_reports', 'audit_log', 'device_replay_state'
 ];
+const LEGACY_TABLES = TABLES.filter(t => t !== 'device_location_control');
 
-function snapshot(extraDevice = {}) {
-  const tables = Object.fromEntries(TABLES.map(t => [t, []]));
+function snapshot(extraDevice = {}, { legacy = false } = {}) {
+  const tableNames = legacy ? LEGACY_TABLES : TABLES;
+  const tables = Object.fromEntries(tableNames.map(t => [t, []]));
   tables.devices.push({
     id: 'child-1',
     name: 'Child',
@@ -86,6 +88,16 @@ function fakeDb(initial = {}) {
 }
 
 const goodSnapshot = snapshot({ revoked_at: 1793434000000, last_epoch: 17, last_sequence: 991 });
+goodSnapshot.tables.device_location_control.push({
+  device_id: 'child-1',
+  desired_enabled: 0,
+  command_id: '11111111-1111-4111-8111-111111111111',
+  issued_at: 1793434100000,
+  updated_at: 1793434200000,
+  last_actual_enabled: 0,
+  last_actual_at: 1793434300000,
+  last_acked_command_id: '11111111-1111-4111-8111-111111111111'
+});
 goodSnapshot.tables.device_replay_state.push({
   device_id: 'child-1',
   last_health_sequence: 487,
@@ -96,17 +108,21 @@ const db = fakeDb();
 const result = await restore.restoreBackupToFreshD1({ DB: db }, good.bytes, good.sha);
 assert.equal(result.format, 'brick-d1-snapshot-v1');
 assert.equal(result.restoredRows.devices, 1);
+assert.equal(result.restoredRows.device_location_control, 1);
 assert.equal(result.restoredRows.device_replay_state, 1);
 assert.equal(db.counts.get('devices'), 1);
+assert.equal(db.counts.get('device_location_control'), 1);
 assert.equal(db.counts.get('device_replay_state'), 1);
-for (const table of TABLES.filter(t => !['devices', 'device_replay_state'].includes(t))) assert.equal(db.counts.get(table), 0);
+for (const table of TABLES.filter(t => !['devices', 'device_location_control', 'device_replay_state'].includes(t))) assert.equal(db.counts.get(table), 0);
 
 // Security state must survive recovery exactly. A restored revoked identity must remain revoked,
-// and replay high-water state must not reset to zero and reopen old signed-health replays.
+// replay high-water state must not reset, and persistent parent control state/ACK must not silently
+// revert to the historical default after disaster recovery.
 assert.equal(db.rows.get('devices')[0].id, 'child-1');
 assert.equal(db.rows.get('devices')[0].revoked_at, 1793434000000);
 assert.equal(db.rows.get('devices')[0].last_epoch, 17);
 assert.equal(db.rows.get('devices')[0].last_sequence, 991);
+assert.deepEqual(db.rows.get('device_location_control')[0], goodSnapshot.tables.device_location_control[0]);
 assert.deepEqual(db.rows.get('device_replay_state')[0], {
   device_id: 'child-1',
   last_health_sequence: 487,
@@ -135,5 +151,17 @@ await assert.rejects(
   /backup integrity hash mismatch/
 );
 
+// Backward compatibility: Phase 6 / early Phase 8 V1 backups did not contain the location-control
+// table. They must remain recoverable and normalize that missing persistent state to an empty table.
+const legacy = encode(snapshot({ revoked_at: 1793434000000, last_epoch: 8, last_sequence: 77 }, { legacy: true }));
+const legacyDb = fakeDb();
+const legacyResult = await restore.restoreBackupToFreshD1({ DB: legacyDb }, legacy.bytes, legacy.sha);
+assert.equal(legacyResult.restoredRows.devices, 1);
+assert.equal(legacyResult.restoredRows.device_location_control, 0);
+assert.equal(legacyDb.counts.get('device_location_control'), 0);
+assert.equal(legacyDb.rows.get('devices')[0].revoked_at, 1793434000000);
+assert.equal(legacyDb.rows.get('devices')[0].last_epoch, 8);
+assert.equal(legacyDb.rows.get('devices')[0].last_sequence, 77);
+
 assert.deepEqual([...restore.RESTORE_TABLE_ORDER], TABLES);
-console.log('Phase 6 fresh-D1 backup restore contract OK, including revocation and replay high-water preservation');
+console.log('Phase 8 fresh-D1 recovery preserves revocation, replay watermarks and persistent location-control state; legacy V1 backups remain restorable');
