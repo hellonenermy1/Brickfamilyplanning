@@ -121,7 +121,10 @@ class MainActivity : AppCompatActivity() {
         if (DeviceRoleStore.role(this) == DeviceRoleStore.Role.PARENT_GUARDIAN) return
         val base = b.serverUrl.text.toString().trim()
         val token = b.pairingToken.text.toString().trim()
-        if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
+        if (!base.startsWith("https://") || token.isBlank()) {
+            b.status.text = "● Enter secure server + pairing code"
+            return
+        }
         b.scanPairButton.isEnabled = false
         b.pairButton.isEnabled = false
         val pinFallback = token.matches(Regex("\\d{8}"))
@@ -205,13 +208,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun activateSos() {
-        if (SafetyDispatcher.enqueue(this, "sos_started", priority = SafetyDispatcher.PRIORITY_CRITICAL) == null) {
+        if (SafetyDispatcher.enqueueSosTransition(this, active = true) == null) {
             b.status.text = "● SOS NOT SAVED — storage error"
             b.safeButton.isEnabled = true
             renderSosState()
             return
         }
-        getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", true).apply()
         runCatching { ServiceControl.ensureTracking(this) }
         b.status.text = "● SOS ACTIVE — sending…"
         b.safeButton.isEnabled = true
@@ -227,12 +229,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endSos() {
-        if (SafetyDispatcher.enqueue(this, "sos_cancelled", priority = SafetyDispatcher.PRIORITY_CRITICAL) == null) {
+        if (SafetyDispatcher.enqueueSosTransition(this, active = false) == null) {
             b.status.text = "● SOS ACTIVE — end update NOT SAVED"
             renderSosState()
             return
         }
-        getSharedPreferences("brick", MODE_PRIVATE).edit().putBoolean("sosActive", false).apply()
         runCatching { ServiceControl.ensureTracking(this) }
         b.status.text = "● Ending SOS…"
         renderSosState()
@@ -246,7 +247,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isSosActive(): Boolean = getSharedPreferences("brick", MODE_PRIVATE).getBoolean("sosActive", false)
+    private fun isSosActive(): Boolean = SafetyDispatcher.isSosActive(this)
 
     private fun renderSosState() {
         if (sosPending) return
@@ -265,10 +266,18 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
-        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.BLUETOOTH_SCAN
-        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.BLUETOOTH_ADVERTISE
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.NEARBY_WIFI_DEVICES
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.POST_NOTIFICATIONS
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.BLUETOOTH_SCAN
+        }
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.BLUETOOTH_ADVERTISE
+        }
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
+        }
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
 
         if (permissions.isNotEmpty()) foregroundPermissions.launch(permissions.toTypedArray())
         else {
@@ -286,7 +295,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun locationEnabled(): Boolean = runCatching { getSystemService(LocationManager::class.java).isLocationEnabled }.getOrDefault(false)
+    private fun locationEnabled(): Boolean =
+        runCatching { getSystemService(LocationManager::class.java).isLocationEnabled }.getOrDefault(false)
 
     private fun backgroundGranted(): Boolean = Build.VERSION.SDK_INT < 29 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -298,7 +308,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun attentionReason(): String? {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return "Location permission needs attention"
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return "Location permission needs attention"
+        }
         if (!locationEnabled()) return "Location needs attention"
         if (!ManagedPolicy.isDeviceOwner(this) && !backgroundGranted()) return "Background location needs attention"
         if (bleAnchorPermissionNeeded()) return "Nearby-device scan permission needs attention"
