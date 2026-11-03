@@ -59,7 +59,11 @@ async function trustedPacket(rawPacket: LivePacket, env: LocationIngestEnv) {
 }
 
 async function queueLocations(env: LocationIngestEnv, deviceId: string, locations: QueuedLocation[]) {
-  const messages = locations.map(({ packet, rawPacket }) => ({ type: "location", deviceId, packet, rawPacket }));
+  // Capture receipt provenance once, before Queue delivery can be delayed or retried. The history
+  // store keeps the earliest value for a logical packet, so neither Queue redelivery nor a later
+  // duplicate HTTP upload can make old data appear newly received.
+  const receivedAtMs = Date.now();
+  const messages = locations.map(({ packet, rawPacket }) => ({ type: "location", deviceId, packet, rawPacket, receivedAtMs }));
   if (messages.length === 1) {
     await env.EVENTS.send(messages[0]);
     return;
