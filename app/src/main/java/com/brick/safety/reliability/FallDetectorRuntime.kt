@@ -17,7 +17,7 @@ import kotlin.math.sqrt
 
 /**
  * Conservative local fall inference. The durable safety envelope stores only aggregate features
- * (peak impact/rotation, post-impact motion and activity context), never a raw sensor recording.
+ * (peak impact/rotation, post-impact motion and bounded health context), never a raw sensor recording.
  */
 object FallDetectorRuntime : SensorEventListener {
     enum class Confidence { LOW, MEDIUM, HIGH }
@@ -125,21 +125,23 @@ object FallDetectorRuntime : SensorEventListener {
         }
 
         if (confidence != null) {
-            val detail = JSONObject()
-                .put("confidence", confidence.name.lowercase())
-                .put("peakImpactG", String.format(java.util.Locale.US, "%.2f", peakImpactG).toDouble())
-                .put("peakGyroRadS", String.format(java.util.Locale.US, "%.2f", peakGyro).toDouble())
-                .put("postImpactMotion", String.format(java.util.Locale.US, "%.3f", postMotion).toDouble())
-                .put("stillAfterImpact", stillAfterImpact)
-                .put("rotationCorroborated", rotated)
-                .put("activityMode", activity.mode.name.lowercase())
-                .put("activityConfidence", activity.confidence)
-                .put("evidence", "privacy_minimized_aggregate_no_raw_sensor_stream")
-            val priority = when (confidence) {
-                Confidence.HIGH -> SafetyDispatcher.PRIORITY_CRITICAL
-                Confidence.MEDIUM -> SafetyDispatcher.PRIORITY_IMPORTANT
-                Confidence.LOW -> SafetyDispatcher.PRIORITY_NORMAL
+            val detail = emergencyEvidence(context, confidence, postMotion, stillAfterImpact, rotated, activity.mode.name.lowercase(), activity.confidence)
+
+            // SAFE-009: LOW is evidence for local tuning/diagnostics only. It must never enter the
+            // parent-facing safety outbox or create routine parent/child alarm spam.
+            if (confidence == Confidence.LOW) {
+                DiagnosticStore.log(
+                    context,
+                    DiagnosticStore.Severity.INFO,
+                    "fall",
+                    "low_candidate_local_only",
+                    "impactG=$peakImpactG gyro=$peakGyro postMotion=$postMotion activity=${activity.mode.name}"
+                )
+                resetCandidate()
+                return
             }
+
+            val priority = if (confidence == Confidence.HIGH) SafetyDispatcher.PRIORITY_CRITICAL else SafetyDispatcher.PRIORITY_IMPORTANT
             val saved = SafetyDispatcher.enqueue(context, "fall_detected", detail, priority) != null
             if (saved && confidence == Confidence.HIGH) {
                 context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
@@ -147,10 +149,59 @@ object FallDetectorRuntime : SensorEventListener {
                     .putLong("fallHighUntilMs", System.currentTimeMillis() + HIGH_PROTECTION_MS)
                     .apply()
             }
-            DiagnosticStore.log(context, if (confidence == Confidence.HIGH) DiagnosticStore.Severity.ERROR else DiagnosticStore.Severity.WARN,
-                "fall", "fall_candidate_saved", "confidence=${confidence.name} impactG=$peakImpactG gyro=$peakGyro postMotion=$postMotion saved=$saved")
+            DiagnosticStore.log(
+                context,
+                if (confidence == Confidence.HIGH) DiagnosticStore.Severity.ERROR else DiagnosticStore.Severity.WARN,
+                "fall",
+                "fall_candidate_saved",
+                "confidence=${confidence.name} impactG=$peakImpactG gyro=$peakGyro postMotion=$postMotion saved=$saved"
+            )
         }
         resetCandidate()
+    }
+
+    /**
+     * Bounded, privacy-minimized emergency context assembled only from state Brick already keeps.
+     * No microphone/camera data and no raw accelerometer/gyro stream is retained.
+     */
+    private fun emergencyEvidence(
+        context: Context,
+        confidence: Confidence,
+        postMotion: Float,
+        stillAfterImpact: Boolean,
+        rotated: Boolean,
+        activityMode: String,
+        activityConfidence: Int
+    ): JSONObject {
+        val now = System.currentTimeMillis()
+        val position = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
+        val diag = context.getSharedPreferences("brick_diag_state", Context.MODE_PRIVATE)
+        val brick = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        val anchorWall = position.getLong("anchorWallMs", 0L)
+        val speed = position.getFloat("anchorSpeedMps", Float.NaN)
+        val accuracy = position.getFloat("anchorAccuracyM", Float.NaN)
+
+        return JSONObject()
+            .put("confidence", confidence.name.lowercase())
+            .put("peakImpactG", String.format(java.util.Locale.US, "%.2f", peakImpactG).toDouble())
+            .put("peakGyroRadS", String.format(java.util.Locale.US, "%.2f", peakGyro).toDouble())
+            .put("postImpactMotion", String.format(java.util.Locale.US, "%.3f", postMotion).toDouble())
+            .put("stillAfterImpact", stillAfterImpact)
+            .put("rotationCorroborated", rotated)
+            .put("activityMode", activityMode)
+            .put("activityConfidence", activityConfidence.coerceIn(0, 100))
+            .put("positionAgeMs", if (anchorWall > 0L && now >= anchorWall) now - anchorWall else JSONObject.NULL)
+            .put("positionAccuracyM", if (accuracy.isFinite() && accuracy >= 0f) accuracy.toDouble() else JSONObject.NULL)
+            .put("speedMps", if (speed.isFinite() && speed >= 0f) speed.toDouble() else JSONObject.NULL)
+            .put("network", diag.getString("network", "unknown") ?: "unknown")
+            .put("networkValidated", diag.getBoolean("networkValidated", false))
+            .put("powerSave", diag.getBoolean("powerSave", false))
+            .put("doze", diag.getBoolean("doze", false))
+            .put("backgroundRestricted", diag.getBoolean("backgroundRestricted", false))
+            .put("recoveryCount", diag.getInt("recoveryCount", brick.getInt("recoveryCount", 0)).coerceAtLeast(0))
+            .put("journalWriteHealthy", brick.getBoolean("journalWriteHealthy", true))
+            .put("safetyOutboxWriteHealthy", brick.getBoolean("safetyOutboxWriteHealthy", true))
+            .put("evidence", "privacy_minimized_aggregate_no_raw_sensor_stream")
     }
 
     private fun resetCandidate() {
