@@ -108,4 +108,17 @@ assert.equal(result.liveAdvanced, true);
 assert.deepEqual(live, { epoch: 8, sequence: 2, wallTimeMs: T + 10_000 });
 assert.equal(acceptedLive.length, 2);
 
-console.log('Phase 8 live event-time monotonicity OK: cross-epoch offline backlog cannot move latest backwards or hide a newer capture');
+// One offline upload may itself contain records spanning reboot epochs. The logical watermark uses
+// epoch/sequence, while the live candidate must be the point captured latest in real time—even when
+// that point is from the lower epoch. This directly proves the two ordering domains stay separate.
+result = await ingest.persistAccepted(env, 'child-time', [
+  packet(7, 103, T + 20_000),
+  packet(8, 3, T + 15_000)
+]);
+assert.deepEqual(db.watermark(), { epoch: 8, sequence: 3 });
+assert.equal(result.insertedCount, 2);
+assert.equal(result.liveAdvanced, true);
+assert.deepEqual(live, { epoch: 7, sequence: 103, wallTimeMs: T + 20_000 });
+assert.equal(acceptedLive.length, 3);
+
+console.log('Phase 8 live event-time monotonicity OK: cross-epoch offline backlog cannot move latest backwards or hide the newest captured point');
