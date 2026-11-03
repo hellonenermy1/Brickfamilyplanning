@@ -11,12 +11,47 @@ import android.provider.Settings
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.managed.BrickDeviceAdminReceiver
 import com.brick.safety.reliability.RecoveryScheduler
+import java.io.File
+import java.security.KeyStore
 
 /** Production V1 deprovisioner. All transitions are durable and monotonic. */
 object DeprovisionManager {
     private const val PREFS = "brick_deprovision_v1"
     private const val KEY_STAGE = "stage"
     private const val KEY_UPDATED_AT = "updatedAtMs"
+
+    private val brickDatabases = listOf(
+        "brick_journal.db",
+        "brick_safety_outbox.db",
+        "brick_crash_outbox.db",
+        "brick_evidence.db",
+        "brick_diagnostics.db"
+    )
+    private val brickPreferences = listOf(
+        "brick",
+        "brick_position",
+        "brick_parent_location",
+        "brick_managed_policy_p8",
+        "brick_diag_state",
+        "brick_diag_flags",
+        "brick_diagnostics",
+        "brick_policy_ledger_v1",
+        "brick_deep_off_v1",
+        "brick_live_track_v1",
+        "brick_wifi_schedule_v1",
+        "brick_canary_v1",
+        "brick_device_role_v1",
+        "brick_capability_profile_v1"
+    )
+    private val brickFiles = listOf(
+        "brick_phase3_state.bin",
+        "brick_atlas_v1.bin"
+    )
+    private val brickKeyAliases = listOf(
+        "brick-device-signing-v1",
+        "brick-journal-aes-v1",
+        "brick-witness-alias-hmac-v1"
+    )
 
     enum class Stage { NONE, AUTHORISE_FREEZE, QUIESCE, UNDO_DEVICE_MANAGEMENT, PURGE_BRICK, UNINSTALL }
     data class Result(val stage: Stage, val ok: Boolean, val detail: String)
@@ -48,7 +83,7 @@ object DeprovisionManager {
     fun undoDeviceManagement(context: Context): Result {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.QUIESCE.ordinal) return Result(stage(app), false, "quiesce required")
-        if (!reverseBrickPolicies(app)) return Result(stage(app), false, "policy reversal incomplete")
+        if (!reverseBrickPolicies(app)) return Result(stage(app), false, "policy reversal incomplete or provenance invalid")
         val released = BetaSafety.releaseDeviceOwner(app)
         if (!released.released) return Result(stage(app), false, released.error ?: "Device Owner/admin still active")
         val ok = persist(app, Stage.UNDO_DEVICE_MANAGEMENT)
@@ -59,15 +94,42 @@ object DeprovisionManager {
     fun purgeBrick(context: Context): Result {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.UNDO_DEVICE_MANAGEMENT.ordinal) return Result(stage(app), false, "management release required")
-        val databases = listOf("brick_journal.db", "brick_safety_outbox.db", "brick_crash_outbox.db", "brick_evidence.db", "brick_diagnostics.db")
-        databases.forEach { runCatching { app.deleteDatabase(it) } }
-        listOf(
-            "brick", "brick_position", "brick_parent_location", "brick_managed_policy_p8", "brick_diag_state", "brick_diag_flags",
-            "brick_policy_ledger_v1", "brick_deep_off_v1", "brick_live_track_v1", "brick_wifi_schedule_v1", "brick_canary_v1", "brick_device_role_v1"
-        ).forEach { name -> runCatching { app.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit() } }
-        runCatching { RecoveryScheduler.cancelAll(app) }
+
+        runCatching { RecoveryScheduler.cancelAll(app) }.getOrElse {
+            return Result(stage(app), false, "failed to cancel Brick scheduled work: ${it.javaClass.simpleName}")
+        }
+
+        for (name in brickDatabases) {
+            val path = app.getDatabasePath(name)
+            if (path.exists()) {
+                val deleted = runCatching { app.deleteDatabase(name) }.getOrDefault(false)
+                if (!deleted || path.exists()) return Result(stage(app), false, "database purge failed: $name")
+            }
+        }
+
+        for (name in brickPreferences) {
+            val prefs = app.getSharedPreferences(name, Context.MODE_PRIVATE)
+            val committed = runCatching { prefs.edit().clear().commit() }.getOrDefault(false)
+            if (!committed || prefs.all.isNotEmpty()) return Result(stage(app), false, "preference purge failed: $name")
+        }
+
+        for (name in brickFiles) {
+            val file = File(app.filesDir, name)
+            if (file.exists() && !runCatching { file.delete() }.getOrDefault(false)) {
+                return Result(stage(app), false, "file purge failed: $name")
+            }
+            if (file.exists()) return Result(stage(app), false, "file remains after purge: $name")
+        }
+
+        val keyStorePurged = runCatching {
+            val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            brickKeyAliases.forEach { alias -> if (ks.containsAlias(alias)) ks.deleteEntry(alias) }
+            brickKeyAliases.none { ks.containsAlias(it) }
+        }.getOrDefault(false)
+        if (!keyStorePurged) return Result(stage(app), false, "Brick Keystore purge failed")
+
         val ok = persist(app, Stage.PURGE_BRICK)
-        return Result(stage(app), ok, if (ok) "Brick local state purged" else "failed to persist purge stage")
+        return Result(stage(app), ok, if (ok) "Brick local state purged and verified" else "failed to persist purge stage")
     }
 
     @Synchronized
@@ -88,6 +150,7 @@ object DeprovisionManager {
         val admin = ComponentName(context, BrickDeviceAdminReceiver::class.java)
         val owner = runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
         if (!owner) return true
+        if (!PolicyLedger.integrityValid(context)) return false
 
         // Historical hard-lock repair. Current V1 one-shot controls never create these restrictions.
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
@@ -106,19 +169,23 @@ object DeprovisionManager {
                         val previous = entry.previousValue?.toBooleanStrictOrNull()
                         if (current != null && brick != null && previous != null && current == brick) {
                             runCatching { dpm.setAutoTimeEnabled(admin, previous) }.isSuccess
-                        } else true
+                        } else current != null && brick != null && previous != null
                     }
                 }
                 entry.policy.startsWith("permission:") -> {
                     val permission = entry.policy.removePrefix("permission:")
                     val brickState = entry.brickValue?.toIntOrNull()
                     val previousState = entry.previousValue?.toIntOrNull()
-                    if (brickState == null || previousState == null) true else {
+                    if (brickState == null || previousState == null) false else {
                         val current = runCatching { dpm.getPermissionGrantState(admin, context.packageName, permission) }.getOrNull()
-                        if (current == brickState) runCatching { dpm.setPermissionGrantState(admin, context.packageName, permission, previousState) }.getOrDefault(false) else true
+                        when {
+                            current == null -> false
+                            current == brickState -> runCatching { dpm.setPermissionGrantState(admin, context.packageName, permission, previousState) }.getOrDefault(false)
+                            else -> true // later user/system state wins; do not overwrite it
+                        }
                     }
                 }
-                else -> true
+                else -> false
             }
             if (!reversed) return false
             if (!PolicyLedger.markReverted(context, entry.id)) return false
