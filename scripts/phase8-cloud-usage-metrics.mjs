@@ -60,11 +60,10 @@ const database = Array.isArray(databases) ? databases.find(db => db?.name === d1
 if (!database?.uuid) throw new Error(`Production D1 database ${d1Name} was not found`);
 const dbInfo = await cf(`/accounts/${accountId}/d1/database/${database.uuid}`);
 
+// Queue/R2 helpers exist in the repository, but Phase 8 must measure deployment truth rather than
+// assuming every planned binding exists. Queue inventory is authoritative for what is deployed now.
 const queues = await cf(`/accounts/${accountId}/queues?per_page=100`);
 const queueByName = new Map((Array.isArray(queues) ? queues : []).map(q => [q.queue_name, q]));
-for (const name of queueNames) {
-  if (!queueByName.get(name)?.queue_id) throw new Error(`Queue ${name} was not found`);
-}
 
 const workerQuery = `
 query BrickWorker($accountTag: string!, $scriptName: string!, $start: Time!, $end: Time!) {
@@ -97,9 +96,6 @@ const d1Totals = d1Groups.reduce((acc, g) => {
   return acc;
 }, { readQueries: 0, writeQueries: 0, rowsRead: 0, rowsWritten: 0, queryBatchResponseBytes: 0, queryBatchTimeMs: 0, queryBatchTimeMsP90Max: 0 });
 
-// D1 publishes databaseSizeBytes through d1StorageAdaptiveGroups. Keep the REST file size too as an
-// independent point-in-time sanity check, but use the documented analytics dataset for the Phase 8
-// historical storage baseline.
 const d1StorageQuery = `
 query BrickD1Storage($accountTag: string!, $databaseId: string!, $start: Date!, $end: Date!) {
   viewer { accounts(filter: { accountTag: $accountTag }) {
@@ -132,19 +128,35 @@ for (const bucketName of r2Buckets) {
   }`;
   const data = await gql(r2Query, { accountTag: accountId, bucketName, start: startTime, end: endTime });
   const account = data?.viewer?.accounts?.[0] || {};
+  const operations = (account.r2OperationsAdaptiveGroups || []).map(g => ({
+    actionType: g?.dimensions?.actionType || null,
+    actionStatus: g?.dimensions?.actionStatus || null,
+    requests: Number(g?.sum?.requests || 0)
+  }));
+  const latestStorage = account.r2StorageAdaptiveGroups?.[0] || null;
   r2[bucketName] = {
-    operations: (account.r2OperationsAdaptiveGroups || []).map(g => ({
-      actionType: g?.dimensions?.actionType || null,
-      actionStatus: g?.dimensions?.actionStatus || null,
-      requests: Number(g?.sum?.requests || 0)
-    })),
-    latestStorage: account.r2StorageAdaptiveGroups?.[0] || null
+    // GraphQL cannot distinguish an existing idle bucket from an absent bucket when both return no
+    // samples, so keep the state honest instead of inventing a deployment claim.
+    deploymentState: (operations.length > 0 || latestStorage) ? 'OBSERVED_IN_ANALYTICS' : 'NOT_OBSERVED_IN_WINDOW',
+    operations,
+    latestStorage
   };
 }
 
 const queueMetrics = {};
 for (const name of queueNames) {
-  const queueId = queueByName.get(name).queue_id;
+  const queue = queueByName.get(name);
+  if (!queue?.queue_id) {
+    queueMetrics[name] = {
+      deployed: false,
+      queueId: null,
+      realtimeBacklog: null,
+      operations: []
+    };
+    continue;
+  }
+
+  const queueId = queue.queue_id;
   const realtime = await cf(`/accounts/${accountId}/queues/${queueId}/metrics`);
   const queueQuery = `
   query BrickQueue($accountTag: string!, $queueId: string!, $start: Time!, $end: Time!) {
@@ -160,13 +172,15 @@ for (const name of queueNames) {
   }`;
   const data = await gql(queueQuery, { accountTag: accountId, queueId, start: startTime, end: endTime });
   queueMetrics[name] = {
+    deployed: true,
+    queueId,
     realtimeBacklog: realtime,
     operations: data?.viewer?.accounts?.[0]?.queueMessageOperationsAdaptiveGroups || []
   };
 }
 
 const evidence = {
-  version: 2,
+  version: 3,
   sourceGitSha: process.env.GITHUB_SHA || null,
   measuredAt: new Date().toISOString(),
   windowDays: days,
@@ -174,6 +188,7 @@ const evidence = {
   windowEnd: endTime,
   worker: {
     name: workerName,
+    observedInWindow: worker !== null,
     requests: Number(worker?.sum?.requests || 0),
     errors: Number(worker?.sum?.errors || 0),
     subrequests: Number(worker?.sum?.subrequests || 0),
@@ -182,6 +197,7 @@ const evidence = {
   },
   d1: {
     name: d1Name,
+    deployed: true,
     id: database.uuid,
     restFileSizeBytes: Number(dbInfo?.file_size || 0),
     analyticsDatabaseSizeBytesMax: d1AnalyticsStorageMaxBytes,
@@ -190,13 +206,19 @@ const evidence = {
   },
   r2,
   queues: queueMetrics,
+  deploymentTruth: {
+    queuesDeployed: queueNames.filter(name => queueMetrics[name]?.deployed === true),
+    queuesNotDeployed: queueNames.filter(name => queueMetrics[name]?.deployed === false),
+    rule: 'Undeployed planned services are recorded as absent and are not assigned invented operation/storage budgets.'
+  },
   notes: [
     'GraphQL analytics can be adaptively sampled and are operational evidence, not a billing invoice.',
-    'D1 storage uses the documented d1StorageAdaptiveGroups databaseSizeBytes metric plus REST file size as a point-in-time cross-check.',
-    'Queue realtime backlog metrics are best-effort and may be approximate.',
+    'D1 storage uses d1StorageAdaptiveGroups databaseSizeBytes plus REST file size as a point-in-time cross-check.',
+    'Queue inventory comes from the live account; undeployed queues are recorded explicitly rather than treated as an error.',
+    'R2 no-sample windows are labeled NOT_OBSERVED_IN_WINDOW because analytics alone cannot distinguish absent from idle.',
     'This file contains no API token or authentication secret.'
   ]
 };
 
 await fs.writeFile(outPath, JSON.stringify(evidence, null, 2));
-console.log(`Phase 8 Cloudflare usage evidence written for ${days} day(s).`);
+console.log(`Phase 8 Cloudflare usage/deployment-truth evidence written for ${days} day(s).`);
