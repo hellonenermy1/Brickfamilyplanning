@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.os.Bundle
 import com.brick.safety.beta.BetaSafety
+import com.brick.safety.crypto.DeviceKeys
 import com.brick.safety.data.Journal
 import com.brick.safety.diagnostics.DiagnosticMonitor
 import com.brick.safety.diagnostics.DiagnosticStore
@@ -28,6 +29,7 @@ class BrickApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DiagnosticStore.init(this)
+        DeviceKeys.initialize(this)
 
         if (DeepOffManager.isActive(this)) {
             DeepOffManager.quiesce(this)
