@@ -47,6 +47,7 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     private val autoRefresh = object : Runnable {
         override fun run() {
+            if (DeprovisionManager.isPostPurge(this@DiagnosticsActivity)) return
             refreshState()
             main.postDelayed(this, 5_000L)
         }
@@ -54,6 +55,10 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (DeprovisionManager.isPostPurge(this)) {
+            setContentView(buildPostPurgeUi())
+            return
+        }
         DiagnosticStore.init(this)
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "maintenance", "console_opened")
         setContentView(buildUi())
@@ -63,7 +68,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         main.removeCallbacks(autoRefresh)
-        main.post(autoRefresh)
+        if (!DeprovisionManager.isPostPurge(this)) main.post(autoRefresh)
     }
 
     override fun onPause() {
@@ -77,13 +82,67 @@ class DiagnosticsActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun buildPostPurgeUi(): View {
+        val density = resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(24), dp(20), dp(28))
+        }
+        root.addView(TextView(this).apply {
+            text = "Brick removal"
+            textSize = 23f
+            setTypeface(typeface, Typeface.BOLD)
+        })
+        root.addView(TextView(this).apply {
+            text = "Brick local state has been purged. Only the uninstall handoff remains. No tracking, diagnostics, recovery, evidence, keys, or other Brick runtime state will be recreated."
+            textSize = 14f
+            setPadding(0, dp(10), 0, dp(18))
+        })
+        root.addView(TextView(this).apply {
+            text = "Stage: ${DeprovisionManager.stage(this@DiagnosticsActivity)}"
+            typeface = Typeface.MONOSPACE
+            textSize = 13f
+        })
+        root.addView(Button(this).apply {
+            text = "Uninstall Brick"
+            isAllCaps = false
+            setOnClickListener {
+                val result = DeprovisionManager.uninstall(applicationContext)
+                toast(result.detail)
+                if (!result.ok) {
+                    text = "Retry uninstall"
+                }
+            }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(18)
+        })
+        return root
+    }
+
+    private fun enterPostPurgeUi() {
+        main.removeCallbacks(autoRefresh)
+        latestPrivacyReport = ""
+        setContentView(buildPostPurgeUi())
+    }
+
     private fun buildUi(): View {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
-        fun params(top: Int = 8) = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(top) }
-        fun button(label: String, action: () -> Unit) = Button(this).apply { text = label; isAllCaps = false; setOnClickListener { action() } }
+        fun params(top: Int = 8) = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(top) }
+        fun button(label: String, action: () -> Unit) = Button(this).apply {
+            text = label
+            isAllCaps = false
+            setOnClickListener { action() }
+        }
 
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(18), dp(18), dp(28)) }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(28))
+        }
         root.addView(TextView(this).apply {
             text = "Brick Maintenance & Recovery"
             textSize = 23f
@@ -95,17 +154,40 @@ class DiagnosticsActivity : AppCompatActivity() {
             setPadding(0, dp(4), 0, dp(12))
         })
 
-        stateView = TextView(this).apply { textSize = 13f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true) }
+        stateView = TextView(this).apply {
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+        }
         root.addView(stateView)
 
         root.addView(section("ONE-SHOT MAINTENANCE", dp(18)))
-        val locationRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        locationRow.addView(button("Location ON") { locationOneShot(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        locationRow.addView(button("Location OFF") { locationOneShot(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        val locationRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        locationRow.addView(
+            button("Location ON") { locationOneShot(true) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        locationRow.addView(
+            button("Location OFF") { locationOneShot(false) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) }
+        )
         root.addView(locationRow, params(4))
-        val wifiRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        wifiRow.addView(button("Wi-Fi ON") { wifiOneShot(true) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        wifiRow.addView(button("Wi-Fi OFF") { wifiOneShot(false) }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+
+        val wifiRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        wifiRow.addView(
+            button("Wi-Fi ON") { wifiOneShot(true) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        wifiRow.addView(
+            button("Wi-Fi OFF") { wifiOneShot(false) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) }
+        )
         root.addView(wifiRow, params(6))
         root.addView(TextView(this).apply {
             text = "Mobile data / SIM actuators: UNSUPPORTED — field verification required on each target OPPO before enablement."
@@ -135,13 +217,23 @@ class DiagnosticsActivity : AppCompatActivity() {
         })
 
         root.addView(section("SYSTEM STATE TIMELINE", dp(18)))
-        timelineView = TextView(this).apply { textSize = 11f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true) }
+        timelineView = TextView(this).apply {
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+        }
         root.addView(timelineView)
 
         root.addView(section("PRIVACY-REDUCED DIAGNOSTICS", dp(18)))
         val exportRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        exportRow.addView(button("Copy report") { copyReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        exportRow.addView(button("Share report") { shareReport() }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) })
+        exportRow.addView(
+            button("Copy report") { copyReport() },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        exportRow.addView(
+            button("Share report") { shareReport() },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) }
+        )
         root.addView(exportRow, params(4))
 
         return ScrollView(this).apply { addView(root) }
@@ -155,7 +247,10 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     private fun locationOneShot(enabled: Boolean) {
-        if (DeepOffManager.isActive(this)) { toast("Reactivate Brick before a maintenance radio action"); return }
+        if (DeepOffManager.isActive(this)) {
+            toast("Reactivate Brick before a maintenance radio action")
+            return
+        }
         worker.execute {
             val now = System.currentTimeMillis()
             val id = "maintloc-${UUID.randomUUID()}"
@@ -180,12 +275,23 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     private fun wifiOneShot(enabled: Boolean) {
-        if (DeepOffManager.isActive(this)) { toast("Reactivate Brick before a maintenance radio action"); return }
+        if (DeepOffManager.isActive(this)) {
+            toast("Reactivate Brick before a maintenance radio action")
+            return
+        }
         worker.execute {
             val result = WifiOneShotControl.apply(applicationContext, enabled)
-            DiagnosticStore.log(applicationContext, if (result.success) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.WARN,
-                "maintenance", "wifi_one_shot", "target=$enabled actual=${result.actualEnabled} result=${result.detail}")
-            runOnUiThread { toast("Wi-Fi ${if (enabled) "ON" else "OFF"}: ${if (result.success) "confirmed" else result.detail}"); refreshState() }
+            DiagnosticStore.log(
+                applicationContext,
+                if (result.success) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.WARN,
+                "maintenance",
+                "wifi_one_shot",
+                "target=$enabled actual=${result.actualEnabled} result=${result.detail}"
+            )
+            runOnUiThread {
+                toast("Wi-Fi ${if (enabled) "ON" else "OFF"}: ${if (result.success) "confirmed" else result.detail}")
+                refreshState()
+            }
         }
     }
 
@@ -193,14 +299,25 @@ class DiagnosticsActivity : AppCompatActivity() {
         worker.execute {
             val active = DeepOffManager.isActive(applicationContext)
             val ok = if (active) DeepOffManager.reactivate(applicationContext) else DeepOffManager.enter(applicationContext)
-            DiagnosticStore.log(applicationContext, if (ok) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.ERROR,
-                "deep_off", if (active) "reactivation_requested" else "deep_off_entered", "ok=$ok")
-            runOnUiThread { toast(if (ok) { if (active) "Brick reactivated" else "Deep Off active" } else "Deep Off action failed"); refreshState() }
+            DiagnosticStore.log(
+                applicationContext,
+                if (ok) DiagnosticStore.Severity.INFO else DiagnosticStore.Severity.ERROR,
+                "deep_off",
+                if (active) "reactivation_requested" else "deep_off_entered",
+                "ok=$ok"
+            )
+            runOnUiThread {
+                toast(if (ok) { if (active) "Brick reactivated" else "Deep Off active" } else "Deep Off action failed")
+                refreshState()
+            }
         }
     }
 
     private fun askParentPortal() {
-        val input = EditText(this).apply { hint = "https://your-brick-domain"; setText(DeviceRoleStore.parentPortal(this@DiagnosticsActivity) ?: "") }
+        val input = EditText(this).apply {
+            hint = "https://your-brick-domain"
+            setText(DeviceRoleStore.parentPortal(this@DiagnosticsActivity) ?: "")
+        }
         AlertDialog.Builder(this)
             .setTitle("Provision parent/guardian role")
             .setMessage("This phone will stop child tracking and open the authenticated parent portal instead.")
@@ -246,15 +363,24 @@ class DiagnosticsActivity : AppCompatActivity() {
                         DeprovisionManager.Stage.AUTHORISE_FREEZE -> DeprovisionManager.quiesce(applicationContext)
                         DeprovisionManager.Stage.QUIESCE -> DeprovisionManager.undoDeviceManagement(applicationContext)
                         DeprovisionManager.Stage.UNDO_DEVICE_MANAGEMENT -> DeprovisionManager.purgeBrick(applicationContext)
-                        DeprovisionManager.Stage.PURGE_BRICK, DeprovisionManager.Stage.UNINSTALL -> DeprovisionManager.uninstall(applicationContext)
+                        DeprovisionManager.Stage.PURGE_BRICK,
+                        DeprovisionManager.Stage.UNINSTALL -> DeprovisionManager.uninstall(applicationContext)
                     }
-                    runOnUiThread { toast("${result.stage}: ${result.detail}"); refreshState() }
+                    runOnUiThread {
+                        toast("${result.stage}: ${result.detail}")
+                        if (DeprovisionManager.isPostPurge(applicationContext)) enterPostPurgeUi()
+                        else refreshState()
+                    }
                 }
             }.show()
     }
 
     private fun refreshState() {
         if (worker.isShutdown) return
+        if (DeprovisionManager.isPostPurge(this)) {
+            enterPostPurgeUi()
+            return
+        }
         worker.execute {
             val role = DeviceRoleStore.role(applicationContext)
             val deep = DeepOffManager.snapshot(applicationContext)
@@ -276,10 +402,12 @@ class DiagnosticsActivity : AppCompatActivity() {
             }
             val timeline = buildString {
                 if (events.isEmpty()) append("No maintenance/system events recorded yet.")
-                events.forEach { e -> appendLine("${e.wallMs} ${e.severity} ${e.component}/${e.event} ${e.detail.take(160)}") }
+                events.forEach { e ->
+                    appendLine("${e.wallMs} ${e.severity} ${e.component}/${e.event} ${e.detail.take(160)}")
+                }
             }
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (isFinishing || isDestroyed || DeprovisionManager.isPostPurge(applicationContext)) return@runOnUiThread
                 stateView.text = state
                 timelineView.text = timeline
                 deepOffButton.text = if (deep.active) "Reactivate Brick" else "Enter Deep Off"
@@ -289,6 +417,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     private fun copyReport() {
+        if (DeprovisionManager.isPostPurge(this)) return
         val report = latestPrivacyReport.ifBlank { DiagnosticStore.fullReport(this) }
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("Brick privacy-reduced diagnostic report", report))
@@ -296,6 +425,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     private fun shareReport() {
+        if (DeprovisionManager.isPostPurge(this)) return
         val report = latestPrivacyReport.ifBlank { DiagnosticStore.fullReport(this) }
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
