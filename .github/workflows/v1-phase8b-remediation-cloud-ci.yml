@@ -54,6 +54,9 @@ jobs:
           check "Wi-Fi schedule parent control" src/worker-v9.ts 'parentSetWifiSchedules'
           check "fall event ingest" src/worker-p8b.ts 'maybeHandleFallEvent'
           check "screen-time ingest" src/worker-p8b.ts 'ingestScreenTime'
+          check "fallback PIN child claim" src/worker-p8b.ts '/api/pair/pin/claim'
+          check "fallback PIN parent confirmation" src/worker-p8b.ts 'parentConfirmPin'
+          check "Explain This Location" src/parent-p8b.ts 'Explain This Location'
           check "backend OneMap email secret binding" src/onemap-client.ts 'ONEMAP_EMAIL'
           check "backend OneMap password secret binding" src/onemap-client.ts 'ONEMAP_PASSWORD'
           if grep -R -n -F 'ONEMAP_EMAIL' web public || grep -R -n -F 'ONEMAP_PASSWORD' web public; then
@@ -74,7 +77,7 @@ jobs:
             sqlite3 /tmp/brick-p8b.db < "$f"
           done
           sqlite3 /tmp/brick-p8b.db '.schema' > /tmp/schema.txt
-          for table in device_live_track_control device_wifi_schedules device_wifi_schedule_result device_capability_profile screen_time_daily commute_summaries provider_cache provider_rate_window; do
+          for table in device_live_track_control device_wifi_schedules device_wifi_schedule_result device_capability_profile screen_time_daily commute_summaries provider_cache provider_rate_window pairing_pin_sessions; do
             grep -E "CREATE TABLE( IF NOT EXISTS)? ${table}" /tmp/schema.txt >/dev/null
           done
 
@@ -94,6 +97,12 @@ jobs:
 
       - name: Regression — one-shot Location control
         run: node scripts/test-phase8-location-control-contract.mjs
+
+      - name: Regression — fallback PIN pairing
+        run: node scripts/test-p8b-pin-pairing-contract.mjs
+
+      - name: Regression — parent P8B truth overlay
+        run: node scripts/test-p8b-parent-overlay-contract.mjs
 
       - name: Regression — parent origin protection
         shell: bash
