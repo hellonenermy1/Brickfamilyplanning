@@ -78,6 +78,13 @@ jobs:
           wifi=app/src/main/java/com/brick/safety/maintenance/WifiScheduleManager.kt
           policy=app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt
           deprov=app/src/main/java/com/brick/safety/maintenance/DeprovisionManager.kt
+          deepoff=app/src/main/java/com/brick/safety/maintenance/DeepOffManager.kt
+          recovery=app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt
+          service_control=app/src/main/java/com/brick/safety/reliability/ServiceControl.kt
+          boot=app/src/main/java/com/brick/safety/reliability/BootReceiver.kt
+          activity_state=app/src/main/java/com/brick/safety/activity/ActivityState.kt
+          companion=app/src/main/java/com/brick/safety/atlas/CompanionPresence.kt
+          beta_worker=app/src/main/java/com/brick/safety/beta/BetaExpiryWorker.kt
           app=app/src/main/java/com/brick/safety/BrickApplication.kt
 
           ! grep -F 'android:testOnly="true"' "$manifest"
@@ -112,6 +119,25 @@ jobs:
           grep -F 'PolicyLedger.integrityValid(context)' "$deprov" >/dev/null
           grep -F 'isPostPurge(this)' "$app" >/dev/null
 
+          # P8C-005: known Brick persistence must be represented in the verified purge inventory.
+          for required in \
+            '"brick_activity"' \
+            '"brick_companion_presence"' \
+            '"brick_beta_safety"' \
+            '"brick_learned_places_v1.bin"' \
+            '"brick_atlas_hmac_v1"'; do
+            grep -F "$required" "$deprov" >/dev/null
+          done
+
+          # P8C-008: post-purge is a process-wide invariant, not only an Application/UI guard.
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$deepoff" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$recovery" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$service_control" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$boot" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$activity_state" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(app)' "$companion" >/dev/null
+          grep -F 'DeprovisionManager.isPostPurge(applicationContext)' "$beta_worker" >/dev/null
+
           ! grep -R -n -F 'addUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)' app/src/main/java
           ! grep -R -n -F 'parentDesiredLocationState' app/src/main/java
           ! grep -R -n -E 'Runtime\.getRuntime\(\)\.exec|ProcessBuilder\(' app/src/main
@@ -121,15 +147,26 @@ jobs:
           ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
           ! grep -R -n -E 'TODO\("|NotImplementedError|UnsupportedOperationException\("TODO|return[[:space:]]+null[[:space:]]*//[[:space:]]*(TODO|FIXME)' app/src/main/java
 
-      - name: Manifest exported-surface contract
+      - name: Manifest and exported-surface contract
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
+          MERGED="$(find app/build/intermediates -path '*release*' -path '*merged_manifest*' -name AndroidManifest.xml -print | head -n 1)"
+          if [ -z "$MERGED" ]; then
+            MERGED="$(find app/build/intermediates -path '*release*' -name AndroidManifest.xml -print | grep -E 'merged|processRelease' | head -n 1)"
+          fi
+          test -n "$MERGED" && test -f "$MERGED"
+          echo "Auditing merged release manifest: $MERGED"
+          python3 - "$MERGED" <<'PY'
+          import sys, xml.etree.ElementTree as ET
           ns='{http://schemas.android.com/apk/res/android}'
-          root=ET.parse('app/src/main/AndroidManifest.xml').getroot()
+          path=sys.argv[1]
+          root=ET.parse(path).getroot()
           app=root.find('application')
+          assert app is not None
+          assert app.get(ns+'allowBackup') == 'false', app.attrib
+          assert app.get(ns+'usesCleartextTraffic') == 'false', app.attrib
+
           exported=[]
           launchers=[]
           for tag in ('activity','service','receiver','provider'):
@@ -142,9 +179,18 @@ jobs:
                       cats={x.get(ns+'name') for x in f.findall('category')}
                       if 'android.intent.action.MAIN' in actions and 'android.intent.category.LAUNCHER' in cats:
                           launchers.append(name)
-          assert launchers == ['.ui.MainActivity'], f'unexpected launchers: {launchers}'
-          assert not any(t=='activity' and n=='.diagnostics.DiagnosticsActivity' for t,n,p in exported), exported
-          print('launcher/exported surface OK:', exported)
+
+          expected={
+              ('activity','com.brick.safety.ui.MainActivity',None),
+              ('service','com.brick.safety.atlas.BrickCompanionLegacyService','android.permission.BIND_COMPANION_DEVICE_SERVICE'),
+              ('service','com.brick.safety.atlas.BrickCompanionAssociationService','android.permission.BIND_COMPANION_DEVICE_SERVICE'),
+              ('receiver','com.brick.safety.managed.BrickDeviceAdminReceiver','android.permission.BIND_DEVICE_ADMIN'),
+              ('provider','rikka.shizuku.ShizukuProvider','android.permission.INTERACT_ACROSS_USERS_FULL'),
+          }
+          actual=set(exported)
+          assert actual == expected, f'exported surface mismatch: actual={sorted(actual)} expected={sorted(expected)}'
+          assert launchers == ['com.brick.safety.ui.MainActivity'], f'unexpected launchers: {launchers}'
+          print('merged release manifest/exported surface OK:', sorted(actual))
           PY
 
       - name: Upload Gradle diagnostic log
