@@ -68,17 +68,20 @@ class Phase8ManagedPolicyInstrumentedTest : BrickInstrumentationTestCase() {
 
         ManagedPolicy.apply(context)
         assertEquals(1, bridge.locationCalls)
-        assertEquals("cmd-location-p8-0001", ManagedPolicy.lastConsumedLocationCommandId(context))
+        val firstHistory = ManagedPolicy.lastLocationCommand(context)
+        assertEquals("cmd-location-p8-0001", firstHistory.commandId)
+        assertTrue(firstHistory.status == LocationCommandStatus.COMPLETED || firstHistory.status == LocationCommandStatus.FAILED)
         val prefs = context.getSharedPreferences("brick_managed_policy_p8", Context.MODE_PRIVATE)
         val firstAttempt = prefs.getLong("last_location_command_attempt_at", 0L)
         assertTrue(firstAttempt > 0L)
 
-        // The 15-second supervisor may call ManagedPolicy.apply repeatedly; the consumed command must
-        // never invoke Device Owner/Shizuku again.
+        // The 15-second supervisor may call ManagedPolicy.apply repeatedly; a terminal one-shot command
+        // remains history and must never invoke Device Owner/Shizuku again.
         ManagedPolicy.apply(context)
         ManagedPolicy.apply(context)
         assertEquals(1, bridge.locationCalls)
         assertEquals(firstAttempt, prefs.getLong("last_location_command_attempt_at", 0L))
+        assertEquals("cmd-location-p8-0001", ManagedPolicy.lastLocationCommand(context).commandId)
 
         val now2 = System.currentTimeMillis() + 2_000L
         assertTrue(
@@ -94,27 +97,33 @@ class Phase8ManagedPolicyInstrumentedTest : BrickInstrumentationTestCase() {
         )
         ManagedPolicy.apply(context)
         assertEquals(2, bridge.locationCalls)
-        assertEquals("cmd-location-p8-0002", ManagedPolicy.lastConsumedLocationCommandId(context))
+        val secondHistory = ManagedPolicy.lastLocationCommand(context)
+        assertEquals("cmd-location-p8-0002", secondHistory.commandId)
+        assertTrue(secondHistory.status == LocationCommandStatus.COMPLETED || secondHistory.status == LocationCommandStatus.FAILED)
     }
 
     fun testPhase7InheritedCommandIsMarkedConsumedWithoutReplayingOnUpgrade() {
         val bridge = CountingBridge()
         PrivilegedBridgeRuntime.install(bridge)
         val now = System.currentTimeMillis()
+
+        // Reproduce the pre-one-shot Phase 7 on-disk shape: command metadata exists but there is no
+        // terminal/pending status. The Phase 8 migration must classify it as historical completion,
+        // not replay an old parent intent after upgrade.
         assertTrue(
-            ParentLocationStateStore.applyVerified(
-                context = context,
-                desired = DesiredLocationState.OFF,
-                commandId = "cmd-location-p7-old01",
-                nonce = "33333333-3333-4333-8333-333333333333",
-                issuedAtMs = now - 1_000L,
-                expiresAtMs = now + 300_000L,
-                nowMs = now
-            )
+            context.getSharedPreferences("brick_parent_location", Context.MODE_PRIVATE).edit()
+                .putString("desired", DesiredLocationState.OFF.name)
+                .putString("commandId", "cmd-location-p7-old01")
+                .putString("nonce", "33333333-3333-4333-8333-333333333333")
+                .putLong("issuedAtMs", now - 1_000L)
+                .commit()
         )
 
         ManagedPolicy.apply(context)
         assertEquals(0, bridge.locationCalls)
-        assertEquals("cmd-location-p7-old01", ManagedPolicy.lastConsumedLocationCommandId(context))
+        val history = ManagedPolicy.lastLocationCommand(context)
+        assertEquals("cmd-location-p7-old01", history.commandId)
+        assertEquals(LocationCommandStatus.COMPLETED, history.status)
+        assertTrue(history.completedAtMs > 0L)
     }
 }
