@@ -9,32 +9,40 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.brick.safety.beta.BetaSafety
+import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeviceRoleStore
+import com.brick.safety.maintenance.WifiScheduleManager
 import java.util.concurrent.TimeUnit
 
 object RecoveryScheduler {
     private const val PERIODIC_WORK = "brick-periodic-recovery"
     private const val SOON_WORK = "brick-soon-recovery"
     private const val EVIDENCE_SOON_WORK = "brick-evidence-soon-recovery"
+    private const val DAILY_CANARY_WORK = "brick-daily-canary"
 
     fun ensureScheduled(context: Context) {
         val app = context.applicationContext
-        if (!BetaSafety.isOperational(app)) {
+        if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) {
             cancelAll(app)
             return
         }
-        val request = PeriodicWorkRequestBuilder<RecoveryWorker>(15, TimeUnit.MINUTES)
+        val wm = WorkManager.getInstance(app)
+        val recovery = PeriodicWorkRequestBuilder<RecoveryWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
             .build()
-        WorkManager.getInstance(app).enqueueUniquePeriodicWork(
-            PERIODIC_WORK,
-            ExistingPeriodicWorkPolicy.KEEP,
-            request
-        )
+        wm.enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, recovery)
+
+        val canary = PeriodicWorkRequestBuilder<CanaryWorker>(24, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
+            .build()
+        wm.enqueueUniquePeriodicWork(DAILY_CANARY_WORK, ExistingPeriodicWorkPolicy.KEEP, canary)
+
+        WifiScheduleManager.reschedule(app)
     }
 
     fun scheduleSoon(context: Context, delaySeconds: Long = 15) {
         val app = context.applicationContext
-        if (!BetaSafety.isOperational(app)) return
+        if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
         val request = OneTimeWorkRequestBuilder<RecoveryWorker>()
             .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS)
             .build()
@@ -48,28 +56,25 @@ object RecoveryScheduler {
 
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
         val app = context.applicationContext
-        if (!BetaSafety.isOperational(app)) return
-        WorkManager.getInstance(app).enqueueUniqueWork(
-            EVIDENCE_SOON_WORK,
-            ExistingWorkPolicy.KEEP,
-            evidenceRequest(delaySeconds)
-        )
+        if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
+        WorkManager.getInstance(app).enqueueUniqueWork(EVIDENCE_SOON_WORK, ExistingWorkPolicy.KEEP, evidenceRequest(delaySeconds))
     }
 
     fun scheduleEvidenceFollowUp(context: Context, delaySeconds: Long) {
         val app = context.applicationContext
-        if (!BetaSafety.isOperational(app)) return
-        WorkManager.getInstance(app).enqueueUniqueWork(
-            EVIDENCE_SOON_WORK,
-            ExistingWorkPolicy.APPEND_OR_REPLACE,
-            evidenceRequest(delaySeconds)
-        )
+        if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
+        WorkManager.getInstance(app).enqueueUniqueWork(EVIDENCE_SOON_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, evidenceRequest(delaySeconds))
     }
 
     fun cancelAll(context: Context) {
-        val workManager = WorkManager.getInstance(context.applicationContext)
+        val app = context.applicationContext
+        val workManager = WorkManager.getInstance(app)
         workManager.cancelUniqueWork(PERIODIC_WORK)
         workManager.cancelUniqueWork(SOON_WORK)
         workManager.cancelUniqueWork(EVIDENCE_SOON_WORK)
+        workManager.cancelUniqueWork(DAILY_CANARY_WORK)
+        CanaryWorker::class // keep worker class reachable through R8 even if scheduled work is cancelled
+        runCatching { CanaryRetestWorker::class }
+        runCatching { WifiScheduleManager.cancelAll(app) }
     }
 }
