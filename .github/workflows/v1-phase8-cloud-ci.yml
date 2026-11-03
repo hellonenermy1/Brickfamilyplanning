@@ -156,6 +156,14 @@ jobs:
       - name: Phase 8 SOS direct durability and backlog-bypass contract
         run: node scripts/test-phase8-sos-priority-contract.mjs
 
+      - name: Phase 8 mixed SOS and failed-history backlog torture
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/queue-v6.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-queue-p8-sos.mjs
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8-sos.mjs
+          node scripts/test-phase8-sos-mixed-backlog.mjs /tmp/brick-queue-p8-sos.mjs /tmp/brick-history-p8-sos.mjs
+
       - name: Phase 8 location-control authorization and replay contract
         run: node scripts/test-phase8-location-control-contract.mjs
 
