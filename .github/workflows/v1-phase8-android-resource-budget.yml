@@ -127,6 +127,7 @@ jobs:
           hz="$("$ADB" shell getconf CLK_TCK 2>/dev/null | tr -d '\r' || true)"
           [[ "$hz" =~ ^[0-9]+$ ]] || hz=100
           start_ticks="$("$ADB" shell cat /proc/$baseline_pid/stat | awk '{print $14+$15}' | tr -d '\r')"
+          [[ "$start_ticks" =~ ^[0-9]+$ ]]
           start_sec="$(date +%s)"
 
           printf 'sample,rss_kb,cpu_percent,storage_kb\n' > resource-evidence/samples.csv
@@ -138,15 +139,21 @@ jobs:
             test "$pid" = "$baseline_pid"
 
             mem="$("$ADB" shell dumpsys meminfo com.brick.safety | tr -d '\r')"
-            rss="$(printf '%s\n' "$mem" | awk '/TOTAL RSS:/{print $3; exit}')"
-            if [ -z "$rss" ]; then rss="$(printf '%s\n' "$mem" | awk '/TOTAL PSS:/{print $3; exit}')"; fi
+            # Android's summary line is: TOTAL PSS: <n> TOTAL RSS: <n>. Select the value after RSS:
+            # rather than a fixed field, which previously read PSS and was format-fragile.
+            rss="$(printf '%s\n' "$mem" | awk '/TOTAL RSS:/{for (i=1; i<=NF; i++) if ($i=="RSS:") {print $(i+1); exit}}')"
+            if ! [[ "$rss" =~ ^[0-9]+$ ]]; then
+              rss="$(printf '%s\n' "$mem" | awk '/TOTAL PSS:/{print $3; exit}')"
+            fi
             [[ "$rss" =~ ^[0-9]+$ ]]
 
             cpu="$("$ADB" shell top -b -n 1 -p "$pid" 2>/dev/null | tr -d '\r' | awk -v p="$pid" '$1==p {gsub(/%/,"",$9); print $9; exit}')"
             if ! [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then cpu=0; fi
             cpu_milli="$(awk -v c="$cpu" 'BEGIN { printf "%d", c*1000 }')"
 
-            storage="$("$ADB" shell run-as com.brick.safety sh -c 'du -sk . 2>/dev/null | cut -f1' | tr -d '\r')"
+            # Parse du on the runner side. Android toybox may separate size/path with spaces rather
+            # than a tab, so `cut -f1` can return "1234 ." and falsely fail the numeric guard.
+            storage="$("$ADB" shell run-as com.brick.safety du -sk . 2>/dev/null | tr -d '\r' | awk 'NR==1 {print $1}')"
             [[ "$storage" =~ ^[0-9]+$ ]]
             printf '%s,%s,%s,%s\n' "$i" "$rss" "$cpu" "$storage" >> resource-evidence/samples.csv
             [ "$rss" -gt "$max_rss" ] && max_rss="$rss"
@@ -156,6 +163,7 @@ jobs:
           done
 
           end_ticks="$("$ADB" shell cat /proc/$baseline_pid/stat | awk '{print $14+$15}' | tr -d '\r')"
+          [[ "$end_ticks" =~ ^[0-9]+$ ]]
           end_sec="$(date +%s)"
           elapsed=$((end_sec - start_sec))
           test "$elapsed" -ge 175
@@ -177,7 +185,7 @@ jobs:
           python3 - <<PY
           import json
           evidence = {
-            'version': 3,
+            'version': 4,
             'gitSha': '${GITHUB_SHA}',
             'platform': 'Android 15 API 35 x86_64 emulator',
             'physicalDevice': False,
