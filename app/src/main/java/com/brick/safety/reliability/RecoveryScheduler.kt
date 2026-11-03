@@ -20,6 +20,7 @@ object RecoveryScheduler {
     private const val EVIDENCE_SOON_WORK = "brick-evidence-soon-recovery"
     private const val DAILY_CANARY_WORK = "brick-daily-canary"
     private const val DAILY_CANARY_RETEST_WORK = "brick-daily-canary-retest"
+    private const val SCREEN_TIME_WORK = "brick-screen-time-summary"
 
     fun ensureScheduled(context: Context) {
         val app = context.applicationContext
@@ -37,6 +38,12 @@ object RecoveryScheduler {
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
             .build()
         wm.enqueueUniquePeriodicWork(DAILY_CANARY_WORK, ExistingPeriodicWorkPolicy.KEEP, canary)
+
+        val screenTime = PeriodicWorkRequestBuilder<ScreenTimeWorker>(6, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        wm.enqueueUniquePeriodicWork(SCREEN_TIME_WORK, ExistingPeriodicWorkPolicy.KEEP, screenTime)
+
         WifiScheduleManager.reschedule(app)
     }
 
@@ -72,6 +79,7 @@ object RecoveryScheduler {
         workManager.cancelUniqueWork(EVIDENCE_SOON_WORK)
         workManager.cancelUniqueWork(DAILY_CANARY_WORK)
         workManager.cancelUniqueWork(DAILY_CANARY_RETEST_WORK)
+        workManager.cancelUniqueWork(SCREEN_TIME_WORK)
         runCatching { WifiScheduleManager.cancelAll(app) }
     }
 }
