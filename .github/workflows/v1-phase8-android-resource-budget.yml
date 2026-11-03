@@ -169,7 +169,14 @@ jobs:
           test "$elapsed" -ge 175
           avg_cpu_milli="$(awk -v s="$start_ticks" -v e="$end_ticks" -v hz="$hz" -v sec="$elapsed" 'BEGIN { if (sec <= 0 || hz <= 0) exit 1; printf "%d", ((e-s)/hz/sec*100)*1000 }')"
 
-          streak="$("$ADB" shell run-as com.brick.safety sh -c \"grep -o 'name=\\\"coreUploadFailureStreak\\\" value=\\\"[0-9]*\\\"' shared_prefs/brick.xml 2>/dev/null | sed -E 's/.*value=\\\"([0-9]+)\\\".*/\\1/'\" | tr -d '\r' | tail -n 1)"
+          # Read the preference XML as plain text and parse on the runner. Keeping grep/sed out of
+          # the remote sh -c avoids Android toybox quoting differences turning valid measurements
+          # into a CI failure after the full three-minute run.
+          prefs="$("$ADB" shell run-as com.brick.safety cat shared_prefs/brick.xml 2>/dev/null | tr -d '\r' || true)"
+          streak="$(printf '%s\n' "$prefs" \
+            | grep -o 'name="coreUploadFailureStreak" value="[0-9]*"' \
+            | grep -o '[0-9]*' \
+            | tail -n 1 || true)"
           if ! [[ "$streak" =~ ^[0-9]+$ ]]; then streak=0; fi
           alarm_lines="$("$ADB" shell dumpsys alarm | grep -c 'com.brick.safety' || true)"
 
