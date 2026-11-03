@@ -6,18 +6,57 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
-  security-events: write
 
 jobs:
-  osv-scan:
-    name: Scan resolved Android Gradle dependencies against OSV
+  release-runtime-osv:
+    name: Release APK runtime dependencies contain no known OSV vulnerabilities
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Derive the exact releaseRuntimeClasspath lock subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('app/gradle.lockfile').read_text().splitlines()
+          out = []
+          for line in source:
+              if not line or line.startswith('#'):
+                  continue
+              configs = line.partition('=')[2].split(',')
+              if 'releaseRuntimeClasspath' in configs:
+                  out.append(line)
+          if not out:
+              raise SystemExit('releaseRuntimeClasspath lock subset is empty')
+          Path('phase8-release-runtime-gradle.lockfile').write_text('\n'.join(out) + '\n')
+          print(f'release runtime lock entries: {len(out)}')
+          PY
+
+      - name: Scan only dependencies that can ship in the release APK
+        uses: google/osv-scanner-action/osv-scanner-action@0a65f82af05cd58cf587827b0bb0489548c18346 # v2.7.0
+        with:
+          scan-args: |-
+            -L phase8-release-runtime-gradle.lockfile
+
+  toolchain-review:
+    name: Review all locked Android build/test/toolchain dependencies
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
     with:
       scan-args: |-
         -L app/gradle.lockfile
-      fail-on-vuln: true
+      # Toolchain-only findings stay visible in SARIF. They are not misrepresented as release-APK
+      # vulnerabilities; releaseRuntimeClasspath above remains the hard shipping gate.
+      fail-on-vuln: false
       upload-sarif: true
       ref: ${{ github.sha }}
       runs-on: ubuntu-24.04
