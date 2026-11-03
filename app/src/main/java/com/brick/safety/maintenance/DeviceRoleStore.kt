@@ -1,6 +1,7 @@
 package com.brick.safety.maintenance
 
 import android.content.Context
+import com.brick.safety.crypto.DeviceKeys
 import java.net.URL
 
 /** One APK, explicit runtime role. Parent/guardian mode never runs child tracking. */
@@ -18,7 +19,11 @@ object DeviceRoleStore {
         val stored = prefs.getString(KEY_ROLE, null)
         if (stored != null) return runCatching { Role.valueOf(stored) }.getOrDefault(Role.UNPROVISIONED)
         // Safe migration for already-paired installs.
-        return if (app.getSharedPreferences("brick", Context.MODE_PRIVATE).contains("deviceId")) Role.CHILD else Role.UNPROVISIONED
+        return if (app.getSharedPreferences("brick", Context.MODE_PRIVATE).contains("deviceId")) {
+            Role.CHILD
+        } else {
+            Role.UNPROVISIONED
+        }
     }
 
     fun parentPortal(context: Context): String? =
@@ -29,10 +34,17 @@ object DeviceRoleStore {
     /** Called only from the local Maintenance & Recovery Console. */
     fun provisionParentGuardian(context: Context, portalBase: String): Boolean {
         val normalized = secureBase(portalBase) ?: return false
-        // Parent role must not retain a child identity on the same installation.
         val app = context.applicationContext
-        app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
-            .remove("deviceId").remove("apiBase").commit()
+        DeepOffManager.quiesce(app)
+        // Moving away from the child identity is an authorised local reprovision boundary. Clear the
+        // non-secret key binding/fault before removing the device ID so a later child re-enrollment
+        // can deliberately bind whichever Keystore key is actually present at that time.
+        if (!DeviceKeys.clearIdentityBinding(app)) return false
+        val cleared = app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .remove("deviceId")
+            .remove("apiBase")
+            .commit()
+        if (!cleared) return false
         return setRole(app, Role.PARENT_GUARDIAN, normalized)
     }
 
@@ -40,21 +52,34 @@ object DeviceRoleStore {
     fun resetForReprovision(context: Context): Boolean {
         val app = context.applicationContext
         DeepOffManager.quiesce(app)
-        app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
-            .remove("deviceId").remove("apiBase").commit()
+        if (!DeviceKeys.clearIdentityBinding(app)) return false
+        val cleared = app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .remove("deviceId")
+            .remove("apiBase")
+            .commit()
+        if (!cleared) return false
         return setRole(app, Role.UNPROVISIONED, null)
     }
 
     private fun setRole(context: Context, role: Role, portalBase: String?): Boolean =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_ROLE, role.name)
-            .apply { if (portalBase == null) remove(KEY_PARENT_PORTAL) else putString(KEY_PARENT_PORTAL, portalBase) }
+            .apply {
+                if (portalBase == null) remove(KEY_PARENT_PORTAL)
+                else putString(KEY_PARENT_PORTAL, portalBase)
+            }
             .putLong(KEY_CHANGED_AT, System.currentTimeMillis())
             .commit()
 
     private fun secureBase(value: String): String? = try {
         val u = URL(value.trim().trimEnd('/'))
-        if (!u.protocol.equals("https", true) || u.host.isBlank() || u.userInfo != null || u.query != null || u.ref != null || (u.path.isNotEmpty() && u.path != "/")) null
-        else "https://${u.authority}"
-    } catch (_: Throwable) { null }
+        if (!u.protocol.equals("https", true) || u.host.isBlank() || u.userInfo != null ||
+            u.query != null || u.ref != null || (u.path.isNotEmpty() && u.path != "/")) {
+            null
+        } else {
+            "https://${u.authority}"
+        }
+    } catch (_: Throwable) {
+        null
+    }
 }
