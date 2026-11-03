@@ -16,7 +16,12 @@ class Journal(
     context: Context,
     private val writeFaultInjector: ((operation: String) -> Unit)? = null
 ) : SQLiteOpenHelper(context, "brick_journal.db", null, 1) {
-    companion object { private const val FAILURE_HOLD_MS = 120_000L }
+    companion object {
+        private const val FAILURE_HOLD_MS = 120_000L
+        // Database-level read failure means Brick cannot establish whether location work is pending.
+        // Treat that as backlog-present so lower-priority scheduling cannot mistake corruption for empty.
+        const val UNKNOWN_PENDING_COUNT = Int.MAX_VALUE
+    }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -77,12 +82,18 @@ class Journal(
     }
 
     fun maxSequence(epoch: Int): Long {
-        readableDatabase.rawQuery(
-            "SELECT COALESCE(MAX(seq),0) FROM packets WHERE epoch=?",
-            arrayOf(epoch.toString())
-        ).use { c ->
-            c.moveToFirst()
-            return c.getLong(0)
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT COALESCE(MAX(seq),0) FROM packets WHERE epoch=?",
+                arrayOf(epoch.toString())
+            ).use { c ->
+                check(c.moveToFirst()) { "journal max sequence query returned no row" }
+                c.getLong(0)
+            }
+        } catch (t: Throwable) {
+            noteJournalHealthy(false)
+            // Returning 0 would permit logical sequence reuse after corruption. Fail closed instead.
+            throw IllegalStateException("Brick journal sequence state is unavailable", t)
         }
     }
 
@@ -90,52 +101,67 @@ class Journal(
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
 
     fun latestPending(): Pending? {
-        readableDatabase.rawQuery(
-            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id DESC LIMIT 32",
-            emptyArray()
-        ).use { c ->
-            while (c.moveToNext()) {
-                val rowId = c.getLong(0)
-                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
-                    quarantine(rowId)
-                    continue
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id DESC LIMIT 32",
+                emptyArray()
+            ).use { c ->
+                while (c.moveToNext()) {
+                    val rowId = c.getLong(0)
+                    val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                        quarantine(rowId)
+                        continue
+                    }
+                    return Pending(rowId, c.getInt(1), c.getLong(2), payload)
                 }
-                return Pending(rowId, c.getInt(1), c.getLong(2), payload)
             }
+            null
+        } catch (_: Throwable) {
+            noteJournalHealthy(false)
+            null
         }
-        return null
     }
 
     fun nextPending(limit: Int = 100): List<Pending> {
         val safeLimit = limit.coerceIn(1, 1_000)
         val out = mutableListOf<Pending>()
-        readableDatabase.rawQuery(
-            "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?",
-            arrayOf((safeLimit + 32).toString())
-        ).use { c ->
-            while (c.moveToNext() && out.size < safeLimit) {
-                val rowId = c.getLong(0)
-                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
-                    quarantine(rowId)
-                    continue
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT id,epoch,seq,payload FROM packets WHERE acked=0 ORDER BY id LIMIT ?",
+                arrayOf((safeLimit + 32).toString())
+            ).use { c ->
+                while (c.moveToNext() && out.size < safeLimit) {
+                    val rowId = c.getLong(0)
+                    val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                        quarantine(rowId)
+                        continue
+                    }
+                    out += Pending(rowId, c.getInt(1), c.getLong(2), payload)
                 }
-                out += Pending(rowId, c.getInt(1), c.getLong(2), payload)
             }
+            out
+        } catch (_: Throwable) {
+            noteJournalHealthy(false)
+            emptyList()
         }
-        return out
     }
 
     fun stats(): Stats {
-        readableDatabase.rawQuery(
-            "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END), MIN(CASE WHEN acked=0 THEN created_ms END), SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM packets",
-            emptyArray()
-        ).use { c ->
-            c.moveToFirst()
-            return Stats(
-                if (c.isNull(0)) 0 else c.getInt(0),
-                if (c.isNull(1)) null else c.getLong(1),
-                if (c.isNull(2)) 0 else c.getInt(2)
-            )
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END), MIN(CASE WHEN acked=0 THEN created_ms END), SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM packets",
+                emptyArray()
+            ).use { c ->
+                check(c.moveToFirst()) { "journal stats query returned no row" }
+                Stats(
+                    if (c.isNull(0)) 0 else c.getInt(0),
+                    if (c.isNull(1)) null else c.getLong(1),
+                    if (c.isNull(2)) 0 else c.getInt(2)
+                )
+            }
+        } catch (_: Throwable) {
+            noteJournalHealthy(false)
+            Stats(UNKNOWN_PENDING_COUNT, null, 0)
         }
     }
 
