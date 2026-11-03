@@ -8,3 +8,12 @@ setup-state.json
 public/
 .brick-map-cache/
 wrangler.jsonc
+
+# Private/signing key material must never enter Git.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.jks.b64
