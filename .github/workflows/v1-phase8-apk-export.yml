@@ -36,9 +36,13 @@ jobs:
           set -euo pipefail
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          APKANALYZER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name apkanalyzer 2>/dev/null | sort | tail -n 1)"
+          test -n "$SDKMANAGER_PATH" && test -x "$SDKMANAGER_PATH"
+          test -n "$APKANALYZER_PATH" && test -x "$APKANALYZER_PATH"
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "APKANALYZER=$APKANALYZER_PATH" >> "$GITHUB_ENV"
           echo "BRICK_KEYSTORE_PATH=$RUNNER_TEMP/brick-phase8-stable.jks" >> "$GITHUB_ENV"
 
       - name: Require persistent signing secrets and pinned certificate
@@ -75,13 +79,25 @@ jobs:
       - name: Build stable-signed release beta
         run: gradle --no-daemon :app:assembleRelease --stacktrace
 
-      - name: Verify pinned certificate and create immutable evidence
+      - name: Verify release APK package, merged manifest and pinned certificate
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p p8-beta
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK" && test -s "$APK"
+
+          # Verify the artifact that will actually be installed, not only the source manifest.
+          test "$("$APKANALYZER" manifest application-id "$APK" | tr -d '\r')" = 'com.brick.safety'
+          test "$("$APKANALYZER" manifest version-code "$APK" | tr -d '\r')" = '9'
+          test "$("$APKANALYZER" manifest version-name "$APK" | tr -d '\r')" = '0.8.0-phase8-beta1-test'
+          test "$("$APKANALYZER" manifest debuggable "$APK" | tr -d '\r')" = 'false'
+          "$APKANALYZER" manifest print "$APK" | tee p8-beta/merged-manifest.xml >/dev/null
+          grep -F 'android:testOnly="true"' p8-beta/merged-manifest.xml >/dev/null
+          grep -F 'android:allowBackup="false"' p8-beta/merged-manifest.xml >/dev/null
+          grep -F 'android:usesCleartextTraffic="false"' p8-beta/merged-manifest.xml >/dev/null
+          ! grep -F 'Phase8RetirementHarnessReceiver' p8-beta/merged-manifest.xml
+
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" | tee p8-beta/apk-signing-cert.txt
           ! grep -qi 'Android Debug' p8-beta/apk-signing-cert.txt
           actual="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' p8-beta/apk-signing-cert.txt | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
