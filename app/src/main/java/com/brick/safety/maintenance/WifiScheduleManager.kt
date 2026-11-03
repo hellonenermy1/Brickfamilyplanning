@@ -3,10 +3,12 @@ package com.brick.safety.maintenance
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.os.SystemClock
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.brick.safety.reliability.SafetyDispatcher
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.DayOfWeek
@@ -25,6 +27,8 @@ object WifiScheduleManager {
     private const val MAX_SCHEDULES = 8
     private const val DEFAULT_GRACE_MINUTES = 15
     private const val WORK_PREFIX = "brick-wifi-schedule-"
+    private const val VERIFY_TIMEOUT_MS = 10_000L
+    private const val VERIFY_POLL_MS = 250L
 
     data class Schedule(
         val id: String,
@@ -160,7 +164,14 @@ object WifiScheduleManager {
         }
 
         val requested = runCatching { wifi.setWifiEnabled(schedule.targetEnabled) }.getOrDefault(false)
-        val actual = runCatching { wifi.isWifiEnabled }.getOrNull()
+        if (!requested) {
+            val result = Result(schedule.id, schedule.targetEnabled, currentWifi(app), "failed", now, "platform_rejected_request")
+            saveResult(app, result)
+            reschedule(app)
+            return result
+        }
+
+        val actual = awaitWifiState(wifi, schedule.targetEnabled)
         val matched = actual == schedule.targetEnabled
         val result = Result(
             schedule.id,
@@ -168,11 +179,27 @@ object WifiScheduleManager {
             actual,
             if (matched) "completed" else "failed",
             now,
-            if (matched) "device_owner_one_shot" else if (!requested) "platform_rejected_request" else "actual_state_not_confirmed"
+            if (matched) "device_owner_one_shot_confirmed" else "actual_state_confirmation_timeout"
         )
         saveResult(app, result)
         reschedule(app)
         return result
+    }
+
+    @Suppress("DEPRECATION")
+    internal fun awaitWifiState(wifi: WifiManager, targetEnabled: Boolean, timeoutMs: Long = VERIFY_TIMEOUT_MS): Boolean? {
+        val started = SystemClock.elapsedRealtime()
+        var actual: Boolean? = runCatching { wifi.isWifiEnabled }.getOrNull()
+        while (actual != targetEnabled && SystemClock.elapsedRealtime() - started < timeoutMs.coerceAtLeast(0L)) {
+            try {
+                Thread.sleep(VERIFY_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                break
+            }
+            actual = runCatching { wifi.isWifiEnabled }.getOrNull()
+        }
+        return actual
     }
 
     private fun scheduleDeferredRetry(context: Context, schedule: Schedule, originalEpochMs: Long) {
@@ -185,7 +212,7 @@ object WifiScheduleManager {
 
     private fun criticalSafetyActive(context: Context): Boolean {
         val p = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
-        return p.getBoolean("sosActive", false) || p.getBoolean("fallHighActive", false)
+        return SafetyDispatcher.isSosActive(context) || p.getBoolean("fallHighActive", false)
     }
 
     @Suppress("DEPRECATION")
