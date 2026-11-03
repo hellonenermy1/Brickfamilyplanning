@@ -3,6 +3,7 @@ import { readBoundedBody } from "./bounded-body";
 const DEVICE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const COMMAND_ID_RE = /^[A-Za-z0-9._:-]{8,128}$/;
 const DELIVERY_TTL_MS = 5 * 60_000;
+const LOGICAL_COMMAND_TTL_MS = 10 * 60_000;
 const MAX_BODY_BYTES = 1024;
 
 type LocationControlRow = {
@@ -12,19 +13,18 @@ type LocationControlRow = {
   last_actual_enabled: number | null;
   last_actual_at: number | null;
   last_acked_command_id: string | null;
+  command_status: string;
+  completed_at: number | null;
+  result_actual_enabled: number | null;
+  result_success: number | null;
+  result_reason: string | null;
 };
 
-type JsonCloneRequest = {
-  clone(): { json<T>(): Promise<T> };
-};
-
+type JsonCloneRequest = { clone(): { json<T>(): Promise<T> } };
 export type LocationControlEnv = { DB: D1Database };
 
 function json(data: unknown, status = 200) {
-  return Response.json(data, {
-    status,
-    headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
-  });
+  return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 
 async function parseJson(req: Request): Promise<Record<string, unknown> | null> {
@@ -33,9 +33,7 @@ async function parseJson(req: Request): Promise<Record<string, unknown> | null> 
   try {
     const parsed = JSON.parse(new TextDecoder().decode(bounded.body));
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function parentSetLocationControl(req: Request, env: LocationControlEnv, deviceId: string): Promise<Response> {
@@ -44,7 +42,6 @@ export async function parentSetLocationControl(req: Request, env: LocationContro
   if (!body || typeof body.enabled !== "boolean" || Object.keys(body).some(k => k !== "enabled")) {
     return json({ error: "expected { enabled: boolean }" }, 400);
   }
-
   const device = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1 LIMIT 1")
     .bind(deviceId).first<{ revoked_at: number | null }>();
   if (!device) return json({ error: "device not found" }, 404);
@@ -53,85 +50,73 @@ export async function parentSetLocationControl(req: Request, env: LocationContro
   const now = Date.now();
   const commandId = crypto.randomUUID();
   await env.DB.prepare(
-    `INSERT INTO device_location_control(device_id,desired_enabled,command_id,issued_at,updated_at)
-     VALUES(?1,?2,?3,?4,?4)
+    `INSERT INTO device_location_control(device_id,desired_enabled,command_id,issued_at,updated_at,command_status)
+     VALUES(?1,?2,?3,?4,?4,'pending')
      ON CONFLICT(device_id) DO UPDATE SET
        desired_enabled=excluded.desired_enabled,
        command_id=excluded.command_id,
-       issued_at=CASE
-         WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1
-         ELSE excluded.issued_at
-       END,
-       updated_at=excluded.updated_at`
+       issued_at=CASE WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1 ELSE excluded.issued_at END,
+       updated_at=excluded.updated_at,
+       command_status='pending',completed_at=NULL,result_actual_enabled=NULL,result_success=NULL,result_reason=NULL,last_acked_command_id=NULL`
   ).bind(deviceId, body.enabled ? 1 : 0, commandId, now).run();
-
-  // Read back this command's stored sequence time. If another parent command already superseded it,
-  // the phone will receive only that newer row; this response remains an acknowledgement of this tap.
-  const stored = await env.DB.prepare(
-    "SELECT issued_at FROM device_location_control WHERE device_id=?1 AND command_id=?2 LIMIT 1"
-  ).bind(deviceId, commandId).first<{ issued_at: number }>();
-
-  return json({ ok: true, deviceId, desiredEnabled: body.enabled, commandId, issuedAtMs: stored?.issued_at ?? now });
+  const stored = await env.DB.prepare("SELECT issued_at FROM device_location_control WHERE device_id=?1 AND command_id=?2 LIMIT 1")
+    .bind(deviceId, commandId).first<{ issued_at: number }>();
+  return json({ ok: true, deviceId, commandId, targetEnabled: body.enabled, status: "pending", issuedAtMs: stored?.issued_at ?? now });
 }
 
 export async function parentGetLocationControl(env: LocationControlEnv, deviceId: string): Promise<Response> {
   if (!DEVICE_ID_RE.test(deviceId)) return json({ error: "invalid device id" }, 400);
   const row = await env.DB.prepare(
-    "SELECT desired_enabled,command_id,issued_at,last_actual_enabled,last_actual_at,last_acked_command_id FROM device_location_control WHERE device_id=?1 LIMIT 1"
+    "SELECT desired_enabled,command_id,issued_at,last_actual_enabled,last_actual_at,last_acked_command_id,command_status,completed_at,result_actual_enabled,result_success,result_reason FROM device_location_control WHERE device_id=?1 LIMIT 1"
   ).bind(deviceId).first<LocationControlRow>();
+  if (!row) return json({ deviceId, actualEnabled: null, actualObservedAtMs: null, lastCommand: null });
 
-  if (!row) {
-    return json({
-      deviceId,
-      desiredEnabled: true,
-      configured: false,
-      actualEnabled: null,
-      actualObservedAtMs: null,
-      matchesDesired: null,
-      lastAckedCommandId: null
-    });
+  const now = Date.now();
+  let status = row.command_status;
+  if (status === "pending" && now - row.issued_at > LOGICAL_COMMAND_TTL_MS) {
+    status = "expired";
+    await env.DB.prepare("UPDATE device_location_control SET command_status='expired',completed_at=?1,result_success=0,result_reason='expired_before_phone_confirmation' WHERE device_id=?2 AND command_id=?3 AND command_status='pending'")
+      .bind(now, deviceId, row.command_id).run();
   }
-  const desired = row.desired_enabled === 1;
-  const actual = row.last_actual_enabled === null ? null : row.last_actual_enabled === 1;
   return json({
     deviceId,
-    desiredEnabled: desired,
-    configured: true,
-    commandId: row.command_id,
-    issuedAtMs: row.issued_at,
-    actualEnabled: actual,
+    actualEnabled: row.last_actual_enabled === null ? null : row.last_actual_enabled === 1,
     actualObservedAtMs: row.last_actual_at,
-    matchesDesired: actual === null ? null : actual === desired,
-    lastAckedCommandId: row.last_acked_command_id
+    lastCommand: {
+      commandId: row.command_id,
+      targetEnabled: row.desired_enabled === 1,
+      issuedAtMs: row.issued_at,
+      status,
+      completedAtMs: row.completed_at,
+      actualAfter: row.result_actual_enabled === null ? null : row.result_actual_enabled === 1,
+      success: row.result_success === null ? null : row.result_success === 1,
+      reason: row.result_reason
+    }
   });
 }
 
-/** Add a short-lived, device-bound delivery envelope to an already-authenticated child health response. */
+/** Deliver only an uncompleted one-shot command. Completed/failed/expired commands are history. */
 export async function augmentHealthWithLocationControl(response: Response, env: LocationControlEnv, deviceId: string): Promise<Response> {
   if (!response.ok || !DEVICE_ID_RE.test(deviceId)) return response;
   const type = (response.headers.get("Content-Type") ?? "").toLowerCase();
   if (!type.includes("application/json")) return response;
-
   let body: Record<string, unknown>;
-  try { body = await response.json<Record<string, unknown>>(); }
-  catch { return response; }
+  try { body = await response.json<Record<string, unknown>>(); } catch { return response; }
 
   const row = await env.DB.prepare(
-    "SELECT desired_enabled,command_id,issued_at,last_actual_enabled,last_actual_at,last_acked_command_id FROM device_location_control WHERE device_id=?1 LIMIT 1"
+    "SELECT desired_enabled,command_id,issued_at,last_actual_enabled,last_actual_at,last_acked_command_id,command_status,completed_at,result_actual_enabled,result_success,result_reason FROM device_location_control WHERE device_id=?1 LIMIT 1"
   ).bind(deviceId).first<LocationControlRow>();
-
-  if (!row || !COMMAND_ID_RE.test(row.command_id)) {
-    return new Response(JSON.stringify(body), { status: response.status, headers: response.headers });
-  }
-
-  // Once the authenticated phone has ACKed the current logical command, the server must stop
-  // issuing fresh delivery nonces for it. Android also rejects duplicate command IDs/nonces, but
-  // Phase 8 requires replay resistance on both sides rather than depending on the child alone.
-  if (row.last_acked_command_id === row.command_id) {
+  if (!row || !COMMAND_ID_RE.test(row.command_id) || row.command_status !== "pending" || row.last_acked_command_id === row.command_id) {
     return new Response(JSON.stringify(body), { status: response.status, headers: response.headers });
   }
 
   const now = Date.now();
+  if (now - row.issued_at > LOGICAL_COMMAND_TTL_MS) {
+    await env.DB.prepare("UPDATE device_location_control SET command_status='expired',completed_at=?1,result_success=0,result_reason='expired_before_delivery' WHERE device_id=?2 AND command_id=?3 AND command_status='pending'")
+      .bind(now, deviceId, row.command_id).run();
+    return new Response(JSON.stringify(body), { status: response.status, headers: response.headers });
+  }
+
   const locationCommand = {
     protocol: 1,
     deviceId,
@@ -139,7 +124,7 @@ export async function augmentHealthWithLocationControl(response: Response, env: 
     nonce: crypto.randomUUID(),
     desiredEnabled: row.desired_enabled === 1,
     issuedAtMs: row.issued_at,
-    expiresAtMs: now + DELIVERY_TTL_MS
+    expiresAtMs: Math.min(row.issued_at + LOGICAL_COMMAND_TTL_MS, now + DELIVERY_TTL_MS)
   };
   const headers = new Headers(response.headers);
   headers.set("Content-Type", "application/json; charset=utf-8");
@@ -147,23 +132,30 @@ export async function augmentHealthWithLocationControl(response: Response, env: 
   return new Response(JSON.stringify({ ...body, locationCommand }), { status: response.status, headers });
 }
 
-/** Record the phone's actual Location state and acknowledgement after the signed health request was accepted. */
+/** Record actual current Location plus completion truth from the next authenticated child health. */
 export async function noteLocationControlHealth(req: JsonCloneRequest, env: LocationControlEnv, deviceId: string): Promise<void> {
   if (!DEVICE_ID_RE.test(deviceId)) return;
   let body: Record<string, unknown>;
-  try { body = await req.clone().json<Record<string, unknown>>(); }
-  catch { return; }
-
+  try { body = await req.clone().json<Record<string, unknown>>(); } catch { return; }
   const actual = body.locationEnabled;
   if (typeof actual !== "boolean") return;
-  const commandId = typeof body.locationControlCommandId === "string" && COMMAND_ID_RE.test(body.locationControlCommandId)
-    ? body.locationControlCommandId : null;
+  const commandId = typeof body.locationControlCommandId === "string" && COMMAND_ID_RE.test(body.locationControlCommandId) ? body.locationControlCommandId : null;
+  const commandStatus = typeof body.locationControlCommandStatus === "string" ? body.locationControlCommandStatus : null;
+  const actualAfter = typeof body.locationControlActualAfter === "boolean" ? body.locationControlActualAfter : null;
+  const completedAt = typeof body.locationControlCompletedAtMs === "number" && Number.isSafeInteger(body.locationControlCompletedAtMs) && body.locationControlCompletedAtMs > 0
+    ? body.locationControlCompletedAtMs : null;
+  const reason = typeof body.locationControlResultDetail === "string" ? body.locationControlResultDetail.slice(0, 120) : null;
   const now = Date.now();
 
+  await env.DB.prepare("UPDATE device_location_control SET last_actual_enabled=?1,last_actual_at=?2 WHERE device_id=?3")
+    .bind(actual ? 1 : 0, now, deviceId).run();
+
+  if (!commandId || (commandStatus !== "completed" && commandStatus !== "failed")) return;
   await env.DB.prepare(
-    `UPDATE device_location_control
-     SET last_actual_enabled=?1,last_actual_at=?2,
-         last_acked_command_id=CASE WHEN command_id=?3 THEN ?3 ELSE last_acked_command_id END
-     WHERE device_id=?4`
-  ).bind(actual ? 1 : 0, now, commandId, deviceId).run();
+    `UPDATE device_location_control SET
+       last_acked_command_id=?1,command_status=?2,completed_at=COALESCE(?3,?4),result_actual_enabled=?5,
+       result_success=?6,result_reason=?7,updated_at=?4
+     WHERE device_id=?8 AND command_id=?1`
+  ).bind(commandId, commandStatus, completedAt, now, actualAfter === null ? null : actualAfter ? 1 : 0,
+    commandStatus === "completed" ? 1 : 0, reason, deviceId).run();
 }
