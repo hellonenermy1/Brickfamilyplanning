@@ -9,6 +9,7 @@ import { cleanupPhase5RefinedHistory, listRefinedHistory, processRefinementsForD
 import { augmentPhase7ParentStateResponseV2 } from "./phase7-state-v2";
 import { augmentPhase8ParentTruth } from "./phase8-parent-truth";
 import { augmentPhase8HistoryProvenance } from "./phase8-history-provenance";
+import { historicalIdentityPairingDenied } from "./phase8-device-identity";
 import { parentV8Html } from "./parent-v8";
 export { BrickDevice };
 
@@ -120,6 +121,14 @@ async function augmentParentHistoryWithRefinedLayer(response: Response, env: Env
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
+
+    // Worker-v5b canonicalizes all new keys and schema 015 prevents canonical-key races. This outer
+    // guard additionally compares against historical rows by cryptographic identity, closing the
+    // upgrade edge where an older database stored the same DER SPKI using a different Base64 spelling.
+    if (req.method === "POST" && u.pathname === "/api/pair/complete") {
+      const denied = await historicalIdentityPairingDenied(req, env);
+      if (denied) return denied;
+    }
 
     // The normal Phase 6/7 production chain performs Cloudflare Access authorization and creates the
     // CSP nonce. Only after that succeeds do we swap in the Phase 8 production HTML, preserving the
