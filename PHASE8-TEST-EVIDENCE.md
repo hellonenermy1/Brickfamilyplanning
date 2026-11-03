@@ -10,6 +10,8 @@ This file records executed acceptance evidence. Source inspection alone is never
 
 The Android candidate includes the Phase 8 management-release convergence fix plus an Android-15-safe, debug-only Device Owner reboot acceptance harness. The debug receiver exists only in `app/src/debug`; it is not part of the release source set.
 
+Post-candidate commits only update evidence/acceptance tooling. In particular, the stable-signing export workflow now inspects the built release APK with `apkanalyzer` and requires the expected application ID/version, `debuggable=false`, `testOnly=true`, backup/cleartext protections, and absence of `Phase8RetirementHarnessReceiver` before the artifact can pass.
+
 ## Phase 8A — Android/device-side executed evidence
 
 | Acceptance item | Executed evidence | Status |
@@ -22,7 +24,7 @@ The Android candidate includes the Phase 8 management-release convergence fix pl
 | Phase 7 → 8 in-place upgrade continuity with same CI certificate | Run `41576522226`, job `125721183336` | PASS |
 | Android ↔ cloud wire/replay/production contract | Run `41576522118`, job `125721181849` | PASS |
 | Permanent-signing Phase 7 → 8 continuity | Run `41576522106`, job `125721181773` stopped at the required-secret gate because the persistent signing values are empty | BLOCKED — SIGNING SECRETS REQUIRED |
-| Stable-signed testOnly Device Owner APK export | Run `41576522092`, job `125721181699` stopped at the required-secret gate because the persistent signing values are empty | BLOCKED — SIGNING SECRETS REQUIRED |
+| Stable-signed testOnly Device Owner APK export | Run `41576522092`, job `125721181699` stopped at the required-secret gate because the persistent signing values are empty; artifact-level manifest checks are now present for the next run | BLOCKED — SIGNING SECRETS REQUIRED |
 
 ### Device Owner retirement proof
 
@@ -67,7 +69,7 @@ The retained cloud gate covers the Phase 8 identity/revocation, isolation, authe
 
 **All Phase 8 code/CI acceptance that does not require the private persistent Android signing identity is green.**
 
-Phase 8 is still **NOT FORMALLY COMPLETE** for one external prerequisite only: the permanent Android signing identity must be configured, then both signing-dependent jobs must pass on the frozen Android candidate (or a later candidate whose app-code diff is explicitly requalified).
+Phase 8 is still **NOT FORMALLY COMPLETE** for one external prerequisite only: the permanent Android signing identity must be configured, then both signing-dependent jobs must pass on the frozen Android application code (or a later candidate whose app-code diff is explicitly requalified).
 
 After those two jobs pass, record:
 
@@ -77,6 +79,7 @@ After those two jobs pass, record:
 - exact cloud source SHA;
 - successful persistent-signing upgrade run;
 - successful stable-signed APK export run;
+- built-release APK manifest verification;
 - final cross-branch acceptance state.
 
-Physical OPPO/ColorOS endurance, OEM process killing/background restrictions, GNSS/radio/sensor behavior, thermal/battery behavior and multi-day real-device qualification remain Phase 9, not Phase 8.
+Physical OPPO/ColorOS endurance, OEM killing, GNSS/radio/sensor, thermal/battery and multi-day real-device qualification remain Phase 9, not Phase 8.
