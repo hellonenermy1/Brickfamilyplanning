@@ -12,6 +12,7 @@ import com.brick.safety.fusion.Phase5CoarseNetworkRuntime
 import com.brick.safety.fusion.Phase5HypothesisRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.RecoveryScheduler
@@ -30,11 +31,12 @@ class BrickApplication : Application() {
             return
         }
         if (!BetaSafety.enforceStartup(this)) {
-            DiagnosticStore.log(
-                DiagnosticStore.Severity.WARN,
-                "beta",
-                "startup_blocked_retired_or_expired"
-            )
+            DiagnosticStore.log(DiagnosticStore.Severity.WARN, "beta", "startup_blocked_retired_or_expired")
+            return
+        }
+        if (DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
+            RecoveryScheduler.cancelAll(this)
+            DiagnosticStore.log(DiagnosticStore.Severity.INFO, "role", "child_runtime_not_started", "role=${DeviceRoleStore.role(this)}")
             return
         }
 
@@ -77,19 +79,16 @@ class BrickApplication : Application() {
         val prefs = getSharedPreferences("brick", Context.MODE_PRIVATE)
         val epoch = prefs.getInt("epoch", 1)
         val storedSequence = prefs.getLong("sequence", 0L)
-        runCatching {
-            Journal(this).use { journal -> max(storedSequence, journal.maxSequence(epoch)) }
-        }.onSuccess { recoveredSequence ->
-            if (recoveredSequence > storedSequence) {
-                prefs.edit().putLong("sequence", recoveredSequence).commit()
-                DiagnosticStore.log(DiagnosticStore.Severity.INFO, "journal", "sequence_watermark_recovered", "from=$storedSequence to=$recoveredSequence")
+        runCatching { Journal(this).use { journal -> max(storedSequence, journal.maxSequence(epoch)) } }
+            .onSuccess { recoveredSequence ->
+                if (recoveredSequence > storedSequence) {
+                    prefs.edit().putLong("sequence", recoveredSequence).commit()
+                    DiagnosticStore.log(DiagnosticStore.Severity.INFO, "journal", "sequence_watermark_recovered", "from=$storedSequence to=$recoveredSequence")
+                }
+            }.onFailure {
+                prefs.edit().putBoolean("journalWriteHealthy", false)
+                    .putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis()).commit()
+                DiagnosticStore.log(DiagnosticStore.Severity.ERROR, "journal", "sequence_recovery_failed", it.javaClass.simpleName, it)
             }
-        }.onFailure {
-            prefs.edit()
-                .putBoolean("journalWriteHealthy", false)
-                .putLong("lastJournalWriteFailureWallMs", System.currentTimeMillis())
-                .commit()
-            DiagnosticStore.log(DiagnosticStore.Severity.ERROR, "journal", "sequence_recovery_failed", it.javaClass.simpleName, it)
-        }
     }
 }
