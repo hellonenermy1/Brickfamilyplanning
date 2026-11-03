@@ -57,9 +57,12 @@ object DeprovisionManager {
     data class Result(val stage: Stage, val ok: Boolean, val detail: String)
 
     fun stage(context: Context): Stage {
-        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_STAGE, Stage.NONE.name)
+        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_STAGE, Stage.NONE.name)
         return runCatching { Stage.valueOf(raw ?: Stage.NONE.name) }.getOrDefault(Stage.NONE)
     }
+
+    fun isPostPurge(context: Context): Boolean = stage(context).ordinal >= Stage.PURGE_BRICK.ordinal
 
     @Synchronized
     fun authoriseFreeze(context: Context): Result {
@@ -93,7 +96,9 @@ object DeprovisionManager {
     @Synchronized
     fun purgeBrick(context: Context): Result {
         val app = context.applicationContext
-        if (stage(app).ordinal < Stage.UNDO_DEVICE_MANAGEMENT.ordinal) return Result(stage(app), false, "management release required")
+        if (stage(app).ordinal < Stage.UNDO_DEVICE_MANAGEMENT.ordinal) {
+            return Result(stage(app), false, "management release required")
+        }
 
         runCatching { RecoveryScheduler.cancelAll(app) }.getOrElse {
             return Result(stage(app), false, "failed to cancel Brick scheduled work: ${it.javaClass.simpleName}")
@@ -137,7 +142,8 @@ object DeprovisionManager {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.PURGE_BRICK.ordinal) return Result(stage(app), false, "purge required")
         if (!persist(app, Stage.UNINSTALL)) return Result(stage(app), false, "failed to persist uninstall stage")
-        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val intent = Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return runCatching {
             app.startActivity(intent)
             Result(Stage.UNINSTALL, true, "Android uninstall handoff opened")
@@ -159,32 +165,70 @@ object DeprovisionManager {
         for (entry in PolicyLedger.active(context)) {
             val reversed = when {
                 entry.policy == "restriction:${UserManager.DISALLOW_CONFIG_DATE_TIME}" -> {
-                    val current = runCatching { dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false) }.getOrNull()
-                    if (current == true && entry.brickValue == "true") runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }.isSuccess else true
+                    val current = runCatching {
+                        dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false)
+                    }.getOrNull()
+                    if (current == null) {
+                        false
+                    } else if (current && entry.brickValue == "true") {
+                        runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }.isSuccess
+                    } else {
+                        entry.brickValue == "true" && entry.previousValue == "false"
+                    }
                 }
+
                 entry.policy == "auto_time" -> {
-                    if (Build.VERSION.SDK_INT < 30) true else {
-                        val current = runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) != 0 }.getOrNull()
+                    if (Build.VERSION.SDK_INT < 30) {
+                        false
+                    } else {
+                        val current = runCatching {
+                            Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) != 0
+                        }.getOrNull()
                         val brick = entry.brickValue?.toBooleanStrictOrNull()
                         val previous = entry.previousValue?.toBooleanStrictOrNull()
                         if (current != null && brick != null && previous != null && current == brick) {
                             runCatching { dpm.setAutoTimeEnabled(admin, previous) }.isSuccess
-                        } else current != null && brick != null && previous != null
+                        } else {
+                            current != null && brick != null && previous != null
+                        }
                     }
                 }
+
+                entry.policy == "auto_time_required" -> {
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        false
+                    } else {
+                        val current = runCatching { dpm.getAutoTimeRequired() }.getOrNull()
+                        val brick = entry.brickValue?.toBooleanStrictOrNull()
+                        val previous = entry.previousValue?.toBooleanStrictOrNull()
+                        if (current != null && brick != null && previous != null && current == brick) {
+                            runCatching { dpm.setAutoTimeRequired(admin, previous) }.isSuccess
+                        } else {
+                            current != null && brick != null && previous != null
+                        }
+                    }
+                }
+
                 entry.policy.startsWith("permission:") -> {
                     val permission = entry.policy.removePrefix("permission:")
                     val brickState = entry.brickValue?.toIntOrNull()
                     val previousState = entry.previousValue?.toIntOrNull()
-                    if (brickState == null || previousState == null) false else {
-                        val current = runCatching { dpm.getPermissionGrantState(admin, context.packageName, permission) }.getOrNull()
+                    if (brickState == null || previousState == null) {
+                        false
+                    } else {
+                        val current = runCatching {
+                            dpm.getPermissionGrantState(admin, context.packageName, permission)
+                        }.getOrNull()
                         when {
                             current == null -> false
-                            current == brickState -> runCatching { dpm.setPermissionGrantState(admin, context.packageName, permission, previousState) }.getOrDefault(false)
+                            current == brickState -> runCatching {
+                                dpm.setPermissionGrantState(admin, context.packageName, permission, previousState)
+                            }.getOrDefault(false)
                             else -> true // later user/system state wins; do not overwrite it
                         }
                     }
                 }
+
                 else -> false
             }
             if (!reversed) return false
