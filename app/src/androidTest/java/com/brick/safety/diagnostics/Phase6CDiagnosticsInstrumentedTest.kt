@@ -50,6 +50,40 @@ class Phase6CDiagnosticsInstrumentedTest : BrickInstrumentationTestCase() {
         assertFalse(report.contains("103.819836"))
     }
 
+    fun testDiagnosticStorageBoundaryRedactsIdentifiersTokensKeysUrlsAndCoordinates() {
+        val deviceId = "11111111-1111-4111-8111-111111111111"
+        val jwt = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhdWRpdC10ZXN0LWRldmljZSJ9.signature_test_1234567890"
+        val signature = "MEUCIQDx2m6uZ9V1w9Jx8Vw3L4k8m8q8t2QqV7s0f2sK3gIgQ2w0r9k0M6z9s7x5n4p2q1r8v6t4y2u0i8o6p4n2m0A="
+        val key = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWm9uZVNlbnNpdGl2ZUtleU1hdGVyaWFsVGVzdA=="
+        val rawUrl = "https://brick.example/api/device/$deviceId/location?token=secret-query-value"
+        val exactLat = "1.352083"
+        val exactLon = "103.819836"
+
+        val detail = "device=$deviceId lat=$exactLat lon=$exactLon Authorization: Bearer $jwt X-Brick-Signature=$signature publicKey=$key url=$rawUrl"
+        val failure = IllegalStateException(
+            "transport failed pairingToken=another-secret at $rawUrl coordinates $exactLat,$exactLon device=$deviceId"
+        )
+        DiagnosticStore.log(
+            context,
+            DiagnosticStore.Severity.ERROR,
+            "test",
+            "sensitive_redaction_probe",
+            detail,
+            failure
+        )
+
+        val report = DiagnosticStore.fullReport(context)
+        assertTrue(report.contains("sensitive_redaction_probe"))
+        assertTrue(report.contains("<redacted>") || report.contains("<token>"))
+        assertTrue(report.contains("<url>"))
+        assertTrue(report.contains("<coord>") || report.contains("<coordinates>"))
+        assertTrue(report.contains("<id>"))
+
+        for (sensitive in listOf(deviceId, jwt, signature, key, rawUrl, exactLat, exactLon, "another-secret", "secret-query-value")) {
+            assertFalse("diagnostic report leaked: $sensitive", report.contains(sensitive))
+        }
+    }
+
     fun testManualMarkersAreBoundToActiveSession() {
         val session = DiagnosticStore.startSession(context)
         val marker = DiagnosticStore.addMarker(context)
