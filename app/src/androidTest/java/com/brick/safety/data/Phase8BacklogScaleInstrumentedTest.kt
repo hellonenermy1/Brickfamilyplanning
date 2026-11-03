@@ -102,7 +102,7 @@ class Phase8BacklogScaleInstrumentedTest : BrickInstrumentationTestCase() {
 
         // Once the 14-day-old row is exactly ACKed, the remaining oldest record is the 7-day row.
         Journal(context).use { journal ->
-            assertTrue(journal.ack(EPOCH, 1L))
+            assertTrue(journal.ackExact(EPOCH, 1L))
             val stats = journal.stats()
             assertEquals(99, stats.pendingCount)
             assertEquals(sevenDaysAgo, stats.oldestPendingMs)
