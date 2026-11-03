@@ -34,12 +34,9 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
                 assertTrue(journal.append(EPOCH, seq, "payload-$seq".toByteArray()))
             }
 
-            // Simulate a mixed server response containing one valid ACK and one stale/unknown ACK.
-            // The transaction must roll back rather than silently losing the valid row.
             assertFalse(journal.ackBatch(listOf(EPOCH to 1L, EPOCH to 999_999L)))
             assertEquals(listOf(1L, 2L, 3L), journal.nextPending(10).map { it.seq })
 
-            // Valid ACKs may arrive out of order. Only those exact logical records may disappear.
             assertTrue(journal.ackBatch(listOf(EPOCH to 3L, EPOCH to 1L)))
             assertEquals(listOf(2L), journal.nextPending(10).map { it.seq })
             assertEquals(1, journal.stats().pendingCount)
@@ -57,8 +54,6 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
             assertTrue(journal.append(EPOCH, 2L, "second".toByteArray()))
         }
 
-        // Fault injection: emulate a torn/corrupt encrypted row. It must never be ACKed as delivered,
-        // but it also must not poison the rest of a long offline queue.
         context.openOrCreateDatabase(CORE_DB, Context.MODE_PRIVATE, null).use { db ->
             val changed = db.update(
                 "packets",
@@ -90,7 +85,6 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
         val eventId = "11111111-1111-4111-8111-111111111111"
         SafetyOutbox(context).use { outbox ->
             assertTrue(outbox.append(eventId, "sos_started", "same-logical-event".toByteArray(), 100))
-            // A retry before/after a lost network ACK must not create another logical event locally.
             assertTrue(outbox.append(eventId, "sos_started", "same-logical-event".toByteArray(), 100))
             assertEquals(1, outbox.stats().pendingCount)
             assertEquals(eventId, outbox.pending(10).single().eventId)
@@ -100,7 +94,6 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
             assertEquals(1, reopened.stats().pendingCount)
             assertEquals(eventId, reopened.pending(10).single().eventId)
             assertTrue(reopened.ack(eventId))
-            // Duplicate/stale ACK is harmless and cannot delete any unrelated future record.
             assertFalse(reopened.ack(eventId))
             assertEquals(0, reopened.stats().pendingCount)
         }
@@ -112,8 +105,6 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
         val normalId = "44444444-4444-4444-8444-444444444444"
 
         SafetyOutbox(context).use { outbox ->
-            // Put the corrupt row first at the same critical priority so pending() encounters it before
-            // the SOS; the SOS must still be returned in this same drain rather than being blocked.
             assertTrue(outbox.append(corruptId, "critical_probe", "corrupt-me".toByteArray(), 100))
             assertTrue(outbox.append(sosId, "sos_started", "sos".toByteArray(), 100))
             assertTrue(outbox.append(normalId, "battery_low", "normal".toByteArray(), 1))
@@ -145,6 +136,72 @@ class Phase8DurabilityTortureInstrumentedTest : BrickInstrumentationTestCase() {
             assertEquals(1, stats.pendingCount)
             assertEquals(1, stats.quarantinedCount)
             assertEquals(normalId, reopened.pending(10).single().eventId)
+        }
+    }
+
+    fun testSosEventAndAuthoritativeStateSurviveReopenTogether() {
+        val startId = "55555555-5555-4555-8555-555555555555"
+        val endId = "66666666-6666-4666-8666-666666666666"
+        SafetyOutbox(context).use { outbox ->
+            assertTrue(outbox.appendSosTransition(startId, "sos_started", "start".toByteArray(), 200, true))
+            assertTrue(outbox.sosActive(false))
+            assertEquals(startId, outbox.pending(10).single().eventId)
+        }
+
+        SafetyOutbox(context).use { reopened ->
+            assertTrue(reopened.sosActive(false))
+            assertEquals(startId, reopened.pending(10).single().eventId)
+            assertTrue(reopened.appendSosTransition(endId, "sos_cancelled", "end".toByteArray(), 200, false))
+            assertFalse(reopened.sosActive(true))
+        }
+
+        SafetyOutbox(context).use { reopenedAgain ->
+            assertFalse(reopenedAgain.sosActive(true))
+            assertEquals(listOf(startId, endId), reopenedAgain.pending(10).map { it.eventId })
+        }
+    }
+
+    fun testSosTransitionFaultCannotCommitEventWithoutState() {
+        val eventId = "77777777-7777-4777-8777-777777777777"
+        SafetyOutbox(context) { operation ->
+            if (operation == "append_sos_transition") throw IllegalStateException("injected write failure")
+        }.use { outbox ->
+            assertFalse(outbox.appendSosTransition(eventId, "sos_started", "start".toByteArray(), 200, true))
+        }
+
+        SafetyOutbox(context).use { reopened ->
+            assertEquals(0, reopened.stats().pendingCount)
+            assertFalse(reopened.sosActive(false))
+        }
+    }
+
+    fun testHighFallEventAndProtectionDeadlineSurviveReopenTogether() {
+        val eventId = "88888888-8888-4888-8888-888888888888"
+        val deadline = System.currentTimeMillis() + 120_000L
+        SafetyOutbox(context).use { outbox ->
+            assertTrue(outbox.appendHighFall(eventId, "fall_detected", "high".toByteArray(), 100, deadline))
+            assertEquals(deadline, outbox.highFallUntilMs(0L))
+            assertEquals(eventId, outbox.pending(10).single().eventId)
+        }
+
+        SafetyOutbox(context).use { reopened ->
+            assertEquals(deadline, reopened.highFallUntilMs(0L))
+            assertEquals(eventId, reopened.pending(10).single().eventId)
+        }
+    }
+
+    fun testHighFallFaultCannotCommitEventWithoutProtectionState() {
+        val eventId = "99999999-9999-4999-8999-999999999999"
+        val deadline = System.currentTimeMillis() + 120_000L
+        SafetyOutbox(context) { operation ->
+            if (operation == "append_high_fall") throw IllegalStateException("injected write failure")
+        }.use { outbox ->
+            assertFalse(outbox.appendHighFall(eventId, "fall_detected", "high".toByteArray(), 100, deadline))
+        }
+
+        SafetyOutbox(context).use { reopened ->
+            assertEquals(0, reopened.stats().pendingCount)
+            assertEquals(0L, reopened.highFallUntilMs(0L))
         }
     }
 }
