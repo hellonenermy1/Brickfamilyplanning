@@ -40,9 +40,7 @@ let certFetches = 0;
 globalThis.fetch = async url => {
   assert.equal(String(url), `${team}/cdn-cgi/access/certs`);
   certFetches += 1;
-  const keys = certMode === 'rotating'
-    ? (certFetches >= 2 ? [primary.publicJwk, rotated.publicJwk] : [primary.publicJwk])
-    : [primary.publicJwk];
+  const keys = certMode === 'rotating' ? [primary.publicJwk, rotated.publicJwk] : [primary.publicJwk];
   return new Response(JSON.stringify({ keys }), { status: 200, headers: { 'content-type': 'application/json' } });
 };
 
@@ -65,12 +63,13 @@ assert.equal(await verifyAccessRequest(request(valid), { APP_ENV:'production' },
 assert.ok(await verifyAccessRequest(new Request('http://localhost/parent'), { APP_ENV:'development' }, nowMs), 'localhost may bypass only outside production');
 assert.equal(await verifyAccessRequest(new Request('http://localhost/parent'), { APP_ENV:'production' }, nowMs), null, 'production localhost must not bypass');
 
-// Cloudflare Access signing keys rotate. A previously unseen kid must trigger one forced JWKS refresh
-// and become valid only if the refreshed trusted key set actually contains that kid.
+// The primary key set is cached from the first successful verification. An unseen rotated kid must
+// therefore miss that cache, force exactly one trusted JWKS refresh, and pass only when the refreshed
+// key set actually contains the new kid.
 certMode = 'rotating';
 certFetches = 0;
 const rotatedJwt = await token({}, rotated);
 assert.ok(await verifyAccessRequest(request(rotatedJwt), env, nowMs), 'trusted rotated Access signing key must be accepted after JWKS refresh');
-assert.ok(certFetches >= 1, 'rotated key verification must consult trusted JWKS');
+assert.equal(certFetches, 1, 'rotated kid must trigger one forced JWKS refresh after cached-key miss');
 
 console.log('Phase 8 Cloudflare Access fail-closed, expiry, claim-boundary and signing-key-rotation tests passed.');
