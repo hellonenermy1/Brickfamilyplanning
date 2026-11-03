@@ -1,0 +1,182 @@
+name: Brick V1 Phase 8 — Persistent Signing Upgrade Continuity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistent-signing-upgrade:
+    name: Phase 7 -> 8 update with the permanent Brick signing identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      BRICK_KEYSTORE_PASSWORD: ${{ secrets.BRICK_ANDROID_KEYSTORE_PASSWORD }}
+      BRICK_KEY_ALIAS: ${{ secrets.BRICK_ANDROID_KEY_ALIAS }}
+      BRICK_KEY_PASSWORD: ${{ secrets.BRICK_ANDROID_KEY_PASSWORD }}
+      BRICK_EXPECTED_SIGNING_CERT_SHA256: ${{ secrets.BRICK_ANDROID_SIGNING_CERT_SHA256 }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Require and materialize the persistent signing identity
+        shell: bash
+        env:
+          BRICK_ANDROID_KEYSTORE_B64: ${{ secrets.BRICK_ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$BRICK_ANDROID_KEYSTORE_B64"
+          test -n "$BRICK_KEYSTORE_PASSWORD"
+          test -n "$BRICK_KEY_ALIAS"
+          test -n "$BRICK_KEY_PASSWORD"
+          test -n "$BRICK_EXPECTED_SIGNING_CERT_SHA256"
+          expected="$(printf '%s' "$BRICK_EXPECTED_SIGNING_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
+          echo "BRICK_EXPECTED_SIGNING_CERT_NORMALIZED=$expected" >> "$GITHUB_ENV"
+          echo "BRICK_KEYSTORE_PATH=$RUNNER_TEMP/brick-phase8-persistent.jks" >> "$GITHUB_ENV"
+          printf '%s' "$BRICK_ANDROID_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/brick-phase8-persistent.jks"
+          test -s "$RUNNER_TEMP/brick-phase8-persistent.jks"
+          chmod 600 "$RUNNER_TEMP/brick-phase8-persistent.jks"
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -x "$SDKMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "APKSIGNER=$SDK_ROOT/build-tools/35.0.0/apksigner" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/brick-p8-stable-upgrade-avd" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/brick-p8-stable-upgrade-avd" "$RUNNER_TEMP/p8-stable-upgrade"
+
+      - name: Install Android SDK
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'build-tools;35.0.0' 'emulator' 'system-images;android-35;google_apis;x86_64'
+
+      - name: Build current Phase 8 debug/test and stable release APKs
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/p8-stable-upgrade/p8-debug-unsigned-for-stable.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/p8-stable-upgrade/p8-test-unsigned-for-stable.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/p8-stable-upgrade/p8-release.apk"
+
+      - name: Build exact Phase 7 baseline debug and stable release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          P7="$RUNNER_TEMP/brick-phase7-stable-baseline"
+          git worktree add --detach "$P7" 8843bdae902050c8c1fd7e67ed7ac80662d0da93
+          gradle --no-daemon -p "$P7" :app:assembleDebug :app:assembleRelease --stacktrace
+          cp "$P7/app/build/outputs/apk/debug/app-debug.apk" "$RUNNER_TEMP/p8-stable-upgrade/p7-debug-unsigned-for-stable.apk"
+          cp "$P7/app/build/outputs/apk/release/app-release.apk" "$RUNNER_TEMP/p8-stable-upgrade/p7-release.apk"
+
+      - name: Re-sign debug continuity APKs with the permanent Brick key
+        shell: bash
+        run: |
+          set -euo pipefail
+          sign_one() {
+            src="$1"; dst="$2"
+            "$APKSIGNER" sign \
+              --ks "$BRICK_KEYSTORE_PATH" \
+              --ks-key-alias "$BRICK_KEY_ALIAS" \
+              --ks-pass env:BRICK_KEYSTORE_PASSWORD \
+              --key-pass env:BRICK_KEY_PASSWORD \
+              --out "$dst" "$src"
+            test -s "$dst"
+          }
+          sign_one "$RUNNER_TEMP/p8-stable-upgrade/p7-debug-unsigned-for-stable.apk" "$RUNNER_TEMP/p8-stable-upgrade/p7.apk"
+          sign_one "$RUNNER_TEMP/p8-stable-upgrade/p8-debug-unsigned-for-stable.apk" "$RUNNER_TEMP/p8-stable-upgrade/p8.apk"
+          sign_one "$RUNNER_TEMP/p8-stable-upgrade/p8-test-unsigned-for-stable.apk" "$RUNNER_TEMP/p8-stable-upgrade/p8-test.apk"
+
+      - name: Prove every APK uses exactly the pinned persistent certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for apk in p7.apk p8.apk p8-test.apk p7-release.apk p8-release.apk; do
+            report="$RUNNER_TEMP/p8-stable-upgrade/${apk}.cert.txt"
+            "$APKSIGNER" verify --print-certs "$RUNNER_TEMP/p8-stable-upgrade/$apk" | tee "$report"
+            ! grep -qi 'Android Debug' "$report"
+            actual="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$report" | head -n 1 | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+            [[ "$actual" =~ ^[0-9a-f]{64}$ ]]
+            test "$actual" = "$BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"
+          done
+          grep -F 'versionCode = 8' "$RUNNER_TEMP/brick-phase7-stable-baseline/app/build.gradle.kts" >/dev/null
+          grep -F 'versionCode = 9' app/build.gradle.kts >/dev/null
+
+      - name: Boot clean emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-stable-upgrade --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-stable-upgrade -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/p8-stable-upgrade/emulator.log" 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+      - name: Seed exact Phase 7 durable state under the permanent signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" install -t "$RUNNER_TEMP/p8-stable-upgrade/p7.apk"
+          "$ADB" install -t "$RUNNER_TEMP/p8-stable-upgrade/p8-test.apk"
+          "$ADB" shell dumpsys package com.brick.safety | grep -E 'versionCode=8([[:space:]]|$)'
+          "$ADB" shell am instrument -w \
+            -e p8UpgradeMode seed \
+            -e class com.brick.safety.upgrade.Phase8UpgradeContinuityInstrumentedTest#testSeedPhase7State \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/p8-stable-upgrade/seed.txt"
+          grep -F 'OK (1 test)' "$RUNNER_TEMP/p8-stable-upgrade/seed.txt" >/dev/null
+
+      - name: Upgrade in place to Phase 8 and verify durable continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" install -r -t "$RUNNER_TEMP/p8-stable-upgrade/p8.apk"
+          "$ADB" shell dumpsys package com.brick.safety | grep -E 'versionCode=9([[:space:]]|$)'
+          "$ADB" shell am instrument -w \
+            -e p8UpgradeMode verify \
+            -e class com.brick.safety.upgrade.Phase8UpgradeContinuityInstrumentedTest#testVerifyPhase8UpgradePreservedIdentityBacklogAndRetirement \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/p8-stable-upgrade/verify.txt"
+          grep -F 'OK (1 test)' "$RUNNER_TEMP/p8-stable-upgrade/verify.txt" >/dev/null
+
+      - name: Record non-secret persistent-signing evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'android_head=%s\nphase7_base=8843bdae902050c8c1fd7e67ed7ac80662d0da93\nsigning_cert_sha256=%s\nphase7_version_code=8\nphase8_version_code=9\nupgrade_install=passed\ndurable_state_continuity=passed\n' \
+            "$GITHUB_SHA" "$BRICK_EXPECTED_SIGNING_CERT_NORMALIZED" > "$RUNNER_TEMP/p8-stable-upgrade/provenance.txt"
+
+      - name: Upload non-secret evidence on failure or success
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-persistent-signing-upgrade-evidence
+          path: |
+            ${{ runner.temp }}/p8-stable-upgrade/*.txt
+            ${{ runner.temp }}/p8-stable-upgrade/emulator.log
+          if-no-files-found: warn
+          retention-days: 30
