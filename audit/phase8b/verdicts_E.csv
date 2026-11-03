@@ -1,0 +1,60 @@
+id,verdict,evidence_key,notes
+LOC1S-003,BROKEN,P8B-006,Persistent historical desired Location state still exists in Android/cloud truth model.
+LOC1S-004,IMPLEMENTED — UNVERIFIED,ANDROID_POLICY,ManagedPolicy clears legacy DISALLOW_CONFIG_LOCATION and does not intentionally apply normal lock.
+WIFICTL-001,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-002,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-003,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-004,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-005,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-006,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-007,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+WIFICTL-008,MISSING,P8B-009,Scheduled one-shot Wi-Fi path not found.
+REACQ-003,BROKEN,P8B-007,No generation/token check prevents a fallback decision made before a newer measurement from publishing later.
+REACQ-004,PARTIAL,P8B-007,"Some stale callback/subscription health/repair exists, but fallback can precede bounded active reacquisition."
+REACQ-005,PARTIAL,P8B-007,"Some stale callback/subscription health/repair exists, but fallback can precede bounded active reacquisition."
+REACQ-006,MISSING,P8B-007,No ordinary fresh current-fix request and no explicit bounded reacquisition state machine found.
+REACQ-007,MISSING,P8B-007,No ordinary fresh current-fix request and no explicit bounded reacquisition state machine found.
+REACQ-008,IMPLEMENTED — UNVERIFIED,ANDROID_ACTIVITY+POSITION,Activity-driven cadence/subscription updates exist; deep correctness deferred to 8C.
+REACQ-009,BROKEN,P8B-007,Current freshness/reacquisition design cannot prove zero false degraded transitions.
+NOTIFY2-001,IMPLEMENTED — UNVERIFIED,ANDROID_UI,Single low-importance FGS notification reflects GPS on/off; no second standalone status path found.
+NOTIFY2-005,BROKEN,P8B-006,Supervisor can cause needless repeated policy/permission writes on historical mismatch.
+MAINT-001,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-002,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-003,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-004,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-005,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-006,MISSING,P8B-003,Current diagnostics beta surface is not the frozen Maintenance & Recovery Console.
+MAINT-007,PARTIAL,P8B-003,"Privacy-aware diagnostic export exists in old diagnostics path, but not in current approved maintenance flow."
+DEEPOFF-001,MISSING,P8B-004,No provenance-aware reversible Deep Off implementation found.
+DEEPOFF-002,MISSING,P8B-004,No provenance-aware reversible Deep Off implementation found.
+DEEPOFF-003,MISSING,P8B-004,No provenance-aware reversible Deep Off implementation found.
+DEEPOFF-004,MISSING,P8B-004,No provenance-aware reversible Deep Off implementation found.
+DEEPOFF-005,MISSING,P8B-004,No provenance-aware reversible Deep Off implementation found.
+DEPROV-001,PARTIAL,P8B-005,Old three-stage retirement is not the current five-stage deprovisioner.
+DEPROV-002,MISSING,P8B-005,No general Policy Ledger found.
+DEPROV-003,PARTIAL,P8B-005,"Some legacy policy reversal exists before Device Owner release, not complete provenance-ledger reversal."
+DEPROV-004,IMPLEMENTED — UNVERIFIED,BETA_RETIREMENT,Test-build Device Owner release/uninstall escape path exists; real-device qualification pending.
+DEPROV-005,PARTIAL,P8B-005,"Current test path covers legacy retirement, not full current deprovision matrix."
+LIVE-001,PARTIAL,P8B-013,"Live preview endpoint/DO/WS exists, but normal accepted-fix path is not dedicated/isolated."
+LIVE-003,MISSING,P8B-013,Required source/persist/send/backend/WS/render stage timing instrumentation not found end-to-end.
+LIVE-004,PARTIAL,P8B-013,"Durable history and live preview coexist, but explicit current-state coalescing contract is not fully implemented."
+LIVE-005,BROKEN,P8B-013+P8B-015,Frozen 23R path cannot be measured/passed with missing instrumentation and missing Live Track activation control.
+MAPSG-002,MISSING,P8B-008,OneMap primary provider absent.
+MAPSG-003,PARTIAL,PORTAL_MAP,"Private PMTiles has Singapore detail, but current OneMap progressive-detail contract is not implemented."
+MAPSG-004,IMPLEMENTED — UNVERIFIED,PORTAL_MAP,Brick marker/history/accuracy overlays are rendered independently of basemap source.
+MAPSG-005,MISSING,P8B-008,No primary OneMap -> approved fallback failover path because OneMap primary is absent.
+MAPSG-006,PARTIAL,PORTAL_MAP,MapLibre gestures exist; full +/- + explicit Recenter/Follow control contract not found.
+MAPSG-007,MISSING,PORTAL_MAP,No explicit follow-state machine/recenter behavior found.
+MAPSG-008,IMPLEMENTED — UNVERIFIED,PORTAL_MAP,Marker renders immediately; local place resolution is asynchronous.
+MAPSG-009,IMPLEMENTED — UNVERIFIED,PORTAL_MAP,Async local place resolver keys results to coordinate and rejects stale completion.
+MAPSG-010,MISSING,P8B-008,Detailed/Clean/Satellite style policy/control not found.
+MAPSG-012,IMPLEMENTED — UNVERIFIED,PORTAL_MAP,Responsive map/side-panel CSS exists.
+MAPSG-013,MISSING,P8B-008,OneMap block/building/street/planning/postal enrichment fields absent.
+ONEMAP-001,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-002,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-003,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-004,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-005,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-006,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+ONEMAP-007,MISSING,P8B-008,No OneMap provider/auth/token/rate/cache implementation found.
+PRIO-001,BROKEN,P8B-014,"Crash diagnostics are drained before durable location, violating exact priority order."
