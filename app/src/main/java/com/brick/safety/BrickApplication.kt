@@ -11,6 +11,7 @@ import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.fusion.Phase5CoarseNetworkRuntime
 import com.brick.safety.fusion.Phase5HypothesisRuntime
 import com.brick.safety.fusion.Phase5LearnedPlaceRuntime
+import com.brick.safety.maintenance.DeepOffManager
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
 import com.brick.safety.reliability.RecoveryScheduler
@@ -23,6 +24,11 @@ class BrickApplication : Application() {
         super.onCreate()
         DiagnosticStore.init(this)
 
+        if (DeepOffManager.isActive(this)) {
+            DeepOffManager.quiesce(this)
+            DiagnosticStore.log(DiagnosticStore.Severity.INFO, "deep_off", "startup_remains_quiesced")
+            return
+        }
         if (!BetaSafety.enforceStartup(this)) {
             DiagnosticStore.log(
                 DiagnosticStore.Severity.WARN,
