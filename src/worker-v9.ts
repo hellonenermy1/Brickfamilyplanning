@@ -6,6 +6,9 @@ import { augmentHealthWithCoarseNetwork } from "./phase5-coarse-network";
 import { listCurrentExternalConstraints } from "./phase5-external-constraints";
 import { refineCurrentState, type ParentCurrentState } from "./phase5-current-refinement";
 import { cleanupPhase5RefinedHistory, listRefinedHistory, processRefinementsForDevice } from "./phase5-refined-history";
+import { augmentPhase7ParentStateResponseV2 } from "./phase7-state-v2";
+import { augmentPhase8ParentTruth } from "./phase8-parent-truth";
+import { parentV8Html } from "./parent-v8";
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -43,6 +46,22 @@ function asParentState(value: unknown): ParentCurrentState | null {
     receivedAt: s.receivedAt,
     wallTimeMs: typeof s.wallTimeMs === "number" && Number.isSafeInteger(s.wallTimeMs) ? s.wallTimeMs : undefined
   };
+}
+
+function productionParentResponse(baseResponse: Response, baseHtml: string) {
+  const match = baseHtml.match(/<script\s+type=["']module["']\s+nonce=["']([^"']+)["']>/);
+  if (!match) {
+    return new Response("Parent dashboard security nonce missing", {
+      status: 500,
+      headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
+    });
+  }
+  const html = parentV8Html().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
+  const headers = new Headers(baseResponse.headers);
+  headers.set("Cache-Control", "no-store");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Brick-Parent-Truth", "phase8-v1");
+  return new Response(html, { status: baseResponse.status, statusText: baseResponse.statusText, headers });
 }
 
 async function augmentParentStateWithExternalRefinement(response: Response, env: Env, deviceId: string): Promise<Response> {
@@ -100,6 +119,16 @@ async function augmentParentHistoryWithRefinedLayer(response: Response, env: Env
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
+
+    // The normal Phase 6/7 production chain performs Cloudflare Access authorization and creates the
+    // CSP nonce. Only after that succeeds do we swap in the Phase 8 production HTML, preserving the
+    // authenticated response headers verbatim. No development auth/debug portal is promoted here.
+    if (req.method === "GET" && (u.pathname === "/parent" || u.pathname === "/parent/")) {
+      const response = await base.fetch!(req, env, ctx);
+      if (!response.ok) return response;
+      return productionParentResponse(response, await response.text());
+    }
+
     const ground = u.pathname.match(/^\/api\/ground\/([^/]+)\/sighting$/);
     if (req.method === "POST" && ground) return handleGroundReceiverRequest(req, env, ground[1]);
 
@@ -115,7 +144,9 @@ export default {
       const response = await base.fetch!(req, env, ctx);
       let deviceId: string;
       try { deviceId = decodeURIComponent(parentState[1]); } catch { return response; }
-      return augmentParentStateWithExternalRefinement(response, env, deviceId);
+      const refined = await augmentParentStateWithExternalRefinement(response, env, deviceId);
+      const normalized = await augmentPhase7ParentStateResponseV2(refined);
+      return augmentPhase8ParentTruth(normalized);
     }
 
     const parentHistory = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/history$/);
