@@ -5,13 +5,16 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.brick.safety.data.Journal
+import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.reliability.ServiceControl
+import java.io.File
 import java.util.concurrent.Executors
 
 /** Debug/testOnly-only receiver used by CI to start a deterministic sustained-failure workload. */
 class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_SEED = "com.brick.safety.testing.PHASE8_RESOURCE_SEED"
+        const val STATUS_FILE = "phase8_resource_seed_status.txt"
         private const val EPOCH = 808
         private const val BACKLOG_ROWS = 1_000
     }
@@ -24,13 +27,16 @@ class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
         // broadcast-ANR threshold and make the resource test measure an ANR rather than Brick.
         val pending = goAsync()
         val app = context.applicationContext
+        val statusFile = File(app.filesDir, STATUS_FILE)
+        runCatching { statusFile.delete() }
         val executor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "BrickP8ResourceSeed").apply { isDaemon = false }
         }
         executor.execute {
             try {
-                seedAndStart(app)
+                seedAndStart(app, statusFile)
             } catch (t: Throwable) {
+                runCatching { statusFile.writeText("failed=${t.javaClass.simpleName}\n") }
                 Log.e("BrickP8Resource", "seed-failed type=${t.javaClass.simpleName}", t)
             } finally {
                 pending.finish()
@@ -39,7 +45,7 @@ class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun seedAndStart(app: Context) {
+    private fun seedAndStart(app: Context, statusFile: File) {
         val prefs = app.getSharedPreferences("brick", Context.MODE_PRIVATE)
         check(
             prefs.edit()
@@ -51,6 +57,7 @@ class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
                 .putInt("coreUploadFailureStreak", 0)
                 .commit()
         ) { "resource fixture preferences were not durably committed" }
+        check(DeviceRoleStore.setChildAfterPairing(app)) { "resource fixture child role was not durably committed" }
 
         var durable = 0
         Journal(app).use { journal ->
@@ -62,8 +69,9 @@ class Phase8ResourceHarnessReceiver : BroadcastReceiver() {
         }
         check(durable == BACKLOG_ROWS) { "resource fixture only persisted $durable/$BACKLOG_ROWS rows" }
 
-        // Completion marker is emitted only after all 1,000 rows are durable. CI waits for this exact
-        // line before starting measurements, so asynchronous seeding cannot race the test envelope.
+        // The file marker is the authoritative CI synchronization point. Logcat is intentionally
+        // secondary because buffer/filter behavior varies across Android emulator images.
+        statusFile.writeText("seeded=$durable api=loopback-refusal\n")
         Log.i("BrickP8Resource", "seeded=$durable api=loopback-refusal")
         runCatching { ServiceControl.ensureTracking(app) }
             .onSuccess { Log.i("BrickP8Resource", "service=start-requested") }
