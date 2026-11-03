@@ -2,6 +2,7 @@ package com.brick.safety.activity
 
 import android.content.Context
 import android.os.SystemClock
+import com.brick.safety.maintenance.DeprovisionManager
 
 /** Broad transport/activity classes only. Brick never pretends it knows car vs bus vs train here. */
 enum class ActivityMode(val code: Int) {
@@ -28,7 +29,9 @@ object ActivityState {
     private const val PREFS = "brick_activity"
 
     fun read(context: Context): ActivitySnapshot {
-        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return ActivitySnapshot(ActivityMode.UNKNOWN, 0, 0L, 0L)
+        val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val updated = p.getLong("updatedElapsedMs", 0L)
         return ActivitySnapshot(
             ActivityMode.fromCode(p.getInt("mode", ActivityMode.UNKNOWN.code)),
@@ -39,7 +42,9 @@ object ActivityState {
     }
 
     fun write(context: Context, mode: ActivityMode, confidence: Int) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = SystemClock.elapsedRealtime()
         val previousMode = ActivityMode.fromCode(prefs.getInt("mode", ActivityMode.UNKNOWN.code))
         val previousSince = prefs.getLong("modeSinceElapsedMs", 0L)
