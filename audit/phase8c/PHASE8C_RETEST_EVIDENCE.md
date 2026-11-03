@@ -112,3 +112,32 @@ Loss of the entire ledger preference can still turn unknown provenance into an a
 
 **Retest status:** FAILED — P8C-004 remains OPEN.
 **Next action:** add explicit ledger initialization/integrity state and rerun deprovision provenance tests.
+
+---
+
+## P8C-009 retest — VERIFIED CLOSED
+
+**Requirement IDs:** Android 10/API29 policy provenance and deprovision reversal requirements in the `DPM`, `DEEPOFF`, and `DEPROV` families.
+**Retest source head:** `bcdffaa58b85299080ab83d49759eab7f769080d`.
+**GitHub Actions run:** `41665283987` — `Brick V1 Phase 8C — Android 10 Device Owner Policy Regression`.
+
+### Original invariant
+
+On Android 10/API29, if Brick changes the Device Owner `autoTimeRequired` state, the pre-Brick value must be durably recorded before mutation and restored during the production deprovision path before/through Device Owner release. The API29 branch must not be inferred from Android 11+ behavior.
+
+### Retest executed
+
+A clean Android 10 AOSP emulator was built and booted, Brick was installed and provisioned as the real Device Owner, and `Phase8Api29AutoTimePolicyInstrumentedTest` executed the production path:
+
+1. Establish known pre-Brick `autoTimeRequired=false` state.
+2. Initialize the explicit managed-lifecycle Policy Ledger.
+3. Run `ManagedPolicy.apply()` and verify Android reports `autoTimeRequired=true`.
+4. Verify active provenance records `policy=auto_time_required`, `previousValue=false`, `brickValue=true`, source `base_time_integrity_api29`.
+5. Run production deprovision stages `authoriseFreeze` -> `quiesce` -> `undoDeviceManagement`.
+6. Verify Device Owner is released, Android reports `autoTimeRequired=false` again, and active policy provenance is empty/reverted.
+
+### Evidence result
+
+Run `41665283987` completed **SUCCESS**. Its job `126018817998` passed Android 10 image/build, clean emulator boot/install, real Device Owner provisioning, the P8C-009 instrumentation test, post-test policy verification, evidence capture, and artifact upload.
+
+**Retest status:** VERIFIED CLOSED — P8C-009 original failure mode was exercised on the required API level and passed.
