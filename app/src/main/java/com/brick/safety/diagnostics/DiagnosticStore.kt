@@ -277,6 +277,7 @@ object DiagnosticStore {
             CrashOutbox(app).use { it.pendingCount() }
         }.getOrDefault(-1)
         val safetyPending = runCatching { SafetyDispatcher.pendingCount(app) }.getOrDefault(-1)
+        val sosActive = runCatching { SafetyDispatcher.isSosActive(app) }.getOrDefault(false)
 
         @Suppress("DEPRECATION")
         val serviceRunning = runCatching {
@@ -292,7 +293,7 @@ object DiagnosticStore {
         fun age(wall: Long): String = if (wall <= 0L || now < wall) "never" else formatDuration(now - wall)
 
         val sb = StringBuilder(32_768)
-        sb.appendLine("BRICK PHASE 6C BETA DIAGNOSTIC REPORT")
+        sb.appendLine("BRICK V1 DIAGNOSTIC REPORT")
         sb.appendLine("Generated: ${formatWall(now)}")
         sb.appendLine("Session: ${activeSessionId() ?: "none"}")
         sb.appendLine("App: $versionName ($versionCode)")
@@ -301,12 +302,17 @@ object DiagnosticStore {
         sb.appendLine("Process uptime: ${formatDuration(SystemClock.elapsedRealtime() - diag.getLong("processStartElapsedMs", SystemClock.elapsedRealtime()))}")
         sb.appendLine()
         sb.appendLine("DEVICE HEALTH")
-        sb.appendLine("paired=$paired serviceRunning=$serviceRunning sosActive=${brick.getBoolean("sosActive", false)}")
+        sb.appendLine("paired=$paired serviceRunning=$serviceRunning sosActive=$sosActive")
         sb.appendLine("network=$network validated=$validated dataSaverRestricted=${connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED}")
         sb.appendLine("battery=${batteryPct}% charging=${battery.isCharging} powerSave=${power.isPowerSaveMode} doze=${power.isDeviceIdleMode}")
         sb.appendLine("batteryOptimizationExempt=${power.isIgnoringBatteryOptimizations(app.packageName)} backgroundRestricted=${am.isBackgroundRestricted}")
         sb.appendLine("notificationsEnabled=${NotificationManagerCompat.from(app).areNotificationsEnabled()}")
-        sb.appendLine("locationEnabled=${runCatching { locationManager.isLocationEnabled }.getOrDefault(false)} desired=${locationState?.desired?.name ?: "unknown"}")
+        sb.appendLine(
+            "locationEnabled=${runCatching { locationManager.isLocationEnabled }.getOrDefault(false)} " +
+                "lastCommandTarget=${locationState?.target?.name ?: "none"} " +
+                "lastCommandStatus=${locationState?.status?.name ?: "none"} " +
+                "lastCommandActualAfter=${locationState?.actualAfter ?: "unknown"}"
+        )
         sb.appendLine("fineLocation=${granted(Manifest.permission.ACCESS_FINE_LOCATION)} backgroundLocation=${Build.VERSION.SDK_INT < 29 || granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)}")
         sb.appendLine("activityRecognition=${Build.VERSION.SDK_INT < 29 || granted(Manifest.permission.ACTIVITY_RECOGNITION)} bluetoothScan=${Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN)} nearbyWifi=${Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.NEARBY_WIFI_DEVICES)}")
         sb.appendLine("notificationPermission=${Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)}")
