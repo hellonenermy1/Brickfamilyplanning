@@ -122,7 +122,4 @@ jobs:
           test -n "$(find /tmp/brick-dist -maxdepth 2 -type f | head -n1)"
 
       - name: No production placeholders or obvious fake handlers
-        shell: bash
-        run: |
-          set -euo pipefail
-          ! grep -R -n -E 'TODO\(|NotImplemented|throw new Error\(["'"']TODO|placeholder only|hardcoded success' src web
+        run: node scripts/audit-p8b-placeholders.mjs
