@@ -109,10 +109,11 @@ jobs:
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$ADB" wait-for-device
 
-          # adb becomes reachable before all framework services are registered. Wait only for the
-          # services Device Owner provisioning genuinely needs, and continuously reassert the real
-          # pre-setup flags while they start. This avoids waiting for full boot (which lets bare AOSP
-          # auto-finalize setup) without bypassing DevicePolicyManager's owner/account checks.
+          # adb becomes reachable before all framework services are registered. Continuously assert
+          # pre-setup state, but do not declare readiness until AccountManager, DevicePolicyManager,
+          # PackageManager and Settings have all converged. Requiring settings read-back prevents the
+          # post-reboot race where `adb shell settings` exists as a command but its binder service is
+          # not registered yet. Android still performs the real Device Owner eligibility checks.
           ready=0
           for i in $(seq 1 90); do
             "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
@@ -120,9 +121,13 @@ jobs:
             account_service="$("$ADB" shell service check account 2>/dev/null | tr -d '\r' || true)"
             policy_service="$("$ADB" shell service check device_policy 2>/dev/null | tr -d '\r' || true)"
             package_path="$("$ADB" shell pm path com.brick.safety 2>/dev/null | tr -d '\r' || true)"
+            setup_state="$("$ADB" shell settings get secure user_setup_complete 2>/dev/null | tr -d '\r' || true)"
+            provisioned_state="$("$ADB" shell settings get global device_provisioned 2>/dev/null | tr -d '\r' || true)"
             if grep -Fq 'found' <<<"$account_service" && \
                grep -Fq 'found' <<<"$policy_service" && \
-               grep -Fq 'package:' <<<"$package_path"; then
+               grep -Fq 'package:' <<<"$package_path" && \
+               [ "$setup_state" = "0" ] && \
+               [ "$provisioned_state" = "0" ]; then
               ready=1
               break
             fi
