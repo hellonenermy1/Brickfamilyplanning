@@ -41,7 +41,16 @@ jobs:
           files = [p for p in root.rglob('*') if p.suffix in {'.kt', '.java'}]
           failures = []
           ordinary_log = re.compile(r'\b(?:android\.util\.)?Log\s*\.\s*(?:v|d|i|w|e|wtf)\s*\(')
-          sensitive = re.compile(r'(?i)(?:rawLat|rawLon|latitude|longitude|\blat\s*=|\blon\s*=|coordinates?\s*=)')
+          literal_coordinate_label = re.compile(
+              r'(?i)(?:rawLat|rawLon|trustedLat|trustedLon|\blat(?:itude)?\s*=|\blon(?:gitude)?\s*=|coordinates?\s*=)'
+          )
+          sensitive_identifier = re.compile(r'(?i)(?:rawLat|rawLon|trustedLat|trustedLon|latitude|longitude|\blat\b|\blon\b)')
+          direct_sensitive_dollar = re.compile(r'(?i)\$(?:rawLat|rawLon|trustedLat|trustedLon|latitude|longitude|lat|lon)\b')
+          null_check = re.compile(
+              r'(?i)\b[\w.]+\.(?:rawLat|rawLon|trustedLat|trustedLon|latitude|longitude)\s*!=\s*null'
+          )
+          string_literal = re.compile(r'"(?:\\.|[^"\\])*"', re.S)
+          interpolation = re.compile(r'\$\{([^{}]*)\}', re.S)
 
           def call_blocks(text, needle):
               start = 0
@@ -78,15 +87,32 @@ jobs:
                   yield idx, text[idx:end]
                   start = max(end, idx + len(needle))
 
+          def coordinate_value_exposed(block):
+              literals = string_literal.findall(block)
+              for literal in literals:
+                  if literal_coordinate_label.search(literal) or direct_sensitive_dollar.search(literal):
+                      return True
+                  for expr in interpolation.findall(literal):
+                      if not sensitive_identifier.search(expr):
+                          continue
+                      # Availability checks such as
+                      # ${snapshot.latitude != null && snapshot.longitude != null}
+                      # disclose only a boolean, not coordinate values.
+                      remainder = null_check.sub('', expr)
+                      remainder = re.sub(r'[\s&|!()]+', '', remainder)
+                      if remainder:
+                          return True
+              return False
+
           for path in files:
               text = path.read_text(encoding='utf-8')
               for match in ordinary_log.finditer(text):
                   line = text.count('\n', 0, match.start()) + 1
                   failures.append(f'{path}:{line}: ordinary Android Log call is forbidden in production source')
               for idx, block in call_blocks(text, 'DiagnosticStore.log'):
-                  if sensitive.search(block):
+                  if coordinate_value_exposed(block):
                       line = text.count('\n', 0, idx) + 1
-                      failures.append(f'{path}:{line}: DiagnosticStore message contains coordinate-bearing field')
+                      failures.append(f'{path}:{line}: DiagnosticStore message exposes coordinate-bearing value')
 
           if failures:
               print('Phase 8C Android privacy/log audit failed:', file=sys.stderr)
