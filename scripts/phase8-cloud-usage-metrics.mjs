@@ -97,6 +97,24 @@ const d1Totals = d1Groups.reduce((acc, g) => {
   return acc;
 }, { readQueries: 0, writeQueries: 0, rowsRead: 0, rowsWritten: 0, queryBatchResponseBytes: 0, queryBatchTimeMs: 0, queryBatchTimeMsP90Max: 0 });
 
+// D1 publishes databaseSizeBytes through d1StorageAdaptiveGroups. Keep the REST file size too as an
+// independent point-in-time sanity check, but use the documented analytics dataset for the Phase 8
+// historical storage baseline.
+const d1StorageQuery = `
+query BrickD1Storage($accountTag: string!, $databaseId: string!, $start: Date!, $end: Date!) {
+  viewer { accounts(filter: { accountTag: $accountTag }) {
+    d1StorageAdaptiveGroups(limit: 10000, filter: { date_geq: $start, date_leq: $end, databaseId: $databaseId }) {
+      max { databaseSizeBytes }
+    }
+  }}
+}`;
+const d1StorageData = await gql(d1StorageQuery, { accountTag: accountId, databaseId: database.uuid, start: startDate, end: endDate });
+const d1StorageGroups = d1StorageData?.viewer?.accounts?.[0]?.d1StorageAdaptiveGroups || [];
+const d1AnalyticsStorageMaxBytes = d1StorageGroups.reduce(
+  (max, group) => Math.max(max, Number(group?.max?.databaseSizeBytes || 0)),
+  0
+);
+
 const r2 = {};
 for (const bucketName of r2Buckets) {
   const r2Query = `
@@ -148,7 +166,7 @@ for (const name of queueNames) {
 }
 
 const evidence = {
-  version: 1,
+  version: 2,
   sourceGitSha: process.env.GITHUB_SHA || null,
   measuredAt: new Date().toISOString(),
   windowDays: days,
@@ -165,7 +183,8 @@ const evidence = {
   d1: {
     name: d1Name,
     id: database.uuid,
-    fileSizeBytes: Number(dbInfo?.file_size || 0),
+    restFileSizeBytes: Number(dbInfo?.file_size || 0),
+    analyticsDatabaseSizeBytesMax: d1AnalyticsStorageMaxBytes,
     version: dbInfo?.version || null,
     ...d1Totals
   },
@@ -173,6 +192,7 @@ const evidence = {
   queues: queueMetrics,
   notes: [
     'GraphQL analytics can be adaptively sampled and are operational evidence, not a billing invoice.',
+    'D1 storage uses the documented d1StorageAdaptiveGroups databaseSizeBytes metric plus REST file size as a point-in-time cross-check.',
     'Queue realtime backlog metrics are best-effort and may be approximate.',
     'This file contains no API token or authentication secret.'
   ]
