@@ -1,0 +1,106 @@
+name: Brick V1 Phase 8 — Android Recovery Contract
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  pull_request:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-contract:
+    name: Reconnect, reboot, backlog and SOS recovery wiring
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Verify automatic recovery wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          location = Path('app/src/main/java/com/brick/safety/location/BrickLocationService.kt').read_text()
+          boot = Path('app/src/main/java/com/brick/safety/reliability/BootReceiver.kt').read_text()
+          recovery = Path('app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt').read_text()
+          scheduler = Path('app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt').read_text()
+          safety = Path('app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt').read_text()
+
+          required_location = [
+              'override fun onAvailable(network: Network)',
+              'override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities)',
+              'networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)',
+              'return START_STICKY',
+              'SafetyDispatcher.drain(this, 100)',
+              'if (SafetyDispatcher.pendingCount(this) > 0) return@execute',
+              'previewNewestIfBacklogged(baseUrl, deviceId, journal.stats().pendingCount)',
+              'supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)',
+              'if (networkAvailable() && (journal.stats().pendingCount > 0 || SafetyDispatcher.pendingCount(this) > 0',
+          ]
+          for marker in required_location:
+              assert marker in location, f'missing location recovery marker: {marker}'
+
+          # The reconnect callbacks must actually lead to the same upload pump used by normal tracking.
+          available = location.index('override fun onAvailable(network: Network)')
+          capabilities = location.index('override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities)')
+          callback_end = location.index('override fun onCreate()', capabilities)
+          assert 'kickUploadPump()' in location[available:capabilities], 'network onAvailable no longer wakes upload pump'
+          assert 'kickUploadPump()' in location[capabilities:callback_end], 'validated-network callback no longer wakes upload pump'
+
+          # SOS/safety must be drained before crash reports and location history, and any remaining
+          # safety item must block normal history from consuming the reconnect window.
+          pump = location.index('private fun kickUploadPump()')
+          safety_drain = location.index('SafetyDispatcher.drain(this, 100)', pump)
+          safety_block = location.index('if (SafetyDispatcher.pendingCount(this) > 0) return@execute', safety_drain)
+          crash_drain = location.index('drainCrashReports(baseUrl, deviceId)', safety_block)
+          history_loop = location.index('while (true)', crash_drain)
+          assert pump < safety_drain < safety_block < crash_drain < history_loop, 'SOS-first upload ordering drifted'
+
+          for marker in [
+              'Intent.ACTION_BOOT_COMPLETED',
+              'Intent.ACTION_MY_PACKAGE_REPLACED',
+              'ServiceControl.ensureTracking(app)',
+              'RecoveryScheduler.scheduleSoon(app, 20)',
+              'RecoveryScheduler.ensureScheduled(app)'
+          ]:
+              assert marker in boot, f'missing boot recovery marker: {marker}'
+
+          assert 'ServiceControl.ensureTracking(applicationContext)' in recovery, 'periodic recovery no longer restarts tracking'
+          for marker in [
+              'PeriodicWorkRequestBuilder<RecoveryWorker>(15, TimeUnit.MINUTES)',
+              'setRequiredNetworkType(NetworkType.NOT_REQUIRED)',
+              'OneTimeWorkRequestBuilder<RecoveryWorker>()'
+          ]:
+              assert marker in scheduler, f'missing WorkManager recovery marker: {marker}'
+
+          # Safety enqueue is durable-before-wake: the encrypted outbox append must happen before
+          # tracking is requested, so a process/network failure cannot turn SOS into a memory-only event.
+          append = safety.index('outbox.append(envelope.eventId, envelope.kind, envelope.payload, priority)')
+          wake = safety.index('ServiceControl.ensureTracking(context)', append)
+          assert append < wake, 'safety wake occurs before durable outbox persistence'
+          print('Android automatic recovery wiring contract OK')
+          PY
+
+      - name: Verify retained executable durability tests exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt
+          grep -F 'FOURTEEN_DAYS_MS' app/src/androidTest/java/com/brick/safety/data/Phase6DurabilityInstrumentedTest.kt >/dev/null
+          grep -F 'testCorruptHighPrioritySafetyRowCannotStarveSos' app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt >/dev/null
+          grep -F 'testWrongOrMissingAckNeverDeletesPendingEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
+          grep -F 'testTransitionWithoutConfidenceDegradesToUnknownUntilSampleConfirms' app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt >/dev/null
+
+      - name: Verify recovery workflow supply chain is pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -nE 'uses:[[:space:]]+[^[:space:]#]+@v[0-9]+' .github/workflows/v1-phase8-recovery-contract.yml
