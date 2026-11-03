@@ -124,6 +124,13 @@ export async function augmentHealthWithLocationControl(response: Response, env: 
     return new Response(JSON.stringify(body), { status: response.status, headers: response.headers });
   }
 
+  // Once the authenticated phone has ACKed the current logical command, the server must stop
+  // issuing fresh delivery nonces for it. Android also rejects duplicate command IDs/nonces, but
+  // Phase 8 requires replay resistance on both sides rather than depending on the child alone.
+  if (row.last_acked_command_id === row.command_id) {
+    return new Response(JSON.stringify(body), { status: response.status, headers: response.headers });
+  }
+
   const now = Date.now();
   const locationCommand = {
     protocol: 1,
