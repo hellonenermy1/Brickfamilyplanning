@@ -9,14 +9,7 @@ import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.ServiceControl
 import org.json.JSONObject
 
-/**
- * Reversible production Deep Off.
- *
- * State is committed before active Brick work is stopped. Reboot/startup code consults this durable
- * flag and therefore never auto-reactivates Deep Off. Reactivation is local/explicit only.
- * Deep Off itself does not toggle Location/Wi-Fi/mobile data, so it does not need to restore user
- * radio state and cannot overwrite a later child/system choice.
- */
+/** Reversible production Deep Off with durable exact-state provenance. */
 object DeepOffManager {
     private const val PREFS = "brick_deep_off_v1"
     private const val KEY_ACTIVE = "active"
@@ -33,8 +26,7 @@ object DeepOffManager {
     )
 
     fun isActive(context: Context): Boolean =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_ACTIVE, false)
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ACTIVE, false)
 
     fun snapshot(context: Context): Snapshot {
         val app = context.applicationContext
@@ -67,8 +59,6 @@ object DeepOffManager {
             .put("policyLedgerActiveCount", PolicyLedger.active(app).size)
             .put("capturedAtMs", System.currentTimeMillis())
 
-        // Commit the fail-closed state before stopping anything. If the process dies after this write,
-        // startup/boot/recovery will still see Deep Off and remain quiesced.
         val committed = prefs.edit()
             .putBoolean(KEY_ACTIVE, true)
             .putLong(KEY_ENTERED_AT, System.currentTimeMillis())
@@ -88,16 +78,23 @@ object DeepOffManager {
         if (!prefs.getBoolean(KEY_ACTIVE, false)) return true
 
         val raw = prefs.getString(KEY_SNAPSHOT, null)
-        val originalComponentState = runCatching { JSONObject(raw ?: "{}").optInt("serviceComponentState", PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) }
-            .getOrDefault(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+        val originalComponentState = runCatching {
+            JSONObject(raw ?: "{}").optInt("serviceComponentState", PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+        }.getOrDefault(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+        val validState = originalComponentState in setOf(
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED
+        )
+        if (!validState) return false
 
-        // Only Brick's own service component is restored. Deep Off never changed Location/Wi-Fi/etc,
-        // so user/system radio choices made while Deep Off was active remain untouched.
         val component = ComponentName(app, BrickLocationService::class.java)
         runCatching {
             app.packageManager.setComponentEnabledSetting(
                 component,
-                if (originalComponentState == PackageManager.COMPONENT_ENABLED_STATE_DISABLED) PackageManager.COMPONENT_ENABLED_STATE_DEFAULT else originalComponentState,
+                originalComponentState,
                 PackageManager.DONT_KILL_APP
             )
         }.getOrElse { return false }
