@@ -1,0 +1,97 @@
+name: Brick V1 Phase 8C — Privacy and Log Hygiene
+
+on:
+  push:
+    branches: [v1-p8c-android-deep-audit]
+    paths:
+      - '.github/workflows/v1-phase8c-privacy.yml'
+      - 'app/src/main/**'
+      - 'src/**'
+      - 'web/**'
+      - 'scripts/audit-privacy.mjs'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@395ad3262231945c25e8478e02b53fa5b47786f4 # v4
+        with:
+          node-version: '22'
+
+      - name: Existing production privacy audit
+        run: node scripts/audit-privacy.mjs
+
+      - name: Android ordinary-log and diagnostic coordinate audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+
+          root = pathlib.Path('app/src/main')
+          files = [p for p in root.rglob('*') if p.suffix in {'.kt', '.java'}]
+          failures = []
+          ordinary_log = re.compile(r'\b(?:android\.util\.)?Log\s*\.\s*(?:v|d|i|w|e|wtf)\s*\(')
+          sensitive = re.compile(r'(?i)(?:rawLat|rawLon|latitude|longitude|\blat\s*=|\blon\s*=|coordinates?\s*=)')
+
+          def call_blocks(text, needle):
+              start = 0
+              while True:
+                  idx = text.find(needle, start)
+                  if idx < 0:
+                      return
+                  open_idx = text.find('(', idx)
+                  if open_idx < 0:
+                      return
+                  depth = 0
+                  in_str = False
+                  esc = False
+                  end = open_idx
+                  for j in range(open_idx, len(text)):
+                      ch = text[j]
+                      if in_str:
+                          if esc:
+                              esc = False
+                          elif ch == '\\':
+                              esc = True
+                          elif ch == '"':
+                              in_str = False
+                      else:
+                          if ch == '"':
+                              in_str = True
+                          elif ch == '(':
+                              depth += 1
+                          elif ch == ')':
+                              depth -= 1
+                              if depth == 0:
+                                  end = j + 1
+                                  break
+                  yield idx, text[idx:end]
+                  start = max(end, idx + len(needle))
+
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              for match in ordinary_log.finditer(text):
+                  line = text.count('\n', 0, match.start()) + 1
+                  failures.append(f'{path}:{line}: ordinary Android Log call is forbidden in production source')
+              for idx, block in call_blocks(text, 'DiagnosticStore.log'):
+                  if sensitive.search(block):
+                      line = text.count('\n', 0, idx) + 1
+                      failures.append(f'{path}:{line}: DiagnosticStore message contains coordinate-bearing field')
+
+          if failures:
+              print('Phase 8C Android privacy/log audit failed:', file=sys.stderr)
+              for f in failures:
+                  print('- ' + f, file=sys.stderr)
+              sys.exit(1)
+          print(f'Phase 8C Android privacy/log audit passed across {len(files)} production source files')
+          PY
