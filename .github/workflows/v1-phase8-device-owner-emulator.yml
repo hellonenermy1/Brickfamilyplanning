@@ -163,19 +163,34 @@ jobs:
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
 
-      - name: Execute Stage 1 only and prove ownership remains until after durable disarm
+      - name: Execute Stage 1 without force-stopping Brick and prove durable disarm
         shell: bash
         run: |
           set -euo pipefail
-          "$ADB" shell am instrument -w \
-            -e p8RetirementMode disarm \
-            -e class 'com.brick.safety.beta.Phase8BetaSafetyInstrumentedTest#testExternalRebootDisarm' \
-            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-stage1.txt
-          grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-stage1.txt >/dev/null
+
+          # The provisioning-cache instrumentation above can leave the target package in Android's
+          # stopped state. Explicitly launch it BEFORE the retirement boundary so Stage 1 begins from
+          # a normal runnable package. Nothing may unstop/launch Brick after Stage 1 and before reboot.
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity | tee /tmp/p8-stage1-unstop.txt
+          "$ADB" shell input keyevent KEYCODE_HOME || true
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-before-stage1.txt
+          grep -F 'stopped=false' /tmp/p8-package-before-stage1.txt >/dev/null
+
+          "$ADB" logcat -c
+          "$ADB" shell am broadcast --receiver-foreground \
+            -a com.brick.safety.testing.PHASE8_DISARM \
+            -n com.brick.safety/.testing.Phase8RetirementHarnessReceiver | tee /tmp/p8-stage1.txt
+
+          "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_beta_safety.xml | tee /tmp/p8-stage1-prefs.txt
+          grep -F '<string name="retirement_stage">DISARMED</string>' /tmp/p8-stage1-prefs.txt >/dev/null
+          "$ADB" logcat -d | grep -F 'BrickP8Harness' | grep -F 'stage1 committed=true stage=DISARMED' >/dev/null
+
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-stage1.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-stage1.txt >/dev/null
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-stage1.txt
+          grep -F 'stopped=false' /tmp/p8-package-stage1.txt >/dev/null
 
-      - name: Reboot across Stage 1 and require automatic Stage 2 recovery
+      - name: Reboot across Stage 1 and require automatic durable Stage 2 recovery
         shell: bash
         run: |
           set -euo pipefail
@@ -186,15 +201,35 @@ jobs:
             sleep 5
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          owner_released=0
           for i in $(seq 1 60); do
             owners="$("$ADB" shell dpm list-owners 2>&1 | tr -d '\r')"
-            if ! grep -Fq 'com.brick.safety' <<<"$owners"; then break; fi
+            if ! grep -Fq 'com.brick.safety' <<<"$owners"; then
+              owner_released=1
+              break
+            fi
             sleep 2
           done
+          test "$owner_released" = "1"
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-after-reboot.txt
           ! grep -F 'com.brick.safety' /tmp/p8-do-owners-after-reboot.txt >/dev/null
 
-      - name: Verify Stage 2 persisted and Stage 3 only requests Android uninstall UI
+          stage2_persisted=0
+          for i in $(seq 1 60); do
+            if "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_beta_safety.xml > /tmp/p8-stage2-prefs.txt 2>/dev/null && \
+               grep -Fq '<string name="retirement_stage">MANAGEMENT_RELEASED</string>' /tmp/p8-stage2-prefs.txt; then
+              stage2_persisted=1
+              break
+            fi
+            sleep 2
+          done
+          test "$stage2_persisted" = "1"
+          cat /tmp/p8-stage2-prefs.txt
+
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-after-reboot.txt
+
+      - name: Verify Stage 3 only requests Android uninstall UI
         shell: bash
         run: |
           set -euo pipefail
@@ -219,7 +254,7 @@ jobs:
           set +e
           mkdir -p p8-do-failure
           cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
-          for f in accounts-before accounts-after-boot accounts-after-sync users-before users-after-boot user-unlocked provisioning-sync set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1 stage23 do-uninstall; do
+          for f in accounts-before accounts-after-boot accounts-after-sync users-before users-after-boot user-unlocked provisioning-sync set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1-unstop stage1 stage1-prefs stage2-prefs stage23 do-uninstall package-before-stage1 package-stage1 package-after-reboot; do
             cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
           done
           if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
@@ -228,6 +263,7 @@ jobs:
             timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys user > p8-do-failure/user-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dumpsys device_policy > p8-do-failure/device-policy-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys package com.brick.safety > p8-do-failure/package-current.txt 2>&1 || true
             timeout 10s "$ADB" shell pm list users > p8-do-failure/users-current.txt 2>&1 || true
             timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
             timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
