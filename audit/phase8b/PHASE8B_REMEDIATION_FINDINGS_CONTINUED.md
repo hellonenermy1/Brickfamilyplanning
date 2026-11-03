@@ -15,3 +15,19 @@ This file continues `PHASE8B_REMEDIATION_FINDINGS.md` from P8B-R007 onward. Same
 **Required correction:** compile `src/dev-parent-auth.ts` into a temporary ESM module with the locked esbuild toolchain and pass it to `scripts/test-phase8-parent-origin.mjs`.
 
 **Status:** OPEN — finding recorded before CI correction.
+
+---
+
+## P8B-R008 — Cloud Wrangler dry-run relocates config and breaks relative production entrypoint resolution
+
+**Severity:** P1 HIGH — all deterministic cloud regressions now pass, but the production bundle dry-run is invalidated by CI setup and cannot prove the selected Worker entry bundles.
+
+**Observed baseline:** `v1-p8b-remediation-cloud` at `ace0b46196bcb7ab5ab951c86b9bc6fad44cb049`.
+
+**Evidence:** GitHub Actions run `41627328570` passes typecheck, parent assets, production wiring, all migrations, history codec, live-state ordering, one-shot Location, same-origin mutation, SOS priority and privacy audit. The Wrangler dry-run copies `wrangler.template.jsonc` to `/tmp/wrangler-p8b.jsonc`; Wrangler resolves the relative `main: src/worker-p8b.ts` from the relocated config directory and fails with `The entry-point file at "src/worker-p8b.ts" was not found.` The source entry exists in the checked-out repository and already passed the preceding production wiring check.
+
+**Expected:** the dry-run must use a generated config in repository context so all relative production paths resolve exactly as deployment would, while still replacing only CI placeholder values.
+
+**Required correction:** create the temporary generated config in the repository root (or otherwise preserve config-relative resolution), run `wrangler deploy --dry-run`, verify bundle output, then remove the generated config.
+
+**Status:** OPEN — finding recorded before CI correction.
