@@ -1,0 +1,80 @@
+name: Brick V1 Phase 8 — Live Cloud Resource Usage Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID'
+        required: true
+        type: string
+      days:
+        description: 'Measurement window in days (1-31)'
+        required: true
+        default: '7'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  measure-cloud:
+    name: Measure Worker, D1, R2 and Queue usage from Cloudflare analytics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
+      BRICK_METRICS_DAYS: ${{ inputs.days }}
+      BRICK_METRICS_EVIDENCE_PATH: phase8-cloud-usage-metrics.json
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate evidence request
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'v1-p8-cloud-hardening'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          [[ "$BRICK_METRICS_DAYS" =~ ^[0-9]+$ ]]
+          test "$BRICK_METRICS_DAYS" -ge 1
+          test "$BRICK_METRICS_DAYS" -le 31
+          node --check scripts/phase8-cloud-usage-metrics.mjs
+
+      - name: Collect live Cloudflare usage metrics
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/phase8-cloud-usage-metrics.mjs
+
+      - name: Verify measurement completeness
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$BRICK_METRICS_EVIDENCE_PATH"
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const e = JSON.parse(fs.readFileSync(process.env.BRICK_METRICS_EVIDENCE_PATH, 'utf8'));
+          if (e.sourceGitSha !== process.env.GITHUB_SHA) throw new Error('metrics source SHA mismatch');
+          if (e.windowDays < 1 || e.windowDays > 31) throw new Error('invalid metrics window');
+          if (!e.worker || !Number.isFinite(e.worker.requests) || !Number.isFinite(e.worker.cpuTimeP99)) throw new Error('Worker metrics missing');
+          if (!e.d1 || !e.d1.id || !Number.isFinite(e.d1.fileSizeBytes) || !Number.isFinite(e.d1.rowsRead) || !Number.isFinite(e.d1.rowsWritten)) throw new Error('D1 metrics missing');
+          for (const name of ['brick-family-v1-history', 'brick-family-v1-maps']) {
+            if (!e.r2?.[name] || !Array.isArray(e.r2[name].operations)) throw new Error(`R2 metrics missing for ${name}`);
+          }
+          for (const name of ['brick-family-v1-events', 'brick-family-v1-dlq']) {
+            if (!e.queues?.[name]?.realtimeBacklog) throw new Error(`Queue metrics missing for ${name}`);
+          }
+          console.log('Cloud resource usage evidence is structurally complete.');
+          NODE
+
+      - name: Upload non-secret Cloudflare usage evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-cloud-usage-${{ github.sha }}-${{ github.run_id }}
+          path: phase8-cloud-usage-metrics.json
+          if-no-files-found: error
+          retention-days: 30
