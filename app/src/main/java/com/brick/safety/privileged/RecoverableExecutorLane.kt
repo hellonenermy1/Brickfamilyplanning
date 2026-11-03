@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * Single-call lane that can be rotated after an untrusted/remote invocation wedges its worker.
@@ -34,6 +35,9 @@ internal class RecoverableExecutorLane(private val threadName: String) {
             Result.success(future.get(timeoutMs.coerceAtLeast(1L), TimeUnit.MILLISECONDS))
         } catch (t: Throwable) {
             future.cancel(true)
+            // Future.cancel(true) is not a reliable recovery boundary for a blocked Binder/native
+            // invocation. Replace the lane so the next call does not queue behind the stuck worker.
+            if (t is TimeoutException) rotate()
             Result.failure(t)
         }
     }
