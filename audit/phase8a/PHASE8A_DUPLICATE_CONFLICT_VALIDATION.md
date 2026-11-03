@@ -18,7 +18,7 @@ A TF-IDF/cosine similarity pass over all 525 current requirement texts found onl
 - `SHZ-012` — Location-OFF Shizuku Wi-Fi test
 - `SHZ-013` — Location-OFF Shizuku BLE test
 
-This pair is **not a duplicate**: it intentionally tests two separate privileged evidence providers/capabilities (Wi-Fi versus BLE) and both must remain independently qualified.
+This pair is **not a duplicate**: it intentionally tests two separate privileged evidence providers/capabilities (Wi-Fi versus BLE) and both remain independently qualified.
 
 No other pair exceeded the threshold.
 
@@ -75,8 +75,6 @@ By family:
 
 Total: **59**.
 
-The exact latest-plan backlog priority requirement was caught during final reconciliation and added as `PRIO-001`; it was not allowed to hide inside a vague pre-existing safety-priority statement.
-
 ## Mandatory/forbidden/optional/future closure
 
 Current class totals:
@@ -94,7 +92,7 @@ Both future-interface rows remain architecture requirements without falsely clai
 
 ## Ownership/dependency/evidence completeness
 
-For all 525 current requirements, the normalized working ledger validates non-empty:
+For all 525 current requirements, the regenerated normalized working ledger validates non-empty:
 
 - current requirement text;
 - target phase;
@@ -109,12 +107,7 @@ Missing owner/dependency/evidence mappings: **0**.
 
 ## Latest-plan coverage
 
-Every numbered Phase 1-9 subsection and exit gate in the latest approved master plan maps to:
-
-- a current checklist requirement;
-- a current amended requirement;
-- a genuinely new requirement;
-- or an explicit acceptance matrix attached to those requirements.
+Every numbered Phase 1-9 subsection and exit gate in the latest approved master plan maps to a current checklist requirement, amended requirement, genuinely new requirement, or explicit acceptance matrix.
 
 Unmapped latest-plan subsections: **0**.
 
@@ -126,18 +119,31 @@ Contract conflicts resolved by source precedence: **11**.
 
 Open semantic contract conflicts: **0**.
 
-Implementation-equivalence questions are intentionally deferred to Phase 8B and are not treated as contract conflicts.
+Implementation-equivalence questions are intentionally deferred to Phase 8B and are not contract conflicts.
 
-## Remaining source-value gap
+## Source-gap closure
 
-Exactly one unresolved source-value gap remains:
+`P8A-GAP-002 / LIVE-005` is resolved by `PHASE8A_23R_LATENCY_AMENDMENT.md`.
 
-`P8A-GAP-002 / LIVE-005` — the authoritative numeric threshold(s) for the referenced `23R P95 latency budget` have not been recovered.
+Current numeric contract:
 
-Searches of recovered project sources and prior user-approved context found the requirement to meet a 23R P95 budget, but not explicit user-approved numerical values. Earlier assistant-proposed numbers therefore remain non-authoritative and are not inserted into the contract.
+- accepted fix -> visible marker P95 <= 1.5 s;
+- backend current state -> visible marker P95 <= 500 ms;
+- Live Track activation -> phone fast-mode confirmation/failure result P95 <= 2.0 s.
+
+Open source gaps: **0**.
+
+## Regenerated ledger validation
+
+After applying the 23R amendment:
+
+- rows including historical superseded entries: **528**;
+- current requirements: **525**;
+- current unique IDs: **525**;
+- exact duplicate current texts: **0**;
+- open gap rows: **0**;
+- normalized ledger SHA-256: `8683b85f8b61aa3769b338048e7deb17d1fff3bc7773b6d454c7a61bce013bbd`.
 
 ## Validation verdict
 
-Contract coverage/normalization itself is complete except for the single numeric source-value gap above.
-
-Phase 8A must remain **NOT DONE / BLOCKED BY 1 SOURCE GAP** until that value is recovered from an authoritative source or explicitly amended by contract authority.
+**PASS** — no duplicate ID/text issue, unresolved contract conflict, unmapped current requirement or source-value gap remains.
