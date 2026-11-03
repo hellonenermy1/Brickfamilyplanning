@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import com.brick.safety.activity.ActivityState
+import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.maintenance.DeepOffManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import org.json.JSONObject
