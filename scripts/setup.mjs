@@ -3,3 +3,4 @@
 const { preflightPhase8LiveDeviceIdentities } = await import('./phase8-live-identity-preflight.mjs');
 await preflightPhase8LiveDeviceIdentities();
 await import('./setup-v1-phase6.mjs');
+await import('./setup-v1-phase8-finalize.mjs');
