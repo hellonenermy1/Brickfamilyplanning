@@ -83,3 +83,32 @@ These are concrete omissions; this retest does not claim the list is exhaustive 
 
 **Retest status:** FAILED — P8C-005 remains OPEN.
 **Next action:** finish persistence inventory, remediate the purge list, then rerun purge-completeness checks.
+
+---
+
+## P8C-004 retest — FAILED / MISSING LEDGER STILL FAILS OPEN
+
+**Requirement IDs:** `DEPROV-002`, `DEPROV-003`, `DEEPOFF-001`, `DEEPOFF-005`
+**Retest scope:** fail-closed policy provenance when the Policy Ledger is missing rather than malformed.
+**Retest source head:** `18f0ee37664f83f96568372410c802e6b3c3718e`.
+
+### Retest result
+
+**FAIL.** Malformed ledger JSON is now rejected, but a completely missing/blank `brick_policy_ledger_v1/records` value is still treated as a valid empty ledger. `PolicyLedger.isValidRaw(null)` returns true, `integrityValid()` therefore passes, `active()` returns an empty list, and `DeprovisionManager.reverseBrickPolicies()` may proceed to Device Owner release with no proof that prior Brick-created policy provenance was not lost.
+
+A missing ledger is materially different from a durably initialized empty ledger. Without an initialization/provenance marker, deletion/loss of the ledger is indistinguishable from “Brick never recorded a policy.”
+
+### Impact
+
+Loss of the entire ledger preference can still turn unknown provenance into an apparently clean state and allow ownership release. This is the same fail-open class as the original finding and blocks closure of P8C-004.
+
+### Required correction
+
+- Distinguish a durably initialized empty ledger from a missing ledger.
+- Establish the ledger before the first Device Owner policy mutation.
+- During Device Owner release, require both structural validity and proof that the ledger was initialized for this managed lifecycle; missing initialization must fail closed.
+- Migrate only states that can be proven safe; do not silently bless a missing ledger on an already-managed device.
+- Add regression coverage for malformed JSON, missing ledger, initialized-empty ledger, active entries and normal reversal.
+
+**Retest status:** FAILED — P8C-004 remains OPEN.
+**Next action:** add explicit ledger initialization/integrity state and rerun deprovision provenance tests.
