@@ -109,6 +109,16 @@ jobs:
           npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8.mjs
           node scripts/test-phase8-history-chaos.mjs /tmp/brick-history-p8.mjs
 
+      - name: Phase 8 history event-time versus first-receipt provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/history-store.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-p8-provenance.mjs
+          npx esbuild src/phase8-history-provenance.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-history-provenance-p8.mjs
+          node scripts/test-phase8-history-provenance.mjs /tmp/brick-history-p8-provenance.mjs /tmp/brick-history-provenance-p8.mjs
+          grep -F 'receivedAtMs = Date.now();' src/location-ingest-v6.ts >/dev/null
+          grep -F 'const provenance = await augmentPhase8HistoryProvenance(response, env, deviceId, fromMs, toMs);' src/worker-v9.ts >/dev/null
+
       - name: Phase 8 10k offline history backlog drain
         shell: bash
         run: |
