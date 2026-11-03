@@ -139,8 +139,12 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
         if (items.isEmpty()) return true
         val unique = items.distinct()
         if (unique.size != items.size) return false
-        val db = writableDatabase
+        var db: SQLiteDatabase? = null
         return try {
+            // Opening the writable database can itself fail under low-storage/corrupt-storage
+            // conditions. Keep that failure inside this boundary so an ACK can never escape as an
+            // uncaught exception or falsely delete durable work.
+            db = writableDatabase
             db.beginTransaction()
             for ((epoch, seq) in items) {
                 val changed = db.update(
@@ -159,7 +163,7 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
             noteJournalHealthy(false)
             false
         } finally {
-            if (db.inTransaction()) db.endTransaction()
+            if (db?.inTransaction() == true) db.endTransaction()
         }
     }
 }
