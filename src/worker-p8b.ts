@@ -3,6 +3,7 @@ import { maybeHandleFallEvent, type FallEventEnv } from "./fall-event-route";
 import { ingestScreenTime, parentScreenTime, type ScreenTimeEnv } from "./screen-time-route";
 import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summary";
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
+import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
 export { BrickDevice };
 
@@ -31,6 +32,15 @@ export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     const u = new URL(req.url);
 
+    if (req.method === "GET" && (u.pathname === "/parent" || u.pathname === "/parent/")) {
+      const response = await base.fetch!(req, env, ctx);
+      if (!response.ok) return response;
+      const type = (response.headers.get("Content-Type") ?? "").toLowerCase();
+      if (!type.includes("text/html")) return response;
+      const headers = new Headers(response.headers); headers.set("Cache-Control", "no-store");
+      return new Response(parentP8BHtml(await response.text()), { status: response.status, statusText: response.statusText, headers });
+    }
+
     // Device safety/summary ingestion stays outside parent auth and verifies the signed device request
     // inside the route-specific handler.
     const event = u.pathname.match(/^\/api\/device\/([^/]+)\/event$/);
@@ -53,7 +63,6 @@ export default {
     if (req.method === "GET" && commuteParent) {
       const denied = await parentGuard(req, env); if (denied) return denied;
       const deviceId = decodeURIComponent(commuteParent[1]);
-      // Keep the read fast. Refreshing is asynchronous and uses the already durable trusted history.
       const now = Date.now();
       ctx.waitUntil(refreshCommutes(env, deviceId, now - 2 * 86_400_000, now).catch(() => undefined));
       return parentCommutes(env, deviceId, Number(u.searchParams.get("limit") ?? "50"));
