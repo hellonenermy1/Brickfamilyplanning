@@ -6,7 +6,16 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
-class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", null, 1) {
+/**
+ * Durable location journal. [writeFaultInjector] exists only so instrumentation can deterministically
+ * inject the exact storage exceptions Android/SQLite would throw (for example SQLITE_FULL) at the
+ * mutation boundary. Production callers use the default null hook and therefore have zero test-only
+ * behaviour enabled at runtime.
+ */
+class Journal(
+    context: Context,
+    private val writeFaultInjector: ((operation: String) -> Unit)? = null
+) : SQLiteOpenHelper(context, "brick_journal.db", null, 1) {
     companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
@@ -51,6 +60,7 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
 
     fun append(epoch: Int, seq: Long, payload: ByteArray): Boolean {
         return try {
+            writeFaultInjector?.invoke("append")
             val rowId = writableDatabase.insertWithOnConflict("packets", null, ContentValues().apply {
                 put("epoch", epoch)
                 put("seq", seq)
@@ -144,6 +154,7 @@ class Journal(context: Context) : SQLiteOpenHelper(context, "brick_journal.db", 
             // Opening the writable database can itself fail under low-storage/corrupt-storage
             // conditions. Keep that failure inside this boundary so an ACK can never escape as an
             // uncaught exception or falsely delete durable work.
+            writeFaultInjector?.invoke("ack")
             db = writableDatabase
             db.beginTransaction()
             for ((epoch, seq) in items) {
