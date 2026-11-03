@@ -9,12 +9,17 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.brick.safety.databinding.ActivityMainBinding
+import com.brick.safety.diagnostics.DiagnosticsActivity
+import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeviceRoleStore
+import com.brick.safety.maintenance.MaintenanceEntryGate
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
 import com.brick.safety.reliability.RecoveryScheduler
@@ -29,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var b: ActivityMainBinding
     private val io = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val maintenanceGate = MaintenanceEntryGate()
     private var sosPending = false
     private var sosSecondsLeft = 0
 
@@ -43,12 +49,15 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
-        runCatching { RecoveryScheduler.ensureScheduled(this) }
-        runCatching { ManagedPolicy.apply(this) }
-
+        b.brickLogo.setOnClickListener {
+            if (maintenanceGate.onTap(SystemClock.elapsedRealtime())) {
+                startActivity(Intent(this, DiagnosticsActivity::class.java))
+            }
+        }
         b.scanPairButton.setOnClickListener { scanPairingQr() }
         b.pairButton.setOnClickListener { pair() }
         b.fixButton.setOnClickListener { fixAttention() }
+        b.parentPortalButton.setOnClickListener { openParentPortal() }
         b.safeButton.setOnClickListener { queueCheckIn() }
         b.sosButton.setOnClickListener {
             when {
@@ -56,6 +65,11 @@ class MainActivity : AppCompatActivity() {
                 isSosActive() -> endSos()
                 else -> beginSosCountdown()
             }
+        }
+
+        if (!DeepOffManager.isActive(this) && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
+            runCatching { RecoveryScheduler.ensureScheduled(this) }
+            runCatching { ManagedPolicy.apply(this) }
         }
         refresh()
     }
@@ -66,6 +80,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scanPairingQr() {
+        if (DeviceRoleStore.role(this) == DeviceRoleStore.Role.PARENT_GUARDIAN) return
         val options = GmsBarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
             .enableAutoZoom()
@@ -102,6 +117,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pair() {
+        if (DeviceRoleStore.role(this) == DeviceRoleStore.Role.PARENT_GUARDIAN) return
         val base = b.serverUrl.text.toString().trim()
         val token = b.pairingToken.text.toString().trim()
         if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
@@ -114,7 +130,8 @@ class MainActivity : AppCompatActivity() {
                 getSharedPreferences("brick", MODE_PRIVATE).edit()
                     .putString("deviceId", r.deviceId)
                     .putString("apiBase", r.apiBase)
-                    .apply()
+                    .commit()
+                DeviceRoleStore.setChildAfterPairing(this)
                 runOnUiThread { requestPermissionsAndStart() }
             } catch (_: Exception) {
                 runOnUiThread {
@@ -126,7 +143,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun openParentPortal() {
+        val base = DeviceRoleStore.parentPortal(this) ?: return
+        val uri = Uri.parse(base.trimEnd('/') + "/parent")
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+            .onFailure { b.status.text = "● Parent dashboard unavailable" }
+    }
+
     private fun queueCheckIn() {
+        if (DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD || DeepOffManager.isActive(this)) return
         if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
         b.safeButton.isEnabled = false
         if (SafetyDispatcher.enqueue(this, "safe_checkin", priority = SafetyDispatcher.PRIORITY_NORMAL) == null) {
@@ -148,6 +173,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun beginSosCountdown() {
+        if (DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD || DeepOffManager.isActive(this)) return
         if (!getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")) return
         sosPending = true
         sosSecondsLeft = 3
@@ -223,10 +249,11 @@ class MainActivity : AppCompatActivity() {
     private fun renderSosState() {
         if (sosPending) return
         b.sosButton.text = if (isSosActive()) "END SOS" else "SOS"
-        b.sosButton.isEnabled = true
+        b.sosButton.isEnabled = DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD && !DeepOffManager.isActive(this)
     }
 
     private fun requestPermissionsAndStart() {
+        if (DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD || DeepOffManager.isActive(this)) return
         val permissions = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.ACCESS_FINE_LOCATION
@@ -236,24 +263,10 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
             permissions += Manifest.permission.ACTIVITY_RECOGNITION
         }
-        if (Build.VERSION.SDK_INT >= 31 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            permissions += Manifest.permission.BLUETOOTH_SCAN
-        }
-        if (Build.VERSION.SDK_INT >= 31 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
-            // Optional Phase 5 private Witness Mesh. Denial degrades Witness only, never Brick Core.
-            permissions += Manifest.permission.BLUETOOTH_ADVERTISE
-        }
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
-            // Optional Wi-Fi RTT capability on supported hardware. Denial never blocks Brick Core.
-            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
-        }
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            permissions += Manifest.permission.POST_NOTIFICATIONS
-        }
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.BLUETOOTH_SCAN
+        if (Build.VERSION.SDK_INT >= 31 && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.BLUETOOTH_ADVERTISE
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.NEARBY_WIFI_DEVICES
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissions += Manifest.permission.POST_NOTIFICATIONS
 
         if (permissions.isNotEmpty()) foregroundPermissions.launch(permissions.toTypedArray())
         else {
@@ -271,9 +284,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun locationEnabled(): Boolean = runCatching {
-        getSystemService(LocationManager::class.java).isLocationEnabled
-    }.getOrDefault(false)
+    private fun locationEnabled(): Boolean = runCatching { getSystemService(LocationManager::class.java).isLocationEnabled }.getOrDefault(false)
 
     private fun backgroundGranted(): Boolean = Build.VERSION.SDK_INT < 29 ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -296,15 +307,14 @@ class MainActivity : AppCompatActivity() {
         when {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED -> requestPermissionsAndStart()
             !locationEnabled() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            !ManagedPolicy.isDeviceOwner(this) && !backgroundGranted() -> startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-            )
+            !ManagedPolicy.isDeviceOwner(this) && !backgroundGranted() -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             bleAnchorPermissionNeeded() -> requestPermissionsAndStart()
             else -> refresh()
         }
     }
 
     private fun startServiceNow() {
+        if (DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD || DeepOffManager.isActive(this)) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             runCatching { ServiceControl.ensureTracking(this) }
         }
@@ -313,17 +323,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
+        val role = DeviceRoleStore.role(this)
+        val deepOff = DeepOffManager.isActive(this)
         val paired = getSharedPreferences("brick", MODE_PRIVATE).contains("deviceId")
-        b.scanPairButton.visibility = if (paired) View.GONE else View.VISIBLE
-        b.serverUrl.visibility = if (paired) View.GONE else View.VISIBLE
-        b.pairingToken.visibility = if (paired) View.GONE else View.VISIBLE
-        b.pairButton.visibility = if (paired) View.GONE else View.VISIBLE
-        if (!paired) b.scanPairButton.isEnabled = true
-        b.safeButton.isEnabled = paired
-        b.sosButton.isEnabled = paired
+        val child = role == DeviceRoleStore.Role.CHILD
+        val parent = role == DeviceRoleStore.Role.PARENT_GUARDIAN
 
+        b.parentPortalButton.visibility = if (parent) View.VISIBLE else View.GONE
+        b.scanPairButton.visibility = if (!parent && !paired) View.VISIBLE else View.GONE
+        b.serverUrl.visibility = if (!parent && !paired) View.VISIBLE else View.GONE
+        b.pairingToken.visibility = if (!parent && !paired) View.VISIBLE else View.GONE
+        b.pairButton.visibility = if (!parent && !paired) View.VISIBLE else View.GONE
+        b.safeButton.visibility = if (child) View.VISIBLE else View.GONE
+        b.sosButton.visibility = if (child) View.VISIBLE else View.GONE
+        b.fixButton.visibility = View.GONE
+
+        if (deepOff) {
+            b.status.text = "● Deep Off"
+            b.safeButton.isEnabled = false
+            b.sosButton.isEnabled = false
+            return
+        }
+        if (parent) {
+            b.status.text = "● Parent/guardian mode"
+            return
+        }
         if (!paired) {
-            b.fixButton.visibility = View.GONE
+            b.scanPairButton.isEnabled = true
             b.status.text = "● Setup required"
             return
         }
@@ -336,6 +362,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        b.safeButton.isEnabled = true
         b.status.text = if (isSosActive()) "● SOS ACTIVE" else "● Safety active"
         renderSosState()
         startServiceNow()
