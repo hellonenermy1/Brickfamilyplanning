@@ -53,7 +53,19 @@ jobs:
           git diff --exit-code -- app/gradle.lockfile
 
       - name: Build, unit tests, lint, AndroidTest compile and R8
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug :app:assembleRelease :app:lintRelease --stacktrace --console=plain 2>&1 | tee gradle-ci.log
+
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p8b-android-gradle-log-${{ github.run_id }}
+          path: gradle-ci.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verify production surface and frozen 8B semantics
         shell: bash
