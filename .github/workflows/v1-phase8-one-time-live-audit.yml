@@ -5,6 +5,9 @@ on:
     branches: [v1-p8-cloud-hardening]
     paths:
       - '.github/workflows/v1-phase8-one-time-live-audit.yml'
+      - 'scripts/phase8-cloud-usage-metrics.mjs'
+      - 'scripts/phase8-live-brick-backup-restore.mjs'
+      - 'src/backup-restore-v6.ts'
 
 permissions:
   contents: read
@@ -15,7 +18,7 @@ concurrency:
 
 jobs:
   live-audit:
-    name: Discover Brick account, rehearse disposable restore, measure production usage
+    name: Discover Brick account, rehearse disposable restore, measure deployed production usage
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -83,7 +86,7 @@ jobs:
           BRICK_RESTORE_EVIDENCE_PATH: phase8-live-restore-evidence.json
         run: node scripts/phase8-live-brick-backup-restore.mjs /tmp/brick-backup-restore-live.mjs
 
-      - name: Collect read-only production Cloudflare operation and storage evidence
+      - name: Collect read-only production Cloudflare operation, storage and deployment-truth evidence
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           BRICK_METRICS_DAYS: '7'
@@ -105,12 +108,23 @@ jobs:
           }
           if (restore.productionDatabaseTouched !== false || restore.fixtureOnly !== true) throw new Error('restore safety boundary failed');
           if (!Array.isArray(restore.backupTables) || restore.backupTables.length !== 12) throw new Error('restore table coverage incomplete');
+
           if (usage.sourceGitSha !== sha) throw new Error('usage evidence SHA mismatch');
           if (usage.worker?.name !== 'brick-family-v1' || usage.d1?.name !== 'brick-family-v1') throw new Error('usage evidence is not for canonical Brick resources');
+          if (usage.d1?.deployed !== true) throw new Error('canonical Brick D1 deployment truth missing');
           if (!Number.isFinite(usage.d1?.analyticsDatabaseSizeBytesMax)) throw new Error('D1 storage evidence missing');
-          for (const name of ['brick-family-v1-history','brick-family-v1-maps']) if (!(name in usage.r2)) throw new Error(`R2 evidence missing ${name}`);
-          for (const name of ['brick-family-v1-events','brick-family-v1-dlq']) if (!(name in usage.queues)) throw new Error(`Queue evidence missing ${name}`);
-          console.log('Phase 8 live restore and usage evidence verified before cleanup.');
+          for (const name of ['brick-family-v1-history','brick-family-v1-maps']) {
+            if (!(name in usage.r2)) throw new Error(`R2 evidence missing ${name}`);
+            if (!['OBSERVED_IN_ANALYTICS','NOT_OBSERVED_IN_WINDOW'].includes(usage.r2[name]?.deploymentState)) throw new Error(`R2 deployment truth invalid for ${name}`);
+          }
+          for (const name of ['brick-family-v1-events','brick-family-v1-dlq']) {
+            if (!(name in usage.queues)) throw new Error(`Queue deployment truth missing ${name}`);
+            if (typeof usage.queues[name]?.deployed !== 'boolean') throw new Error(`Queue deployed flag missing ${name}`);
+          }
+          const deployed = usage.deploymentTruth?.queuesDeployed || [];
+          const absent = usage.deploymentTruth?.queuesNotDeployed || [];
+          if (deployed.length + absent.length !== 2) throw new Error('queue deployment truth is incomplete');
+          console.log(`Phase 8 live restore and usage evidence verified. Deployed queues: ${deployed.join(', ') || 'none'}; undeployed planned queues: ${absent.join(', ') || 'none'}.`);
           NODE
 
       - name: Delete any disposable D1 database left by the rehearsal
