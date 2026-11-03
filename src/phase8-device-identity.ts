@@ -8,7 +8,6 @@ export type DeviceIdentityRow = Record<string, unknown> & {
 };
 
 const MAX_PAIRING_BODY = 4096;
-const MAX_DEVICE_IDENTITIES = 1000;
 
 function json(data: unknown, status: number) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
@@ -42,10 +41,12 @@ export async function canonicalizeHistoricalDeviceRows(rows: DeviceIdentityRow[]
 /**
  * Extra Phase 8 pairing guard for pre-canonicalization databases. New registrations are already
  * canonicalized by worker-v5b and protected by schema 015's UNIQUE index. This guard closes the
- * upgrade edge where a historical row used an unpadded spelling of the same DER SPKI: compare the
- * cryptographic identity, not only the stored text, before any new enrollment can reach the base
- * pairing handler. It intentionally does not consume or validate a pairing token; malformed/new
- * requests continue to the normal bounded, rate-limited pairing path.
+ * upgrade edge where a historical row used a different Base64-padding spelling of the same DER SPKI.
+ *
+ * The public pairing route is unauthenticated, so this lookup must remain O(1) with respect to the
+ * number of registered devices. Candidate rows are selected by the only historical alias Brick needs
+ * to support (trailing Base64 padding), then cryptographically canonicalized before comparison. New or
+ * malformed requests continue to the normal bounded, rate-limited pairing path.
  */
 export async function historicalIdentityPairingDenied(req: Request, env: Phase8IdentityEnv): Promise<Response | null> {
   const bounded = await readBoundedBody(req.clone(), MAX_PAIRING_BODY);
@@ -59,18 +60,18 @@ export async function historicalIdentityPairingDenied(req: Request, env: Phase8I
   const canonical = await canonicalDevicePublicKey(supplied);
   if (!canonical) return null;
 
+  // A text UNIQUE index cannot collapse padded/unpadded legacy spellings. Restrict the pre-rate-limit
+  // compatibility check to matching padding aliases instead of scanning the device registry.
   const result = await env.DB.prepare(
-    "SELECT id,public_key_spki_b64 FROM devices ORDER BY created_at LIMIT ?1"
-  ).bind(MAX_DEVICE_IDENTITIES + 1).all<{ id: string; public_key_spki_b64: string }>();
-  if (result.results.length > MAX_DEVICE_IDENTITIES) {
-    return json({ error: "device identity registry requires administrative review before pairing" }, 503);
-  }
+    "SELECT id,public_key_spki_b64 FROM devices WHERE public_key_spki_b64=?1 OR RTRIM(public_key_spki_b64,'=')=RTRIM(?1,'=') LIMIT 4"
+  ).bind(canonical).all<{ id: string; public_key_spki_b64: string }>();
+  if (!result.results.length) return null;
 
   let rows: DeviceIdentityRow[];
   try { rows = await canonicalizeHistoricalDeviceRows(result.results); }
   catch {
-    // Fail closed: an invalid or semantically duplicated historical identity must be repaired before
-    // another key can be enrolled, otherwise Phase 8's permanent tombstone guarantee is ambiguous.
+    // Multiple textual aliases for one key, or an invalid matching historical row, is an integrity
+    // issue that should be repaired rather than made worse by another enrollment.
     return json({ error: "stored device identity requires administrative repair before pairing" }, 503);
   }
   if (rows.some(row => row.public_key_spki_b64 === canonical)) {
