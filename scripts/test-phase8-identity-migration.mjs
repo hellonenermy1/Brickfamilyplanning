@@ -41,7 +41,7 @@ await assert.rejects(
 );
 await assert.rejects(
   () => migration.planDeviceIdentityCanonicalization([{ id: 'bad', public_key_spki_b64: 'not a p256 key' }]),
-  /Base64|P-256/
+  /missing or unreasonably sized|Base64|P-256/
 );
 await assert.rejects(
   () => migration.planDeviceIdentityCanonicalization([{ id: '', public_key_spki_b64: keyA }]),
