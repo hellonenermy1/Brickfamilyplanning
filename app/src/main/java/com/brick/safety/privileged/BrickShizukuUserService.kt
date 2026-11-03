@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Shizuku UserService. This process runs with Shizuku's shell/root identity, but exposes only the
  * fixed AIDL operations in IBrickPrivilegedService. runFixed() is private and every caller supplies
- * a hard-coded command family; normal Brick code can never submit arbitrary shell text.
+ * an exact allowlisted command; normal Brick code can never submit arbitrary shell text.
  */
 @Keep
 class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
@@ -96,6 +96,7 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
     private fun runFixed(vararg command: String, timeoutMs: Long = COMMAND_TIMEOUT_MS): FixedResult {
         touch()
         require(command.isNotEmpty())
+        require(PrivilegedCommandPolicy.allows(command.toList())) { "privileged command not allowlisted" }
         val process = ProcessBuilder(*command).redirectErrorStream(true).start()
         if (!process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
             process.destroyForcibly()
@@ -107,12 +108,10 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
 
     @SuppressLint("MissingPermission")
     private fun wifiScanResultsOrNull(context: Context, manager: WifiManager): List<WifiScanResult>? {
-        // getScanResults() still requires fine location for apps targeting Android 10+.
         if (!hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)) return null
         return try {
             manager.scanResults.orEmpty()
         } catch (_: SecurityException) {
-            // Permission/location policy can change between the check and the platform call.
             null
         }
     }
@@ -151,7 +150,6 @@ class BrickShizukuUserService() : IBrickPrivilegedService.Stub() {
         try {
             scanner.stopScan(callback)
         } catch (_: SecurityException) {
-            // Best effort: permission can be revoked while a scan is active.
         }
     }
 
