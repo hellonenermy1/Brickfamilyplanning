@@ -91,9 +91,10 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
         assertEquals("AndroidKeyStore identity must survive package update", before!!, DeviceKeys.publicSpkiBase64())
 
         // Reflection keeps this same test APK runnable against Phase 7, where BetaSafety does not yet
-        // exist, while still proving Phase 8 interprets the persisted marker as fail-closed. Kotlin
-        // default parameters do not create a one-argument JVM overload, so isOperational is invoked
-        // using its real (Context,long) method signature.
+        // exist, while still proving Phase 8 interprets the persisted marker as fail-closed. Startup
+        // recovery is allowed to advance DISARMED -> MANAGEMENT_RELEASED when no owner/admin remains;
+        // that is safe monotonic progress, not reactivation. Stage 3 remains explicit and must not be
+        // entered merely because an APK was upgraded.
         val betaClass = Class.forName("com.brick.safety.beta.BetaSafety")
         val beta = betaClass.getField("INSTANCE").get(null)
         val stage = betaClass.getMethod("retirementStage", Context::class.java).invoke(beta, context).toString()
@@ -102,7 +103,10 @@ class Phase8UpgradeContinuityInstrumentedTest : BrickInstrumentationTestCase() {
             Context::class.java,
             java.lang.Long.TYPE
         ).invoke(beta, context, System.currentTimeMillis()) as Boolean
-        assertEquals("DISARMED", stage)
+        assertTrue(
+            "upgrade must preserve or safely advance the fail-closed retirement state, was $stage",
+            stage == "DISARMED" || stage == "MANAGEMENT_RELEASED"
+        )
         assertFalse("upgrade must never reactivate a previously disarmed install", operational)
     }
 }
