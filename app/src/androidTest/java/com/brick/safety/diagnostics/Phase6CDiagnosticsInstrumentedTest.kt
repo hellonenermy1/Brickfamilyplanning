@@ -1,6 +1,10 @@
 package com.brick.safety.diagnostics
 
 import android.content.Context
+import com.brick.safety.data.SafetyOutbox
+import com.brick.safety.managed.DesiredLocationState
+import com.brick.safety.managed.ParentLocationStateStore
+import com.brick.safety.reliability.SafetyDispatcher
 import com.brick.safety.testing.BrickInstrumentationTestCase
 
 @Suppress("DEPRECATION")
@@ -22,6 +26,15 @@ class Phase6CDiagnosticsInstrumentedTest : BrickInstrumentationTestCase() {
 
     override fun tearDown() {
         if (DiagnosticStore.activeSessionId() != null) DiagnosticStore.endSession(context)
+        context.getSharedPreferences("brick_parent_location", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
+            .remove("sosActive")
+            .remove("fallHighActive")
+            .remove("fallHighUntilMs")
+            .commit()
+        context.deleteDatabase("brick_safety_outbox.db")
+        SafetyDispatcher.restoreSafetyMirrors(context)
+        context.deleteDatabase("brick_safety_outbox.db")
         super.tearDown()
     }
 
@@ -92,5 +105,50 @@ class Phase6CDiagnosticsInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(report.contains("manual_marker"))
         assertTrue(report.contains("marker=$marker"))
         assertTrue(report.contains("session=$session"))
+    }
+
+    fun testReportUsesV1OneShotLocationSemanticsAndDurableSosTruth() {
+        val now = System.currentTimeMillis()
+        context.getSharedPreferences("brick_parent_location", Context.MODE_PRIVATE).edit().clear().commit()
+        assertTrue(
+            ParentLocationStateStore.applyVerified(
+                context = context,
+                desired = DesiredLocationState.OFF,
+                commandId = "diag-command-0001",
+                nonce = "11111111-1111-4111-8111-111111111111",
+                issuedAtMs = now - 1_000L,
+                expiresAtMs = now + 5 * 60_000L,
+                nowMs = now
+            )
+        )
+
+        context.deleteDatabase("brick_safety_outbox.db")
+        SafetyOutbox(context).use { outbox ->
+            assertTrue(
+                outbox.appendSosTransition(
+                    eventId = "22222222-2222-4222-8222-222222222222",
+                    kind = "sos_started",
+                    payload = "diagnostic-sos-state".toByteArray(),
+                    priority = SafetyDispatcher.PRIORITY_SOS,
+                    active = true
+                )
+            )
+        }
+
+        // Populate SafetyDispatcher's cache from the durable outbox, then deliberately make the old
+        // compatibility preference disagree. The diagnostic report must continue to show durable
+        // SOS truth rather than regress to the compatibility mirror.
+        SafetyDispatcher.restoreSafetyMirrors(context)
+        assertTrue(context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().putBoolean("sosActive", false).commit())
+
+        val report = DiagnosticStore.fullReport(context)
+        assertEquals("BRICK V1 DIAGNOSTIC REPORT", report.lineSequence().first())
+        assertTrue(report.contains("sosActive=true"))
+        val locationLine = report.lineSequence().first { it.startsWith("locationEnabled=") }
+        assertTrue(locationLine.contains("lastCommandTarget=OFF"))
+        assertTrue(locationLine.contains("lastCommandStatus=PENDING"))
+        assertTrue(locationLine.contains("lastCommandActualAfter=unknown"))
+        assertFalse("one-shot Location history must not be described as persistent desired state", locationLine.contains("desired="))
+        assertFalse(report.contains("BRICK PHASE 6C BETA DIAGNOSTIC REPORT"))
     }
 }
