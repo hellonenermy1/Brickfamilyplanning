@@ -1,0 +1,16 @@
+BRICK V1 ANDROID PRODUCTION SIGNING — PUBLIC MANIFEST
+Created: 2026-11-03
+Package: com.brick.safety
+Alias: brick-v1
+Keystore type: JKS
+Key algorithm: RSA 4096
+Signature algorithm: SHA256withRSA
+Certificate subject: C=SG, L=Singapore, O=Brick, OU=Release Signing, CN=Brick v1
+Certificate valid from: 2026-11-03
+Certificate valid until: 2126-10-10
+Certificate SHA-256: BF:DE:B4:97:14:FE:A7:14:53:6C:47:F8:12:6D:EE:D7:00:F0:0B:2D:D1:13:C5:C0:D4:52:99:2D:7E:D5:F7:90
+Keystore SHA-256: de561a03e7475a30355b7197943096dfbb6fcb69271e611a61b5fc4240bc0467
+
+The certificate fingerprint and keystore checksum are public integrity metadata.
+The private keystore, Base64 keystore, keystore password, key password, and recovery passphrase MUST NOT be committed to Git.
+This signing identity is permanent for Brick v1 package com.brick.safety unless a deliberate Android-supported signing-key rotation is performed in the future.
