@@ -1,4 +1,5 @@
 import { BACKUP_TABLES, validateBackupBody } from "./backup-v6";
+import { canonicalizeHistoricalDeviceRows } from "./phase8-device-identity";
 
 type RestoreEnv = { DB: D1Database };
 type Snapshot = Awaited<ReturnType<typeof validateBackupBody>>;
@@ -150,6 +151,10 @@ async function executeFreshRestore(db: D1Database, snapshot: Snapshot) {
  */
 export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer, expectedSha256?: string) {
   const snapshot = await validateBackupBody(body, expectedSha256);
+  // Old snapshots may predate canonical Base64 storage. Normalize the same DER SPKI to the current
+  // representation before it reaches the text UNIQUE index, and reject semantic duplicate keys so a
+  // recovery cannot recreate two logical devices for one cryptographic identity.
+  snapshot.tables.devices = await canonicalizeHistoricalDeviceRows(snapshot.tables.devices);
   await assertFreshTarget(env.DB);
   const restoredRows = await executeFreshRestore(env.DB, snapshot);
   return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows };
