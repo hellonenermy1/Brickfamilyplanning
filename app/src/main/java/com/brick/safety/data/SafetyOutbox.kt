@@ -6,7 +6,14 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.brick.safety.crypto.JournalCipher
 
-class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
+/**
+ * Durable safety-event outbox. [writeFaultInjector] is a deterministic instrumentation hook for
+ * storage exceptions such as SQLITE_FULL; normal production callers leave it null.
+ */
+class SafetyOutbox(
+    context: Context,
+    private val writeFaultInjector: ((operation: String) -> Unit)? = null
+) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
     companion object { private const val FAILURE_HOLD_MS = 120_000L }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
@@ -55,6 +62,7 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
 
     fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean {
         return try {
+            writeFaultInjector?.invoke("append")
             val rowId = writableDatabase.insertWithOnConflict("safety_events", null, ContentValues().apply {
                 put("event_id", eventId)
                 put("kind", kind)
@@ -81,32 +89,39 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     fun pending(limit: Int = 50): List<Pending> {
         val safeLimit = limit.coerceIn(1, 1_000)
         val out = mutableListOf<Pending>()
-        readableDatabase.rawQuery(
-            "SELECT id,event_id,kind,payload,priority FROM safety_events WHERE acked=0 ORDER BY priority DESC,id ASC LIMIT ?",
-            arrayOf((safeLimit + 32).toString())
-        ).use { c ->
-            while (c.moveToNext() && out.size < safeLimit) {
-                val rowId = c.getLong(0)
-                val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
-                    quarantine(rowId)
-                    continue
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT id,event_id,kind,payload,priority FROM safety_events WHERE acked=0 ORDER BY priority DESC,id ASC LIMIT ?",
+                arrayOf((safeLimit + 32).toString())
+            ).use { c ->
+                while (c.moveToNext() && out.size < safeLimit) {
+                    val rowId = c.getLong(0)
+                    val payload = try { JournalCipher.decrypt(c.getBlob(3)) } catch (_: Throwable) {
+                        quarantine(rowId)
+                        continue
+                    }
+                    out += Pending(rowId, c.getString(1), c.getString(2), payload, c.getInt(4))
                 }
-                out += Pending(rowId, c.getString(1), c.getString(2), payload, c.getInt(4))
             }
+            out
+        } catch (_: Throwable) {
+            noteHealthy(false)
+            emptyList()
         }
-        return out
     }
 
     fun ack(eventId: String): Boolean {
         return try {
-            val changed = writableDatabase.update(
+            writeFaultInjector?.invoke("ack")
+            val db = writableDatabase
+            val changed = db.update(
                 "safety_events",
                 ContentValues().apply { put("acked", 1) },
                 "event_id=? AND acked=0",
                 arrayOf(eventId)
             )
             if (changed != 1) return false
-            writableDatabase.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
+            db.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
             noteHealthy(true)
             true
         } catch (_: Throwable) {
@@ -116,16 +131,21 @@ class SafetyOutbox(context: Context) : SQLiteOpenHelper(context, "brick_safety_o
     }
 
     fun stats(): Stats {
-        readableDatabase.rawQuery(
-            "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END),MIN(CASE WHEN acked=0 THEN created_ms END),SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM safety_events",
-            emptyArray()
-        ).use { c ->
-            c.moveToFirst()
-            return Stats(
-                if (c.isNull(0)) 0 else c.getInt(0),
-                if (c.isNull(1)) null else c.getLong(1),
-                if (c.isNull(2)) 0 else c.getInt(2)
-            )
+        return try {
+            readableDatabase.rawQuery(
+                "SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END),MIN(CASE WHEN acked=0 THEN created_ms END),SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM safety_events",
+                emptyArray()
+            ).use { c ->
+                c.moveToFirst()
+                Stats(
+                    if (c.isNull(0)) 0 else c.getInt(0),
+                    if (c.isNull(1)) null else c.getLong(1),
+                    if (c.isNull(2)) 0 else c.getInt(2)
+                )
+            }
+        } catch (_: Throwable) {
+            noteHealthy(false)
+            Stats(0, null, 0)
         }
     }
 }
