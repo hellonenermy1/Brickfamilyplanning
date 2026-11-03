@@ -88,11 +88,14 @@ query BrickWorker($accountTag: string!, $scriptName: string!, $start: Time!, $en
 const workerData = await gql(workerQuery, { accountTag: accountId, scriptName: workerName, start: startTime, end: endTime });
 const worker = workerData?.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0] || null;
 
+// Cloudflare exposes queryBatchTimeMs as a latency metric, but in d1AnalyticsAdaptiveGroups it is
+// selected through quantiles (for example queryBatchTimeMsP90), not through the sum aggregate. Keep
+// additive counters in sum and latency in quantiles so this query follows the live GraphQL schema.
 const d1Query = `
 query BrickD1($accountTag: string!, $databaseId: string!, $start: Date!, $end: Date!) {
   viewer { accounts(filter: { accountTag: $accountTag }) {
     d1AnalyticsAdaptiveGroups(limit: 10000, filter: { date_geq: $start, date_leq: $end, databaseId: $databaseId }) {
-      sum { readQueries writeQueries rowsRead rowsWritten queryBatchResponseBytes queryBatchTimeMs }
+      sum { readQueries writeQueries rowsRead rowsWritten queryBatchResponseBytes }
       quantiles { queryBatchTimeMsP90 }
     }
   }}
@@ -100,12 +103,12 @@ query BrickD1($accountTag: string!, $databaseId: string!, $start: Date!, $end: D
 const d1Data = await gql(d1Query, { accountTag: accountId, databaseId: database.uuid, start: startDate, end: endDate });
 const d1Groups = d1Data?.viewer?.accounts?.[0]?.d1AnalyticsAdaptiveGroups || [];
 const d1Totals = d1Groups.reduce((acc, group) => {
-  for (const key of ['readQueries', 'writeQueries', 'rowsRead', 'rowsWritten', 'queryBatchResponseBytes', 'queryBatchTimeMs']) {
+  for (const key of ['readQueries', 'writeQueries', 'rowsRead', 'rowsWritten', 'queryBatchResponseBytes']) {
     acc[key] += Number(group?.sum?.[key] || 0);
   }
   acc.queryBatchTimeMsP90Max = Math.max(acc.queryBatchTimeMsP90Max, Number(group?.quantiles?.queryBatchTimeMsP90 || 0));
   return acc;
-}, { readQueries: 0, writeQueries: 0, rowsRead: 0, rowsWritten: 0, queryBatchResponseBytes: 0, queryBatchTimeMs: 0, queryBatchTimeMsP90Max: 0 });
+}, { readQueries: 0, writeQueries: 0, rowsRead: 0, rowsWritten: 0, queryBatchResponseBytes: 0, queryBatchTimeMsP90Max: 0 });
 
 const d1StorageQuery = `
 query BrickD1Storage($accountTag: string!, $databaseId: string!, $start: Date!, $end: Date!) {
@@ -230,7 +233,7 @@ const safeBindingSummary = bindings
   }));
 
 const evidence = {
-  version: 4,
+  version: 5,
   sourceGitSha: process.env.GITHUB_SHA || null,
   measuredAt: new Date().toISOString(),
   windowDays: days,
@@ -269,6 +272,7 @@ const evidence = {
   },
   notes: [
     'GraphQL analytics can be adaptively sampled and are operational evidence, not a billing invoice.',
+    'D1 additive counters use the sum aggregate; query latency is recorded from queryBatchTimeMsP90 because queryBatchTimeMs is not a sum field in d1AnalyticsAdaptiveGroups.',
     'D1 storage uses d1StorageAdaptiveGroups databaseSizeBytes plus REST file size as a point-in-time cross-check.',
     'Worker binding metadata is the primary truth for whether the production Brick Worker actively uses D1, R2 or Queue producer resources.',
     'Queue inventory/metrics are queried only if the canonical Worker has a Brick Queue binding; unused cardless-plan Queue APIs cannot invalidate D1/Worker evidence.',
