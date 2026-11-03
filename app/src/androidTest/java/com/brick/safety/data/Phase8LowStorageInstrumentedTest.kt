@@ -82,4 +82,27 @@ class Phase8LowStorageInstrumentedTest : BrickInstrumentationTestCase() {
             assertEquals(0, recovered.stats().pendingCount)
         }
     }
+
+    fun testUnreadableSafetyDatabaseFailsClosedInsteadOfPretendingQueueIsEmpty() {
+        val id = "33333333-3333-4333-8333-333333333333"
+        SafetyOutbox(context).use { outbox ->
+            assertTrue(outbox.append(id, "sos_started", "durable-sos".toByteArray(), 100))
+        }
+
+        // Deterministic corruption/failure injection: remove the table while leaving the database file.
+        // The safety reader must not report zero pending, because that would allow lower-priority history
+        // to consume the upload window while Brick cannot establish whether an SOS is waiting.
+        context.openOrCreateDatabase("brick_safety_outbox.db", Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("DROP TABLE safety_events")
+        }
+
+        SafetyOutbox(context).use { broken ->
+            assertTrue(broken.pending(10).isEmpty())
+            assertEquals(SafetyOutbox.UNKNOWN_PENDING_COUNT, broken.stats().pendingCount)
+        }
+        assertFalse(
+            context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+                .getBoolean("safetyOutboxWriteHealthy", true)
+        )
+    }
 }
