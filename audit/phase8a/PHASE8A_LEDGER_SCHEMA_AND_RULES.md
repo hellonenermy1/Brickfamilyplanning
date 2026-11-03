@@ -12,19 +12,20 @@ The current Brick V1 contract is reconstructed as follows:
    - `SHZ-020`
 4. Apply the current text in `PHASE8A_AMENDED_EXISTING_REQUIREMENTS.md` to the 14 baseline IDs marked `CURRENT — AMENDED`.
 5. Add the 59 genuinely new requirements in `PHASE8A_NEW_01...07`.
-6. Preserve all 24 FORBIDDEN, all 14 OPTIONAL-IF-SUPPORTED and both FUTURE-INTERFACE checklist rows unless later explicitly superseded; none is superseded in Phase 8A.
+6. Apply `PHASE8A_23R_LATENCY_AMENDMENT.md` to the `LIVE-005` latency requirement.
+7. Preserve all 24 FORBIDDEN, all 14 OPTIONAL-IF-SUPPORTED and both FUTURE-INTERFACE checklist rows; none is superseded in Phase 8A.
 
-This yields exactly **525 current unique requirements** plus the 3 superseded historical rows retained for traceability.
+This yields exactly **525 current unique requirements** plus 3 superseded historical rows retained for traceability.
 
 ## Required fields for every current requirement
 
-Every current requirement must resolve to:
+Every current requirement resolves to:
 
 - stable ID;
 - class;
 - profile;
 - current requirement text;
-- authoritative source;
+- authoritative source/current amendment;
 - owner subsystem;
 - target original implementation phase;
 - current audit owner (8B-8F as applicable);
@@ -36,11 +37,9 @@ Every current requirement must resolve to:
 - field-test requirement;
 - source-gap status.
 
-No current requirement may remain `UNKNOWN` or unmapped at Phase 8A closure.
+No current requirement remains `UNKNOWN` or unmapped after Phase 8A closure.
 
 ## Default owner mappings for unchanged baseline IDs
-
-These rules are used to reconstruct the generated normalized ledger; they do not claim that implementation exists.
 
 - `GOV`, `COV`: governance/coverage; original phases 1/9; audit 8B-8F as applicable.
 - `PLT`: Android platform/provisioning; phases 1/2/6; audit 8C/8F.
@@ -59,13 +58,15 @@ These rules are used to reconstruct the generated normalized ledger; they do not
 - `OPS`, `QA`: release/qualification; phase 9; audit 8B-8F as applicable.
 - `NO`: forbidden/non-goal; phases 1/8/9; proof is absence by code/package/network/regression evidence.
 
+Specific new requirement owners are written directly in `PHASE8A_NEW_01...07`.
+
 ## Default evidence mappings by profile
 
 - `UI`: production device/browser state matrix + integration + stale/offline/error-state evidence.
 - `FEAT`: source reachability + unit/integration + real-device evidence where platform dependent.
 - `ALG`: deterministic/simulation + integration trace + adversarial evidence + real physical scenario where needed.
 - `PERF`: measured cadence/CPU/RAM/wakeups/scans/battery/thermal/network/storage on exact target release.
-- `REL`: fault injection + automatic repair/verify/escalation + containment/recovery evidence; a successful manual restart does not pass.
+- `REL`: fault injection + automatic repair/verify/escalation + containment/recovery; a successful manual restart does not pass.
 - `DATA`: transaction/crash/corruption/retention/reconciliation tests.
 - `PROTO`: schema/fuzz/replay/order/duplicate/auth integration tests.
 - `SEC`: static/config/package review + authenticated/unauthenticated adversarial tests.
@@ -89,11 +90,9 @@ These rules are used to reconstruct the generated normalized ledger; they do not
 - History/portal depends on backend current/history APIs and authentication/authorization.
 - Release/QA depends on exact release identity plus the relevant functional requirements.
 
-Specific new-requirement dependencies are written directly in `PHASE8A_NEW_01...07`.
-
 ## Generated ledger verification
 
-A full normalized 528-row working ledger was generated and validated locally:
+The final normalized 528-row working ledger was regenerated after the 23R amendment and validated:
 
 - 525 current unique requirements;
 - 3 superseded historical rows;
@@ -101,10 +100,14 @@ A full normalized 528-row working ledger was generated and validated locally:
 - 24 forbidden;
 - 14 optional-if-supported;
 - 2 future-interface;
-- exactly one open source-value gap: `LIVE-005` / `P8A-GAP-002`.
+- open source gaps: **0**;
+- missing owner/dependency/test mappings: **0**;
+- exact duplicate current requirement texts: **0**.
 
-Generated ledger SHA-256:
+Final generated ledger SHA-256:
 
-`d012f6a3e8df7491ffa8207240d7c53a9f48d5b65e585aab0d83f86497fcc614`
+`8683b85f8b61aa3769b338048e7deb17d1fff3bc7773b6d454c7a61bce013bbd`
 
-This hash is a reproducibility check; the authoritative contract is the pinned source + committed normalization/amendment files above.
+The authoritative contract is the pinned source plus committed normalization/amendment files above.
+
+**PHASE 8A LEDGER RECONSTRUCTION: PASS**
