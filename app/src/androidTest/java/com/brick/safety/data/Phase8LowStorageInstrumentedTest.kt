@@ -105,4 +105,34 @@ class Phase8LowStorageInstrumentedTest : BrickInstrumentationTestCase() {
                 .getBoolean("safetyOutboxWriteHealthy", true)
         )
     }
+
+    fun testUnreadableLocationJournalFailsClosedAndCannotRestartSequenceAtZero() {
+        Journal(context).use { journal ->
+            assertTrue(journal.append(902, 41L, "durable-location".toByteArray()))
+            assertEquals(41L, journal.maxSequence(902))
+        }
+
+        // Remove the logical table while retaining the DB file to model schema/file-level corruption.
+        context.openOrCreateDatabase("brick_journal.db", Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("DROP TABLE packets")
+        }
+
+        Journal(context).use { broken ->
+            assertTrue(broken.nextPending(10).isEmpty())
+            assertNull(broken.latestPending())
+            assertEquals(Journal.UNKNOWN_PENDING_COUNT, broken.stats().pendingCount)
+
+            var failedClosed = false
+            try {
+                broken.maxSequence(902)
+            } catch (_: IllegalStateException) {
+                failedClosed = true
+            }
+            assertTrue("unreadable sequence state must fail closed rather than return zero", failedClosed)
+        }
+        assertFalse(
+            context.getSharedPreferences("brick", Context.MODE_PRIVATE)
+                .getBoolean("journalWriteHealthy", true)
+        )
+    }
 }
