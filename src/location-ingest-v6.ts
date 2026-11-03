@@ -54,6 +54,14 @@ function order(a: LivePacket, b: LivePacket) {
   return a.epoch - b.epoch || a.sequence - b.sequence;
 }
 
+function newestCapturedPacket(packets: readonly LivePacket[]) {
+  return packets.reduce((best, packet) => {
+    if (packet.wallTimeMs > best.wallTimeMs) return packet;
+    if (packet.wallTimeMs < best.wallTimeMs) return best;
+    return order(best, packet) < 0 ? packet : best;
+  });
+}
+
 async function trustedPacket(rawPacket: LivePacket, env: LocationIngestEnv) {
   return constrainFallbackToRoute(rawPacket, env.MAPS);
 }
@@ -72,13 +80,14 @@ async function queueLocations(env: LocationIngestEnv, deviceId: string, location
 }
 
 /**
- * Durable V6 ordering seam. Exported so Phase 8 can exercise the exact production DB/DO transition
- * rather than a copy of its logic. Old/offline packets are still inserted for history, but only an
- * epoch/sequence strictly newer than the device watermark may attempt to advance the live Durable
- * Object, and the DO then enforces event-time monotonicity before the change is reported as live.
+ * Durable V6 ordering seam. D1 keeps epoch/sequence as the logical idempotency watermark, while the
+ * Durable Object separately answers the parent-facing question "what is the newest captured event?".
+ * This separation is intentional: backlog from two reboot epochs can arrive out of order, so a lower
+ * logical epoch may still contain the newest event-time point and must be allowed to update live state.
  */
 export async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
-  const highest = packets[packets.length - 1];
+  const logicalHighest = packets.reduce((best, packet) => order(best, packet) < 0 ? packet : best);
+  const liveCandidate = newestCapturedPacket(packets);
   const now = Date.now();
   // One multi-row INSERT replaces N individual D1 subqueries. Four bound parameters per packet
   // means MAX_BATCH=20 uses 80 parameters, safely below D1's 100-bound-parameter limit.
@@ -93,21 +102,22 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   ).bind(...bindings);
   const advance = env.DB.prepare(
     "UPDATE devices SET last_epoch=?1,last_sequence=?2,last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2))"
-  ).bind(highest.epoch, highest.sequence, now, deviceId);
+  ).bind(logicalHighest.epoch, logicalHighest.sequence, now, deviceId);
   const endpointStatements = preciseEndpointStatements(env.DB, deviceId, packets, now);
   // Endpoint indexing is part of the durable DB write before ACK. The heavier R2 smoothing pass is
   // intentionally not: a temporary refinement failure must never hold up live safety/location ACKs.
-  const [insertResult, advanceResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
-  const watermarkAdvanced = (advanceResult?.meta.changes ?? 0) > 0;
+  const [insertResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
+  const insertedCount = insertResult?.meta.changes ?? 0;
   let liveAdvanced = false;
-  if (watermarkAdvanced) {
-    // The Durable Object is the authoritative live read model. It may reject a logically newer
-    // epoch/sequence when its capture timestamp would move the parent backwards in event time.
-    liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
+  if (insertedCount > 0) {
+    // The DO decides live ordering by capture time first. We still call it for a newly inserted packet
+    // even when D1's logical watermark did not advance, because cross-epoch backlog can arrive out of
+    // order and a lower epoch may contain the newest captured location.
+    liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(liveCandidate);
   }
   return {
     liveAdvanced,
-    insertedCount: insertResult?.meta.changes ?? 0,
+    insertedCount,
     preciseEndpointCount: endpointStatements.length,
     accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence }))
   };
