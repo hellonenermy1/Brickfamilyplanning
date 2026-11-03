@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { webcrypto } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
@@ -89,4 +90,11 @@ await assert.rejects(
   /semantic duplicate device identity/
 );
 
-console.log('Phase 8 historical identity guard: canonical/unpadded aliases are one permanent device identity and ambiguous stored keys fail closed.');
+// Prevent a future refactor from leaving this well-tested helper disconnected from production.
+const worker = fs.readFileSync('src/worker-v9.ts', 'utf8');
+const route = worker.indexOf('if (req.method === "POST" && u.pathname === "/api/pair/complete")');
+const guard = worker.indexOf('const denied = await historicalIdentityPairingDenied(req, env);', route);
+const forward = worker.indexOf('return base.fetch!(req, env, ctx);', guard);
+assert.ok(route >= 0 && guard > route && forward > guard, 'worker-v9 must run historical identity guard before base pairing can insert');
+
+console.log('Phase 8 historical identity guard: canonical/unpadded aliases are one permanent device identity, ambiguous stored keys fail closed, and production pairing is wired to the guard.');
