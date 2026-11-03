@@ -22,6 +22,7 @@ import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.MaintenanceEntryGate
 import com.brick.safety.managed.ManagedPolicy
 import com.brick.safety.network.BrickApi
+import com.brick.safety.network.PinPairingApi
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.brick.safety.reliability.ServiceControl
@@ -123,10 +124,11 @@ class MainActivity : AppCompatActivity() {
         if (!base.startsWith("https://") || token.isBlank()) { b.status.text = "● Enter secure server + pairing code"; return }
         b.scanPairButton.isEnabled = false
         b.pairButton.isEnabled = false
-        b.status.text = "● Pairing…"
+        val pinFallback = token.matches(Regex("\\d{8}"))
+        b.status.text = if (pinFallback) "● Waiting for parent confirmation…" else "● Pairing…"
         io.execute {
             try {
-                val r = BrickApi.completePairing(base, token)
+                val r = if (pinFallback) PinPairingApi.completeFallback(base, token) else BrickApi.completePairing(base, token)
                 getSharedPreferences("brick", MODE_PRIVATE).edit()
                     .putString("deviceId", r.deviceId)
                     .putString("apiBase", r.apiBase)
@@ -135,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread { requestPermissionsAndStart() }
             } catch (_: Exception) {
                 runOnUiThread {
-                    b.status.text = "● Pairing failed"
+                    b.status.text = if (pinFallback) "● Fallback pairing failed or expired" else "● Pairing failed"
                     b.scanPairButton.isEnabled = true
                     b.pairButton.isEnabled = true
                 }
@@ -350,7 +352,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (!paired) {
             b.scanPairButton.isEnabled = true
-            b.status.text = "● Setup required"
+            b.status.text = "● Setup required — scan QR or enter 8-digit fallback code"
             return
         }
 
