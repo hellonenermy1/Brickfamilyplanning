@@ -40,7 +40,9 @@ object PolicyLedger {
     ): String? {
         require(policy.matches(Regex("[A-Za-z0-9._:-]{1,120}")))
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val array = readArray(prefs.getString(KEY_RECORDS, null))
+        val raw = prefs.getString(KEY_RECORDS, null)
+        if (!isValidRaw(raw)) return null
+        val array = readArray(raw)
         val now = System.currentTimeMillis()
 
         // Do not create duplicate active provenance for the same effective Brick state.
@@ -67,29 +69,32 @@ object PolicyLedger {
     }
 
     @Synchronized
+    fun integrityValid(context: Context): Boolean {
+        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_RECORDS, null)
+        return isValidRaw(raw)
+    }
+
+    @Synchronized
     fun active(context: Context): List<Entry> = read(context).filter { it.active }
 
     @Synchronized
     fun read(context: Context): List<Entry> {
         val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_RECORDS, null)
+        if (!isValidRaw(raw)) return emptyList()
         val array = readArray(raw)
         return buildList {
             for (i in 0 until array.length()) {
-                val o = array.optJSONObject(i) ?: continue
-                val id = o.optString("id")
-                val policy = o.optString("policy")
-                val appliedAt = o.optLong("appliedAtMs", -1L)
-                if (id.isBlank() || policy.isBlank() || appliedAt <= 0L) continue
+                val o = array.getJSONObject(i)
                 add(
                     Entry(
-                        id = id,
-                        policy = policy,
-                        previousValue = if (o.isNull("previousValue")) null else o.optString("previousValue"),
-                        brickValue = if (o.isNull("brickValue")) null else o.optString("brickValue"),
-                        appliedAtMs = appliedAt,
+                        id = o.getString("id"),
+                        policy = o.getString("policy"),
+                        previousValue = if (o.isNull("previousValue")) null else o.getString("previousValue"),
+                        brickValue = if (o.isNull("brickValue")) null else o.getString("brickValue"),
+                        appliedAtMs = o.getLong("appliedAtMs"),
                         source = o.optString("source").take(80),
-                        revertedAtMs = if (o.isNull("revertedAtMs")) null else o.optLong("revertedAtMs").takeIf { it > 0L }
+                        revertedAtMs = if (o.isNull("revertedAtMs")) null else o.getLong("revertedAtMs").takeIf { it > 0L }
                     )
                 )
             }
@@ -99,12 +104,14 @@ object PolicyLedger {
     @Synchronized
     fun markReverted(context: Context, id: String): Boolean {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val array = readArray(prefs.getString(KEY_RECORDS, null))
+        val raw = prefs.getString(KEY_RECORDS, null)
+        if (!isValidRaw(raw)) return false
+        val array = readArray(raw)
         var found = false
         val now = System.currentTimeMillis()
         for (i in 0 until array.length()) {
-            val item = array.optJSONObject(i) ?: continue
-            if (item.optString("id") == id && item.isNull("revertedAtMs")) {
+            val item = array.getJSONObject(i)
+            if (item.getString("id") == id && item.isNull("revertedAtMs")) {
                 item.put("revertedAtMs", now)
                 found = true
                 break
@@ -117,11 +124,23 @@ object PolicyLedger {
     fun clear(context: Context): Boolean =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit()
 
-    private fun readArray(raw: String?): JSONArray = try {
-        if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
-    } catch (_: Throwable) {
-        JSONArray()
+    private fun isValidRaw(raw: String?): Boolean {
+        if (raw.isNullOrBlank()) return true
+        return runCatching {
+            val array = JSONArray(raw)
+            for (i in 0 until array.length()) {
+                val o = array.optJSONObject(i) ?: return@runCatching false
+                val id = o.optString("id")
+                val policy = o.optString("policy")
+                val appliedAt = o.optLong("appliedAtMs", -1L)
+                if (id.isBlank() || policy.isBlank() || appliedAt <= 0L) return@runCatching false
+                if (!o.has("revertedAtMs") || !o.has("previousValue") || !o.has("brickValue")) return@runCatching false
+            }
+            true
+        }.getOrDefault(false)
     }
+
+    private fun readArray(raw: String?): JSONArray = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
 
     private fun trim(array: JSONArray) {
         while (array.length() > MAX_RECORDS) array.remove(0)
