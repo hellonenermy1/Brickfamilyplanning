@@ -89,3 +89,19 @@ This ledger records defects discovered while retesting Phase 8B remediation bran
 **Required correction:** update only the stale instrumentation assertions to read current command history and terminal status; do not reintroduce the removed helper or persistent desired-state semantics.
 
 **Status:** OPEN — finding recorded before test correction.
+
+---
+
+## P8B-R006 — Cloud live-state ordering regression also omits its compiled module path
+
+**Severity:** P1 HIGH — after history-codec is repaired, cloud CI still cannot reach later regressions or production dry-run because the next deterministic test is invoked without its required module.
+
+**Observed baseline:** `v1-p8b-remediation-cloud` at `72a3a9b8b89fb6b05b868a00b121083009223887`.
+
+**Evidence:** GitHub Actions run `41626805547` proves the R004 repair: history codec compiles and prints `History delta + gzip codec round trip OK`. The immediately following `Regression — Phase 5 live-state ordering` fails because `scripts/test-phase5-live-state-order.mjs` requires `process.argv[2]` and throws `usage: test-phase5-live-state-order.mjs <module>`, while the workflow invokes it with no module argument. Later one-shot Location, origin, SOS, privacy and Wrangler gates are skipped.
+
+**Expected:** the ordering regression must execute against compiled `src/live-state-order.ts`, proving monotonic epoch/sequence acceptance and rejecting invalid or stale state, without changing production ordering semantics.
+
+**Required correction:** compile `src/live-state-order.ts` into a temporary ESM module using the locked esbuild toolchain and pass that module to the existing regression script.
+
+**Status:** OPEN — finding recorded before CI correction.
