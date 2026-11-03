@@ -4,7 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import com.brick.safety.diagnostics.DiagnosticMonitor
 import com.brick.safety.location.BrickLocationService
+import com.brick.safety.reliability.FallDetectorRuntime
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.ServiceControl
 import org.json.JSONObject
@@ -16,6 +18,8 @@ object DeepOffManager {
     private const val KEY_ENTERED_AT = "enteredAtMs"
     private const val KEY_SNAPSHOT = "snapshot"
     private const val KEY_REACTIVATED_AT = "reactivatedAtMs"
+    private const val VERSION = 2
+    private const val BRICK_DEEP_OFF_COMPONENT_STATE = PackageManager.COMPONENT_ENABLED_STATE_DISABLED
 
     data class Snapshot(
         val active: Boolean,
@@ -51,10 +55,13 @@ object DeepOffManager {
         }
 
         val component = ComponentName(app, BrickLocationService::class.java)
-        val state = app.packageManager.getComponentEnabledSetting(component)
+        val stateBefore = app.packageManager.getComponentEnabledSetting(component)
         val snapshot = JSONObject()
-            .put("version", 1)
-            .put("serviceComponentState", state)
+            .put("version", VERSION)
+            .put("serviceComponentStateBefore", stateBefore)
+            .put("serviceComponentStateAppliedByBrick", BRICK_DEEP_OFF_COMPONENT_STATE)
+            // Keep the v1 key readable for recovery from an interrupted older test build.
+            .put("serviceComponentState", stateBefore)
             .put("paired", app.getSharedPreferences("brick", Context.MODE_PRIVATE).contains("deviceId"))
             .put("policyLedgerActiveCount", PolicyLedger.active(app).size)
             .put("capturedAtMs", System.currentTimeMillis())
@@ -78,26 +85,29 @@ object DeepOffManager {
         if (!prefs.getBoolean(KEY_ACTIVE, false)) return true
 
         val raw = prefs.getString(KEY_SNAPSHOT, null)
-        val originalComponentState = runCatching {
-            JSONObject(raw ?: "{}").optInt("serviceComponentState", PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
-        }.getOrDefault(PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
-        val validState = originalComponentState in setOf(
-            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED
-        )
-        if (!validState) return false
+        val snapshot = runCatching { JSONObject(raw ?: "{}") }.getOrElse { return false }
+        val originalComponentState = if (snapshot.has("serviceComponentStateBefore")) {
+            snapshot.optInt("serviceComponentStateBefore", PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+        } else {
+            snapshot.optInt("serviceComponentState", PackageManager.COMPONENT_ENABLED_STATE_DEFAULT)
+        }
+        val appliedByBrick = snapshot.optInt("serviceComponentStateAppliedByBrick", BRICK_DEEP_OFF_COMPONENT_STATE)
+        if (!validComponentState(originalComponentState) || !validComponentState(appliedByBrick)) return false
 
         val component = ComponentName(app, BrickLocationService::class.java)
-        runCatching {
-            app.packageManager.setComponentEnabledSetting(
-                component,
-                originalComponentState,
-                PackageManager.DONT_KILL_APP
-            )
-        }.getOrElse { return false }
+        val currentState = app.packageManager.getComponentEnabledSetting(component)
+
+        // Provenance rule: Brick restores only the temporary value Brick itself left behind. If the
+        // component changed after Deep Off (user/system/admin/newer code), that later state wins.
+        if (currentState == appliedByBrick) {
+            runCatching {
+                app.packageManager.setComponentEnabledSetting(
+                    component,
+                    originalComponentState,
+                    PackageManager.DONT_KILL_APP
+                )
+            }.getOrElse { return false }
+        }
 
         val cleared = prefs.edit()
             .putBoolean(KEY_ACTIVE, false)
@@ -105,21 +115,37 @@ object DeepOffManager {
             .commit()
         if (!cleared) return false
 
-        runCatching { RecoveryScheduler.ensureScheduled(app) }
-        runCatching { ServiceControl.ensureTracking(app) }
+        if (DeviceRoleStore.role(app) == DeviceRoleStore.Role.CHILD) {
+            runCatching { DiagnosticMonitor.start(app) }
+            runCatching { FallDetectorRuntime.start(app) }
+            runCatching { RecoveryScheduler.ensureScheduled(app) }
+            runCatching { ServiceControl.ensureTracking(app) }
+        }
         return true
     }
 
     fun quiesce(context: Context) {
         val app = context.applicationContext
+        // Stop process-local sensor/diagnostic loops first so Deep Off is truthful immediately even
+        // if the maintenance Activity remains open in the same process.
+        runCatching { FallDetectorRuntime.stop() }
+        runCatching { DiagnosticMonitor.stop() }
         runCatching { app.stopService(Intent(app, BrickLocationService::class.java)) }
         runCatching { RecoveryScheduler.cancelAll(app) }
         runCatching {
             app.packageManager.setComponentEnabledSetting(
                 ComponentName(app, BrickLocationService::class.java),
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                BRICK_DEEP_OFF_COMPONENT_STATE,
                 PackageManager.DONT_KILL_APP
             )
         }
     }
+
+    private fun validComponentState(state: Int): Boolean = state in setOf(
+        PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
+        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED
+    )
 }
