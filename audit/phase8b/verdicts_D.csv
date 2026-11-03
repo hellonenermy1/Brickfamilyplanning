@@ -1,0 +1,70 @@
+id,verdict,evidence_key,notes
+OPS-001,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-002,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-003,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-004,IMPLEMENTED,RELEASE_SIGNING,Permanent RSA-4096 Brick v1 signing identity is present in public manifest.
+OPS-005,BROKEN,P8B-001+P8B-012,Current Android/cloud version identity remains beta/test rather than final production release.
+OPS-006,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-007,PARTIAL,RELEASE,"Package-inspection workflow foundations exist, but current Android candidate is testOnly/beta."
+OPS-008,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-009,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-010,IMPLEMENTED,RELEASE,Silent managed update is not claimed as supported without validation.
+OPS-011,IMPLEMENTED — UNVERIFIED,RELEASE,
+OPS-012,IMPLEMENTED — UNVERIFIED,RELEASE,
+QA-001,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-002,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-003,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-004,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-005,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-006,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-007,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-008,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-009,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-010,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-011,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-012,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-013,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-014,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-015,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-016,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-017,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-018,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-019,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-020,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-021,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-022,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-023,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-024,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-025,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-026,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-027,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-028,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-029,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-030,IMPLEMENTED — UNVERIFIED,FIELD_TEST,Acceptance scenario/test path exists or is defined; real target-device/production execution remains Phase 9.
+QA-031,BROKEN,OPEN_BLOCKERS,Current implementation has open P1 security/reliability/feature blockers; release cannot satisfy no-critical-blocker gate.
+NO-001,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-002,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-003,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-004,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-005,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-006,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-007,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-008,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-009,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-010,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-011,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-012,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-013,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+NO-014,INTENTIONALLY REMOVED — VERIFIED,NEGATIVE_SCAN,Forbidden path not present in inspected current production source/config; later 8C-8F recheck package/runtime/network surface.
+COV-001,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-002,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-003,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-004,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-005,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-006,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-007,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-008,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-009,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-010,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-011,IMPLEMENTED — UNVERIFIED,AUDIT,
+COV-012,IMPLEMENTED — UNVERIFIED,AUDIT,
