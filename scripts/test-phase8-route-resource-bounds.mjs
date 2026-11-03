@@ -63,6 +63,16 @@ for (const [fn, key, bodyMarker] of [
 }
 need(location, 'const MAX_BATCH = 20;', 'location batch count bound missing');
 
+// Connectivity recency and logical packet order are separate facts. An authenticated delayed packet
+// still proves the phone contacted Brick now, so last_seen_at must update even when epoch/sequence is
+// older than the idempotency watermark. Keeping the logical predicate in the SQL WHERE clause would
+// make a connected device look offline during cross-epoch backlog recovery.
+need(location, 'last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL', 'location ingest must update last_seen_at for every authorized accepted upload');
+if (location.includes('last_seen_at=?3 WHERE id=?4 AND revoked_at IS NULL AND (last_epoch<?1')) {
+  throw new Error('last_seen_at is incorrectly coupled to logical location watermark advancement');
+}
+need(location, 'last_epoch=CASE WHEN (last_epoch<?1 OR (last_epoch=?1 AND last_sequence<?2)) THEN ?1 ELSE last_epoch END', 'logical epoch watermark must remain monotonic while last_seen updates independently');
+
 // Health and safety are signed JSON. The outer replay validator itself uses the bounded signed-json
 // helper before the request reaches the core route, and the core route has a dedicated rate key.
 need(security, 'async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, maxBytes = 8192)', 'signed JSON body cap missing');
@@ -76,4 +86,4 @@ if (eventBounds.length < 2) throw new Error('health and safety event must both r
 need(crash, 'env.DEVICE_RATE.limit({ key: `${deviceId}:crash` })', 'crash-report rate limit missing');
 need(crash, 'readBoundedBody(req, 4096)', 'crash-report body bound missing');
 
-console.log('Phase 8 route resource bounds OK: parent/pair/location/health/safety/crash mutations remain rate-limited and body-bounded');
+console.log('Phase 8 route resource bounds OK: parent/pair/location/health/safety/crash mutations remain bounded, and last-seen recency is not coupled to logical backlog order');
