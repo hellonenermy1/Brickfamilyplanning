@@ -11,6 +11,7 @@ type TableSpec = {
 
 const RESTORE_ORDER = [
   "devices",
+  "device_location_control",
   "geofences",
   "geofence_state",
   "ble_anchors",
@@ -27,6 +28,10 @@ const SPECS: Record<(typeof RESTORE_ORDER)[number], TableSpec> = {
   devices: {
     columns: ["id", "name", "public_key_spki_b64", "created_at", "last_seen_at", "revoked_at", "last_epoch", "last_sequence", "last_health_at", "health_status", "recovery_count", "pending_records", "app_version"],
     required: ["id", "name", "public_key_spki_b64", "created_at"]
+  },
+  device_location_control: {
+    columns: ["device_id", "desired_enabled", "command_id", "issued_at", "updated_at", "last_actual_enabled", "last_actual_at", "last_acked_command_id"],
+    required: ["device_id", "desired_enabled", "command_id", "issued_at", "updated_at"]
   },
   geofences: {
     columns: ["id", "device_id", "name", "latitude", "longitude", "radius_m", "enabled", "created_at"],
