@@ -67,6 +67,17 @@ jobs:
           node scripts/check-phase7-live-sync.mjs
           node scripts/check-phase7-safety-quality.mjs
 
+      - name: Phase 8 production parent event-time freshness truth
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/phase8-parent-truth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-truth-p8.mjs
+          npx esbuild src/parent-v8.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-parent-v8.mjs
+          node scripts/test-phase8-parent-freshness.mjs /tmp/brick-parent-truth-p8.mjs /tmp/brick-parent-v8.mjs
+          grep -F 'const normalized = await augmentPhase7ParentStateResponseV2(refined);' src/worker-v9.ts >/dev/null
+          grep -F 'return augmentPhase8ParentTruth(normalized);' src/worker-v9.ts >/dev/null
+          grep -F 'return productionParentResponse(response, await response.text());' src/worker-v9.ts >/dev/null
+
       - name: Run full retained Phase 2-6 durability/security/privacy regression
         run: bash scripts/phase6-cloud-regression.sh
 
