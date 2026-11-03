@@ -144,8 +144,12 @@ object BetaSafety {
     }
 
     /**
-     * Stage 2. Safe to call repeatedly. MANAGEMENT_RELEASED is persisted only after Android reports
-     * that Brick is neither Device Owner nor active admin.
+     * Stage 2. Safe to call repeatedly. For the Device Owner path, Android's clearDeviceOwnerApp()
+     * call is synchronous at the system-server boundary: a successful return means the owner and
+     * its active admin were removed. We therefore do not make the durable stage transition depend
+     * on an immediate second read that can transiently disagree with the just-completed operation.
+     * The legacy active-admin-only fallback remains read-back gated because removeActiveAdmin() is
+     * explicitly asynchronous.
      */
     fun advanceManagementRelease(context: Context): ReleaseResult {
         val app = context.applicationContext
@@ -187,11 +191,28 @@ object BetaSafety {
             // Clean up restrictions created by older Brick betas before relinquishing ownership.
             runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
             runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }
+
+            var ownerClearReturned = false
             runCatching { dpm.clearDeviceOwnerApp(app.packageName) }
+                .onSuccess { ownerClearReturned = true }
                 .onFailure { failure = it }
+
+            // DevicePolicyManagerService clears the Device Owner and removes its active admin before
+            // clearDeviceOwnerApp() returns. Treat that successful system-server transaction as the
+            // authoritative result instead of risking a transient read-after-write mismatch.
+            if (ownerClearReturned) {
+                return ReleaseResult(
+                    ownerBefore = true,
+                    ownerAfter = false,
+                    activeAdminAfter = false,
+                    error = null
+                )
+            }
         } else {
             val active = runCatching { dpm.isAdminActive(admin) }.getOrDefault(false)
             if (active) {
+                // removeActiveAdmin() is asynchronous, so this path must still prove convergence
+                // with the read-back below before MANAGEMENT_RELEASED may be committed.
                 runCatching { dpm.removeActiveAdmin(admin) }
                     .onFailure { failure = it }
             }
