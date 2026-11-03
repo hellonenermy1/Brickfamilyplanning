@@ -1,0 +1,212 @@
+name: Brick V1 Phase 8 — Emulator Resource Baseline
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-resource-baseline:
+    name: Sustained failure workload CPU, RAM, storage and retry-storm guardrails
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -x "$SDKMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$RUNNER_TEMP/brick-p8-resource-avd" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/brick-p8-resource-avd" "$RUNNER_TEMP/p8-resource"
+
+      - name: Install SDK image and build debug/testOnly APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          gradle --no-daemon :app:assembleDebug --stacktrace
+          test -s app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Boot clean emulator and start deterministic sustained-failure workload
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-resource --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-resource -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/p8-resource/emulator.log" 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          "$ADB" install -t app/build/outputs/apk/debug/app-debug.apk
+          for permission in \
+            android.permission.ACCESS_FINE_LOCATION \
+            android.permission.ACCESS_COARSE_LOCATION \
+            android.permission.ACCESS_BACKGROUND_LOCATION \
+            android.permission.ACTIVITY_RECOGNITION \
+            android.permission.POST_NOTIFICATIONS; do
+            "$ADB" shell pm grant com.brick.safety "$permission" >/dev/null 2>&1 || true
+          done
+          "$ADB" shell settings put secure location_mode 3 || true
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity > "$RUNNER_TEMP/p8-resource/start.txt"
+          "$ADB" shell input keyevent KEYCODE_HOME || true
+          "$ADB" logcat -c
+          "$ADB" shell am broadcast --receiver-foreground --include-stopped-packages \
+            -a com.brick.safety.testing.PHASE8_RESOURCE_SEED \
+            -n com.brick.safety/.testing.Phase8ResourceHarnessReceiver | tee "$RUNNER_TEMP/p8-resource/seed.txt"
+          for i in $(seq 1 60); do
+            if "$ADB" logcat -d | grep -F 'BrickP8Resource' | grep -F 'seeded=1000' >/dev/null; then break; fi
+            sleep 1
+          done
+          "$ADB" logcat -d | grep -F 'BrickP8Resource' | grep -F 'seeded=1000' >/dev/null
+          for i in $(seq 1 30); do
+            pid="$("$ADB" shell pidof com.brick.safety 2>/dev/null | tr -d '\r')"
+            [ -n "$pid" ] && break
+            sleep 1
+          done
+          test -n "${pid:-}"
+          echo "$pid" > "$RUNNER_TEMP/p8-resource/pid.txt"
+          "$ADB" shell dumpsys batterystats --reset >/dev/null 2>&1 || true
+          sleep 20
+
+      - name: Measure five-minute steady-state runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          PID="$(cat "$RUNNER_TEMP/p8-resource/pid.txt")"
+          test -n "$PID"
+          HZ="$("$ADB" shell getconf CLK_TCK 2>/dev/null | tr -d '\r' || true)"
+          [[ "$HZ" =~ ^[0-9]+$ ]] || HZ=100
+
+          cpu_ticks() {
+            "$ADB" shell cat "/proc/$PID/stat" | awk '{print $14+$15}' | tr -d '\r'
+          }
+          pss_kb() {
+            "$ADB" shell dumpsys meminfo com.brick.safety | awk '
+              /TOTAL PSS:/ { print $3; found=1; exit }
+              /^[[:space:]]*TOTAL[[:space:]]+[0-9]+/ { print $2; found=1; exit }
+              END { if (!found) print 0 }
+            ' | tr -d '\r'
+          }
+
+          START_PID="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
+          test "$START_PID" = "$PID"
+          START_TICKS="$(cpu_ticks)"
+          START_SEC="$(date +%s)"
+          : > "$RUNNER_TEMP/p8-resource/pss-samples.txt"
+
+          for sample in $(seq 1 10); do
+            sleep 30
+            current_pid="$("$ADB" shell pidof com.brick.safety 2>/dev/null | tr -d '\r')"
+            test "$current_pid" = "$PID"
+            pss="$(pss_kb)"
+            [[ "$pss" =~ ^[0-9]+$ ]] && [ "$pss" -gt 0 ]
+            printf '%s %s\n' "$sample" "$pss" | tee -a "$RUNNER_TEMP/p8-resource/pss-samples.txt"
+          done
+
+          END_TICKS="$(cpu_ticks)"
+          END_SEC="$(date +%s)"
+          ELAPSED=$((END_SEC - START_SEC))
+          test "$ELAPSED" -ge 295
+          STORAGE_KB="$("$ADB" shell run-as com.brick.safety du -sk . 2>/dev/null | awk '{print $1}' | tr -d '\r')"
+          [[ "$STORAGE_KB" =~ ^[0-9]+$ ]]
+          RETRY_STREAK="$("$ADB" shell run-as com.brick.safety cat shared_prefs/brick.xml 2>/dev/null | sed -n 's/.*<int name="coreUploadFailureStreak" value="\([0-9][0-9]*\)".*/\1/p' | head -n 1 | tr -d '\r')"
+          [[ "$RETRY_STREAK" =~ ^[0-9]+$ ]] || RETRY_STREAK=0
+          MAX_PSS_KB="$(awk 'BEGIN{m=0} {if($2>m)m=$2} END{print m}' "$RUNNER_TEMP/p8-resource/pss-samples.txt")"
+
+          python3 - "$START_TICKS" "$END_TICKS" "$HZ" "$ELAPSED" "$MAX_PSS_KB" "$STORAGE_KB" "$RETRY_STREAK" "$GITHUB_SHA" > "$RUNNER_TEMP/p8-resource/metrics.json" <<'PY'
+          import json, sys
+          start, end, hz, elapsed, pss, storage, retry, sha = sys.argv[1:]
+          start, end, hz, elapsed = map(float, (start, end, hz, elapsed))
+          pss, storage, retry = map(int, (pss, storage, retry))
+          cpu_percent = max(0.0, (end-start)/hz/elapsed*100.0)
+          evidence = {
+              'version': 1,
+              'sourceGitSha': sha,
+              'environment': 'Android 35 google_apis x86_64 emulator',
+              'physicalDevice': False,
+              'workloadSeconds': int(elapsed),
+              'durableBacklogRows': 1000,
+              'transportFailure': 'HTTPS loopback connection refusal',
+              'averageProcessCpuPercent': round(cpu_percent, 3),
+              'maxPssKiB': pss,
+              'appDataKiB': storage,
+              'coreUploadFailureStreak': retry,
+              'guardrails': {
+                  'averageProcessCpuPercentMax': 20.0,
+                  'maxPssKiBMax': 196608,
+                  'appDataKiBMax': 65536,
+                  'coreUploadFailureStreakMax': 10,
+              },
+              'deviceOnlyDeferredToPhase9': [
+                  'real battery drain / mAh',
+                  'cellular modem and radio energy',
+                  'real GNSS power and satellite behaviour',
+                  'OPPO/ColorOS background killing and OEM scheduling',
+                  'real sensor-hub wakeup cost'
+              ]
+          }
+          print(json.dumps(evidence, indent=2))
+          PY
+
+          cat "$RUNNER_TEMP/p8-resource/metrics.json"
+          python3 - "$RUNNER_TEMP/p8-resource/metrics.json" <<'PY'
+          import json, sys
+          e=json.load(open(sys.argv[1]))
+          g=e['guardrails']
+          assert e['averageProcessCpuPercent'] <= g['averageProcessCpuPercentMax'], e
+          assert e['maxPssKiB'] <= g['maxPssKiBMax'], e
+          assert e['appDataKiB'] <= g['appDataKiBMax'], e
+          assert 1 <= e['coreUploadFailureStreak'] <= g['coreUploadFailureStreakMax'], e
+          print('Phase 8 emulator resource guardrails passed.')
+          PY
+
+      - name: Capture inspectable non-physical diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/p8-resource"
+          "$ADB" shell dumpsys meminfo com.brick.safety > "$RUNNER_TEMP/p8-resource/meminfo-final.txt" 2>&1 || true
+          "$ADB" shell dumpsys batterystats com.brick.safety > "$RUNNER_TEMP/p8-resource/batterystats.txt" 2>&1 || true
+          "$ADB" shell dumpsys sensorservice | grep -i -C 3 'brick\|com.brick.safety' > "$RUNNER_TEMP/p8-resource/sensorservice-brick.txt" 2>&1 || true
+          "$ADB" shell dumpsys package com.brick.safety > "$RUNNER_TEMP/p8-resource/package.txt" 2>&1 || true
+          "$ADB" logcat -d > "$RUNNER_TEMP/p8-resource/logcat.txt" 2>&1 || true
+
+      - name: Upload emulator resource evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-emulator-resource-baseline-${{ github.sha }}
+          path: ${{ runner.temp }}/p8-resource/
+          if-no-files-found: error
+          retention-days: 30
