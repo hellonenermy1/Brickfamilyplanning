@@ -100,14 +100,18 @@ Run on both target OPPO profiles:
 8. Stationary slow sampling does not falsely trigger degradation.
 9. Stale callback/subscription -> active reacquisition/repair before fallback.
 10. Old fallback computation cannot overwrite a newer measured fix.
-11. Live Track pipeline P95 meets the approved 23R latency budget and is not blocked by history/Atlas/backlog work.
+11. Fast Live latency under healthy validated Wi-Fi and normal mobile data:
+   - accepted current fix -> corresponding visible parent marker: **P95 <= 1.5 s**;
+   - authoritative backend current-state update -> corresponding visible parent marker: **P95 <= 500 ms**;
+   - parent Live Track activation -> phone fast-mode confirmation or explicit failure/degraded result: **P95 <= 2.0 s**.
+   The first two measurements begin after position acceptance and exclude waiting for the next physical GNSS/fused fix. History/Atlas/reverse geocoding/backlog work must not head-of-line block the path.
 12. Zero separate Brick-created GPS-on notification.
 13. No repeated Brick-created Location ping during healthy operation.
 14. Every remaining Location-related notice is classified as Brick-owned, Android-owned, or ColorOS/device-policy-owned.
 15. Required platform privacy/foreground-service/device-management disclosures are not hidden or programmatically dismissed.
 16. Repeated system disclosure is checked for needless repeated Brick permission/policy writes; those writes are removed if Brick is the trigger.
 
-Item 11 remains blocked at contract-value level until `P8A-GAP-002` supplies the authoritative numeric 23R P95 threshold(s).
+For item 11, degraded/offline connectivity is evaluated on truthful state, durable queuing, automatic recovery/current-state-first reconnection and zero routine manual intervention rather than the healthy-network SLA.
 
 ## F. Phase 9 Witness matrix
 
