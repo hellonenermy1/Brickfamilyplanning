@@ -73,23 +73,29 @@ jobs:
           test -f android/.github/workflows/v1-phase8-android-ci.yml
           test -f android/.github/workflows/v1-phase8-device-owner-emulator.yml
           test -f android/.github/workflows/v1-phase8-upgrade-continuity.yml
+          test -f android/.github/workflows/v1-phase8-recovery-contract.yml
           test -f android/app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt
           test -f android/app/src/androidTest/java/com/brick/safety/evidence/Phase8ProviderIsolationInstrumentedTest.kt
           test -f android/app/src/androidTest/java/com/brick/safety/managed/Phase8ManagedPolicyInstrumentedTest.kt
           test -f android/app/src/androidTest/java/com/brick/safety/upgrade/Phase8UpgradeContinuityInstrumentedTest.kt
+          test -f android/app/src/androidTest/java/com/brick/safety/activity/Phase8ActivityHysteresisInstrumentedTest.kt
           test -f cloud/.github/workflows/v1-phase8-cloud-ci.yml
           test -f cloud/scripts/test-phase8-integrated-ingest-torture.mjs
           test -f cloud/scripts/test-phase8-sos-mixed-backlog.mjs
           test -f cloud/scripts/test-phase8-parent-freshness.mjs
           test -f cloud/scripts/test-phase8-history-provenance.mjs
           test -f cloud/scripts/test-phase8-live-event-time.mjs
+          test -f cloud/scripts/test-phase8-retention-contract.mjs
+          test -f cloud/scripts/phase8-identity-migration.mjs
+          test -f cloud/scripts/phase8-live-identity-preflight.mjs
+          test -f cloud/scripts/test-phase8-identity-migration.mjs
           test -f cloud/schema/015_phase8_device_identity.sql
 
       - name: Install exactly locked cloud test dependencies
         working-directory: cloud
         run: npm ci --no-audit --no-fund
 
-      - name: Execute server command replay-suppression and deployment contracts
+      - name: Execute server replay, identity migration and deployment contracts
         working-directory: cloud
         shell: bash
         run: |
@@ -97,6 +103,7 @@ jobs:
           node scripts/test-phase8-location-control-contract.mjs
           npx esbuild src/phase6-location-control.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-control-final.mjs
           node scripts/test-phase8-location-control-runtime.mjs /tmp/brick-location-control-final.mjs
+          node scripts/test-phase8-identity-migration.mjs scripts/phase8-identity-migration.mjs
           node scripts/test-phase6-deploy-contract.mjs
 
       - name: Cross-branch supply-chain guard
@@ -115,6 +122,7 @@ jobs:
             echo ''
             echo 'Cross-branch protocol contract: PASS'
             echo 'Server command replay suppression: PASS'
+            echo 'Live identity migration preflight: PASS'
             echo 'Production schema/deployment contract: PASS'
             echo 'Phase 8A/8B acceptance-suite presence: PASS'
             echo ''
