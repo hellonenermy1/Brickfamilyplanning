@@ -58,13 +58,15 @@ jobs:
           ]:
               assert marker in delivery, f'missing durable delivery marker: {marker}'
 
-          # Reconnect callbacks may bypass a stale transport backoff exactly when Android reports a
-          # usable network, while ordinary supervisor/record wakes must respect the retry gate.
+          # A genuinely new network gets one immediate retry. Repeated capabilities callbacks for
+          # the same network may wake the pump but must respect existing transport backoff.
           available = location.index('override fun onAvailable(network: Network)')
           capabilities = location.index('override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities)')
           callback_end = location.index('override fun onCreate()', capabilities)
-          assert 'kickUploadPump(force = true)' in location[available:capabilities], 'network onAvailable no longer wakes upload pump'
-          assert 'kickUploadPump(force = true)' in location[capabilities:callback_end], 'validated-network callback no longer wakes upload pump'
+          assert 'kickUploadPump(force = true)' in location[available:capabilities], 'new network no longer gets one immediate retry'
+          capabilities_body = location[capabilities:callback_end]
+          assert 'kickUploadPump()' in capabilities_body, 'validated-network callback no longer wakes upload pump'
+          assert 'kickUploadPump(force = true)' not in capabilities_body, 'capabilities callback can still bypass retry backoff repeatedly'
           assert 'if (!force && nextUploadAttemptElapsed > now) return' in location, 'ordinary wakes no longer respect transport backoff'
           assert 'supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)' in location, 'bounded delayed retry missing'
           assert 'supervisor.schedule({ kickUploadPump() }, 2, TimeUnit.SECONDS)' not in location, 'fixed two-second failure retry storm reintroduced'
@@ -78,7 +80,7 @@ jobs:
           crash_drain = location.index('drainCrashReports(baseUrl, deviceId)', safety_failure)
           history_loop = location.index('while (true)', crash_drain)
           assert pump < safety_drain < safety_pending < safety_failure < crash_drain < history_loop, 'SOS-first upload ordering drifted'
-          assert 'getOrElse {' in safety and 'return 1' in safety, 'safety outbox read failures are no longer fail-closed'
+          assert 'noteOutboxUnavailable(context)' in safety and '\n        1\n    }' in safety, 'safety outbox read failures are no longer fail-closed'
 
           for marker in [
               'Intent.ACTION_BOOT_COMPLETED',
