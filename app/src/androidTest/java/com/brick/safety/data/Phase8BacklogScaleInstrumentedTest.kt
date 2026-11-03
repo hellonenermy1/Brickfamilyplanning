@@ -15,6 +15,7 @@ class Phase8BacklogScaleInstrumentedTest : BrickInstrumentationTestCase() {
     companion object {
         private const val DB = "brick_journal.db"
         private const val EPOCH = 208
+        private const val DAY_MS = 86_400_000L
     }
 
     private lateinit var context: Context
@@ -62,6 +63,55 @@ class Phase8BacklogScaleInstrumentedTest : BrickInstrumentationTestCase() {
             assertEquals(99_950, reopened.stats().pendingCount)
             assertEquals(51L, reopened.nextPending(1).single().seq)
             assertEquals(100_000L, reopened.latestPending()?.seq)
+        }
+    }
+
+    fun testSevenAndFourteenDayEquivalentBacklogsRetainTruthfulOldestAge() {
+        bulkInsert(1, 100)
+        val now = System.currentTimeMillis()
+        val fourteenDaysAgo = now - 14L * DAY_MS
+        val sevenDaysAgo = now - 7L * DAY_MS
+
+        context.openOrCreateDatabase(DB, Context.MODE_PRIVATE, null).use { db ->
+            assertEquals(
+                1,
+                db.update(
+                    "packets",
+                    ContentValues().apply { put("created_ms", fourteenDaysAgo) },
+                    "epoch=? AND seq=?",
+                    arrayOf(EPOCH.toString(), "1")
+                )
+            )
+            assertEquals(
+                1,
+                db.update(
+                    "packets",
+                    ContentValues().apply { put("created_ms", sevenDaysAgo) },
+                    "epoch=? AND seq=?",
+                    arrayOf(EPOCH.toString(), "2")
+                )
+            )
+        }
+
+        Journal(context).use { journal ->
+            val stats = journal.stats()
+            assertEquals(100, stats.pendingCount)
+            assertEquals(fourteenDaysAgo, stats.oldestPendingMs)
+            assertEquals((1L..50L).toList(), journal.nextPending(50).map { it.seq })
+        }
+
+        // Once the 14-day-old row is exactly ACKed, the remaining oldest record is the 7-day row.
+        Journal(context).use { journal ->
+            assertTrue(journal.ack(EPOCH, 1L))
+            val stats = journal.stats()
+            assertEquals(99, stats.pendingCount)
+            assertEquals(sevenDaysAgo, stats.oldestPendingMs)
+        }
+
+        Journal(context).use { reopened ->
+            assertEquals(99, reopened.stats().pendingCount)
+            assertEquals(sevenDaysAgo, reopened.stats().oldestPendingMs)
+            assertEquals(2L, reopened.nextPending(1).single().seq)
         }
     }
 
