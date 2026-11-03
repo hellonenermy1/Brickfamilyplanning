@@ -11,6 +11,9 @@
     <TextView android:id="@+id/status" android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_marginTop="34dp" android:text="● Setup required" android:textSize="18sp" />
 
+    <Button android:id="@+id/parentPortalButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="24dp" android:text="OPEN PARENT DASHBOARD" android:visibility="gone" />
+
     <Button android:id="@+id/scanPairButton" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="32dp" android:text="SCAN PAIRING QR" />
 
