@@ -10,6 +10,7 @@ import android.os.UserManager
 import android.provider.Settings
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.managed.BrickDeviceAdminReceiver
+import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.RecoveryScheduler
 import java.io.File
 import java.security.KeyStore
@@ -115,6 +116,11 @@ object DeprovisionManager {
             return Result(stage(app), false, "management release required")
         }
 
+        // Stop independently running optional/provider state before deleting its preferences/keys.
+        // Failure to contact Shizuku is harmless; shutdown() also clears the local bridge and rotates
+        // its executor, while the UserService has an idle-exit guard as a final fallback.
+        runCatching { ShizukuBridgeController.shutdown() }
+
         runCatching { RecoveryScheduler.cancelAll(app) }.getOrElse {
             return Result(stage(app), false, "failed to cancel Brick scheduled work: ${it.javaClass.simpleName}")
         }
@@ -173,7 +179,6 @@ object DeprovisionManager {
         if (!owner) return true
         if (!PolicyLedger.integrityValid(context)) return false
 
-        // Historical hard-lock repair. Current V1 one-shot controls never create these restrictions.
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CHANGE_WIFI_STATE) }
 
@@ -239,7 +244,7 @@ object DeprovisionManager {
                             current == brickState -> runCatching {
                                 dpm.setPermissionGrantState(admin, context.packageName, permission, previousState)
                             }.getOrDefault(false)
-                            else -> true // later user/system state wins; do not overwrite it
+                            else -> true
                         }
                     }
                 }
