@@ -74,6 +74,7 @@ jobs:
           service=app/src/main/java/com/brick/safety/location/BrickLocationService.kt
           safety=app/src/main/java/com/brick/safety/data/SafetyOutbox.kt
           dispatcher=app/src/main/java/com/brick/safety/reliability/SafetyDispatcher.kt
+          fall=app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt
           wifi=app/src/main/java/com/brick/safety/maintenance/WifiScheduleManager.kt
           policy=app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt
           deprov=app/src/main/java/com/brick/safety/maintenance/DeprovisionManager.kt
@@ -86,8 +87,16 @@ jobs:
 
           grep -F 'CREATE TABLE IF NOT EXISTS safety_state' "$safety" >/dev/null
           grep -F 'appendSosTransition' "$safety" >/dev/null
+          grep -F 'appendHighFall' "$safety" >/dev/null
           grep -F 'cachedSosActive' "$dispatcher" >/dev/null
+          grep -F 'cachedHighFallUntilMs' "$dispatcher" >/dev/null
           grep -F 'SafetyDispatcher.isSosActive(this)' "$service" >/dev/null
+
+          # P8C-011: storage support alone is insufficient. The detector must write HIGH falls
+          # through the atomic durable path and the Wi-Fi safety interlock must read that source.
+          grep -F 'SafetyDispatcher.enqueueHighFall(context, detail, highUntilMs)' "$fall" >/dev/null
+          grep -F 'SafetyDispatcher.isHighFallActive(context)' "$wifi" >/dev/null
+          ! grep -F 'p.getBoolean("fallHighActive"' "$wifi"
 
           grep -F 'lastLocationCallbackElapsed' "$service" >/dev/null
           grep -F 'sample.rawAccepted && sample.source == PositionSource.FUSED' "$service" >/dev/null
