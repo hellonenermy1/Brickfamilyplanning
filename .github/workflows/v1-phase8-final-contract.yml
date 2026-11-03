@@ -71,7 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f android/.github/workflows/v1-phase8-android-ci.yml
-          test -f android/.github/workflows/v1-phase8-device-owner-retirement.yml
+          test -f android/.github/workflows/v1-phase8-device-owner-emulator.yml
           test -f android/.github/workflows/v1-phase8-upgrade-continuity.yml
           test -f android/app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt
           test -f android/app/src/androidTest/java/com/brick/safety/evidence/Phase8ProviderIsolationInstrumentedTest.kt
