@@ -1,4 +1,4 @@
-name: Deploy Brick V1 Phase 6 Candidate
+name: Deploy Brick V1 Phase 8 Candidate
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: brick-v1-phase6-production
+  group: brick-v1-phase8-production
   cancel-in-progress: false
 
 jobs:
@@ -28,11 +28,11 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
     steps:
-      - name: Checkout selected Phase 6 ref
-        uses: actions/checkout@v5
+      - name: Checkout selected Phase 8 ref
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Set up Node.js 24
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
           cache: npm
@@ -44,12 +44,12 @@ jobs:
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'Missing workflow input: cloudflare_account_id' >&2; exit 1; }
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          echo "Deploying exact Phase 6 source SHA: $GITHUB_SHA"
+          echo "Deploying exact Phase 8 source SHA: $GITHUB_SHA"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Enforce current Phase 6 architecture and migration path
+      - name: Enforce current Phase 8 architecture and migration path
         shell: bash
         run: |
           set -euo pipefail
@@ -70,6 +70,9 @@ jobs:
           grep -F "'schema/009_v1_phase5_fusion.sql'" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F "'schema/010_phase5b_closure.sql'" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F "'schema/011_v1_phase6_location_control.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/015_phase8_device_identity.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'await applySchema(SCHEMAS[9]);' scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'idx_devices_public_key_spki_unique' schema/015_phase8_device_identity.sql >/dev/null
           grep -F "brick-raw-evidence-30d" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F 'device_location_control' schema/011_v1_phase6_location_control.sql >/dev/null
           ! test -e scripts/setup-v1-phase2.mjs
@@ -85,7 +88,7 @@ jobs:
           npm audit --omit=dev --audit-level=high
           bash scripts/phase6-cloud-regression.sh
 
-      - name: Provision resources, migrate through schema 011, and deploy Phase 6
+      - name: Provision resources, migrate through schema 015, and deploy Phase 8
         run: npm run setup
 
       - name: Verify setup provenance before release tagging
@@ -98,9 +101,10 @@ jobs:
           const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
           const expected = process.env.GITHUB_SHA;
           if (s.sourceGitSha !== expected) throw new Error(`setup source ${s.sourceGitSha} != workflow ${expected}`);
-          if (s.v1ProgramPhase !== 6 || s.schemaVersion !== 11) throw new Error('Phase/schema provenance mismatch');
+          if (s.v1ProgramPhase !== 8 || s.schemaVersion !== 15) throw new Error('Phase/schema provenance mismatch');
           if (s.workerEntry !== 'src/worker-v9.ts') throw new Error('wrong worker entry');
           if (s.access?.mode !== 'cloudflare-access-rs256') throw new Error('Access not verified');
+          if (!Array.isArray(s.appliedSchemas) || !s.appliedSchemas.includes('schema/015_phase8_device_identity.sql')) throw new Error('Phase 8 identity migration not recorded');
           if (!s.resources?.HISTORY_BUCKET || !s.resources?.MAPS_BUCKET || !s.resources?.EVENT_QUEUE || !s.resources?.DLQ) throw new Error('required Cloudflare resources missing');
           NODE
 
@@ -113,7 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="brick-git-${GITHUB_SHA:0:12}"
-          npx wrangler deploy --strict --config wrangler.jsonc --tag "$tag" --message "Brick V1 Phase 6 candidate source $GITHUB_SHA"
+          npx wrangler deploy --strict --config wrangler.jsonc --tag "$tag" --message "Brick V1 Phase 8 candidate source $GITHUB_SHA"
           npx wrangler deployments list --json --config wrangler.jsonc > worker-deployments.json
           test -s worker-deployments.json
           grep -F "$GITHUB_SHA" worker-deployments.json >/dev/null
@@ -132,7 +136,7 @@ jobs:
             node --input-type=module - <<'NODE'
           import fs from 'node:fs';
           const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
-          console.log('Brick V1 Phase 6 deployment state');
+          console.log('Brick V1 Phase 8 deployment state');
           console.log('Source Git SHA:       ' + (s.sourceGitSha || 'NOT VERIFIED'));
           console.log('Release state:        ' + (s.releaseState || 'NOT VERIFIED'));
           console.log('Schema version:       ' + (s.schemaVersion ?? 'NOT VERIFIED'));
@@ -152,9 +156,9 @@ jobs:
 
       - name: Upload non-secret deployment evidence
         if: ${{ always() && hashFiles('setup-state.json') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: brick-v1-phase6-deployment-evidence-${{ github.sha }}
+          name: brick-v1-phase8-deployment-evidence-${{ github.sha }}
           path: |
             setup-state.json
             deployment-verification.json
