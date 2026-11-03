@@ -41,16 +41,21 @@ Total: **5**.
 ## `LIVE-005` — 23R P95 Fast Live qualification
 
 **Class/Profile:** `MANDATORY` / `TEST`
-**Requirement:** Real-device/browser qualification must measure and meet the approved 23R P95 Fast Live Path latency budget; history, Atlas, reverse geocoding and backlog work must not head-of-line block the measured path.
-**Source:** SRC-001 §7.1A; §9.7A
+**Requirement:** Real-device/browser qualification must prove all current 23R Fast Live budgets under representative healthy validated Wi-Fi and normal mobile-data conditions on both target OPPO profiles:
+
+1. accepted current fix -> corresponding visible parent marker: **P95 <= 1.5 seconds**;
+2. authoritative backend current-state update -> corresponding visible parent marker: **P95 <= 500 milliseconds**;
+3. authenticated parent Live Track activation -> phone fast-mode confirmation or explicit failure/degraded result: **P95 <= 2.0 seconds**.
+
+The first two measurements begin after a position is accepted; they do not include waiting for the next physical GNSS/fused fix. History, Atlas, reverse geocoding, R2/history work, route simplification and offline backlog must not head-of-line block the measured Fast Live path. Degraded/offline networks are judged on truthful state, durability, recovery and zero manual intervention rather than the healthy-network latency SLA.
+
+**Source:** SRC-001 §7.1A; §9.7A + `PHASE8A_23R_LATENCY_AMENDMENT.md`
 **Target phase:** 9
 **Owner:** Cross-system performance
 **Dependencies:** DAT persistence + BE current-state/WebSocket + PORT render path
 **Audit owner:** 8F/Phase 9
-**Expected tests:** the named exact production-like scenario with timestamped expected-vs-actual evidence
+**Expected tests:** exact production-like scenario with correlated trace IDs and monotonic stage timing; enough samples for meaningful P95; same APK/backend/portal/schema/protocol release identity
 **Field test:** YES
-
-**Open source-value gap:** `P8A-GAP-002` — the authoritative numeric 23R P95 threshold(s) have not been recovered. No number may be invented.
 
 ## `PRIO-001` — Evidence backlog priority order
 
