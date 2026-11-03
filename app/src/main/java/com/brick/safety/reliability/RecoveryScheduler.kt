@@ -19,6 +19,7 @@ object RecoveryScheduler {
     private const val SOON_WORK = "brick-soon-recovery"
     private const val EVIDENCE_SOON_WORK = "brick-evidence-soon-recovery"
     private const val DAILY_CANARY_WORK = "brick-daily-canary"
+    private const val DAILY_CANARY_RETEST_WORK = "brick-daily-canary-retest"
 
     fun ensureScheduled(context: Context) {
         val app = context.applicationContext
@@ -36,7 +37,6 @@ object RecoveryScheduler {
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())
             .build()
         wm.enqueueUniquePeriodicWork(DAILY_CANARY_WORK, ExistingPeriodicWorkPolicy.KEEP, canary)
-
         WifiScheduleManager.reschedule(app)
     }
 
@@ -44,15 +44,13 @@ object RecoveryScheduler {
         val app = context.applicationContext
         if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
         val request = OneTimeWorkRequestBuilder<RecoveryWorker>()
-            .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS)
-            .build()
+            .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS).build()
         WorkManager.getInstance(app).enqueueUniqueWork(SOON_WORK, ExistingWorkPolicy.REPLACE, request)
     }
 
     private fun evidenceRequest(delaySeconds: Long) = OneTimeWorkRequestBuilder<EvidenceUploadWorker>()
         .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS)
-        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-        .build()
+        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
 
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
         val app = context.applicationContext
@@ -73,8 +71,7 @@ object RecoveryScheduler {
         workManager.cancelUniqueWork(SOON_WORK)
         workManager.cancelUniqueWork(EVIDENCE_SOON_WORK)
         workManager.cancelUniqueWork(DAILY_CANARY_WORK)
-        CanaryWorker::class // keep worker class reachable through R8 even if scheduled work is cancelled
-        runCatching { CanaryRetestWorker::class }
+        workManager.cancelUniqueWork(DAILY_CANARY_RETEST_WORK)
         runCatching { WifiScheduleManager.cancelAll(app) }
     }
 }
