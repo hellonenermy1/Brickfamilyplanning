@@ -74,7 +74,8 @@ async function queueLocations(env: LocationIngestEnv, deviceId: string, location
 /**
  * Durable V6 ordering seam. Exported so Phase 8 can exercise the exact production DB/DO transition
  * rather than a copy of its logic. Old/offline packets are still inserted for history, but only an
- * epoch/sequence strictly newer than the device watermark may advance the live Durable Object.
+ * epoch/sequence strictly newer than the device watermark may attempt to advance the live Durable
+ * Object, and the DO then enforces event-time monotonicity before the change is reported as live.
  */
 export async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
   const highest = packets[packets.length - 1];
@@ -97,9 +98,12 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   // Endpoint indexing is part of the durable DB write before ACK. The heavier R2 smoothing pass is
   // intentionally not: a temporary refinement failure must never hold up live safety/location ACKs.
   const [insertResult, advanceResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
-  const liveAdvanced = (advanceResult?.meta.changes ?? 0) > 0;
-  if (liveAdvanced) {
-    await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
+  const watermarkAdvanced = (advanceResult?.meta.changes ?? 0) > 0;
+  let liveAdvanced = false;
+  if (watermarkAdvanced) {
+    // The Durable Object is the authoritative live read model. It may reject a logically newer
+    // epoch/sequence when its capture timestamp would move the parent backwards in event time.
+    liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(highest);
   }
   return {
     liveAdvanced,
@@ -121,11 +125,9 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   if (!rate.success) return json({ error: "rate limited" }, 429);
   const d = await device(env, deviceId);
   if (!d) return json({ error: "device unauthorized" }, 401);
-  const body = await signedBody(req, d.public_key_spki_b64, V2_BYTES);
-  if (body instanceof Response) return body;
+  const body = await signedBody(req, d.public_key_spki_b64, V2_BYTES); if (body instanceof Response) return body;
   if (body.byteLength !== V1_BYTES && body.byteLength !== V2_BYTES) return json({ error: "bad packet length" }, 400);
-  let rawPacket: LivePacket;
-  try { rawPacket = decodeLivePacket(body); } catch { return json({ error: "invalid location packet" }, 400); }
+  let rawPacket: LivePacket; try { rawPacket = decodeLivePacket(body); } catch { return json({ error: "invalid location packet" }, 400); }
   if (!timeValid(rawPacket, Date.now())) return json({ error: "location timestamp outside allowed history window" }, 400);
 
   const packet = await trustedPacket(rawPacket, env);
@@ -133,30 +135,22 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   const persisted = await persistAccepted(env, deviceId, [packet]);
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
-  return json({
-    ack: packet.sequence,
-    duplicate: persisted.insertedCount === 0,
-    liveAdvanced: persisted.liveAdvanced,
-    routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE
-  });
+  return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: persisted.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
 
 export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
   const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:location-batch` });
   if (!rate.success) return json({ error: "rate limited" }, 429);
-  const d = await device(env, deviceId);
-  if (!d) return json({ error: "device unauthorized" }, 401);
+  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
   const maxBytes = 3 + MAX_BATCH * V2_BYTES;
-  const body = await signedBody(req, d.public_key_spki_b64, maxBytes);
-  if (body instanceof Response) return body;
+  const body = await signedBody(req, d.public_key_spki_b64, maxBytes); if (body instanceof Response) return body;
   if (body.byteLength < 3) return json({ error: "invalid batch" }, 400);
   const view = new DataView(body);
   if (view.getUint8(0) !== BATCH_VERSION) return json({ error: "unsupported batch version" }, 400);
   const count = view.getUint16(1, false);
   if (count < 1 || count > MAX_BATCH || body.byteLength !== 3 + count * V2_BYTES) return json({ error: "invalid batch size" }, 400);
 
-  const rawPackets: LivePacket[] = [];
-  const now = Date.now();
+  const rawPackets: LivePacket[] = [], now = Date.now();
   try {
     for (let i = 0; i < count; i++) {
       const start = 3 + i * V2_BYTES;
@@ -164,46 +158,27 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
       if (packet.version !== 2 || !timeValid(packet, now)) throw new Error("invalid packet");
       rawPackets.push(packet);
     }
-  } catch {
-    return json({ error: "invalid batch packet" }, 400);
-  }
-  for (let i = 1; i < rawPackets.length; i++) {
-    if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
-  }
+  } catch { return json({ error: "invalid batch packet" }, 400); }
+  for (let i = 1; i < rawPackets.length; i++) if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
 
   const packets = await Promise.all(rawPackets.map(packet => trustedPacket(packet, env)));
   await queueLocations(env, deviceId, packets.map((packet, i) => ({ packet, rawPacket: rawPackets[i] })));
   const persisted = await persistAccepted(env, deviceId, packets);
   await evaluateSafetyBatchV6(env, deviceId, packets);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
-  return json({
-    acked: persisted.accepted,
-    count: persisted.accepted.length,
-    liveAdvanced: persisted.liveAdvanced,
-    routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length
-  });
+  return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: persisted.liveAdvanced, routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length });
 }
 
 export async function previewLatestLocationV6(req: Request, env: LocationIngestEnv, deviceId: string) {
   const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:live-preview` });
   if (!rate.success) return json({ error: "rate limited" }, 429);
-  const d = await device(env, deviceId);
-  if (!d) return json({ error: "device unauthorized" }, 401);
-  const body = await signedBody(req, d.public_key_spki_b64, V2_BYTES);
-  if (body instanceof Response) return body;
+  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
+  const body = await signedBody(req, d.public_key_spki_b64, V2_BYTES); if (body instanceof Response) return body;
   if (body.byteLength !== V2_BYTES) return json({ error: "live preview requires v2 packet" }, 400);
-  let rawPacket: LivePacket;
-  try { rawPacket = decodeLivePacket(body); } catch { return json({ error: "invalid location packet" }, 400); }
+  let rawPacket: LivePacket; try { rawPacket = decodeLivePacket(body); } catch { return json({ error: "invalid location packet" }, 400); }
   const now = Date.now();
-  if (rawPacket.wallTimeMs < now - LIVE_PREVIEW_MAX_AGE_MS || rawPacket.wallTimeMs > now + MAX_FUTURE_MS) {
-    return json({ previewed: false, reason: "not_recent" });
-  }
+  if (rawPacket.wallTimeMs < now - LIVE_PREVIEW_MAX_AGE_MS || rawPacket.wallTimeMs > now + MAX_FUTURE_MS) return json({ previewed: false, reason: "not_recent" });
   const packet = await trustedPacket(rawPacket, env);
   const advanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(packet);
-  return json({
-    previewed: advanced,
-    epoch: packet.epoch,
-    sequence: packet.sequence,
-    routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE
-  });
+  return json({ previewed: advanced, epoch: packet.epoch, sequence: packet.sequence, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
