@@ -86,15 +86,20 @@ class SafetyOutbox(
         }
     } catch (_: Throwable) { noteHealthy(false); UNKNOWN_PENDING_COUNT }
 
-    fun ack(eventId: String): Boolean = try {
-        writeFaultInjector?.invoke("ack")
-        val db = writableDatabase
-        val changed = db.update("safety_events", ContentValues().apply { put("acked", 1) }, "event_id=? AND acked=0", arrayOf(eventId))
-        if (changed != 1) return false
-        db.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
-        noteHealthy(true)
-        true
-    } catch (_: Throwable) { noteHealthy(false); false }
+    fun ack(eventId: String): Boolean {
+        return try {
+            writeFaultInjector?.invoke("ack")
+            val db = writableDatabase
+            val changed = db.update("safety_events", ContentValues().apply { put("acked", 1) }, "event_id=? AND acked=0", arrayOf(eventId))
+            if (changed != 1) {
+                false
+            } else {
+                db.execSQL("DELETE FROM safety_events WHERE acked=1 AND id < (SELECT COALESCE(MAX(id)-200,0) FROM safety_events)")
+                noteHealthy(true)
+                true
+            }
+        } catch (_: Throwable) { noteHealthy(false); false }
+    }
 
     fun stats(): Stats = try {
         readableDatabase.rawQuery("SELECT SUM(CASE WHEN acked=0 THEN 1 ELSE 0 END),MIN(CASE WHEN acked=0 THEN created_ms END),SUM(CASE WHEN acked=2 THEN 1 ELSE 0 END) FROM safety_events", emptyArray()).use { c ->
