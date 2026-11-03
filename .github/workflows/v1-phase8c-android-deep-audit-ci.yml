@@ -77,6 +77,8 @@ jobs:
           fall=app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt
           wifi=app/src/main/java/com/brick/safety/maintenance/WifiScheduleManager.kt
           policy=app/src/main/java/com/brick/safety/managed/ManagedPolicy.kt
+          policy_ledger=app/src/main/java/com/brick/safety/maintenance/PolicyLedger.kt
+          admin=app/src/main/java/com/brick/safety/managed/BrickDeviceAdminReceiver.kt
           deprov=app/src/main/java/com/brick/safety/maintenance/DeprovisionManager.kt
           deepoff=app/src/main/java/com/brick/safety/maintenance/DeepOffManager.kt
           recovery=app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt
@@ -90,6 +92,8 @@ jobs:
           shizuku_service=app/src/main/java/com/brick/safety/privileged/BrickShizukuUserService.kt
           shizuku_lane=app/src/main/java/com/brick/safety/privileged/RecoverableExecutorLane.kt
           command_policy=app/src/main/java/com/brick/safety/privileged/PrivilegedCommandPolicy.kt
+          device_keys=app/src/main/java/com/brick/safety/crypto/DeviceKeys.kt
+          diagnostics=app/src/main/java/com/brick/safety/diagnostics/DiagnosticStore.kt
           app=app/src/main/java/com/brick/safety/BrickApplication.kt
 
           ! grep -F 'android:testOnly="true"' "$manifest"
@@ -118,10 +122,19 @@ jobs:
           grep -F 'awaitWifiState' "$wifi" >/dev/null
           grep -F 'VERIFY_TIMEOUT_MS' "$wifi" >/dev/null
 
+          # P8C-004/P8C-007/P8C-009: policy provenance must exist before mutation, survive churn,
+          # fail closed when missing/corrupt, and include the Android 10 auto-time branch.
+          grep -F 'PolicyLedger.initializeManagedLifecycle(context.applicationContext)' "$admin" >/dev/null
+          grep -F 'PolicyLedger.ensureReadyForPolicyMutation(app)' "$policy" >/dev/null
+          grep -F 'private const val KEY_INITIALIZED = "initialized"' "$policy_ledger" >/dev/null
+          grep -F 'private const val KEY_SCHEMA = "schema"' "$policy_ledger" >/dev/null
+          grep -F 'if (!prefs.contains(KEY_RECORDS)) return false' "$policy_ledger" >/dev/null
           grep -F '"auto_time_required"' "$policy" >/dev/null
           grep -F 'dpm.getAutoTimeRequired()' "$policy" >/dev/null
           grep -F '"auto_time_required"' "$deprov" >/dev/null
           grep -F 'PolicyLedger.integrityValid(context)' "$deprov" >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/maintenance/Phase8PolicyLedgerIntegrityInstrumentedTest.kt
+          grep -F 'for (i in 0 until 400)' app/src/androidTest/java/com/brick/safety/maintenance/Phase8PolicyLedgerIntegrityInstrumentedTest.kt >/dev/null
           grep -F 'isPostPurge(this)' "$app" >/dev/null
 
           # P8C-005: known Brick persistence must be represented in the verified purge inventory.
@@ -151,6 +164,23 @@ jobs:
           grep -F 'DeprovisionManager.isPostPurge(applicationContext)' "$beta_worker" >/dev/null
           # No worker may open a Brick preference as an instance property before its doWork guard.
           ! grep -F 'private val prefs = applicationContext.getSharedPreferences' "$evidence_worker"
+
+          # P8C-006: a paired identity may never be silently regenerated or replaced.
+          grep -F 'paired_signing_key_missing' "$device_keys" >/dev/null
+          grep -F 'paired_signing_key_mismatch' "$device_keys" >/dev/null
+          grep -F 'PREF_EXPECTED_FINGERPRINT' "$device_keys" >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/crypto/Phase8DeviceKeyContinuityInstrumentedTest.kt
+          grep -F 'testMissingPairedKeyFailsClosedWithoutSilentRegeneration' app/src/androidTest/java/com/brick/safety/crypto/Phase8DeviceKeyContinuityInstrumentedTest.kt >/dev/null
+          grep -F 'testReplacementPairedKeyIsRejectedAgainstPinnedFingerprint' app/src/androidTest/java/com/brick/safety/crypto/Phase8DeviceKeyContinuityInstrumentedTest.kt >/dev/null
+
+          # P8C-010: maintenance output must use V1 semantics and authoritative durable safety state.
+          grep -F 'BRICK V1 DIAGNOSTIC REPORT' "$diagnostics" >/dev/null
+          grep -F 'lastCommandTarget=' "$diagnostics" >/dev/null
+          grep -F 'lastCommandStatus=' "$diagnostics" >/dev/null
+          grep -F 'lastCommandActualAfter=' "$diagnostics" >/dev/null
+          grep -F 'SafetyDispatcher.isSosActive(app)' "$diagnostics" >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/diagnostics/Phase6CDiagnosticsInstrumentedTest.kt
+          grep -F 'testReportUsesV1OneShotLocationSemanticsAndDurableSosTruth' app/src/androidTest/java/com/brick/safety/diagnostics/Phase6CDiagnosticsInstrumentedTest.kt >/dev/null
 
           # P8C-012 / 8C.14: bounded optional Shizuku failure and strict typed command surface.
           grep -F 'RecoverableExecutorLane("brick-shizuku-call")' "$shizuku_bridge" >/dev/null
