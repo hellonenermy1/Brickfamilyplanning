@@ -1,0 +1,206 @@
+name: Brick V1 Phase 8 — Android Resource Budget Evidence
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-resource-budget:
+    name: Sustained-failure CPU, RAM, storage, wakeup and retry guardrails
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          test -x "$SDKMANAGER_PATH" && test -x "$AVDMANAGER_PATH"
+          AVD_HOME="$RUNNER_TEMP/brick-p8-resource-avd"
+          mkdir -p "$AVD_HOME" resource-evidence
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Build and boot clean Android 15 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          gradle --no-daemon :app:assembleDebug --stacktrace
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-resource --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-resource -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > resource-evidence/emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          "$ADB" install -t app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Seed 1000-row durable failure workload
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" logcat -c
+          "$ADB" shell am broadcast --receiver-foreground --include-stopped-packages \
+            -a com.brick.safety.testing.PHASE8_RESOURCE_SEED \
+            -n com.brick.safety/.testing.Phase8ResourceHarnessReceiver | tee resource-evidence/seed.txt
+          for i in $(seq 1 60); do
+            if "$ADB" logcat -d | grep -Fq 'BrickP8Resource: seeded=1000'; then break; fi
+            sleep 1
+          done
+          "$ADB" logcat -d | grep -F 'BrickP8Resource: seeded=1000' >/dev/null
+          pid="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
+          test -n "$pid"
+          printf '%s\n' "$pid" | tee resource-evidence/pid.txt
+
+      - name: Measure three-minute sustained-failure resource envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_pid="$(cat resource-evidence/pid.txt | tr -d '\r')"
+          test -n "$baseline_pid"
+          hz="$("$ADB" shell getconf CLK_TCK 2>/dev/null | tr -d '\r' || true)"
+          [[ "$hz" =~ ^[0-9]+$ ]] || hz=100
+          start_ticks="$("$ADB" shell cat /proc/$baseline_pid/stat | awk '{print $14+$15}' | tr -d '\r')"
+          start_sec="$(date +%s)"
+
+          printf 'sample,rss_kb,cpu_percent,storage_kb\n' > resource-evidence/samples.csv
+          max_rss=0
+          max_storage=0
+          max_cpu_milli=0
+          for i in $(seq 1 18); do
+            pid="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
+            test "$pid" = "$baseline_pid"
+
+            mem="$("$ADB" shell dumpsys meminfo com.brick.safety | tr -d '\r')"
+            rss="$(printf '%s\n' "$mem" | awk '/TOTAL RSS:/{print $3; exit}')"
+            if [ -z "$rss" ]; then rss="$(printf '%s\n' "$mem" | awk '/TOTAL PSS:/{print $3; exit}')"; fi
+            [[ "$rss" =~ ^[0-9]+$ ]]
+
+            cpu="$("$ADB" shell top -b -n 1 -p "$pid" 2>/dev/null | tr -d '\r' | awk -v p="$pid" '$1==p {gsub(/%/,"",$9); print $9; exit}')"
+            if ! [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then cpu=0; fi
+            cpu_milli="$(awk -v c="$cpu" 'BEGIN { printf "%d", c*1000 }')"
+
+            storage="$("$ADB" shell run-as com.brick.safety sh -c 'du -sk . 2>/dev/null | cut -f1' | tr -d '\r')"
+            [[ "$storage" =~ ^[0-9]+$ ]]
+            printf '%s,%s,%s,%s\n' "$i" "$rss" "$cpu" "$storage" >> resource-evidence/samples.csv
+            [ "$rss" -gt "$max_rss" ] && max_rss="$rss"
+            [ "$storage" -gt "$max_storage" ] && max_storage="$storage"
+            [ "$cpu_milli" -gt "$max_cpu_milli" ] && max_cpu_milli="$cpu_milli"
+            sleep 10
+          done
+
+          end_ticks="$("$ADB" shell cat /proc/$baseline_pid/stat | awk '{print $14+$15}' | tr -d '\r')"
+          end_sec="$(date +%s)"
+          elapsed=$((end_sec - start_sec))
+          test "$elapsed" -ge 175
+          avg_cpu_milli="$(awk -v s="$start_ticks" -v e="$end_ticks" -v hz="$hz" -v sec="$elapsed" 'BEGIN { if (sec <= 0 || hz <= 0) exit 1; printf "%d", ((e-s)/hz/sec*100)*1000 }')"
+
+          streak="$("$ADB" shell run-as com.brick.safety sh -c \"grep -o 'name=\\\"coreUploadFailureStreak\\\" value=\\\"[0-9]*\\\"' shared_prefs/brick.xml 2>/dev/null | sed -E 's/.*value=\\\"([0-9]+)\\\".*/\\1/'\" | tr -d '\r' | tail -n 1)"
+          if ! [[ "$streak" =~ ^[0-9]+$ ]]; then streak=0; fi
+          alarm_lines="$("$ADB" shell dumpsys alarm | grep -c 'com.brick.safety' || true)"
+
+          # CI regression guardrails only. Real phone battery/radio/GNSS/sensor/OEM power belongs to Phase 9.
+          test "$max_rss" -le 262144
+          test "$max_storage" -le 32768
+          test "$max_cpu_milli" -le 80000
+          test "$avg_cpu_milli" -le 20000
+          test "$streak" -ge 1
+          test "$streak" -le 8
+          test "$alarm_lines" -le 40
+
+          python3 - <<PY
+          import json
+          evidence = {
+            'version': 2,
+            'gitSha': '${GITHUB_SHA}',
+            'platform': 'Android 15 API 35 x86_64 emulator',
+            'physicalDevice': False,
+            'workload': '1000 durable location rows + persistent loopback-refusal upload failure',
+            'durationSeconds': int('$elapsed'),
+            'processStayedAlive': True,
+            'maxRssKb': int('$max_rss'),
+            'maxStorageKb': int('$max_storage'),
+            'maxObservedCpuPercent': int('$max_cpu_milli') / 1000,
+            'averageProcessCpuPercent': int('$avg_cpu_milli') / 1000,
+            'coreUploadFailureStreak': int('$streak'),
+            'alarmDumpPackageLineCount': int('$alarm_lines'),
+            'guardrails': {
+              'maxRssKb': 262144,
+              'maxStorageKb': 32768,
+              'maxObservedCpuPercent': 80.0,
+              'averageProcessCpuPercent': 20.0,
+              'failureStreakRangeAfter180s': [1, 8],
+              'maxAlarmDumpPackageLines': 40
+            },
+            'scope': 'CI regression proxy only',
+            'notProvenHere': [
+              'physical battery drain / mAh',
+              'GNSS power and satellite behavior',
+              'sensor-hub power and wakeup cost',
+              'cellular/Wi-Fi modem and radio power',
+              'OPPO/ColorOS OEM background behavior'
+            ]
+          }
+          open('resource-evidence/phase8-android-resource-budget.json','w').write(json.dumps(evidence, indent=2))
+          PY
+
+      - name: Prove resource harness cannot ship in release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleRelease --stacktrace
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          APKANALYZER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name apkanalyzer | sort | tail -n 1)"
+          test -x "$APKANALYZER"
+          "$APKANALYZER" manifest print "$APK" > resource-evidence/release-manifest.xml
+          ! grep -F 'Phase8ResourceHarnessReceiver' resource-evidence/release-manifest.xml
+          ! grep -F 'PHASE8_RESOURCE_SEED' resource-evidence/release-manifest.xml
+
+      - name: Capture inspectable diagnostics
+        if: always()
+        shell: bash
+        run: |
+          "$ADB" shell dumpsys meminfo com.brick.safety > resource-evidence/meminfo-final.txt 2>&1 || true
+          "$ADB" shell dumpsys batterystats com.brick.safety > resource-evidence/batterystats.txt 2>&1 || true
+          "$ADB" shell dumpsys sensorservice | grep -i -C 3 'brick\|com.brick.safety' > resource-evidence/sensorservice-brick.txt 2>&1 || true
+          "$ADB" shell dumpsys package com.brick.safety > resource-evidence/package.txt 2>&1 || true
+          "$ADB" logcat -d > resource-evidence/logcat.txt 2>&1 || true
+
+      - name: Upload non-secret resource evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-android-resource-budget-${{ github.sha }}
+          path: resource-evidence/
+          if-no-files-found: warn
+          retention-days: 30
