@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const [restorePath] = process.argv.slice(2);
 if (!restorePath) throw new Error('usage: test-backup-restore.mjs <backup-restore-module>');
 const restore = await import(pathToFileURL(restorePath).href + `?v=${Date.now()}`);
+
+const keyPair = await crypto.subtle.generateKey(
+  { name: 'ECDSA', namedCurve: 'P-256' },
+  true,
+  ['sign', 'verify']
+);
+const publicSpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+const canonicalPublicKey = Buffer.from(publicSpki).toString('base64');
+const unpaddedPublicKey = canonicalPublicKey.replace(/=+$/, '');
+assert.notEqual(unpaddedPublicKey, canonicalPublicKey, 'test key must exercise a noncanonical Base64 spelling');
 
 const TABLES = [
   'devices', 'device_location_control', 'geofences', 'geofence_state', 'ble_anchors', 'trips', 'retention_settings',
@@ -19,7 +30,7 @@ function snapshot(extraDevice = {}, { legacy = false } = {}) {
   tables.devices.push({
     id: 'child-1',
     name: 'Child',
-    public_key_spki_b64: 'test-public-key',
+    public_key_spki_b64: canonicalPublicKey,
     created_at: 1793430000000,
     last_seen_at: null,
     revoked_at: null,
@@ -119,6 +130,7 @@ for (const table of TABLES.filter(t => !['devices', 'device_location_control', '
 // replay high-water state must not reset, and persistent parent control state/ACK must not silently
 // revert to the historical default after disaster recovery.
 assert.equal(db.rows.get('devices')[0].id, 'child-1');
+assert.equal(db.rows.get('devices')[0].public_key_spki_b64, canonicalPublicKey);
 assert.equal(db.rows.get('devices')[0].revoked_at, 1793434000000);
 assert.equal(db.rows.get('devices')[0].last_epoch, 17);
 assert.equal(db.rows.get('devices')[0].last_sequence, 991);
@@ -151,17 +163,40 @@ await assert.rejects(
   /backup integrity hash mismatch/
 );
 
-// Backward compatibility: Phase 6 / early Phase 8 V1 backups did not contain the location-control
-// table. They must remain recoverable and normalize that missing persistent state to an empty table.
-const legacy = encode(snapshot({ revoked_at: 1793434000000, last_epoch: 8, last_sequence: 77 }, { legacy: true }));
+// A legacy backup may contain an unpadded spelling of a valid key. Restore must normalize it to the
+// same canonical text used by new pairings so schema 015's text UNIQUE index retains identity meaning.
+const legacy = encode(snapshot({
+  public_key_spki_b64: unpaddedPublicKey,
+  revoked_at: 1793434000000,
+  last_epoch: 8,
+  last_sequence: 77
+}, { legacy: true }));
 const legacyDb = fakeDb();
 const legacyResult = await restore.restoreBackupToFreshD1({ DB: legacyDb }, legacy.bytes, legacy.sha);
 assert.equal(legacyResult.restoredRows.devices, 1);
 assert.equal(legacyResult.restoredRows.device_location_control, 0);
 assert.equal(legacyDb.counts.get('device_location_control'), 0);
+assert.equal(legacyDb.rows.get('devices')[0].public_key_spki_b64, canonicalPublicKey);
 assert.equal(legacyDb.rows.get('devices')[0].revoked_at, 1793434000000);
 assert.equal(legacyDb.rows.get('devices')[0].last_epoch, 8);
 assert.equal(legacyDb.rows.get('devices')[0].last_sequence, 77);
 
+// Two text spellings of the same P-256 key are one cryptographic device identity. A recovery must
+// refuse such an ambiguous historical snapshot instead of restoring two rows that the SQL text index
+// alone would consider different.
+const duplicateIdentity = snapshot({ public_key_spki_b64: canonicalPublicKey });
+duplicateIdentity.tables.devices.push({
+  ...duplicateIdentity.tables.devices[0],
+  id: 'child-2',
+  name: 'Duplicate child',
+  public_key_spki_b64: unpaddedPublicKey,
+  created_at: 1793430000001
+});
+const duplicate = encode(duplicateIdentity);
+await assert.rejects(
+  () => restore.restoreBackupToFreshD1({ DB: fakeDb() }, duplicate.bytes, duplicate.sha),
+  /semantic duplicate device identity/
+);
+
 assert.deepEqual([...restore.RESTORE_TABLE_ORDER], TABLES);
-console.log('Phase 8 fresh-D1 recovery preserves revocation, replay watermarks and persistent location-control state; legacy V1 backups remain restorable');
+console.log('Phase 8 fresh-D1 recovery preserves revocation/control/replay state, canonicalizes legacy keys, rejects semantic duplicate identities, and remains backward-compatible.');
