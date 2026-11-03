@@ -7,27 +7,18 @@ import android.content.Context
 import android.location.LocationManager
 import android.os.Build
 import android.os.UserManager
+import android.provider.Settings
 import com.brick.safety.beta.BetaSafety
+import com.brick.safety.maintenance.PolicyLedger
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
 
-/** Device Owner policy surface. Location commands are deliberately one-shot in Phase 8. */
+/** Device Owner policy surface. Parent Location commands are one-shot actions, never persistent policy. */
 object ManagedPolicy {
-    private const val PREFS = "brick_managed_policy_p8"
-    private const val KEY_MIGRATED = "migrated"
-    private const val KEY_CONSUMED_COMMAND_ID = "consumed_location_command_id"
-    private const val KEY_LAST_MATCHED = "last_location_command_matched"
-    private const val KEY_LAST_ATTEMPT_AT = "last_location_command_attempt_at"
-
     fun isDeviceOwner(context: Context): Boolean {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
         return runCatching { dpm.isDeviceOwnerApp(context.packageName) }.getOrDefault(false)
     }
 
-    /**
-     * Applies durable base Device Owner policy and, at most once per authenticated command id,
-     * attempts the requested Android Location state. Brick never adds DISALLOW_CONFIG_LOCATION in
-     * Phase 8 and never continuously reconciles Location after the one-shot attempt.
-     */
     @Suppress("DEPRECATION")
     fun apply(context: Context): Boolean {
         val app = context.applicationContext
@@ -35,102 +26,123 @@ object ManagedPolicy {
         val owner = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(false)
         if (!BetaSafety.isOperational(app)) return owner
 
+        ParentLocationStateStore.migrateLegacyToHistory(app)
         val admin = ComponentName(app, BrickDeviceAdminReceiver::class.java)
-        if (owner) {
-            // Upgrade repair: Phase 7 could lock the Location settings UI. Phase 8 explicitly does not.
-            runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
+        if (owner) applyBasePolicy(app, dpm, admin)
+        applyPendingLocationCommand(app, dpm, admin, owner)
+        return owner
+    }
 
-            val permissions = mutableListOf(
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION,
-                Manifest.permission.ACTIVITY_RECOGNITION
-            )
-            if (Build.VERSION.SDK_INT >= 31) permissions += Manifest.permission.BLUETOOTH_SCAN
-            if (Build.VERSION.SDK_INT >= 33) {
-                permissions += Manifest.permission.NEARBY_WIFI_DEVICES
-                permissions += Manifest.permission.POST_NOTIFICATIONS
+    @Suppress("DEPRECATION")
+    private fun applyBasePolicy(context: Context, dpm: DevicePolicyManager, admin: ComponentName) {
+        // Upgrade repair only. The V1 one-shot Location feature never creates this restriction.
+        runCatching {
+            if (dpm.getUserRestrictions(admin).getBoolean(UserManager.DISALLOW_CONFIG_LOCATION, false)) {
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION)
             }
-            permissions.forEach { permission ->
-                runCatching {
+        }
+
+        val permissions = mutableListOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+            Manifest.permission.ACTIVITY_RECOGNITION
+        )
+        if (Build.VERSION.SDK_INT >= 31) {
+            permissions += Manifest.permission.BLUETOOTH_SCAN
+            permissions += Manifest.permission.BLUETOOTH_ADVERTISE
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissions += Manifest.permission.NEARBY_WIFI_DEVICES
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+
+        permissions.forEach { permission ->
+            runCatching {
+                val current = dpm.getPermissionGrantState(admin, context.packageName, permission)
+                if (current != DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED) {
+                    PolicyLedger.record(
+                        context,
+                        "permission:$permission",
+                        current.toString(),
+                        DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED.toString(),
+                        "base_device_owner_policy"
+                    )
                     dpm.setPermissionGrantState(
                         admin,
-                        app.packageName,
+                        context.packageName,
                         permission,
                         DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED
                     )
                 }
             }
-
-            // Time integrity remains a base safety policy because signed/replay-protected traffic
-            // depends on sane time. Each call is isolated from OEM-specific failures.
-            if (Build.VERSION.SDK_INT >= 30) {
-                runCatching { dpm.setAutoTimeEnabled(admin, true) }
-                runCatching { dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }
-            } else {
-                runCatching { dpm.setAutoTimeRequired(admin, true) }
-            }
         }
 
-        applyLocationCommandOnce(app, dpm, admin, owner)
-        return owner
+        if (Build.VERSION.SDK_INT >= 30) {
+            runCatching {
+                val autoTimeBefore = Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) != 0
+                if (!autoTimeBefore) {
+                    PolicyLedger.record(context, "auto_time", "false", "true", "base_time_integrity")
+                    dpm.setAutoTimeEnabled(admin, true)
+                }
+            }
+            runCatching {
+                val restrictions = dpm.getUserRestrictions(admin)
+                if (!restrictions.getBoolean(UserManager.DISALLOW_CONFIG_DATE_TIME, false)) {
+                    PolicyLedger.record(
+                        context,
+                        "restriction:${UserManager.DISALLOW_CONFIG_DATE_TIME}",
+                        "false",
+                        "true",
+                        "base_time_integrity"
+                    )
+                    dpm.addUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME)
+                }
+            }
+        } else {
+            runCatching { dpm.setAutoTimeRequired(admin, true) }
+        }
     }
 
-    private fun applyLocationCommandOnce(
+    private fun applyPendingLocationCommand(
         context: Context,
         dpm: DevicePolicyManager,
         admin: ComponentName,
         owner: Boolean
     ) {
         val state = ParentLocationStateStore.read(context)
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-        if (!prefs.getBoolean(KEY_MIGRATED, false)) {
-            // A Phase 7 command may already have been applied repeatedly. Mark that inherited command
-            // consumed on upgrade rather than unexpectedly toggling Location one more time.
-            val edit = prefs.edit().putBoolean(KEY_MIGRATED, true)
-            state.commandId?.let { edit.putString(KEY_CONSUMED_COMMAND_ID, it) }
-            edit.commit()
-            return
-        }
-
         val commandId = state.commandId ?: return
-        if (prefs.getString(KEY_CONSUMED_COMMAND_ID, null) == commandId) return
+        val target = state.target ?: return
+        if (!state.actionable || !ParentLocationStateStore.claimPending(context, commandId)) return
 
-        // Persist consumption BEFORE touching system state. If the process dies mid-attempt, the same
-        // command is not replayed forever after reboot. A new authenticated command can still try again.
-        val claimed = prefs.edit()
-            .putString(KEY_CONSUMED_COMMAND_ID, commandId)
-            .putLong(KEY_LAST_ATTEMPT_AT, System.currentTimeMillis())
-            .remove(KEY_LAST_MATCHED)
-            .commit()
-        if (!claimed) return
-
-        val desiredOn = state.desired == DesiredLocationState.ON
+        val desiredOn = target == DesiredLocationState.ON
         val lm = context.getSystemService(LocationManager::class.java)
         var actual = runCatching { lm.isLocationEnabled }.getOrNull()
+        var method = "already_current"
 
         if (actual != desiredOn && owner && Build.VERSION.SDK_INT >= 30) {
-            runCatching { dpm.setLocationEnabled(admin, desiredOn) }
+            val attempted = runCatching { dpm.setLocationEnabled(admin, desiredOn); true }.getOrDefault(false)
+            if (attempted) method = "device_owner"
             actual = runCatching { lm.isLocationEnabled }.getOrNull()
         }
 
         if (actual != desiredOn) {
-            runCatching {
+            val attempted = runCatching {
                 PrivilegedBridgeRuntime.current().setParentLocationState(desiredOn).getOrDefault(false)
-            }
+            }.getOrDefault(false)
+            if (attempted) method = "privileged_bridge"
             actual = runCatching { lm.isLocationEnabled }.getOrNull()
         }
 
-        prefs.edit().putBoolean(KEY_LAST_MATCHED, actual == desiredOn).apply()
+        val matched = actual == desiredOn
+        ParentLocationStateStore.complete(
+            context,
+            commandId,
+            actualAfter = actual,
+            matched = matched,
+            detail = if (matched) method else "platform_did_not_confirm_target"
+        )
     }
 
-    fun lastConsumedLocationCommandId(context: Context): String? =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_CONSUMED_COMMAND_ID, null)
-
-    fun lastLocationCommandMatched(context: Context): Boolean? {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return if (prefs.contains(KEY_LAST_MATCHED)) prefs.getBoolean(KEY_LAST_MATCHED, false) else null
-    }
+    fun lastLocationCommand(context: Context): ParentLocationState = ParentLocationStateStore.read(context)
 }
