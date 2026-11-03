@@ -6,6 +6,8 @@ function requireCondition(condition, message) {
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const entry = fs.readFileSync('scripts/setup.mjs', 'utf8');
+const identityPreflight = fs.readFileSync('scripts/phase8-live-identity-preflight.mjs', 'utf8');
+const identityMigration = fs.readFileSync('scripts/phase8-identity-migration.mjs', 'utf8');
 const setup = fs.readFileSync('scripts/setup-v1-phase6.mjs', 'utf8');
 const verifier = fs.readFileSync('scripts/verify-cloudflare-deployment.mjs', 'utf8');
 const wrangler = fs.readFileSync('wrangler.template.jsonc', 'utf8');
@@ -14,8 +16,27 @@ const tenancy = fs.readFileSync('docs/phase8-tenancy-boundary.md', 'utf8');
 
 requireCondition(pkg.scripts?.setup === 'node scripts/setup.mjs', 'npm setup must use the canonical setup entrypoint');
 requireCondition(entry.includes("await import('./setup-v1-phase6.mjs')"), 'canonical setup must delegate to the production setup');
+requireCondition(entry.includes("await import('./phase8-live-identity-preflight.mjs')"), 'canonical setup must load the Phase 8 live identity preflight');
+requireCondition(entry.includes('await preflightPhase8LiveDeviceIdentities();'), 'canonical setup must execute the Phase 8 live identity preflight');
+const preflightCall = entry.indexOf('await preflightPhase8LiveDeviceIdentities();');
+const provisionerImport = entry.indexOf("await import('./setup-v1-phase6.mjs')");
+requireCondition(preflightCall >= 0 && provisionerImport > preflightCall, 'live identity preflight must run before production schema/deployment setup');
 requireCondition(!fs.existsSync('scripts/setup-v1-phase2.mjs'), 'obsolete Phase 2 setup wrapper must not exist');
 requireCondition(wrangler.includes('"main": "src/worker-v9.ts"'), 'production template must target worker-v9.ts');
+
+for (const marker of [
+  'planDeviceIdentityCanonicalization',
+  "SELECT id,public_key_spki_b64 FROM devices ORDER BY id LIMIT",
+  'UPDATE devices SET public_key_spki_b64=?1 WHERE id=?2 AND public_key_spki_b64=?3',
+  'device identity changed concurrently during Phase 8 preflight',
+  'Phase 8 identity canonicalization did not converge'
+]) requireCondition(identityPreflight.includes(marker), `live identity preflight is missing safety contract: ${marker}`);
+for (const marker of [
+  "crypto.subtle.importKey(",
+  "namedCurve: 'P-256'",
+  'semantic duplicate device identity',
+  'updates.push({ id, from: stored, to: canonical })'
+]) requireCondition(identityMigration.includes(marker), `identity canonicalizer is missing cryptographic contract: ${marker}`);
 
 const schemas = [
   'schema/001_init.sql',
@@ -105,4 +126,4 @@ for (const marker of [
 // acceptable even if the separate hardening workflow is pinned.
 requireCondition(!/uses:\s+[^\s#]+@v\d+/m.test(deployWorkflow), 'deployment workflow contains a floating GitHub Action tag');
 
-console.log('Phase 8 deployment contract passed: schema 001-011 plus 015 precede v9 activation, live identity uniqueness is verified, single-family tenancy is explicit, provenance is schema 15, and deployment Actions are SHA-pinned.');
+console.log('Phase 8 deployment contract passed: live P-256 identities preflight before setup, schema 001-011 plus 015 precede v9 activation, live uniqueness is verified, single-family tenancy is explicit, provenance is schema 15, and deployment Actions are SHA-pinned.');
