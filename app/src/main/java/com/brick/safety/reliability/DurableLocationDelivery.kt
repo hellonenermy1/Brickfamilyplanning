@@ -32,6 +32,10 @@ object DurableLocationDelivery {
         if (pending.isEmpty()) return true
         return try {
             val acked = transport(pending)
+            val expected = pending.map { it.epoch to it.seq }
+            if (acked.size != expected.size || acked.toSet().size != expected.size || acked.toSet() != expected.toSet()) {
+                return false
+            }
             journal.ackBatch(acked)
         } catch (_: Throwable) {
             false
