@@ -19,6 +19,9 @@ data class ParentLocationState(
 ) {
     val pending: Boolean get() = status == LocationCommandStatus.PENDING
     val actionable: Boolean get() = status == LocationCommandStatus.PENDING
+    /** Compatibility alias for old diagnostics only. This is last-command target, never desired policy. */
+    @Deprecated("Historical command target only; do not use for reconciliation")
+    val desired: DesiredLocationState? get() = target
 }
 
 /** Durable local history of the last authenticated, device-bound one-shot Location command. */
@@ -62,11 +65,6 @@ object ParentLocationStateStore {
         )
     }
 
-    /**
-     * Stores only a command already authenticated and bound to this device by the network layer.
-     * A newer command becomes PENDING. A completed command remains history and is never interpreted
-     * as a persistent desired Location state.
-     */
     fun applyVerified(
         context: Context,
         desired: DesiredLocationState,
@@ -101,7 +99,6 @@ object ParentLocationStateStore {
             .commit()
     }
 
-    /** Claim before touching Android state so a crash cannot replay the same command forever. */
     fun claimPending(context: Context, commandId: String): Boolean {
         val state = read(context)
         if (state.commandId != commandId || state.status != LocationCommandStatus.PENDING) return false
@@ -123,10 +120,6 @@ object ParentLocationStateStore {
             .commit()
     }
 
-    /**
-     * Upgrade safety: an old command with no lifecycle status is history, not a newly actionable
-     * command. This explicitly prevents Phase 7/old Phase 8 desired-state records from reviving.
-     */
     fun migrateLegacyToHistory(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getString(KEY_COMMAND_ID, null) == null || prefs.contains(KEY_STATUS)) return
