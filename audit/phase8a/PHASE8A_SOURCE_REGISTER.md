@@ -7,13 +7,14 @@ This register prevents requirement drift and prevents implementation documents f
 Use the highest applicable source in this order:
 
 1. **Latest explicitly approved Brick V1 amendment/master-plan decision.**
-2. **Brick V1 Final Product — AI Acceptance Checklist**, as the most complete pre-existing consolidated requirement/acceptance source currently recovered.
-3. **Canonical Phase 1 V1 requirement ledger / base V1 contract.**
-4. **Original Brick V1 specification / architecture decisions not subsequently superseded.**
-5. **Historical phase plans and closure documents.** These are evidence of work performed, not automatic authority to change the V1 contract.
-6. **Current code/configuration.** Code is implementation evidence only; it cannot silently redefine a requirement.
+2. **Explicit Phase 8A engineering contract amendment used to resolve a source ambiguity under delegated audit authority**, clearly labelled as new rather than historical source truth.
+3. **Brick V1 Final Product — AI Acceptance Checklist**, as the most complete pre-existing consolidated requirement/acceptance source currently recovered.
+4. **Canonical Phase 1 V1 requirement ledger / base V1 contract.**
+5. **Original Brick V1 specification / architecture decisions not subsequently superseded.**
+6. **Historical phase plans and closure documents.** These are evidence of work performed, not automatic authority to change the V1 contract.
+7. **Current code/configuration.** Code is implementation evidence only; it cannot silently redefine a requirement.
 
-When two sources conflict, Phase 8A records the conflict and resolves it by precedence/explicit approval. It is forbidden to select whichever wording happens to match current code.
+When sources conflict, Phase 8A records the conflict and resolves it by precedence/explicit amendment. It is forbidden to select whichever wording happens to match current code.
 
 ## Registered sources
 
@@ -56,7 +57,7 @@ Class totals verified from the full 146-page source:
 - 14 optional-if-supported;
 - 2 future-interface.
 
-Important: this source includes later 23P/23Q requirements that the older Phase 1 ledger does not contain. However, any wording superseded by SRC-001 must be marked amended/superseded rather than followed blindly.
+Important: this source includes later 23P/23Q requirements that the older Phase 1 ledger does not contain. However, any wording superseded by SRC-001 or an explicit current amendment must be marked amended/superseded rather than followed blindly.
 
 Detailed provenance/counts are stored in `audit/phase8a/PHASE8A_CHECKLIST_SOURCE_INDEX.md`.
 
@@ -68,7 +69,7 @@ Role: canonical earlier atomic baseline derived from the base V1 contract/`Yes.d
 
 Verified atomic row count: 456, including 15 explicit non-goals.
 
-Treatment: preserve stable IDs as historical traceability where useful, but do not assume this earlier ledger contains later 23P/23Q requirements or overrides SRC-001/SRC-002.
+Treatment: preserve stable IDs as historical traceability where useful, but do not assume this earlier ledger contains later 23P/23Q requirements or overrides higher-precedence sources.
 
 ### SRC-004 — Canonical Phase 1 architecture/program records
 
@@ -121,8 +122,22 @@ Current meanings:
 - 8E Parent Portal/Browser/UX Deep Audit
 - 8F End-to-End/Adversarial/Compliance
 
+### SRC-009 — Phase 8A Engineering Contract Amendment 23R
+
+Repository: `audit/phase8a/PHASE8A_23R_LATENCY_AMENDMENT.md` on `v1-p8a-contract-audit`.
+
+Role: resolves the only recovered source-value ambiguity: the master plan required `23R P95 latency budgets` but no historical approved source provided the numeric values.
+
+This amendment explicitly records that the values are a **new Phase 8A engineering contract decision**, not falsely recovered historical wording.
+
+Current 23R budgets:
+
+- accepted current fix -> visible parent marker: P95 <= **1.5 s** under healthy validated connectivity;
+- authoritative backend current state -> visible parent marker: P95 <= **500 ms**;
+- parent Live Track activation -> phone fast-mode confirmation or explicit failure/degraded result: P95 <= **2.0 s** while online/reachable.
+
 ## Source integrity rule
 
-If a requirement cannot be traced to a registered authoritative source, it cannot be invented during this audit. If an apparently required behavior is found only in implementation, it is recorded for investigation rather than promoted to the V1 contract without an approved source.
+If a requirement cannot be traced to a registered authoritative source, it cannot be silently invented during the audit. If an apparently required behavior is found only in implementation, it is recorded for investigation rather than promoted to the V1 contract without an approved/current amendment source.
 
-If a lower-precedence source conflicts with a later approved requirement, the conflict is preserved in the conflict ledger and the lower-precedence wording is marked superseded/amended rather than silently rewritten.
+If a lower-precedence source conflicts with a later approved/current requirement, the conflict is preserved in the conflict ledger and the lower-precedence wording is marked superseded/amended rather than silently rewritten.
