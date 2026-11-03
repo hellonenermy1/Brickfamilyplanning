@@ -1,28 +1,69 @@
 # Brick V1 — Phase 8 Closure
 
-Current state: **CODE HARDENING IMPLEMENTED — FORMAL ACCEPTANCE BLOCKED**.
+Current state: **INTEGRATION VERIFIED — FORMAL PHASE 8 CLOSURE BLOCKED ONLY BY PERSISTENT ANDROID SIGNING**.
 
-Phase 8 must not be labelled production-qualified from source inspection or from CI configuration alone. Its maximum pre-OPPO state is **INTEGRATION VERIFIED / PHASE 9 READY**, and that state has **not** been reached yet because the required current-head workflows have not executed.
+## Frozen tested candidates
 
-## Code-side hardening now present
+- Android code candidate: `ced2a0c6d040e4cca6f5012a0a3aeab2eb7f5ad8`.
+- Cloud code candidate: `58e722707da51f93f1b66d092393e6dd729c5728`.
 
-Phase 8A contains the Android/device-side reliability, persistence, recovery, retirement, upgrade, command-replay, location/speed/mode correctness, provider isolation, security/privacy and supply-chain gates defined by the Phase 8 contract.
+The evidence-document commits after the Android candidate are documentation-only and do not change the tested app code.
 
-Phase 8B contains the cloud identity/revocation, auth, idempotency, event-time ordering, parent freshness truth, retention, backup/restore, migration/deploy, command replay, mixed SOS/history torture and Android↔cloud contract gates defined by the Phase 8 contract.
+## Phase 8A — Android acceptance state
 
-The runtime code is frozen unless executed evidence exposes a real defect. Further speculative refactors are not acceptance work.
+Executed and green on the frozen Android candidate:
 
-## Open acceptance blockers
+- build, unit tests, lint and release/R8;
+- dependency lock and supply-chain gate;
+- Android security/privacy gates;
+- full retained Phase 2–8 instrumentation;
+- reconnect/reboot/backlog/SOS recovery contract;
+- Phase 7 → Phase 8 in-place same-certificate CI upgrade continuity;
+- Android ↔ cloud final production contract;
+- real AOSP Device Owner lifecycle: provision → durable DISARMED → reboot → automatic durable MANAGEMENT_RELEASED → uninstall request → package removable.
 
-1. **GitHub Actions runner execution:** decisive Android and cloud jobs at the latest code-bearing heads are created as failed jobs with `steps: null` and no job logs. They never reach checkout or any Brick command. See `PHASE8-TEST-EVIDENCE.md` for run IDs. Until the jobs actually execute and pass, Phase 8 is not green.
-2. **Persistent Android signing:** the release/export workflow requires the persistent keystore credentials and pinned signing-certificate SHA-256. Those secrets/fingerprint have not been proven, so stable same-certificate release continuity remains an external prerequisite.
+The previous Device Owner acceptance instability was resolved without weakening the lifecycle. The acceptance harness no longer uses instrumentation at the Stage 1 → reboot boundary, because that can alter Android stopped-package behavior. Production retirement convergence was also hardened so the durable stage follows a successful Device Owner clear operation rather than depending on a potentially stale immediate read-back.
 
-## Accepted
+## Phase 8B — cloud acceptance state
 
-No formal Phase 8 acceptance verdict yet. Code/gates being present is not a substitute for executed green evidence.
+Cloud candidate `58e722707da51f93f1b66d092393e6dd729c5728` is fully green for its Phase 8 hardening/regression gate and the final Android↔cloud production contract.
 
-## Phase 9 handoff
+No further Phase 8B development is currently justified by executed evidence.
 
-Only after the Phase 8 blockers above are cleared will the final Android source SHA, APK SHA-256/signing certificate, cloud source SHA/deployment identity, migration state and executed acceptance results be frozen here for physical OPPO/ColorOS qualification.
+## Sole remaining Phase 8 blocker
 
-Phase 9 then covers only real-device/OEM behavior: background execution and restart/reboot, GNSS/radio/sensors, ColorOS process killing/background restrictions, thermal/battery behavior, offline/online recovery and multi-day endurance.
+The repository does not currently provide the permanent Android signing identity required by the two release-acceptance workflows. Both fail at their explicit required-secret gates before building:
+
+1. persistent-signing Phase 7 → Phase 8 upgrade continuity;
+2. stable-signed testOnly Device Owner APK export.
+
+Required GitHub Actions secrets:
+
+- `BRICK_ANDROID_KEYSTORE_B64`
+- `BRICK_ANDROID_KEYSTORE_PASSWORD`
+- `BRICK_ANDROID_KEY_ALIAS`
+- `BRICK_ANDROID_KEY_PASSWORD`
+- `BRICK_ANDROID_SIGNING_CERT_SHA256`
+
+Do not replace this with a temporary/generated CI key. The point of this gate is to prove the same permanent certificate can sign both the retained Phase 7 baseline and Phase 8 and therefore preserve Android update continuity.
+
+## Formal Phase 8 completion rule
+
+Phase 8 may be marked **COMPLETE / PHASE 9 READY** only after both signing-dependent jobs pass and the final evidence records:
+
+- exact signing certificate SHA-256;
+- exact signed APK SHA-256;
+- exact Android source SHA;
+- exact cloud source SHA;
+- successful persistent-signing upgrade run;
+- successful stable-signed APK export run;
+- release APK manifest/package/version/testOnly/security verification;
+- final Android↔cloud contract state.
+
+Until then, the truthful status is **integration verified, signing blocked** — not production-signed and not formally closed.
+
+## Phase 9 boundary
+
+Physical OPPO/ColorOS qualification is deliberately not a Phase 8 blocker. Phase 9 covers real-device/OEM behavior including background survival, restart/reboot recovery, GNSS/radio/sensors, ColorOS process killing and battery restrictions, thermal/battery/network usage, offline/online recovery and multi-day endurance.
+
+That boundary matches Brick's V1 rule: reliability claims are based on measured evidence, and real OPPO behavior must be proven on real OPPO hardware rather than inferred from emulator CI.
