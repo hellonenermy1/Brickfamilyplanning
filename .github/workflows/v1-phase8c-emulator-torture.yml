@@ -84,8 +84,10 @@ jobs:
             'com.brick.safety.evidence.Phase8ProviderIsolationInstrumentedTest'
             'com.brick.safety.privileged.Phase6PrivilegedBridgeInstrumentedTest'
             'com.brick.safety.crypto.Phase8DeviceKeyContinuityInstrumentedTest'
+            'com.brick.safety.location.Phase8FusedFreshnessInstrumentedTest'
             'com.brick.safety.diagnostics.Phase6CDiagnosticsInstrumentedTest'
             'com.brick.safety.maintenance.Phase8PolicyLedgerIntegrityInstrumentedTest'
+            'com.brick.safety.maintenance.Phase8WifiVerificationInstrumentedTest'
             'com.brick.safety.maintenance.Phase8PostPurgeIsolationInstrumentedTest'
             'com.brick.safety.maintenance.Phase8WorkManagerDrainInstrumentedTest'
           )
