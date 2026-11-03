@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
-const EXPECTED_RELEASE = '0.6.0-phase6-rc';
+const EXPECTED_RELEASE = '0.8.0-phase8-beta1-test';
 const EXPECTED_RELEASE_STATE = 'candidate-not-real-device-qualified';
 const EXPECTED_V1_PROGRAM_PHASE = 8;
 const EXPECTED_SCHEMA_VERSION = 15;
