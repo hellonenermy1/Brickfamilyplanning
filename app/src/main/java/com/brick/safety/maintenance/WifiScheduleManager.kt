@@ -128,9 +128,13 @@ object WifiScheduleManager {
         }
     }
 
+    /** Names are read before PURGE so RecoveryScheduler can prove their WorkManager rows are gone. */
+    internal fun workNamesForDeprovision(context: Context): List<String> =
+        readSchedules(context).map { WORK_PREFIX + it.id }.distinct()
+
     fun cancelAll(context: Context) {
         val wm = WorkManager.getInstance(context.applicationContext)
-        readSchedules(context).forEach { wm.cancelUniqueWork(WORK_PREFIX + it.id) }
+        workNamesForDeprovision(context).forEach(wm::cancelUniqueWork)
     }
 
     @Suppress("DEPRECATION")
