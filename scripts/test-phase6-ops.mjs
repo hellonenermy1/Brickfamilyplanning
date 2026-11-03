@@ -34,7 +34,10 @@ assert.ok(trend.baseline.ratePctPerHour < trend.recent.ratePctPerHour / 2);
 assert.ok(trend.recent.dropPct >= 5);
 
 const backupRows = new Map();
-const tableNames = ['devices','geofences','geofence_state','ble_anchors','trips','retention_settings','safety_events','health_incidents','crash_reports','audit_log','device_replay_state'];
+const tableNames = [
+  'devices','device_location_control','geofences','geofence_state','ble_anchors','trips','retention_settings',
+  'safety_events','health_incidents','crash_reports','audit_log','device_replay_state'
+];
 for (const table of tableNames) backupRows.set(table, [{ marker: table }]);
 const stored = new Map();
 const backupEnv = {
@@ -64,6 +67,7 @@ const validated = await backup.validateBackupBody(object.body, result.sha256);
 assert.equal(validated.format, 'brick-d1-snapshot-v1');
 assert.deepEqual(Object.keys(validated.tables), tableNames);
 assert.equal(validated.tables.devices[0].marker, 'devices');
+assert.equal(validated.tables.device_location_control[0].marker, 'device_location_control');
 assert.equal(validated.tables.ble_anchors[0].marker, 'ble_anchors');
 assert.ok(validated.excludes.some(x => x.startsWith('device_health_samples:')));
 assert.ok(!('device_health_samples' in validated.tables));
@@ -74,4 +78,4 @@ new Uint8Array(corrupted)[Math.floor(corrupted.byteLength / 2)] ^= 0x01;
 await assert.rejects(() => backup.validateBackupBody(corrupted, result.sha256), /integrity hash mismatch/);
 await assert.rejects(() => backup.validateBackupBody(object.body, '0'.repeat(64)), /integrity hash mismatch/);
 
-console.log('Phase 6 battery trend + private R2 backup integrity OK');
+console.log('Phase 8 battery trend + private R2 backup integrity including persistent location-control state OK');
