@@ -10,6 +10,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.WifiScheduleManager
 import java.util.concurrent.TimeUnit
@@ -24,6 +25,7 @@ object RecoveryScheduler {
 
     fun ensureScheduled(context: Context) {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
         if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) {
             cancelAll(app)
             return
@@ -49,6 +51,7 @@ object RecoveryScheduler {
 
     fun scheduleSoon(context: Context, delaySeconds: Long = 15) {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
         if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
         val request = OneTimeWorkRequestBuilder<RecoveryWorker>()
             .setInitialDelay(delaySeconds.coerceAtLeast(1), TimeUnit.SECONDS).build()
@@ -61,18 +64,23 @@ object RecoveryScheduler {
 
     fun scheduleEvidenceSoon(context: Context, delaySeconds: Long = 5) {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
         if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
         WorkManager.getInstance(app).enqueueUniqueWork(EVIDENCE_SOON_WORK, ExistingWorkPolicy.KEEP, evidenceRequest(delaySeconds))
     }
 
     fun scheduleEvidenceFollowUp(context: Context, delaySeconds: Long) {
         val app = context.applicationContext
+        if (DeprovisionManager.isPostPurge(app)) return
         if (DeepOffManager.isActive(app) || DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD || !BetaSafety.isOperational(app)) return
         WorkManager.getInstance(app).enqueueUniqueWork(EVIDENCE_SOON_WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, evidenceRequest(delaySeconds))
     }
 
     fun cancelAll(context: Context) {
         val app = context.applicationContext
+        // Cancellation is performed before PURGE_BRICK. Once purge has committed, do not cause
+        // WorkManager/Wi-Fi schedule state to be reopened merely to repeat cancellation.
+        if (DeprovisionManager.isPostPurge(app)) return
         val workManager = WorkManager.getInstance(app)
         workManager.cancelUniqueWork(PERIODIC_WORK)
         workManager.cancelUniqueWork(SOON_WORK)
