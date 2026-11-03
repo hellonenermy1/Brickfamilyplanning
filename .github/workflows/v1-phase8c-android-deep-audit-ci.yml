@@ -134,6 +134,12 @@ jobs:
             grep -F "$required" "$deprov" >/dev/null
           done
           grep -F 'ShizukuBridgeController.shutdown()' "$deprov" >/dev/null
+          grep -F 'RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)' "$deprov" >/dev/null
+          grep -F 'fun cancelAllAndAwaitForDeprovision' "$recovery" >/dev/null
+          grep -F 'WifiScheduleManager.workNamesForDeprovision(app)' "$recovery" >/dev/null
+          grep -F 'workManager.pruneWork().result' "$recovery" >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/maintenance/Phase8WorkManagerDrainInstrumentedTest.kt
+          test -f app/src/androidTest/java/com/brick/safety/data/Phase8BacklogScaleInstrumentedTest.kt
 
           # P8C-008: post-purge is a process-wide invariant, not only an Application/UI guard.
           grep -F 'DeprovisionManager.isPostPurge(app)' "$deepoff" >/dev/null
