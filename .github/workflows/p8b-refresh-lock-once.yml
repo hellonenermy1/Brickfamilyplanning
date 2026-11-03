@@ -1,0 +1,50 @@
+name: P8B one-shot dependency lock refresh
+
+on:
+  push:
+    branches: [v1-p8b-remediation-android]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: v1-p8b-remediation-android
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v4
+
+      - name: Locate Android SDK
+        shell: bash
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Ensure compile SDK
+        shell: bash
+        run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" >/dev/null
+
+      - name: Regenerate lock for approved JVM test dependency
+        shell: bash
+        run: ./gradlew --no-daemon :app:dependencies --write-locks
+
+      - name: Commit lockfile only when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- app/gradle.lockfile; then
+            echo "Lockfile already current"
+            exit 0
+          fi
+          git config user.name "brick-p8b-ci"
+          git config user.email "brick-p8b-ci@users.noreply.github.com"
+          git add app/gradle.lockfile
+          git commit -m "test(p8b): refresh lock for JVM unit tests"
+          git push origin HEAD:v1-p8b-remediation-android
