@@ -130,6 +130,11 @@ jobs:
           )
           : > /tmp/p8c-instrumentation.txt
           for class in "${classes[@]}"; do
+            # Every class gets a clean target-app persistence boundary. Several tests deliberately
+            # mutate durable role/policy state; carrying that state into the next instrumentation
+            # process can auto-start production services and turn one test into another test's setup.
+            "$ADB" shell am force-stop com.brick.safety >/dev/null 2>&1 || true
+            "$ADB" shell pm clear com.brick.safety >/dev/null
             echo "===== $class =====" | tee -a /tmp/p8c-instrumentation.txt
             output="$($ADB shell am instrument -w \
               -e class "$class" \
