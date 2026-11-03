@@ -24,7 +24,25 @@ object SafetyDispatcher {
             .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis()).apply()
     }
 
-    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
+    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? =
+        enqueueInternal(context, kind, detail, priority, sosActiveState = null)
+
+    fun enqueueSosTransition(context: Context, active: Boolean, detail: JSONObject = JSONObject()): String? =
+        enqueueInternal(
+            context,
+            if (active) "sos_started" else "sos_cancelled",
+            detail,
+            PRIORITY_SOS,
+            sosActiveState = active
+        )
+
+    private fun enqueueInternal(
+        context: Context,
+        kind: String,
+        detail: JSONObject,
+        priority: Int,
+        sosActiveState: Boolean?
+    ): String? {
         val effectivePriority = if (kind == "sos_started" || kind == "sos_cancelled") PRIORITY_SOS else priority
         val brickPrefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val eventSequence = brickPrefs.getLong("safetySequence", 0L) + 1L
@@ -43,16 +61,34 @@ object SafetyDispatcher {
         if (snapshot.positionAgeMs != null) enriched.put("positionAgeMs", snapshot.positionAgeMs)
 
         val envelope = BrickApi.createSafetyEnvelope(kind, eventSequence, enriched, snapshot.latitude, snapshot.longitude, snapshot.accuracyM)
-        val saved = SafetyOutbox(context).use { it.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority) }
+        val saved = SafetyOutbox(context).use { outbox ->
+            if (sosActiveState == null) {
+                outbox.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority)
+            } else {
+                outbox.appendSosTransition(envelope.eventId, envelope.kind, envelope.payload, effectivePriority, sosActiveState)
+            }
+        }
         if (!saved) {
             DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "outbox_save_failed", "kind=$kind priority=$effectivePriority")
             return null
+        }
+        if (sosActiveState != null) {
+            // Compatibility mirror only. SafetyOutbox is the authoritative SOS state source.
+            brickPrefs.edit().putBoolean("sosActive", sosActiveState).commit()
         }
         DiagnosticStore.log(context, if (effectivePriority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
             "safety", "event_saved", "kind=$kind priority=$effectivePriority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}")
         runCatching { ServiceControl.ensureTracking(context) }
             .onFailure { DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "tracking_wake_failed", "kind=$kind", it) }
         return envelope.eventId
+    }
+
+    fun isSosActive(context: Context): Boolean {
+        val legacy = context.getSharedPreferences("brick", Context.MODE_PRIVATE).getBoolean("sosActive", false)
+        return runCatching { SafetyOutbox(context).use { it.sosActive(legacy) } }.getOrElse {
+            noteOutboxUnavailable(context)
+            legacy
+        }
     }
 
     fun drain(context: Context, limit: Int = 50, minPriority: Int = Int.MIN_VALUE, maxPriority: Int = Int.MAX_VALUE): Int {
