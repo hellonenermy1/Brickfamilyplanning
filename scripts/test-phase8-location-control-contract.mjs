@@ -43,6 +43,16 @@ for (const [text, message] of [
   ['headers.set("Cache-Control", "no-store")', 'command-bearing responses must not be cached'],
 ]) requireText(control, text, message);
 
+// Server-side replay resistance: once this exact logical command was acknowledged by an authenticated
+// phone, it must not be wrapped in a fresh nonce and delivered again. A stale ACK for an older command
+// does not suppress the newer row because noteLocationControlHealth only ACKs command_id=?3.
+requireText(control,
+  'if (row.last_acked_command_id === row.command_id)',
+  'already-ACKed commands must be suppressed before a new delivery nonce is minted');
+const replayGuardAt = control.indexOf('if (row.last_acked_command_id === row.command_id)');
+const nonceAt = control.indexOf('nonce: crypto.randomUUID()', replayGuardAt);
+if (!(replayGuardAt >= 0 && nonceAt > replayGuardAt)) throw new Error('ACK replay guard must run before nonce generation');
+
 // A signed health request may report actual state, but it can acknowledge only the command that is
 // still current for that exact device. A delayed ACK for an old command cannot mark a newer one done.
 requireText(control,
@@ -61,4 +71,4 @@ if (!(healthFn >= 0 && baseHealthAt > healthFn && okAt > baseHealthAt && noteAt 
   throw new Error('signed health acceptance must precede command ACK/state mutation and command delivery');
 }
 
-console.log('Phase 8 location-control parent auth, revocation, device binding, TTL, monotonicity and ACK replay contract OK');
+console.log('Phase 8 location-control parent auth, revocation, device binding, TTL, monotonicity, ACK and server replay-suppression contract OK');
