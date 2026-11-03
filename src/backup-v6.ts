@@ -5,6 +5,7 @@ const BACKUP_RETENTION_MS = 30 * 86_400_000;
 const PAGE = 1000;
 export const BACKUP_TABLES = [
   "devices",
+  "device_location_control",
   "geofences",
   "geofence_state",
   "ble_anchors",
@@ -16,6 +17,7 @@ export const BACKUP_TABLES = [
   "audit_log",
   "device_replay_state"
 ] as const;
+const LEGACY_V1_TABLES = BACKUP_TABLES.filter(table => table !== "device_location_control");
 
 type BackupSnapshot = {
   format: "brick-d1-snapshot-v1";
@@ -50,6 +52,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function sameNames(actual: string[], expected: readonly string[]) {
+  const wanted = [...expected].sort();
+  return actual.length === wanted.length && actual.every((name, i) => name === wanted[i]);
+}
+
 export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: string): Promise<BackupSnapshot> {
   if (!body.byteLength) throw new Error("backup body is empty");
   if (expectedSha256 !== undefined) {
@@ -70,13 +77,20 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   if (!Array.isArray(value.excludes) || !value.excludes.every(x => typeof x === "string")) throw new Error("invalid backup exclusions");
   if (!isRecord(value.tables)) throw new Error("invalid backup tables");
 
-  const tableNames = Object.keys(value.tables).sort();
-  const expectedNames = [...BACKUP_TABLES].sort();
-  if (tableNames.length !== expectedNames.length || tableNames.some((name, i) => name !== expectedNames[i])) {
-    throw new Error("backup table set does not match Brick V1");
-  }
+  const tables = value.tables as Record<string, unknown>;
+  const tableNames = Object.keys(tables).sort();
+  const current = sameNames(tableNames, BACKUP_TABLES);
+  const legacy = sameNames(tableNames, LEGACY_V1_TABLES);
+  if (!current && !legacy) throw new Error("backup table set does not match Brick V1");
+
+  // Backups created before Phase 8 did not include persistent location-control state. They remain
+  // recoverable; a legacy restore simply starts with no explicit override, which is the historical
+  // default. New backups must carry the table so disaster recovery does not silently flip a
+  // parent's desired tracking state or forget which command the phone acknowledged.
+  if (legacy) tables.device_location_control = [];
+
   for (const table of BACKUP_TABLES) {
-    const rows = value.tables[table];
+    const rows = tables[table];
     if (!Array.isArray(rows) || !rows.every(isRecord)) throw new Error(`invalid backup table ${table}`);
   }
   return value as unknown as BackupSnapshot;
