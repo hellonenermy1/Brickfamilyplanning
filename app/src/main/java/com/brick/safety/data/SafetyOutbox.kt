@@ -9,9 +9,10 @@ import com.brick.safety.crypto.JournalCipher
 class SafetyOutbox(
     context: Context,
     private val writeFaultInjector: ((operation: String) -> Unit)? = null
-) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 1) {
+) : SQLiteOpenHelper(context, "brick_safety_outbox.db", null, 2) {
     companion object {
         private const val FAILURE_HOLD_MS = 120_000L
+        private const val SOS_STATE_KEY = "sos_active"
         const val UNKNOWN_PENDING_COUNT = Int.MAX_VALUE
     }
     private val healthPrefs = context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
@@ -19,8 +20,16 @@ class SafetyOutbox(
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE safety_events(id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, payload BLOB NOT NULL, created_ms INTEGER NOT NULL, priority INTEGER NOT NULL DEFAULT 1, acked INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE INDEX idx_safety_pending ON safety_events(acked,priority,id)")
+        createStateTable(db)
     }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createStateTable(db)
+    }
+
+    private fun createStateTable(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS safety_state(name TEXT PRIMARY KEY, value TEXT NOT NULL, updated_ms INTEGER NOT NULL)")
+    }
 
     data class Pending(val rowId: Long, val eventId: String, val kind: String, val payload: ByteArray, val priority: Int)
     data class Stats(val pendingCount: Int, val oldestPendingMs: Long?, val quarantinedCount: Int)
@@ -48,18 +57,78 @@ class SafetyOutbox(
         noteHealthy(false)
     }
 
-    fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean = try {
-        writeFaultInjector?.invoke("append")
-        val rowId = writableDatabase.insertWithOnConflict("safety_events", null, ContentValues().apply {
-            put("event_id", eventId); put("kind", kind); put("payload", JournalCipher.encrypt(payload)); put("created_ms", System.currentTimeMillis()); put("priority", priority)
-        }, SQLiteDatabase.CONFLICT_IGNORE)
-        val durable = rowId != -1L || containsEvent(eventId)
-        noteHealthy(durable)
-        durable
-    } catch (_: Throwable) { noteHealthy(false); false }
+    fun append(eventId: String, kind: String, payload: ByteArray, priority: Int): Boolean = appendInternal(eventId, kind, payload, priority, null)
 
-    private fun containsEvent(eventId: String): Boolean {
-        readableDatabase.rawQuery("SELECT 1 FROM safety_events WHERE event_id=? LIMIT 1", arrayOf(eventId)).use { return it.moveToFirst() }
+    /**
+     * Persists the SOS transition and its durable active/inactive mode in one SQLite transaction.
+     * This is the authoritative phone-side SOS mode boundary; SharedPreferences may only mirror it.
+     */
+    fun appendSosTransition(eventId: String, kind: String, payload: ByteArray, priority: Int, active: Boolean): Boolean =
+        appendInternal(eventId, kind, payload, priority, active)
+
+    private fun appendInternal(eventId: String, kind: String, payload: ByteArray, priority: Int, sosActive: Boolean?): Boolean = try {
+        writeFaultInjector?.invoke(if (sosActive == null) "append" else "append_sos_transition")
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val rowId = db.insertWithOnConflict("safety_events", null, ContentValues().apply {
+                put("event_id", eventId)
+                put("kind", kind)
+                put("payload", JournalCipher.encrypt(payload))
+                put("created_ms", System.currentTimeMillis())
+                put("priority", priority)
+            }, SQLiteDatabase.CONFLICT_IGNORE)
+            val durableEvent = rowId != -1L || containsEvent(db, eventId)
+            if (!durableEvent) return@try false
+
+            if (sosActive != null) {
+                val stateRow = db.insertWithOnConflict("safety_state", null, ContentValues().apply {
+                    put("name", SOS_STATE_KEY)
+                    put("value", if (sosActive) "1" else "0")
+                    put("updated_ms", System.currentTimeMillis())
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+                if (stateRow == -1L) return@try false
+            }
+            db.setTransactionSuccessful()
+            true
+        } finally {
+            db.endTransaction()
+        }.also(::noteHealthy)
+    } catch (_: Throwable) {
+        noteHealthy(false)
+        false
+    }
+
+    private fun containsEvent(eventId: String): Boolean = containsEvent(readableDatabase, eventId)
+
+    private fun containsEvent(db: SQLiteDatabase, eventId: String): Boolean {
+        db.rawQuery("SELECT 1 FROM safety_events WHERE event_id=? LIMIT 1", arrayOf(eventId)).use { return it.moveToFirst() }
+    }
+
+    /**
+     * Returns the durable SOS mode. For an upgraded install with no state row yet, migrate the legacy
+     * preference once into this database so an already-active SOS is not lost during rollout.
+     */
+    fun sosActive(legacyFallback: Boolean): Boolean = try {
+        readableDatabase.rawQuery("SELECT value FROM safety_state WHERE name=? LIMIT 1", arrayOf(SOS_STATE_KEY)).use { c ->
+            if (c.moveToFirst()) return c.getString(0) == "1"
+        }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.insertWithOnConflict("safety_state", null, ContentValues().apply {
+                put("name", SOS_STATE_KEY)
+                put("value", if (legacyFallback) "1" else "0")
+                put("updated_ms", System.currentTimeMillis())
+            }, SQLiteDatabase.CONFLICT_IGNORE)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        legacyFallback
+    } catch (_: Throwable) {
+        noteHealthy(false)
+        legacyFallback
     }
 
     fun pending(limit: Int = 50, minPriority: Int = Int.MIN_VALUE, maxPriority: Int = Int.MAX_VALUE): List<Pending> {
