@@ -2,11 +2,9 @@
 
 ## Status
 
-**NOT DONE — BLOCKED BY ONE SOURCE-VALUE GAP**
+**DONE — PASS**
 
-Phase 8A has completed the requirement discovery, source reconciliation, conflict resolution, normalization, ownership/dependency mapping and acceptance-matrix work.
-
-It is deliberately not marked PASS because the audit plan requires zero unresolved source gaps.
+Phase 8A has completed requirement discovery, source reconciliation, conflict resolution, normalization, ownership/dependency mapping, acceptance-matrix freezing and final source-gap closure.
 
 ## Frozen current contract state
 
@@ -19,34 +17,50 @@ It is deliberately not marked PASS because the audit plan requires zero unresolv
 - Open semantic conflicts: **0**
 - Unmapped latest-plan subsections: **0**
 - Unknown/unowned current requirements: **0**
-- Open source-value gaps: **1**
+- Open source-value gaps: **0**
+- Duplicate current IDs: **0**
+- Exact duplicate current requirement texts: **0**
 
-## The remaining blocker
+## 23R final resolution
 
-`P8A-GAP-002 / LIVE-005`
+The historical source set required a `23R P95 latency budget` but did not contain numeric values. Phase 8A resolved that ambiguity transparently through `PHASE8A_23R_LATENCY_AMENDMENT.md` rather than pretending a number had been recovered.
 
-The approved plan requires the Live Track pipeline to meet the `23R P95 latency budget`, but no recovered authoritative source provides the numeric threshold(s).
+Current V1 Fast Live budgets under representative healthy validated connectivity:
 
-What is source-backed today:
+- accepted current fix -> visible parent marker: **P95 <= 1.5 s**;
+- authoritative backend current state -> visible parent marker: **P95 <= 500 ms**;
+- authenticated parent Live Track activation -> phone fast-mode confirmation or explicit failure/degraded result: **P95 <= 2.0 s**.
 
-- dedicated accepted-fix -> local persistence -> realtime packet -> Durable Object current state -> WebSocket -> map-render path;
-- stage instrumentation for source age, persistence, phone send, backend, WebSocket and browser render delay;
-- roughly 2-second Live Track update cadence where appropriate;
-- heavy history/Atlas/reverse-geocoding/backlog work must not head-of-line block live state;
-- real-device/browser P95 measurement is mandatory.
+The transport/render measurements start after a location is accepted and do not include waiting for the next physical GNSS/fused fix. Degraded/offline conditions remain governed by truthful state, durability, automatic recovery and zero-manual-intervention rules.
 
-What is **not** source-backed enough to freeze as contract:
+## Final normalization validation
 
-- a specific numeric end-to-end P95 latency threshold;
-- specific numeric per-stage P95 thresholds.
+Regenerated normalized audit ledger:
 
-Earlier assistant-proposed values are not treated as approved requirements without user/source evidence.
+- total rows including superseded history: **528**;
+- current rows: **525**;
+- unique current IDs: **525**;
+- open gap rows: **0**;
+- missing owner/dependency/test mappings: **0**;
+- exact duplicate current texts: **0**;
+- SHA-256: `8683b85f8b61aa3769b338048e7deb17d1fff3bc7773b6d454c7a61bce013bbd`.
 
-## Remaining work before Phase 8A can be DONE
+## Phase 8A exit-gate result
 
-1. Recover the authoritative numeric 23R P95 threshold(s), **or** explicitly amend the V1 contract with approved values.
-2. Write the numeric values into `LIVE-005` and the Phase 9.7A acceptance matrix.
-3. Re-run the requirement-count/hash/duplicate/conflict validation (count should remain 525 unless the amendment creates another atomic requirement).
-4. Produce `PHASE8A_CLOSURE.md` with `PASS` only if open source gaps = 0.
+- Requirements discovered and normalized: PASS
+- Every current requirement assigned a stable ID: PASS
+- Every current requirement mapped to owner/audit/evidence: PASS
+- Contract contradictions resolved: PASS
+- Unsupported/optional/future classifications preserved: PASS
+- Forbidden requirements preserved: PASS
+- Unexplained removals: 0 identified
+- Unknown requirements: 0
+- Open source gaps: 0
 
-No implementation audit is required to close 8A; implementation reality begins in Phase 8B after the contract is fully frozen.
+**PHASE 8A: PASS / DONE**
+
+## Next phase
+
+Phase 8B — Implementation Reality & Functional Coverage.
+
+8B must now take the frozen 525-requirement contract and prove what actually exists, is wired/reachable, is configured for production, has tests, is missing/partial/broken/unreachable, and whether any forbidden path exists in source/build/deployment.
