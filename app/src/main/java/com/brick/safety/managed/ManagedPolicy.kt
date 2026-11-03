@@ -28,7 +28,12 @@ object ManagedPolicy {
 
         ParentLocationStateStore.migrateLegacyToHistory(app)
         val admin = ComponentName(app, BrickDeviceAdminReceiver::class.java)
-        if (owner) applyBasePolicy(app, dpm, admin)
+        if (owner && PolicyLedger.ensureReadyForPolicyMutation(app)) {
+            applyBasePolicy(app, dpm, admin)
+        }
+        // Parent Location is a one-shot action rather than a retained policy. A broken provenance
+        // ledger blocks new Brick policy mutation, but does not turn the optional one-shot command
+        // into a permanent policy or silently repair the ledger.
         applyPendingLocationCommand(app, dpm, admin, owner)
         return owner
     }
