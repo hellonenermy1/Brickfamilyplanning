@@ -210,10 +210,8 @@ object WifiScheduleManager {
         WorkManager.getInstance(context).enqueueUniqueWork(WORK_PREFIX + schedule.id, ExistingWorkPolicy.REPLACE, request)
     }
 
-    private fun criticalSafetyActive(context: Context): Boolean {
-        val p = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
-        return SafetyDispatcher.isSosActive(context) || p.getBoolean("fallHighActive", false)
-    }
+    private fun criticalSafetyActive(context: Context): Boolean =
+        SafetyDispatcher.isSosActive(context) || SafetyDispatcher.isHighFallActive(context)
 
     @Suppress("DEPRECATION")
     private fun currentWifi(context: Context): Boolean? = runCatching {
