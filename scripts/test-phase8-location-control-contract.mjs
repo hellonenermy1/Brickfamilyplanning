@@ -6,9 +6,11 @@ const worker = fs.readFileSync('src/worker-v6.ts', 'utf8');
 function requireText(source, text, message) {
   if (!source.includes(text)) throw new Error(message);
 }
+function forbidText(source, text, message) {
+  if (source.includes(text)) throw new Error(message);
+}
 
-// Parent mutation path: authenticate first, resolve the device lifecycle, then refuse all
-// non-revocation mutations once the identity has been revoked.
+// Parent mutation path remains authenticated, lifecycle checked, revocation blocked and same-origin.
 const parentBlock = worker.indexOf('const match = u.pathname.match(/^\\/parent\\/api\\/device\\/([^/]+)(\\/.*)$/);');
 const requireParentAt = worker.indexOf('const denied = await requireParent(req, env); if (denied) return denied;', parentBlock);
 const lifecycleAt = worker.indexOf('const life = await lifecycle(env, deviceId);', requireParentAt);
@@ -21,54 +23,70 @@ if (!(parentBlock >= 0 && requireParentAt > parentBlock && lifecycleAt > require
   throw new Error('location-control mutation must be parent-authenticated, lifecycle-checked, revocation-blocked and same-origin before mutation');
 }
 
-// The command belongs to exactly one registered, non-revoked device. Every parent tap gets a fresh
-// logical ID, and DB time remains strictly monotonic even when two commands happen in one ms.
+// Every parent tap creates one fresh, device-bound logical command. The stored target is command
+// history, not a forever-desired state. Commands start pending and have a finite lifetime.
 for (const [text, message] of [
   ['if (!DEVICE_ID_RE.test(deviceId))', 'device id format must be validated'],
   ['SELECT revoked_at FROM devices WHERE id=?1 LIMIT 1', 'command target must resolve to a registered device'],
   ['if (device.revoked_at !== null)', 'revoked command targets must fail closed'],
   ['const commandId = crypto.randomUUID();', 'each parent command must have a new logical id'],
-  ['WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1', 'command issue time must be monotonic'],
+  ["command_status)\n     VALUES(?1,?2,?3,?4,?4,'pending')", 'new command must enter pending state'],
+  ['const LOGICAL_COMMAND_TTL_MS = 10 * 60_000;', 'logical command must have a bounded lifetime'],
+  ['WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1', 'command issue time must remain monotonic'],
 ]) requireText(control, text, message);
 
-// Delivery is piggybacked only onto a successful, authenticated child health response and is short
-// lived, device-bound, nonce-bearing and uncacheable.
+// Parent reads current actual truth separately from historical last-command truth. Do not reintroduce
+// the superseded persistent desired/matchesDesired portal model.
 for (const [text, message] of [
-  ['if (!response.ok || !DEVICE_ID_RE.test(deviceId)) return response;', 'failed/invalid health response must not carry commands'],
-  ['deviceId,', 'delivery envelope must identify its target device'],
-  ['commandId: row.command_id', 'delivery envelope must identify the logical command'],
-  ['nonce: crypto.randomUUID()', 'each delivery must carry a fresh nonce'],
-  ['expiresAtMs: now + DELIVERY_TTL_MS', 'delivery must expire'],
-  ['const DELIVERY_TTL_MS = 5 * 60_000;', 'delivery TTL must remain tightly bounded'],
-  ['headers.set("Cache-Control", "no-store")', 'command-bearing responses must not be cached'],
+  ['actualEnabled: row.last_actual_enabled === null ? null : row.last_actual_enabled === 1', 'parent response must expose actual current Location truth'],
+  ['lastCommand: {', 'parent response must expose the latest command as history/state'],
+  ['targetEnabled: row.desired_enabled === 1', 'historical command target must remain inspectable'],
+  ['status,', 'historical command lifecycle status must be inspectable'],
+]) requireText(control, text, message);
+forbidText(control, 'matchesDesired', 'one-shot control must not expose persistent desired-vs-actual matching semantics');
+
+// Only an uncompleted pending command may be delivered. Completed/failed/expired commands become
+// history and cannot be wrapped in a fresh nonce or delivered again.
+for (const [text, message] of [
+  ['row.command_status !== "pending"', 'delivery must be restricted to pending commands'],
+  ['row.last_acked_command_id === row.command_id', 'already acknowledged command must be suppressed'],
+  ['commandId: row.command_id', 'delivery envelope must identify logical command'],
+  ['nonce: crypto.randomUUID()', 'each delivery attempt must carry a fresh nonce'],
+  ['const DELIVERY_TTL_MS = 5 * 60_000;', 'individual delivery TTL must be bounded'],
+  ['expiresAtMs: Math.min(row.issued_at + LOGICAL_COMMAND_TTL_MS, now + DELIVERY_TTL_MS)', 'delivery must never outlive logical command TTL'],
+  ['headers.set("Cache-Control", "no-store")', 'command-bearing response must be uncacheable'],
 ]) requireText(control, text, message);
 
-// Server-side replay resistance: once this exact logical command was acknowledged by an authenticated
-// phone, it must not be wrapped in a fresh nonce and delivered again. A stale ACK for an older command
-// does not suppress the newer row because noteLocationControlHealth only ACKs command_id=?3.
-requireText(control,
-  'if (row.last_acked_command_id === row.command_id)',
-  'already-ACKed commands must be suppressed before a new delivery nonce is minted');
-const replayGuardAt = control.indexOf('if (row.last_acked_command_id === row.command_id)');
-const nonceAt = control.indexOf('nonce: crypto.randomUUID()', replayGuardAt);
-if (!(replayGuardAt >= 0 && nonceAt > replayGuardAt)) throw new Error('ACK replay guard must run before nonce generation');
+const pendingGuardAt = control.indexOf('row.command_status !== "pending"');
+const nonceAt = control.indexOf('nonce: crypto.randomUUID()', pendingGuardAt);
+if (!(pendingGuardAt >= 0 && nonceAt > pendingGuardAt)) throw new Error('pending/replay guard must execute before delivery nonce generation');
 
-// A signed health request may report actual state, but it can acknowledge only the command that is
-// still current for that exact device. A delayed ACK for an old command cannot mark a newer one done.
-requireText(control,
-  'last_acked_command_id=CASE WHEN command_id=?3 THEN ?3 ELSE last_acked_command_id END',
-  'ACK must be conditional on the currently issued command id');
-requireText(control, 'WHERE device_id=?4', 'actual-state/ACK update must remain device-bound');
+// Expiry must convert a still-pending command into terminal history rather than leaving a permanent
+// target that future child/user toggles are judged against.
+for (const [text, message] of [
+  ["command_status='expired'", 'stale pending command must transition to expired'],
+  ["result_reason='expired_before_delivery'", 'delivery expiry must be recorded truthfully'],
+]) requireText(control, text, message);
 
-// Worker ordering matters: the copy is used only after the base device handler accepted the signed
-// health request. Unauthenticated JSON cannot mutate command ACK/actual state.
+// A signed health report always refreshes current actual state independently. It completes a command
+// only when it carries that command ID with an explicit terminal result. The SQL WHERE clause binds
+// both device and command, so a delayed old completion cannot complete a newer command.
+for (const [text, message] of [
+  ['UPDATE device_location_control SET last_actual_enabled=?1,last_actual_at=?2 WHERE device_id=?3', 'actual current state must update independently of command completion'],
+  ['if (!commandId || (commandStatus !== "completed" && commandStatus !== "failed")) return;', 'only explicit terminal command results may complete history'],
+  ['last_acked_command_id=?1,command_status=?2', 'terminal result must store command acknowledgement/status'],
+  ['WHERE device_id=?8 AND command_id=?1', 'completion must be bound to both device and exact command id'],
+]) requireText(control, text, message);
+
+// Worker ordering: the copy of the child health body is used only after the signed base handler has
+// accepted the request. Unauthenticated JSON cannot mutate current-state or command history.
 const healthFn = worker.indexOf('async function healthWithConfiguration');
 const baseHealthAt = worker.indexOf('const response = await base.fetch!(req, env, ctx);', healthFn);
 const okAt = worker.indexOf('if (!response.ok) return response;', baseHealthAt);
 const noteAt = worker.indexOf('noteLocationControlHealth(healthCopy, env, deviceId)', okAt);
 const augmentAt = worker.indexOf('augmentHealthWithLocationControl(withAnchors, env, deviceId)', noteAt);
 if (!(healthFn >= 0 && baseHealthAt > healthFn && okAt > baseHealthAt && noteAt > okAt && augmentAt > noteAt)) {
-  throw new Error('signed health acceptance must precede command ACK/state mutation and command delivery');
+  throw new Error('signed health acceptance must precede Location actual-state/command-history mutation and command delivery');
 }
 
-console.log('Phase 8 location-control parent auth, revocation, device binding, TTL, monotonicity, ACK and server replay-suppression contract OK');
+console.log('Phase 8B one-shot Location control auth, lifecycle, bounded TTL, actual truth, terminal history and stale-ACK isolation contract OK');
