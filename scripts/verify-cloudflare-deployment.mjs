@@ -5,8 +5,8 @@ const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
 const EXPECTED_RELEASE = '0.6.0-phase6-rc';
 const EXPECTED_RELEASE_STATE = 'candidate-not-real-device-qualified';
-const EXPECTED_V1_PROGRAM_PHASE = 6;
-const EXPECTED_SCHEMA_VERSION = 11;
+const EXPECTED_V1_PROGRAM_PHASE = 8;
+const EXPECTED_SCHEMA_VERSION = 15;
 const EXPECTED_WORKER_ENTRY = 'src/worker-v9.ts';
 const HISTORY_BUCKET = 'brick-family-v1-history';
 const MAPS_BUCKET = 'brick-family-v1-maps';
@@ -22,7 +22,8 @@ const REQUIRED_SCHEMAS = [
   'schema/008_v1_phase2_evidence.sql',
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
-  'schema/011_v1_phase6_location_control.sql'
+  'schema/011_v1_phase6_location_control.sql',
+  'schema/015_phase8_device_identity.sql'
 ];
 const REQUIRED_TABLES = [
   'devices', 'device_health_samples', 'health_incidents', 'safety_events', 'geofences',
@@ -100,9 +101,9 @@ function requireAccessDenial(response, label) {
 const state = JSON.parse(await fs.readFile('setup-state.json', 'utf8'));
 const sourceGitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 assert(/^[0-9a-f]{40}$/.test(sourceGitSha), 'could not determine exact checked-out Git SHA');
-assert(state?.phase === 6, 'setup-state phase is not 6');
-assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 6');
-assert(state?.schemaVersion === EXPECTED_SCHEMA_VERSION, 'setup-state schema version is not 11');
+assert(state?.phase === 8, 'setup-state phase is not 8');
+assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 8');
+assert(state?.schemaVersion === EXPECTED_SCHEMA_VERSION, 'setup-state schema version is not 15');
 assert(state?.workerEntry === EXPECTED_WORKER_ENTRY, 'setup-state worker entry is not worker-v9.ts');
 assert(state?.sourceGitSha === sourceGitSha, 'setup-state source SHA does not match the checked-out deployment source');
 assert(Array.isArray(state?.appliedSchemas), 'setup-state applied schema list is missing');
@@ -163,6 +164,17 @@ const hypothesisSchema = schemaByName.get('phase5_hypothesis_frames') || '';
 assert(/refined_run_id/i.test(hypothesisSchema) && /r2_key/i.test(hypothesisSchema), 'Phase 5B hypothesis-frame schema is incomplete');
 const endpointSchema = schemaByName.get('phase5_precise_endpoints') || '';
 assert(/uncertainty_m/i.test(endpointSchema) && /wall_time_ms/i.test(endpointSchema), 'Phase 5B precise-endpoint schema is incomplete');
+
+// Phase 8's permanent device identity guarantee depends on the live D1 UNIQUE index, not only the
+// application pre-check. Verify the deployed database actually contains the migration constraint.
+const identityIndexes = await cf(`/accounts/${accountId}/d1/database/${state.d1Id}/query`, {
+  method: 'POST',
+  body: JSON.stringify({ sql: "SELECT name,sql FROM sqlite_master WHERE type='index' AND name='idx_devices_public_key_spki_unique'" })
+});
+const identityIndex = identityIndexes?.[0]?.results?.[0];
+assert(identityIndex?.name === 'idx_devices_public_key_spki_unique', 'Phase 8 permanent device-identity unique index is missing');
+assert(/CREATE\s+UNIQUE\s+INDEX/i.test(String(identityIndex?.sql || '')) && /public_key_spki_b64/i.test(String(identityIndex?.sql || '')),
+  'Phase 8 device-identity index is not UNIQUE on the public key');
 
 // Access must be the exact self-hosted application and policy that setup intends.
 const app = await cf(`/accounts/${accountId}/access/apps/${state.access.appId}`);
@@ -230,7 +242,7 @@ assert(unauthorizedEvidence.status === 401 || unauthorizedEvidence.status === 42
 const verifiedAt = new Date().toISOString();
 const report = {
   ok: true,
-  phase: 6,
+  phase: 8,
   v1ProgramPhase: EXPECTED_V1_PROGRAM_PHASE,
   schemaVersion: EXPECTED_SCHEMA_VERSION,
   workerEntry: EXPECTED_WORKER_ENTRY,
@@ -252,6 +264,7 @@ const report = {
     eventQueue: EVENT_QUEUE,
     dlq: DLQ,
     requiredTables: REQUIRED_TABLES,
+    deviceIdentityUniqueIndexVerified: true,
     historyLifecycleVerified: true,
     rawEvidenceRetentionDays: 30
   },
@@ -275,4 +288,4 @@ state.deploymentVerifiedAt = verifiedAt;
 state.deploymentVerification = { ok: true, evidenceFile: 'deployment-verification.json' };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
 await fs.writeFile('deployment-verification.json', JSON.stringify(report, null, 2));
-console.log(`Brick V1 Phase 6 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
+console.log(`Brick V1 Phase 8 deployment verified for ${sourceGitSha} at https://${state.workerHost}`);
