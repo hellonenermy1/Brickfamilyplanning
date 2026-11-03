@@ -1,7 +1,6 @@
 package com.brick.safety.evidence
 
 import android.content.Context
-import com.brick.safety.data.CrashOutbox
 import com.brick.safety.data.Journal
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
@@ -17,16 +16,7 @@ object NetworkEvidenceTransport : EvidenceTransport {
         EvidenceApi.sendBatch(baseUrl, deviceId, batch)
 }
 
-enum class EvidenceDrainStop {
-    EMPTY,
-    BUDGET_EXHAUSTED,
-    CORE_BACKLOG,
-    TRANSPORT_FAILURE,
-    ACK_FAILURE,
-    JOURNAL_FAILURE,
-    IDENTITY_UNAVAILABLE
-}
-
+enum class EvidenceDrainStop { EMPTY, BUDGET_EXHAUSTED, CORE_BACKLOG, TRANSPORT_FAILURE, ACK_FAILURE, JOURNAL_FAILURE, IDENTITY_UNAVAILABLE }
 data class EvidenceDrainResult(val sentRecords: Int, val stop: EvidenceDrainStop)
 private data class ConflictIsolationResult(val sentRecords: Int, val stop: EvidenceDrainStop?)
 
@@ -64,59 +54,35 @@ class EvidenceDispatcher(
 
     fun stats(): EvidenceJournal.Stats = journal.stats()
 
+    /** Exact scheduler order before evidence: all safety, current/durable Location, then pending health. */
     private fun defaultCoreBacklogPresent(): Boolean {
         if (SafetyDispatcher.pendingCount(appContext) > 0) return true
         val locationPending = Journal(appContext).let { locationJournal ->
             try { locationJournal.stats().pendingCount } finally { locationJournal.close() }
         }
         if (locationPending > 0) return true
-        return CrashOutbox(appContext).let { outbox ->
-            try { runCatching { outbox.pendingCount() > 0 }.getOrDefault(true) }
-            finally { outbox.close() }
-        }
+        if (prefs.getBoolean("healthUploadPending", false)) return true
+        // Crash/diagnostic backlog intentionally does NOT block evidence; diagnostics is the final
+        // priority class and drains after evidence.
+        return false
     }
 
     private fun coreBacklogPresent(): Boolean = coreBacklogProbe?.invoke() ?: defaultCoreBacklogPresent()
+    private fun exactAck(pending: EvidenceJournal.Pending) = EvidenceAck(pending.record.epoch, pending.record.sequence, pending.record.observation.recordId)
 
-    private fun exactAck(pending: EvidenceJournal.Pending) = EvidenceAck(
-        pending.record.epoch,
-        pending.record.sequence,
-        pending.record.observation.recordId
-    )
-
-    /**
-     * A 409 for a multi-record batch does not identify which record conflicted. Retry those records
-     * individually with fresh transport batch IDs so valid evidence is still delivered and only a
-     * record that independently receives 409 is retained as local quarantine. This path is rare,
-     * bounded to the already-selected batch and remains preemptible by Brick Core.
-     */
-    private fun isolateConflictBatch(
-        baseUrl: String,
-        deviceId: String,
-        pending: List<EvidenceJournal.Pending>
-    ): ConflictIsolationResult {
+    private fun isolateConflictBatch(baseUrl: String, deviceId: String, pending: List<EvidenceJournal.Pending>): ConflictIsolationResult {
         var sent = 0
         for (item in pending) {
             if (coreBacklogPresent()) return ConflictIsolationResult(sent, EvidenceDrainStop.CORE_BACKLOG)
             val expected = exactAck(item)
-            val single = try {
-                EvidenceProtocol.encodeBatch(listOf(item.record))
-            } catch (_: Throwable) {
-                return ConflictIsolationResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
-            }
+            val single = try { EvidenceProtocol.encodeBatch(listOf(item.record)) } catch (_: Throwable) { return ConflictIsolationResult(sent, EvidenceDrainStop.JOURNAL_FAILURE) }
             val acked = try {
                 transport.send(baseUrl, deviceId, single)
             } catch (_: EvidenceUploadConflict) {
-                if (!journal.quarantineConflictBatch(listOf(expected))) {
-                    return ConflictIsolationResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
-                }
+                if (!journal.quarantineConflictBatch(listOf(expected))) return ConflictIsolationResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
                 continue
-            } catch (_: Throwable) {
-                return ConflictIsolationResult(sent, EvidenceDrainStop.TRANSPORT_FAILURE)
-            }
-            if (acked.size != 1 || acked.single() != expected) {
-                return ConflictIsolationResult(sent, EvidenceDrainStop.ACK_FAILURE)
-            }
+            } catch (_: Throwable) { return ConflictIsolationResult(sent, EvidenceDrainStop.TRANSPORT_FAILURE) }
+            if (acked.size != 1 || acked.single() != expected) return ConflictIsolationResult(sent, EvidenceDrainStop.ACK_FAILURE)
             if (!journal.ackBatch(acked)) return ConflictIsolationResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
             sent += 1
         }
@@ -132,38 +98,24 @@ class EvidenceDispatcher(
         var sent = 0
         repeat(maxBatches.coerceIn(1, 8)) {
             if (coreBacklogPresent()) return EvidenceDrainResult(sent, EvidenceDrainStop.CORE_BACKLOG)
-            val pending = try {
-                journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH)
-            } catch (_: Throwable) {
-                return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
-            }
+            val pending = try { journal.nextPending(EvidenceProtocol.MAX_RECORDS_PER_BATCH) } catch (_: Throwable) { return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE) }
             if (pending.isEmpty()) return EvidenceDrainResult(sent, EvidenceDrainStop.EMPTY)
-            val batch = try {
-                EvidenceProtocol.encodeBatch(pending.map { it.record })
-            } catch (_: Throwable) {
-                return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
-            }
+            val batch = try { EvidenceProtocol.encodeBatch(pending.map { it.record }) } catch (_: Throwable) { return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE) }
             val expected = pending.map(::exactAck)
             val acked = try {
                 transport.send(baseUrl, deviceId, batch)
             } catch (_: EvidenceUploadConflict) {
                 if (pending.size == 1) {
-                    if (!journal.quarantineConflictBatch(expected)) {
-                        return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
-                    }
+                    if (!journal.quarantineConflictBatch(expected)) return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
                 } else {
                     val isolated = isolateConflictBatch(baseUrl, deviceId, pending)
                     sent += isolated.sentRecords
                     if (isolated.stop != null) return EvidenceDrainResult(sent, isolated.stop)
                 }
                 return@repeat
-            } catch (_: Throwable) {
-                return EvidenceDrainResult(sent, EvidenceDrainStop.TRANSPORT_FAILURE)
-            }
+            } catch (_: Throwable) { return EvidenceDrainResult(sent, EvidenceDrainStop.TRANSPORT_FAILURE) }
 
-            if (acked.size != expected.size || acked.toSet() != expected.toSet()) {
-                return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
-            }
+            if (acked.size != expected.size || acked.toSet() != expected.toSet()) return EvidenceDrainResult(sent, EvidenceDrainStop.ACK_FAILURE)
             if (!journal.ackBatch(acked)) return EvidenceDrainResult(sent, EvidenceDrainStop.JOURNAL_FAILURE)
             sent += acked.size
         }
@@ -171,8 +123,5 @@ class EvidenceDispatcher(
     }
 
     fun drainIfSafe(maxBatches: Int = 2): Int = drainDetailed(maxBatches).sentRecords
-
-    override fun close() {
-        journal.close()
-    }
+    override fun close() { journal.close() }
 }
