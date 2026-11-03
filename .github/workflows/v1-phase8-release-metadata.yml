@@ -1,0 +1,29 @@
+name: Brick V1 Phase 8 — Release Metadata Contract
+
+on:
+  push:
+    branches: [v1-p8-cloud-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Verify Phase 8 release metadata is consistent
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"CURRENT_APP_VERSION": "0.8.0-phase8-beta1-test"' wrangler.template.jsonc >/dev/null
+          grep -F "CURRENT_APP_VERSION = '0.8.0-phase8-beta1-test'" scripts/setup-v1-phase8-finalize.mjs >/dev/null
+          grep -F "await import('./setup-v1-phase8-finalize.mjs');" scripts/setup.mjs >/dev/null
+          grep -F 'state.currentRelease = CURRENT_APP_VERSION' scripts/setup-v1-phase8-finalize.mjs >/dev/null
+          grep -F "state.workerEntry !== 'src/worker-v9.ts'" scripts/setup-v1-phase8-finalize.mjs >/dev/null
+          grep -F 'state.schemaVersion !== 15' scripts/setup-v1-phase8-finalize.mjs >/dev/null
