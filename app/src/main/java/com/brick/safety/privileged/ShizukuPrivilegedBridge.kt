@@ -10,10 +10,10 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.RemoteException
+import android.os.SystemClock
 import com.brick.safety.atlas.AtlasPrivacyId
 import rikka.shizuku.Shizuku
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
@@ -26,23 +26,24 @@ object ShizukuBridgeController {
     private const val CALL_TIMEOUT_MS = 5_000L
     private const val BLE_CALL_TIMEOUT_MS = 7_000L
     private const val REBIND_DELAY_MS = 2_000L
+    private const val CAPABILITY_POLL_MS = 100L
 
     @Volatile private var initialized = false
     @Volatile private var foreground = false
     @Volatile private var binding = false
     @Volatile private var service: IBrickPrivilegedService? = null
+    @Volatile private var serviceGeneration = 0L
     @Volatile private var capabilities: Set<PrivilegedCapability> = emptySet()
     @Volatile private var lastError: String? = null
     private lateinit var appContext: Context
     private val main = Handler(Looper.getMainLooper())
-    private val remoteIo: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "brick-shizuku-call").apply { isDaemon = true }
-    }
+    private val remoteLane = RecoverableExecutorLane("brick-shizuku-call")
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             binding = false
             service = binder?.let { IBrickPrivilegedService.Stub.asInterface(it) }
+            serviceGeneration += 1L
             lastError = if (service == null) "Shizuku service returned no binder" else null
             refreshCapabilities()
         }
@@ -50,6 +51,7 @@ object ShizukuBridgeController {
         override fun onServiceDisconnected(name: ComponentName?) {
             binding = false
             service = null
+            serviceGeneration += 1L
             capabilities = emptySet()
             lastError = "Shizuku user service disconnected"
             scheduleRebind()
@@ -62,6 +64,7 @@ object ShizukuBridgeController {
         override fun onNullBinding(name: ComponentName?) {
             binding = false
             service = null
+            serviceGeneration += 1L
             capabilities = emptySet()
             lastError = "Shizuku user service unavailable"
         }
@@ -78,8 +81,10 @@ object ShizukuBridgeController {
         override fun onBinderDead() {
             binding = false
             service = null
+            serviceGeneration += 1L
             capabilities = emptySet()
             lastError = "Shizuku binder unavailable"
+            remoteLane.rotate()
         }
     }
 
@@ -113,6 +118,22 @@ object ShizukuBridgeController {
         if (isForeground) {
             if (hasPermission()) bindNow() else maybeRequestPermission()
         }
+    }
+
+    /**
+     * Stops optional privileged state without affecting Brick Core. Used by permanent deprovision and
+     * may also be called defensively after a provider fault. The user-service implements destroy(),
+     * so remove=true asks Shizuku to terminate the remote process rather than leaving it orphaned.
+     */
+    fun shutdown() {
+        if (!initialized) return
+        main.removeCallbacks(rebindRunnable)
+        binding = false
+        service = null
+        serviceGeneration += 1L
+        capabilities = emptySet()
+        remoteLane.rotate()
+        runCatching { Shizuku.unbindUserService(args(), connection, true) }
     }
 
     private fun binderAlive(): Boolean = initialized && runCatching { Shizuku.pingBinder() }.getOrDefault(false)
@@ -160,22 +181,63 @@ object ShizukuBridgeController {
 
     private fun refreshCapabilities() {
         val current = service ?: return
-        remoteIo.execute {
-            runCatching { current.capabilities() }
-                .onSuccess { bundle ->
-                    capabilities = buildSet {
-                        if (bundle.getBoolean("locationControl")) add(PrivilegedCapability.LOCATION_CONTROL)
-                        if (bundle.getBoolean("wifiEvidence")) add(PrivilegedCapability.WIFI_EVIDENCE)
-                        if (bundle.getBoolean("bleEvidence")) add(PrivilegedCapability.BLE_EVIDENCE)
-                        if (bundle.getBoolean("cellEvidence")) add(PrivilegedCapability.CELL_EVIDENCE)
-                        if (bundle.getBoolean("powerDiagnostics")) add(PrivilegedCapability.POWER_DIAGNOSTICS)
-                        if (bundle.getBoolean("powerRepair")) add(PrivilegedCapability.POWER_REPAIR)
-                        if (bundle.getBoolean("sosLocation")) add(PrivilegedCapability.SOS_LOCATION_ATTEMPT)
-                    }
-                    lastError = null
-                }
-                .onFailure { noteRemoteFailure(it, "Shizuku capability probe failed") }
+        val generation = serviceGeneration
+        val future = runCatching { remoteLane.submit { current.capabilities() } }.getOrElse {
+            noteRemoteFailure(it, "Shizuku capability probe failed")
+            return
         }
+        val deadline = SystemClock.elapsedRealtime() + CALL_TIMEOUT_MS
+
+        val poll = object : Runnable {
+            override fun run() {
+                if (generation != serviceGeneration || service !== current) {
+                    future.cancel(true)
+                    return
+                }
+
+                if (future.isDone) {
+                    val result = runCatching { future.get(0L, TimeUnit.MILLISECONDS) }
+                    result.onSuccess(::applyCapabilities)
+                        .onFailure { error ->
+                            val cause = if (error is ExecutionException) error.cause ?: error else error
+                            noteRemoteFailure(cause, "Shizuku capability probe failed")
+                        }
+                    return
+                }
+
+                if (SystemClock.elapsedRealtime() >= deadline) {
+                    future.cancel(true)
+                    if (generation == serviceGeneration && service === current) {
+                        lastError = "Shizuku capability probe timed out"
+                        capabilities = emptySet()
+                        service = null
+                        serviceGeneration += 1L
+                        // Do not let the stuck Binder invocation own the only execution lane used by
+                        // future calls. Replace it first, then remove the bad remote service generation.
+                        remoteLane.rotate()
+                        runCatching { Shizuku.unbindUserService(args(), connection, true) }
+                        scheduleRebind()
+                    }
+                    return
+                }
+
+                main.postDelayed(this, CAPABILITY_POLL_MS)
+            }
+        }
+        main.post(poll)
+    }
+
+    private fun applyCapabilities(bundle: Bundle) {
+        capabilities = buildSet {
+            if (bundle.getBoolean("locationControl")) add(PrivilegedCapability.LOCATION_CONTROL)
+            if (bundle.getBoolean("wifiEvidence")) add(PrivilegedCapability.WIFI_EVIDENCE)
+            if (bundle.getBoolean("bleEvidence")) add(PrivilegedCapability.BLE_EVIDENCE)
+            if (bundle.getBoolean("cellEvidence")) add(PrivilegedCapability.CELL_EVIDENCE)
+            if (bundle.getBoolean("powerDiagnostics")) add(PrivilegedCapability.POWER_DIAGNOSTICS)
+            if (bundle.getBoolean("powerRepair")) add(PrivilegedCapability.POWER_REPAIR)
+            if (bundle.getBoolean("sosLocation")) add(PrivilegedCapability.SOS_LOCATION_ATTEMPT)
+        }
+        lastError = null
     }
 
     private fun noteError(message: String) {
@@ -187,23 +249,37 @@ object ShizukuBridgeController {
         noteError(message)
         if (cause is DeadObjectException || cause is RemoteException) {
             service = null
+            serviceGeneration += 1L
             capabilities = emptySet()
+            remoteLane.rotate()
             scheduleRebind()
         }
     }
 
     private fun <T> remote(timeoutMs: Long = CALL_TIMEOUT_MS, action: (IBrickPrivilegedService) -> T): Result<T> {
         val current = service ?: return Result.failure(IllegalStateException("Shizuku user service unavailable"))
-        val future = remoteIo.submit<T> { action(current) }
-        return try {
-            Result.success(future.get(timeoutMs, TimeUnit.MILLISECONDS)).also { lastError = null }
-        } catch (t: Throwable) {
-            future.cancel(true)
-            val cause = if (t is java.util.concurrent.ExecutionException) t.cause ?: t else t
-            if (cause is TimeoutException || t is TimeoutException) noteError("Shizuku operation timed out")
-            else noteRemoteFailure(cause, "Shizuku operation failed")
-            Result.failure(cause)
+        val generation = serviceGeneration
+        val result = remoteLane.call(timeoutMs) { action(current) }
+        if (result.isSuccess) {
+            if (generation == serviceGeneration && service === current) lastError = null
+            return result
         }
+
+        val error = result.exceptionOrNull() ?: IllegalStateException("Shizuku operation failed")
+        val cause = if (error is ExecutionException) error.cause ?: error else error
+        if (cause is TimeoutException || error is TimeoutException) {
+            noteError("Shizuku operation timed out")
+            if (generation == serviceGeneration && service === current) {
+                service = null
+                serviceGeneration += 1L
+                capabilities = emptySet()
+                runCatching { Shizuku.unbindUserService(args(), connection, true) }
+                scheduleRebind()
+            }
+        } else {
+            noteRemoteFailure(cause, "Shizuku operation failed")
+        }
+        return Result.failure(cause)
     }
 
     fun health(): PrivilegedBridgeHealth = PrivilegedBridgeHealth(
