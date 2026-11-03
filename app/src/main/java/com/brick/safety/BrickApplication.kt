@@ -17,6 +17,7 @@ import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.P8BControlRuntime
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.CrashReporter
+import com.brick.safety.reliability.FallDetectorRuntime
 import com.brick.safety.reliability.RecoveryScheduler
 import kotlin.math.max
 
@@ -52,6 +53,8 @@ class BrickApplication : Application() {
             .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "shizuku", "initialize_failed", it.javaClass.simpleName, it) }
         runCatching { CapabilityProfileStore.refresh(this) }
             .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "capability", "profile_refresh_failed", it.javaClass.simpleName, it) }
+        runCatching { FallDetectorRuntime.start(this) }
+            .onFailure { DiagnosticStore.log(DiagnosticStore.Severity.WARN, "fall", "detector_start_failed", it.javaClass.simpleName, it) }
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 startedActivities += 1
