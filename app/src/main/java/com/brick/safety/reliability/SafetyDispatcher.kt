@@ -25,6 +25,7 @@ object SafetyDispatcher {
     }
 
     fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
+        val effectivePriority = if (kind == "sos_started" || kind == "sos_cancelled") PRIORITY_SOS else priority
         val brickPrefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val eventSequence = brickPrefs.getLong("safetySequence", 0L) + 1L
         if (!brickPrefs.edit().putLong("safetySequence", eventSequence).commit()) {
@@ -42,19 +43,18 @@ object SafetyDispatcher {
         if (snapshot.positionAgeMs != null) enriched.put("positionAgeMs", snapshot.positionAgeMs)
 
         val envelope = BrickApi.createSafetyEnvelope(kind, eventSequence, enriched, snapshot.latitude, snapshot.longitude, snapshot.accuracyM)
-        val saved = SafetyOutbox(context).use { it.append(envelope.eventId, envelope.kind, envelope.payload, priority) }
+        val saved = SafetyOutbox(context).use { it.append(envelope.eventId, envelope.kind, envelope.payload, effectivePriority) }
         if (!saved) {
-            DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "outbox_save_failed", "kind=$kind priority=$priority")
+            DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "outbox_save_failed", "kind=$kind priority=$effectivePriority")
             return null
         }
-        DiagnosticStore.log(context, if (priority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
-            "safety", "event_saved", "kind=$kind priority=$priority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}")
+        DiagnosticStore.log(context, if (effectivePriority >= PRIORITY_CRITICAL) DiagnosticStore.Severity.WARN else DiagnosticStore.Severity.INFO,
+            "safety", "event_saved", "kind=$kind priority=$effectivePriority sequence=$eventSequence positionAvailable=${snapshot.latitude != null && snapshot.longitude != null} positionAgeMs=${snapshot.positionAgeMs ?: -1}")
         runCatching { ServiceControl.ensureTracking(context) }
             .onFailure { DiagnosticStore.log(context, DiagnosticStore.Severity.ERROR, "safety", "tracking_wake_failed", "kind=$kind", it) }
         return envelope.eventId
     }
 
-    /** Drain only the selected priority band, preserving SOS > critical ordering inside the query. */
     fun drain(context: Context, limit: Int = 50, minPriority: Int = Int.MIN_VALUE, maxPriority: Int = Int.MAX_VALUE): Int {
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val deviceId = prefs.getString("deviceId", null) ?: return 0
