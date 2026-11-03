@@ -16,10 +16,19 @@ class Phase8CommandValidationInstrumentedTest : BrickInstrumentationTestCase() {
         super.tearDown()
     }
 
+    private fun assertRejected(block: () -> Unit) {
+        try {
+            block()
+            fail("expected IllegalArgumentException")
+        } catch (_: IllegalArgumentException) {
+            // expected
+        }
+    }
+
     fun testFutureExpiredAndImpossibleLifetimeCommandsAreRejectedAtDurableBoundary() {
         val now = 2_000_000_000_000L
 
-        assertFailsWith<IllegalArgumentException> {
+        assertRejected {
             ParentLocationStateStore.applyVerified(
                 context,
                 DesiredLocationState.OFF,
@@ -31,7 +40,7 @@ class Phase8CommandValidationInstrumentedTest : BrickInstrumentationTestCase() {
             )
         }
 
-        assertFailsWith<IllegalArgumentException> {
+        assertRejected {
             ParentLocationStateStore.applyVerified(
                 context,
                 DesiredLocationState.OFF,
@@ -43,7 +52,7 @@ class Phase8CommandValidationInstrumentedTest : BrickInstrumentationTestCase() {
             )
         }
 
-        assertFailsWith<IllegalArgumentException> {
+        assertRejected {
             ParentLocationStateStore.applyVerified(
                 context,
                 DesiredLocationState.OFF,
