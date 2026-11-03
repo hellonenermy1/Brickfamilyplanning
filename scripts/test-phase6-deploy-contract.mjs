@@ -1,0 +1,129 @@
+import fs from 'node:fs';
+
+function requireCondition(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const entry = fs.readFileSync('scripts/setup.mjs', 'utf8');
+const identityPreflight = fs.readFileSync('scripts/phase8-live-identity-preflight.mjs', 'utf8');
+const identityMigration = fs.readFileSync('scripts/phase8-identity-migration.mjs', 'utf8');
+const setup = fs.readFileSync('scripts/setup-v1-phase6.mjs', 'utf8');
+const verifier = fs.readFileSync('scripts/verify-cloudflare-deployment.mjs', 'utf8');
+const wrangler = fs.readFileSync('wrangler.template.jsonc', 'utf8');
+const deployWorkflow = fs.readFileSync('.github/workflows/deploy-brick.yml', 'utf8');
+const tenancy = fs.readFileSync('docs/phase8-tenancy-boundary.md', 'utf8');
+
+requireCondition(pkg.scripts?.setup === 'node scripts/setup.mjs', 'npm setup must use the canonical setup entrypoint');
+requireCondition(entry.includes("await import('./setup-v1-phase6.mjs')"), 'canonical setup must delegate to the production setup');
+requireCondition(entry.includes("await import('./phase8-live-identity-preflight.mjs')"), 'canonical setup must load the Phase 8 live identity preflight');
+requireCondition(entry.includes('await preflightPhase8LiveDeviceIdentities();'), 'canonical setup must execute the Phase 8 live identity preflight');
+const preflightCall = entry.indexOf('await preflightPhase8LiveDeviceIdentities();');
+const provisionerImport = entry.indexOf("await import('./setup-v1-phase6.mjs')");
+requireCondition(preflightCall >= 0 && provisionerImport > preflightCall, 'live identity preflight must run before production schema/deployment setup');
+requireCondition(!fs.existsSync('scripts/setup-v1-phase2.mjs'), 'obsolete Phase 2 setup wrapper must not exist');
+requireCondition(wrangler.includes('"main": "src/worker-v9.ts"'), 'production template must target worker-v9.ts');
+
+for (const marker of [
+  'planDeviceIdentityCanonicalization',
+  "SELECT id,public_key_spki_b64 FROM devices ORDER BY id LIMIT",
+  'UPDATE devices SET public_key_spki_b64=?1 WHERE id=?2 AND public_key_spki_b64=?3',
+  'device identity changed concurrently during Phase 8 preflight',
+  'Phase 8 identity canonicalization did not converge'
+]) requireCondition(identityPreflight.includes(marker), `live identity preflight is missing safety contract: ${marker}`);
+for (const marker of [
+  "crypto.subtle.importKey(",
+  "namedCurve: 'P-256'",
+  'semantic duplicate device identity',
+  'updates.push({ id, from: stored, to: canonical })'
+]) requireCondition(identityMigration.includes(marker), `identity canonicalizer is missing cryptographic contract: ${marker}`);
+
+const schemas = [
+  'schema/001_init.sql',
+  'schema/002_phase2_health.sql',
+  'schema/003_phase4_safety.sql',
+  'schema/004_phase5_operations.sql',
+  'schema/007_phase5c_hardening.sql',
+  'schema/008_v1_phase2_evidence.sql',
+  'schema/009_v1_phase5_fusion.sql',
+  'schema/010_phase5b_closure.sql',
+  'schema/011_v1_phase6_location_control.sql',
+  'schema/015_phase8_device_identity.sql'
+];
+for (const schema of schemas) requireCondition(setup.includes(`'${schema}'`), `production setup is missing ${schema}`);
+for (let i = 0; i < schemas.length; i++) {
+  requireCondition(setup.includes(`await applySchema(SCHEMAS[${i}]);`), `production setup does not apply SCHEMAS[${i}]`);
+}
+
+const finalMigration = setup.indexOf('await applySchema(SCHEMAS[9]);');
+const firstDeploy = setup.indexOf("['wrangler', 'deploy'");
+const accessReconcile = setup.indexOf('const access = await ensureAccess(workerHost);');
+const verifiedConfig = setup.indexOf("renderWrangler(template, d1Id, teamDomain, access.aud)");
+const secondDeploy = setup.indexOf("['wrangler', 'deploy'", firstDeploy + 1);
+requireCondition(finalMigration >= 0 && firstDeploy > finalMigration, 'worker-v9 must not activate before Phase 8 schema 015 is applied');
+requireCondition(setup.indexOf("'phase8-bootstrap-not-valid'") >= 0 && setup.indexOf("'phase8-bootstrap-not-valid'") < firstDeploy,
+  'first activation must use an invalid parent Access AUD');
+requireCondition(accessReconcile > firstDeploy, 'Cloudflare Access must be reconciled after the exact workers.dev hostname is known');
+requireCondition(verifiedConfig > accessReconcile, 'verified Access AUD must be written only after Access reconciliation');
+requireCondition(secondDeploy > verifiedConfig, 'final worker deploy must use the verified Access configuration');
+
+for (const marker of [
+  'phase: 8',
+  'v1ProgramPhase: 8',
+  'schemaVersion: 15',
+  "workerEntry: 'src/worker-v9.ts'",
+  "releaseState: 'candidate-not-real-device-qualified'",
+  'sourceGitSha',
+  'brick-raw-evidence-30d'
+]) requireCondition(setup.includes(marker), `Phase 8 setup provenance/retention is missing ${marker}`);
+
+for (const marker of [
+  'const EXPECTED_V1_PROGRAM_PHASE = 8;',
+  'const EXPECTED_SCHEMA_VERSION = 15;',
+  "const EXPECTED_WORKER_ENTRY = 'src/worker-v9.ts';",
+  "'schema/011_v1_phase6_location_control.sql'",
+  "'schema/015_phase8_device_identity.sql'",
+  "'device_location_control'",
+  'idx_devices_public_key_spki_unique',
+  'state?.schemaVersion === EXPECTED_SCHEMA_VERSION',
+  'state?.workerEntry === EXPECTED_WORKER_ENTRY',
+  'Brick V1 Phase 8 deployment verified'
+]) requireCondition(verifier.includes(marker), `post-deploy verifier is missing Phase 8 contract: ${marker}`);
+
+for (const marker of [
+  'name: Deploy Brick V1 Phase 8 Candidate',
+  '\"main\": \"src/worker-v9.ts\"',
+  "'schema/011_v1_phase6_location_control.sql'",
+  "'schema/015_phase8_device_identity.sql'",
+  'bash scripts/phase6-cloud-regression.sh',
+  'run: npm run setup',
+  's.schemaVersion !== 15',
+  's.v1ProgramPhase !== 8',
+  "s.workerEntry !== 'src/worker-v9.ts'"
+]) requireCondition(deployWorkflow.includes(marker), `deployment workflow is missing Phase 8 gate: ${marker}`);
+
+// Brick V1 is deliberately one family per Cloudflare account/deployment, not a multi-family SaaS.
+// The contract must keep resource names/server trust selected by setup, not by an HTTP caller, and
+// must keep the exact per-deployment Access audience in front of /parent*.
+for (const marker of [
+  "const D1_NAME = 'brick-family-v1';",
+  "const HISTORY_BUCKET = 'brick-family-v1-history';",
+  "const MAPS_BUCKET = 'brick-family-v1-maps';",
+  "const EVENT_QUEUE = 'brick-family-v1-events';",
+  "const DLQ = 'brick-family-v1-dlq';",
+  'Set CLOUDFLARE_ACCOUNT_ID explicitly; Brick will not guess.',
+  'const destination = `${workerHost}/parent*`;',
+  'cloudflare_account_member: { account_id: accountId }'
+]) requireCondition(setup.includes(marker), `single-family deployment boundary drifted: ${marker}`);
+for (const marker of [
+  'single-family per Cloudflare deployment/account boundary',
+  'does not accept a caller-provided `familyId`',
+  'Two unrelated families must **not** share one Brick Cloudflare account/deployment',
+  'Cloudflare account membership therefore defines the parent trust group'
+]) requireCondition(tenancy.includes(marker), `Phase 8 tenancy boundary documentation is missing: ${marker}`);
+
+// The release workflow itself is part of the supply chain. Floating major-version Actions are not
+// acceptable even if the separate hardening workflow is pinned.
+requireCondition(!/uses:\s+[^\s#]+@v\d+/m.test(deployWorkflow), 'deployment workflow contains a floating GitHub Action tag');
+
+console.log('Phase 8 deployment contract passed: live P-256 identities preflight before setup, schema 001-011 plus 015 precede v9 activation, live uniqueness is verified, single-family tenancy is explicit, provenance is schema 15, and deployment Actions are SHA-pinned.');

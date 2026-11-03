@@ -1,0 +1,125 @@
+name: Brick V1 Phase 8B — Cloud Remediation CI
+
+on:
+  push:
+    branches: [v1-p8b-remediation-cloud]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Typecheck Worker and parent code
+        run: npm run typecheck
+
+      - name: Build parent assets
+        run: npm run build:parent-assets
+
+      - name: Verify production entry and P8B wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            local label="$1" file="$2" needle="$3"
+            if ! grep -F -- "$needle" "$file" >/dev/null; then
+              echo "P8B wiring check failed: $label ($file missing: $needle)" >&2
+              exit 1
+            fi
+            echo "OK: $label"
+          }
+          check "production worker entry" wrangler.template.jsonc '"main": "src/worker-p8b.ts"'
+          check "production app version" wrangler.template.jsonc '"CURRENT_APP_VERSION": "1.0.0-rc.1"'
+          check "P8B map asset entry" scripts/build-parent-assets.mjs 'web/brick-map-p8b.ts'
+          test -s public/brick-map.mjs || { echo 'P8B wiring check failed: built map asset missing' >&2; exit 1; }
+          check "P8B parent HTML" src/worker-p8b.ts 'parentP8BHtml'
+          check "OneMap parent reverse" src/worker-p8b.ts 'parentReverseOneMap'
+          check "commute API" src/worker-p8b.ts 'parentCommutes'
+          check "Fast Live route" src/worker-v9.ts 'handleFastLive'
+          check "canary route" src/worker-v9.ts 'handleCanary'
+          check "Live Track parent control" src/worker-v9.ts 'parentSetLiveTrack'
+          check "Wi-Fi schedule parent control" src/worker-v9.ts 'parentSetWifiSchedules'
+          check "fall event ingest" src/worker-p8b.ts 'maybeHandleFallEvent'
+          check "screen-time ingest" src/worker-p8b.ts 'ingestScreenTime'
+          check "backend OneMap email secret binding" src/onemap-client.ts 'ONEMAP_EMAIL'
+          check "backend OneMap password secret binding" src/onemap-client.ts 'ONEMAP_PASSWORD'
+          if grep -R -n -F 'ONEMAP_EMAIL' web public || grep -R -n -F 'ONEMAP_PASSWORD' web public; then
+            echo 'P8B secret-boundary check failed: OneMap credential binding leaked to browser surface' >&2
+            exit 1
+          fi
+          echo 'OK: OneMap secret boundary'
+
+      - name: Apply all D1 migrations to a clean SQLite database
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sqlite3
+          rm -f /tmp/brick-p8b.db
+          for f in $(find schema -maxdepth 1 -type f -name '*.sql' | sort); do
+            echo "Applying $f"
+            sqlite3 /tmp/brick-p8b.db < "$f"
+          done
+          sqlite3 /tmp/brick-p8b.db '.schema' > /tmp/schema.txt
+          for table in device_live_track_control device_wifi_schedules device_wifi_schedule_result device_capability_profile screen_time_daily commute_summaries provider_cache provider_rate_window; do
+            grep -E "CREATE TABLE( IF NOT EXISTS)? ${table}" /tmp/schema.txt >/dev/null
+          done
+
+      - name: Regression — history codec
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/history-codec.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-history-codec.mjs
+          node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
+
+      - name: Regression — Phase 5 live-state ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/live-state-order.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-live-state-order.mjs
+          node scripts/test-phase5-live-state-order.mjs /tmp/brick-live-state-order.mjs
+
+      - name: Regression — one-shot Location control
+        run: node scripts/test-phase8-location-control-contract.mjs
+
+      - name: Regression — parent origin protection
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/dev-parent-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-dev-parent-auth.mjs
+          node scripts/test-phase8-parent-origin.mjs /tmp/brick-dev-parent-auth.mjs
+
+      - name: Regression — SOS priority
+        run: node scripts/test-phase8-sos-priority-contract.mjs
+
+      - name: Regression — privacy audit
+        run: node scripts/audit-privacy.mjs
+
+      - name: Wrangler dry-run production bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp wrangler.template.jsonc wrangler.p8b-ci.jsonc
+          trap 'rm -f wrangler.p8b-ci.jsonc' EXIT
+          sed -i 's/__D1_DATABASE_ID__/00000000-0000-0000-0000-000000000001/g' wrangler.p8b-ci.jsonc
+          sed -i 's/__CF_ACCESS_TEAM_DOMAIN__/example.cloudflareaccess.com/g' wrangler.p8b-ci.jsonc
+          sed -i 's/__CF_ACCESS_AUD__/0000000000000000000000000000000000000000000000000000000000000000/g' wrangler.p8b-ci.jsonc
+          rm -rf /tmp/brick-dist
+          npx wrangler deploy --dry-run --config wrangler.p8b-ci.jsonc --outdir /tmp/brick-dist
+          test -n "$(find /tmp/brick-dist -maxdepth 2 -type f | head -n1)"
+
+      - name: No production placeholders or obvious fake handlers
+        run: node scripts/audit-p8b-placeholders.mjs

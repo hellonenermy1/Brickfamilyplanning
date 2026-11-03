@@ -1,0 +1,183 @@
+name: Deploy Brick V1 Phase 8 Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID'
+        required: true
+        type: string
+      install_map:
+        description: 'Install/update the private Singapore map after deployment'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-v1-phase8-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
+    steps:
+      - name: Checkout selected Phase 8 ref
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Preflight credentials and exact source
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'Missing workflow input: cloudflare_account_id' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p8-cloud-hardening" || { echo 'Phase 8 production deployment must run from v1-p8-cloud-hardening' >&2; exit 1; }
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "Deploying exact Phase 8 source SHA: $GITHUB_SHA"
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Refuse tracked private-key material
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! git ls-files | grep -Ei '\.(jks|keystore|p12|pfx|pem|key)$|\.jks\.b64$'
+          ! git grep -n -E -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+
+      - name: Enforce current Phase 8 architecture and migration path
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'from "./worker-v8"' src/worker-v9.ts >/dev/null
+          grep -F 'from "./worker-v7"' src/worker-v8.ts >/dev/null
+          grep -F 'from "./worker-v6"' src/worker-v7.ts >/dev/null
+          grep -F 'from "./worker-v5b"' src/worker-v6.ts >/dev/null
+          grep -F '"r2_buckets"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "HISTORY"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "MAPS"' wrangler.template.jsonc >/dev/null
+          grep -F '"binding": "EVENTS"' wrangler.template.jsonc >/dev/null
+          grep -F '"dead_letter_queue": "brick-family-v1-dlq"' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__"' wrangler.template.jsonc >/dev/null
+          grep -F '"CF_ACCESS_AUD": "__CF_ACCESS_AUD__"' wrangler.template.jsonc >/dev/null
+          grep -F "await import('./setup-v1-phase6.mjs')" scripts/setup.mjs >/dev/null
+          grep -F "'schema/008_v1_phase2_evidence.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/009_v1_phase5_fusion.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/010_phase5b_closure.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/011_v1_phase6_location_control.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/015_phase8_device_identity.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'await applySchema(SCHEMAS[9]);' scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'idx_devices_public_key_spki_unique' schema/015_phase8_device_identity.sql >/dev/null
+          grep -F "brick-raw-evidence-30d" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'device_location_control' schema/011_v1_phase6_location_control.sql >/dev/null
+          ! test -e scripts/setup-v1-phase2.mjs
+
+      - name: Run release security, recovery and dependency gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/setup.mjs
+          node --check scripts/setup-v1-phase6.mjs
+          node --check scripts/install-private-map.mjs
+          node --check scripts/verify-cloudflare-deployment.mjs
+          npm audit --audit-level=high
+          bash scripts/phase6-cloud-regression.sh
+
+      - name: Provision resources, migrate through schema 015, and deploy Phase 8
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run setup
+
+      - name: Verify setup provenance before release tagging
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s setup-state.json
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
+          const expected = process.env.GITHUB_SHA;
+          if (s.sourceGitSha !== expected) throw new Error(`setup source ${s.sourceGitSha} != workflow ${expected}`);
+          if (s.v1ProgramPhase !== 8 || s.schemaVersion !== 15) throw new Error('Phase/schema provenance mismatch');
+          if (s.workerEntry !== 'src/worker-v9.ts') throw new Error('wrong worker entry');
+          if (s.access?.mode !== 'cloudflare-access-rs256') throw new Error('Access not verified');
+          if (!Array.isArray(s.appliedSchemas) || !s.appliedSchemas.includes('schema/015_phase8_device_identity.sql')) throw new Error('Phase 8 identity migration not recorded');
+          if (!s.resources?.HISTORY_BUCKET || !s.resources?.MAPS_BUCKET || !s.resources?.EVENT_QUEUE || !s.resources?.DLQ) throw new Error('required Cloudflare resources missing');
+          NODE
+
+      - name: Install private Singapore map
+        if: ${{ inputs.install_map }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run map:install
+
+      - name: Strict final deploy tagged with exact Git SHA
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="brick-git-${GITHUB_SHA:0:12}"
+          npx wrangler deploy --strict --config wrangler.jsonc --tag "$tag" --message "Brick V1 Phase 8 candidate source $GITHUB_SHA"
+          npx wrangler deployments list --json --config wrangler.jsonc > worker-deployments.json
+          test -s worker-deployments.json
+          grep -F "$GITHUB_SHA" worker-deployments.json >/dev/null
+          echo "Verified active deployment evidence contains source SHA $GITHUB_SHA"
+
+      - name: Verify deployed resources and public attack surface
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BRICK_REQUIRE_PRIVATE_MAP: ${{ inputs.install_map }}
+        run: node scripts/verify-cloudflare-deployment.mjs
+
+      - name: Show deployment result
+        if: always()
+        shell: bash
+        run: |
+          if [ -f setup-state.json ]; then
+            node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
+          console.log('Brick V1 Phase 8 deployment state');
+          console.log('Source Git SHA:       ' + (s.sourceGitSha || 'NOT VERIFIED'));
+          console.log('Release state:        ' + (s.releaseState || 'NOT VERIFIED'));
+          console.log('Schema version:       ' + (s.schemaVersion ?? 'NOT VERIFIED'));
+          console.log('Worker entry:         ' + (s.workerEntry || 'NOT VERIFIED'));
+          console.log('Parent dashboard:     https://' + s.workerHost + '/parent');
+          console.log('Child API base:       https://' + s.workerHost);
+          console.log('History R2:           ' + s.resources.HISTORY_BUCKET);
+          console.log('Private map R2:       ' + s.resources.MAPS_BUCKET);
+          console.log('Event Queue:          ' + s.resources.EVENT_QUEUE);
+          console.log('Dead Letter Queue:    ' + s.resources.DLQ);
+          console.log('Access destination:   ' + s.access.destination);
+          console.log('Private map installed:' + Boolean(s.privateMap?.installed));
+          NODE
+          else
+            echo 'setup-state.json was not created; inspect the failed step above.'
+          fi
+
+      - name: Upload non-secret deployment evidence
+        if: ${{ always() && hashFiles('setup-state.json') != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-v1-phase8-deployment-evidence-${{ github.sha }}
+          path: |
+            setup-state.json
+            deployment-verification.json
+            worker-deployments.json
+          if-no-files-found: warn
+          retention-days: 30
