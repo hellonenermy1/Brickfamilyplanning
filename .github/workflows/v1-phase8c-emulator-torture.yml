@@ -52,7 +52,32 @@ jobs:
         run: |
           set -euo pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;default;x86_64'
+
+          retry_sdk_package() {
+            local package="$1"
+            if "$SDKMANAGER" "$package"; then
+              return 0
+            fi
+            echo "First sdkmanager attempt failed for $package; clearing partial download state and retrying once" >&2
+            rm -rf "$ANDROID_SDK_ROOT/.temp" "$HOME/.android/cache" || true
+            case "$package" in
+              emulator)
+                rm -rf "$ANDROID_SDK_ROOT/emulator" || true
+                ;;
+              'system-images;android-35;default;x86_64')
+                rm -rf "$ANDROID_SDK_ROOT/system-images/android-35/default/x86_64" || true
+                ;;
+            esac
+            "$SDKMANAGER" "$package"
+          }
+
+          retry_sdk_package 'platform-tools'
+          retry_sdk_package 'platforms;android-36'
+          if [ ! -x "$EMULATOR" ]; then retry_sdk_package 'emulator'; fi
+          retry_sdk_package 'system-images;android-35;default;x86_64'
+          test -x "$EMULATOR"
+          test -d "$ANDROID_SDK_ROOT/system-images/android-35/default/x86_64"
+
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace --console=plain
 
       - name: Boot clean Android 15 emulator
