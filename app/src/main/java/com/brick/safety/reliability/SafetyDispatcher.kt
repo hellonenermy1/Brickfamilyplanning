@@ -24,8 +24,14 @@ object SafetyDispatcher {
             .putLong("lastSafetyOutboxWriteFailureWallMs", System.currentTimeMillis()).apply()
     }
 
-    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? =
-        enqueueInternal(context, kind, detail, priority, sosActiveState = null)
+    fun enqueue(context: Context, kind: String, detail: JSONObject = JSONObject(), priority: Int = PRIORITY_NORMAL): String? {
+        val sosState = when (kind) {
+            "sos_started" -> true
+            "sos_cancelled" -> false
+            else -> null
+        }
+        return enqueueInternal(context, kind, detail, priority, sosActiveState = sosState)
+    }
 
     fun enqueueSosTransition(context: Context, active: Boolean, detail: JSONObject = JSONObject()): String? =
         enqueueInternal(
@@ -89,6 +95,12 @@ object SafetyDispatcher {
             noteOutboxUnavailable(context)
             legacy
         }
+    }
+
+    fun restoreSosMirror(context: Context): Boolean {
+        val active = isSosActive(context)
+        context.getSharedPreferences("brick", Context.MODE_PRIVATE).edit().putBoolean("sosActive", active).commit()
+        return active
     }
 
     fun drain(context: Context, limit: Int = 50, minPriority: Int = Int.MIN_VALUE, maxPriority: Int = Int.MAX_VALUE): Int {
