@@ -1,0 +1,122 @@
+name: Brick V1 Phase 8 — Final Android Cloud Contract
+
+on:
+  push:
+    branches: [v1-p8-cloud-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-cloud-contract:
+    name: Cross-branch wire, replay and production contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout current cloud hardening head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: v1-p8-cloud-hardening
+          path: cloud
+          fetch-depth: 1
+
+      - name: Checkout current Android hardening head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: v1-p8-android-hardening
+          path: android
+          fetch-depth: 1
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: cloud/package-lock.json
+
+      - name: Record exact branch heads
+        shell: bash
+        run: |
+          set -euo pipefail
+          cloud_sha="$(git -C cloud rev-parse HEAD)"
+          android_sha="$(git -C android rev-parse HEAD)"
+          test -n "$cloud_sha"
+          test -n "$android_sha"
+          echo "Cloud hardening SHA:   $cloud_sha"
+          echo "Android hardening SHA: $android_sha"
+          {
+            echo '## Brick Phase 8 cross-branch evidence'
+            echo ''
+            echo "- Cloud hardening: \`$cloud_sha\`"
+            echo "- Android hardening: \`$android_sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify Android and cloud wire contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node cloud/scripts/test-phase8-android-cloud-contract.mjs \
+            android/app/src/main/java/com/brick/safety/network/BrickApi.kt \
+            android/app/src/main/java/com/brick/safety/managed/ParentLocationState.kt \
+            android/app/src/androidTest/java/com/brick/safety/network/Phase6LocationCommandInstrumentedTest.kt \
+            cloud/src/protocol.ts \
+            cloud/src/location-ingest-v6.ts \
+            cloud/src/index.ts \
+            cloud/src/device-json-security.ts \
+            cloud/src/phase6-location-control.ts
+
+      - name: Verify required Phase 8A and 8B acceptance suites still exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f android/.github/workflows/v1-phase8-android-ci.yml
+          test -f android/.github/workflows/v1-phase8-device-owner-retirement.yml
+          test -f android/.github/workflows/v1-phase8-upgrade-continuity.yml
+          test -f android/app/src/androidTest/java/com/brick/safety/data/Phase8DurabilityTortureInstrumentedTest.kt
+          test -f android/app/src/androidTest/java/com/brick/safety/evidence/Phase8ProviderIsolationInstrumentedTest.kt
+          test -f android/app/src/androidTest/java/com/brick/safety/managed/Phase8ManagedPolicyInstrumentedTest.kt
+          test -f android/app/src/androidTest/java/com/brick/safety/upgrade/Phase8UpgradeContinuityInstrumentedTest.kt
+          test -f cloud/.github/workflows/v1-phase8-cloud-ci.yml
+          test -f cloud/scripts/test-phase8-integrated-ingest-torture.mjs
+          test -f cloud/scripts/test-phase8-sos-mixed-backlog.mjs
+          test -f cloud/scripts/test-phase8-parent-freshness.mjs
+          test -f cloud/scripts/test-phase8-history-provenance.mjs
+          test -f cloud/scripts/test-phase8-live-event-time.mjs
+          test -f cloud/schema/015_phase8_device_identity.sql
+
+      - name: Install exactly locked cloud test dependencies
+        working-directory: cloud
+        run: npm ci --no-audit --no-fund
+
+      - name: Execute server command replay-suppression and deployment contracts
+        working-directory: cloud
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/test-phase8-location-control-contract.mjs
+          npx esbuild src/phase6-location-control.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-location-control-final.mjs
+          node scripts/test-phase8-location-control-runtime.mjs /tmp/brick-location-control-final.mjs
+          node scripts/test-phase6-deploy-contract.mjs
+
+      - name: Cross-branch supply-chain guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'uses:[[:space:]]+[^[:space:]#]+@v[0-9]+' \
+            cloud/.github/workflows/v1-phase8-*.yml \
+            cloud/.github/workflows/deploy-brick.yml \
+            android/.github/workflows/v1-phase8-*.yml
+
+      - name: Final contract summary
+        shell: bash
+        run: |
+          {
+            echo ''
+            echo 'Cross-branch protocol contract: PASS'
+            echo 'Server command replay suppression: PASS'
+            echo 'Production schema/deployment contract: PASS'
+            echo 'Phase 8A/8B acceptance-suite presence: PASS'
+            echo ''
+            echo '> This workflow proves compatibility between the checked-out hardening heads. Phase 8 is complete only when the separate Android and cloud hardening workflows are also green.'
+          } >> "$GITHUB_STEP_SUMMARY"
