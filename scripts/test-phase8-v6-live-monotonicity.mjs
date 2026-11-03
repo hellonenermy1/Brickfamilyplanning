@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 
-const [modulePath] = process.argv.slice(2);
-if (!modulePath) throw new Error('usage: test-phase8-v6-live-monotonicity.mjs <bundled-location-ingest>');
+const [modulePath, orderPath] = process.argv.slice(2);
+if (!modulePath || !orderPath) throw new Error('usage: test-phase8-v6-live-monotonicity.mjs <bundled-location-ingest> <live-state-order>');
 const ingest = await import(pathToFileURL(modulePath).href + `?v=${Date.now()}`);
+const liveOrder = await import(pathToFileURL(orderPath).href + `?o=${Date.now()}`);
 
 function packet(epoch, sequence, wallTimeMs) {
   return {
@@ -47,9 +48,7 @@ function fakeDb(initialEpoch, initialSequence) {
     seen,
     latest,
     prepare(sql) {
-      return {
-        bind(...args) { return { sql, args }; }
-      };
+      return { bind(...args) { return { sql, args }; } };
     },
     async batch(statements) {
       const out = [];
@@ -79,8 +78,10 @@ function fakeDb(initialEpoch, initialSequence) {
   };
 }
 
+const t = Date.now() - 60_000;
 const db = fakeDb(7, 100);
 const liveCalls = [];
+let liveCurrent = { epoch: 7, sequence: 100, wallTimeMs: t - 5_000 };
 const env = {
   DB: db,
   HISTORY: {},
@@ -92,29 +93,33 @@ const env = {
     get(id) {
       assert.equal(id, 'child-1');
       return {
-        async setLatest(value) { liveCalls.push(value); return true; }
+        async setLatest(value) {
+          const advance = liveOrder.shouldAdvanceLiveState(value, liveCurrent);
+          if (advance) {
+            liveCurrent = { epoch: value.epoch, sequence: value.sequence, wallTimeMs: value.wallTimeMs };
+            liveCalls.push(value);
+          }
+          return advance;
+        }
       };
     }
   }
 };
 
-const t = Date.now() - 60_000;
-
-// A delayed offline packet is new history, but it is older than the current watermark and must not
-// move the parent's live/current location backwards.
+// A delayed offline packet is new history, but older in capture time and must not move current state.
 let result = await ingest.persistAccepted(env, 'child-1', [packet(7, 90, t - 20_000)]);
 assert.equal(result.insertedCount, 1);
 assert.equal(result.liveAdvanced, false);
 assert.deepEqual(db.latest.get('child-1'), { epoch: 7, sequence: 100 });
 assert.equal(liveCalls.length, 0);
 
-// Replaying that same logical packet must be idempotent and still cannot touch live state.
+// Replaying that same logical packet is idempotent and does not re-hit the DO.
 result = await ingest.persistAccepted(env, 'child-1', [packet(7, 90, t - 20_000)]);
 assert.equal(result.insertedCount, 0);
 assert.equal(result.liveAdvanced, false);
 assert.equal(liveCalls.length, 0);
 
-// A genuinely newer packet advances exactly once.
+// A genuinely newer capture advances exactly once.
 result = await ingest.persistAccepted(env, 'child-1', [packet(7, 101, t)]);
 assert.equal(result.insertedCount, 1);
 assert.equal(result.liveAdvanced, true);
@@ -128,16 +133,23 @@ assert.equal(result.insertedCount, 0);
 assert.equal(result.liveAdvanced, false);
 assert.equal(liveCalls.length, 1);
 
-// A reboot/new epoch legitimately advances even when sequence restarts at 1.
+// A reboot/new epoch with a newer capture time legitimately advances even when sequence restarts.
 result = await ingest.persistAccepted(env, 'child-1', [packet(8, 1, t + 5_000)]);
 assert.equal(result.insertedCount, 1);
 assert.equal(result.liveAdvanced, true);
 assert.deepEqual(db.latest.get('child-1'), { epoch: 8, sequence: 1 });
 assert.equal(liveCalls.length, 2);
-assert.equal(liveCalls[1].epoch, 8);
-assert.equal(liveCalls[1].sequence, 1);
 
-// History identity is epoch + sequence, so all three distinct logical packets remain represented.
-assert.deepEqual([...db.seen].sort(), ['child-1:7:101', 'child-1:7:90', 'child-1:8:1']);
+// Cross-epoch backlog can then deliver an older logical epoch with an even NEWER capture time. D1
+// keeps the epoch-8 watermark, but the live read model must not hide this newer captured location.
+result = await ingest.persistAccepted(env, 'child-1', [packet(7, 102, t + 10_000)]);
+assert.equal(result.insertedCount, 1);
+assert.equal(result.liveAdvanced, true);
+assert.deepEqual(db.latest.get('child-1'), { epoch: 8, sequence: 1 });
+assert.equal(liveCalls.length, 3);
+assert.equal(liveCalls[2].epoch, 7);
+assert.equal(liveCalls[2].sequence, 102);
 
-console.log('Phase 8 V6 out-of-order current-location monotonicity + retry idempotency OK');
+assert.deepEqual([...db.seen].sort(), ['child-1:7:101', 'child-1:7:102', 'child-1:7:90', 'child-1:8:1']);
+
+console.log('Phase 8 V6 live monotonicity + retry idempotency OK across out-of-order reboot epochs');
