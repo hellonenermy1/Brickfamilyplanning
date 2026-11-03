@@ -1,0 +1,173 @@
+name: Brick V1 Phase 8 — Android Resource Budget Evidence
+
+on:
+  push:
+    branches: [v1-p8-android-hardening]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator-resource-budget:
+    name: Sustained-failure CPU, RAM, storage, wakeup and retry guardrails
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p8-resource-avd"
+          mkdir -p "$AVD_HOME" resource-evidence
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Build and boot clean Android 15 emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
+          gradle --no-daemon :app:assembleDebug --stacktrace
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-resource --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-resource -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > resource-evidence/emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+          "$ADB" install -t app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Seed 1000-row durable failure workload
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" logcat -c
+          "$ADB" shell am broadcast --receiver-foreground \
+            -a com.brick.safety.testing.PHASE8_RESOURCE_SEED \
+            -n com.brick.safety/.testing.Phase8ResourceHarnessReceiver | tee resource-evidence/seed.txt
+          for i in $(seq 1 30); do
+            if "$ADB" logcat -d | grep -Fq 'BrickP8Resource: seeded=1000'; then break; fi
+            sleep 1
+          done
+          "$ADB" logcat -d | grep -F 'BrickP8Resource: seeded=1000' >/dev/null
+          "$ADB" shell pidof com.brick.safety | tee resource-evidence/pid.txt
+          test -s resource-evidence/pid.txt
+
+      - name: Measure three-minute sustained-failure resource envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'sample,rss_kb,cpu_percent,storage_kb\n' > resource-evidence/samples.csv
+          max_rss=0
+          max_storage=0
+          max_cpu_milli=0
+          for i in $(seq 1 18); do
+            pid="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
+            test -n "$pid"
+
+            mem="$("$ADB" shell dumpsys meminfo com.brick.safety | tr -d '\r')"
+            rss="$(printf '%s\n' "$mem" | awk '/TOTAL RSS:/{print $3; exit}')"
+            if [ -z "$rss" ]; then rss="$(printf '%s\n' "$mem" | awk '/TOTAL PSS:/{print $3; exit}')"; fi
+            [[ "$rss" =~ ^[0-9]+$ ]]
+
+            cpu="$("$ADB" shell top -b -n 1 -p "$pid" 2>/dev/null | tr -d '\r' | awk -v p="$pid" '$1==p {gsub(/%/,"",$9); print $9; exit}')"
+            if ! [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then cpu=0; fi
+            cpu_milli="$(awk -v c="$cpu" 'BEGIN { printf "%d", c*1000 }')"
+
+            storage="$("$ADB" shell run-as com.brick.safety sh -c 'du -sk . 2>/dev/null | cut -f1' | tr -d '\r')"
+            [[ "$storage" =~ ^[0-9]+$ ]]
+            printf '%s,%s,%s,%s\n' "$i" "$rss" "$cpu" "$storage" >> resource-evidence/samples.csv
+            [ "$rss" -gt "$max_rss" ] && max_rss="$rss"
+            [ "$storage" -gt "$max_storage" ] && max_storage="$storage"
+            [ "$cpu_milli" -gt "$max_cpu_milli" ] && max_cpu_milli="$cpu_milli"
+            sleep 10
+          done
+
+          streak="$("$ADB" shell run-as com.brick.safety sh -c \"grep -o 'name=\\\"coreUploadFailureStreak\\\" value=\\\"[0-9]*\\\"' shared_prefs/brick.xml 2>/dev/null | sed -E 's/.*value=\\\"([0-9]+)\\\".*/\\1/'\" | tr -d '\r' | tail -n 1)"
+          if ! [[ "$streak" =~ ^[0-9]+$ ]]; then streak=0; fi
+          alarm_lines="$("$ADB" shell dumpsys alarm | grep -c 'com.brick.safety' || true)"
+          pending="$("$ADB" shell run-as com.brick.safety sh -c \"sqlite3 databases/brick_journal.db 'select count(*) from packets where acked=0;' 2>/dev/null\" | tr -d '\r' | tail -n 1)"
+          if ! [[ "$pending" =~ ^[0-9]+$ ]]; then pending=-1; fi
+
+          # These are CI regression guardrails, not physical-phone power claims. They are deliberately
+          # generous enough to avoid optimizing for emulator quirks while still catching runaway loops.
+          test "$max_rss" -le 262144
+          test "$max_storage" -le 32768
+          test "$max_cpu_milli" -le 80000
+          test "$streak" -le 8
+          test "$alarm_lines" -le 40
+
+          python3 - <<PY
+          import json
+          evidence = {
+            'version': 1,
+            'gitSha': '${GITHUB_SHA}',
+            'platform': 'Android 15 API 35 x86_64 emulator',
+            'workload': '1000 durable location rows + persistent loopback-refusal upload failure',
+            'durationSeconds': 180,
+            'maxRssKb': int('$max_rss'),
+            'maxStorageKb': int('$max_storage'),
+            'maxObservedCpuPercent': int('$max_cpu_milli') / 1000,
+            'coreUploadFailureStreak': int('$streak'),
+            'alarmDumpPackageLineCount': int('$alarm_lines'),
+            'pendingRowsProbe': int('$pending'),
+            'guardrails': {
+              'maxRssKb': 262144,
+              'maxStorageKb': 32768,
+              'maxObservedCpuPercent': 80.0,
+              'maxFailureStreakAfter180s': 8,
+              'maxAlarmDumpPackageLines': 40
+            },
+            'scope': 'CI regression proxy only',
+            'notProvenHere': ['physical battery drain', 'GNSS power', 'sensor power', 'cellular/Wi-Fi radio power', 'ColorOS OEM behavior']
+          }
+          open('resource-evidence/phase8-android-resource-budget.json','w').write(json.dumps(evidence, indent=2))
+          PY
+
+      - name: Prove resource harness cannot ship in release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleRelease --stacktrace
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          APKANALYZER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name apkanalyzer | sort | tail -n 1)"
+          test -x "$APKANALYZER"
+          "$APKANALYZER" manifest print "$APK" > resource-evidence/release-manifest.xml
+          ! grep -F 'Phase8ResourceHarnessReceiver' resource-evidence/release-manifest.xml
+          ! grep -F 'PHASE8_RESOURCE_SEED' resource-evidence/release-manifest.xml
+
+      - name: Upload non-secret resource evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-android-resource-budget-${{ github.sha }}
+          path: resource-evidence/
+          if-no-files-found: warn
+          retention-days: 30
