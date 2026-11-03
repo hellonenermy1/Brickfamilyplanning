@@ -20,6 +20,10 @@ object DeprovisionManager {
     private const val KEY_STAGE = "stage"
     private const val KEY_UPDATED_AT = "updatedAtMs"
 
+    /**
+     * Brick-owned SQLite databases. Library-owned databases (for example WorkManager internals) are
+     * audited separately; this list is only for schemas Brick directly owns and can verify safely.
+     */
     private val brickDatabases = listOf(
         "brick_journal.db",
         "brick_safety_outbox.db",
@@ -27,9 +31,14 @@ object DeprovisionManager {
         "brick_evidence.db",
         "brick_diagnostics.db"
     )
+
+    /** Every SharedPreferences namespace directly owned by Brick production/upgrade code. */
     private val brickPreferences = listOf(
         "brick",
         "brick_position",
+        "brick_activity",
+        "brick_companion_presence",
+        "brick_beta_safety",
         "brick_parent_location",
         "brick_managed_policy_p8",
         "brick_diag_state",
@@ -43,14 +52,20 @@ object DeprovisionManager {
         "brick_device_role_v1",
         "brick_capability_profile_v1"
     )
+
+    /** Encrypted files directly owned by Brick. */
     private val brickFiles = listOf(
         "brick_phase3_state.bin",
-        "brick_atlas_v1.bin"
+        "brick_atlas_v1.bin",
+        "brick_learned_places_v1.bin"
     )
+
+    /** Non-exportable Android Keystore identities/secrets directly owned by Brick. */
     private val brickKeyAliases = listOf(
         "brick-device-signing-v1",
         "brick-journal-aes-v1",
-        "brick-witness-alias-hmac-v1"
+        "brick-witness-alias-hmac-v1",
+        "brick_atlas_hmac_v1"
     )
 
     enum class Stage { NONE, AUTHORISE_FREEZE, QUIESCE, UNDO_DEVICE_MANAGEMENT, PURGE_BRICK, UNINSTALL }
