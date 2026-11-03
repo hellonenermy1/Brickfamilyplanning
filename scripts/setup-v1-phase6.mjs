@@ -19,7 +19,8 @@ const SCHEMAS = [
   'schema/008_v1_phase2_evidence.sql',
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
-  'schema/011_v1_phase6_location_control.sql'
+  'schema/011_v1_phase6_location_control.sql',
+  'schema/015_phase8_device_identity.sql'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -225,71 +226,73 @@ async function applySchema(path) {
   ]);
 }
 
-console.log('\n[1/19] Creating/reusing D1, R2 and Queue resources…');
+console.log('\n[1/20] Creating/reusing D1, R2 and Queue resources…');
 const d1Id = await ensureD1();
 await ensureR2Bucket(HISTORY_BUCKET);
 await ensureR2Bucket(MAPS_BUCKET);
 await ensureQueue(EVENT_QUEUE);
 await ensureQueue(DLQ);
 
-console.log('[2/19] Applying R2 history/evidence retention and multipart cleanup…');
+console.log('[2/20] Applying R2 history/evidence retention and multipart cleanup…');
 await ensureR2Lifecycle();
 
-console.log('[3/19] Verifying Cloudflare Zero Trust organization…');
+console.log('[3/20] Verifying Cloudflare Zero Trust organization…');
 const teamDomain = await zeroTrustOrganization();
 
-console.log('[4/19] Installing locked Node dependencies…');
+console.log('[4/20] Installing locked Node dependencies…');
 await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['ci', '--no-audit', '--no-fund']);
 
-console.log('[5/19] Building same-origin parent assets…');
+console.log('[5/20] Building same-origin parent assets…');
 await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build:parent-assets']);
 
-console.log('[6/19] Type-checking Worker and browser module…');
+console.log('[6/20] Type-checking Worker and browser module…');
 await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'typecheck']);
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '-p', 'tsconfig.web.json', '--noEmit']);
 
 const template = await fs.readFile('wrangler.template.jsonc', 'utf8');
-if (!template.includes('"main": "src/worker-v9.ts"')) throw new Error('Phase 6 setup requires wrangler.template.jsonc to target worker-v9.ts.');
-await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, 'phase6-bootstrap-not-valid'));
+if (!template.includes('"main": "src/worker-v9.ts"')) throw new Error('Phase 8 setup requires wrangler.template.jsonc to target worker-v9.ts.');
+await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, 'phase8-bootstrap-not-valid'));
 
-console.log('[7/19] Applying base schema…');
+console.log('[7/20] Applying base schema…');
 await applySchema(SCHEMAS[0]);
-console.log('[8/19] Applying Phase 2 health migration…');
+console.log('[8/20] Applying Phase 2 health migration…');
 await ensurePhase2Columns(d1Id);
 await applySchema(SCHEMAS[1]);
-console.log('[9/19] Applying Phase 4 safety/history migration…');
+console.log('[9/20] Applying Phase 4 safety/history migration…');
 await ensurePhase4Columns(d1Id);
 await applySchema(SCHEMAS[2]);
 await ensurePhase4Columns(d1Id);
-console.log('[10/19] Applying Phase 5 operations migration…');
+console.log('[10/20] Applying Phase 5 operations migration…');
 await applySchema(SCHEMAS[3]);
-console.log('[11/19] Applying Phase 5C/6 hardening migration…');
+console.log('[11/20] Applying Phase 5C/6 hardening migration…');
 await applySchema(SCHEMAS[4]);
-console.log('[12/19] Applying V1 evidence/data-foundation migration…');
+console.log('[12/20] Applying V1 evidence/data-foundation migration…');
 await applySchema(SCHEMAS[5]);
-console.log('[13/19] Applying V1 Phase 5 fusion migration…');
+console.log('[13/20] Applying V1 Phase 5 fusion migration…');
 await applySchema(SCHEMAS[6]);
-console.log('[14/19] Applying Phase 5B closure migration…');
+console.log('[14/20] Applying Phase 5B closure migration…');
 await applySchema(SCHEMAS[7]);
-console.log('[15/19] Applying V1 Phase 6 location-control migration…');
+console.log('[15/20] Applying V1 Phase 6 location-control migration…');
 await applySchema(SCHEMAS[8]);
+console.log('[16/20] Applying Phase 8 permanent device-identity migration…');
+await applySchema(SCHEMAS[9]);
 
-// All tables required by worker-v9 now exist before the first activation of this candidate. The
+// All tables and constraints required by worker-v9 now exist before the first activation. The
 // placeholder Access AUD deliberately fails parent JWT verification until the exact hostname is
 // reconciled with Cloudflare Access below; child APIs can continue operating with their own keys.
-console.log('[16/19] Activating schema-compatible worker-v9 with parent access locked down…');
+console.log('[17/20] Activating schema-compatible worker-v9 with parent access locked down…');
 const bootstrap = await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy', '--config', GENERATED_CONFIG], { capture: true });
 const hostMatch = String(bootstrap).match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/);
 if (!hostMatch) throw new Error('Worker deployed, but the workers.dev hostname was not detected. Refusing to configure Access against a guessed hostname.');
 const workerHost = hostMatch[1];
 
-console.log('[17/19] Reconciling Cloudflare Access for /parent*…');
+console.log('[18/20] Reconciling Cloudflare Access for /parent*…');
 const access = await ensureAccess(workerHost);
 
-console.log('[18/19] Writing cryptographically verified Access configuration…');
+console.log('[19/20] Writing cryptographically verified Access configuration…');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, access.aud));
 
-console.log('[19/19] Final-deploying worker-v9 with verified Access configuration…');
+console.log('[20/20] Final-deploying worker-v9 with verified Access configuration…');
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy', '--config', GENERATED_CONFIG]);
 
 let sourceGitSha = process.env.GITHUB_SHA?.trim() || '';
@@ -300,12 +303,12 @@ if (!/^[0-9a-f]{40}$/i.test(sourceGitSha)) {
 if (!/^[0-9a-f]{40}$/i.test(sourceGitSha)) throw new Error('Could not determine exact source Git SHA for deployment provenance.');
 
 const state = {
-  phase: 6,
-  v1ProgramPhase: 6,
-  phaseSlice: '6-strict-access-r2-queues-location-control',
+  phase: 8,
+  v1ProgramPhase: 8,
+  phaseSlice: '8-cloud-identity-access-r2-queues-location-control',
   releaseState: 'candidate-not-real-device-qualified',
   sourceGitSha,
-  schemaVersion: 11,
+  schemaVersion: 15,
   appliedSchemas: SCHEMAS,
   accountId,
   d1Id,
@@ -329,11 +332,11 @@ const state = {
 };
 await fs.writeFile('setup-state.json', JSON.stringify(state, null, 2));
 
-console.log('\nBrick Phase 6 strict cloud candidate setup completed.');
+console.log('\nBrick Phase 8 cloud-hardening candidate setup completed.');
 console.log(`Source Git SHA:    ${sourceGitSha}`);
 console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child API base:   https://${workerHost}`);
 console.log(`Current release:  ${CURRENT_APP_VERSION}`);
-console.log('Schemas 001–011 were reconciled before worker-v9 activation.');
+console.log('Schemas 001–011 plus Phase 8 identity schema 015 were reconciled before worker-v9 activation.');
 console.log('R2 history/maps + Queues/DLQ + Cloudflare Access are real Cloudflare resources.');
-console.log('This remains a release candidate until the required real OPPO/ColorOS qualification is completed.');
+console.log('This remains a release candidate until Phase 8 CI acceptance and required real OPPO/ColorOS qualification are completed.');
