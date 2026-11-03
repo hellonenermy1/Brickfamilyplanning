@@ -230,6 +230,6 @@ The legacy three-stage retirement state machine remains historical/implementatio
 
 ## Amendment count
 
-Current amendment IDs in this file: 79.
+Current amendment IDs in this file: 88.
 
 This count is provisional until automated/manual reconciliation confirms every later approved clause has exactly one current requirement mapping and no duplicate semantic requirement remains unresolved.
