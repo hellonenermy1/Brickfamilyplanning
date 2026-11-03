@@ -1,0 +1,23 @@
+name: Brick V1 Phase 8 — Cloud OSV Vulnerability Gate
+
+on:
+  push:
+    branches: [v1-p8-cloud-hardening]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  osv-scan:
+    name: Scan resolved Cloud dependencies against OSV
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    with:
+      scan-args: |-
+        -L package-lock.json
+      fail-on-vuln: true
+      upload-sarif: true
+      ref: ${{ github.sha }}
+      runs-on: ubuntu-24.04
