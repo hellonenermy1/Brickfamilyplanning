@@ -10,6 +10,7 @@ const setup = fs.readFileSync('scripts/setup-v1-phase6.mjs', 'utf8');
 const verifier = fs.readFileSync('scripts/verify-cloudflare-deployment.mjs', 'utf8');
 const wrangler = fs.readFileSync('wrangler.template.jsonc', 'utf8');
 const deployWorkflow = fs.readFileSync('.github/workflows/deploy-brick.yml', 'utf8');
+const tenancy = fs.readFileSync('docs/phase8-tenancy-boundary.md', 'utf8');
 
 requireCondition(pkg.scripts?.setup === 'node scripts/setup.mjs', 'npm setup must use the canonical setup entrypoint');
 requireCondition(entry.includes("await import('./setup-v1-phase6.mjs')"), 'canonical setup must delegate to the production setup');
@@ -80,8 +81,28 @@ for (const marker of [
   "s.workerEntry !== 'src/worker-v9.ts'"
 ]) requireCondition(deployWorkflow.includes(marker), `deployment workflow is missing Phase 8 gate: ${marker}`);
 
+// Brick V1 is deliberately one family per Cloudflare account/deployment, not a multi-family SaaS.
+// The contract must keep resource names/server trust selected by setup, not by an HTTP caller, and
+// must keep the exact per-deployment Access audience in front of /parent*.
+for (const marker of [
+  "const D1_NAME = 'brick-family-v1';",
+  "const HISTORY_BUCKET = 'brick-family-v1-history';",
+  "const MAPS_BUCKET = 'brick-family-v1-maps';",
+  "const EVENT_QUEUE = 'brick-family-v1-events';",
+  "const DLQ = 'brick-family-v1-dlq';",
+  'Set CLOUDFLARE_ACCOUNT_ID explicitly; Brick will not guess.',
+  'const destination = `${workerHost}/parent*`;',
+  'cloudflare_account_member: { account_id: accountId }'
+]) requireCondition(setup.includes(marker), `single-family deployment boundary drifted: ${marker}`);
+for (const marker of [
+  'single-family per Cloudflare deployment/account boundary',
+  'does not accept a caller-provided `familyId`',
+  'Two unrelated families must **not** share one Brick Cloudflare account/deployment',
+  'Cloudflare account membership therefore defines the parent trust group'
+]) requireCondition(tenancy.includes(marker), `Phase 8 tenancy boundary documentation is missing: ${marker}`);
+
 // The release workflow itself is part of the supply chain. Floating major-version Actions are not
 // acceptable even if the separate hardening workflow is pinned.
 requireCondition(!/uses:\s+[^\s#]+@v\d+/m.test(deployWorkflow), 'deployment workflow contains a floating GitHub Action tag');
 
-console.log('Phase 8 deployment contract passed: schema 001-011 plus 015 precede v9 activation, live identity uniqueness is verified, provenance is schema 15, and deployment Actions are SHA-pinned.');
+console.log('Phase 8 deployment contract passed: schema 001-011 plus 015 precede v9 activation, live identity uniqueness is verified, single-family tenancy is explicit, provenance is schema 15, and deployment Actions are SHA-pinned.');
