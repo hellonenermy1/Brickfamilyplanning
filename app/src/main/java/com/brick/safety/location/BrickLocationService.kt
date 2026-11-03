@@ -97,7 +97,9 @@ class BrickLocationService : Service() {
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                kickUploadPump(force = true)
+                // Capability callbacks can repeat for the same network. They may wake the pump, but
+                // must respect an existing transport backoff so callback churn cannot create a storm.
+                kickUploadPump()
             }
             lastHealthElapsed = 0L
         }
