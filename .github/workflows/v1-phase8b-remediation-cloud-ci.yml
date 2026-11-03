@@ -86,7 +86,11 @@ jobs:
           node scripts/test-history-codec.mjs /tmp/brick-history-codec.mjs
 
       - name: Regression — Phase 5 live-state ordering
-        run: node scripts/test-phase5-live-state-order.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install esbuild src/live-state-order.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-live-state-order.mjs
+          node scripts/test-phase5-live-state-order.mjs /tmp/brick-live-state-order.mjs
 
       - name: Regression — one-shot Location control
         run: node scripts/test-phase8-location-control-contract.mjs
