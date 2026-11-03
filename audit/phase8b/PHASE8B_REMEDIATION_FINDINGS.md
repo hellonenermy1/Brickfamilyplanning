@@ -57,3 +57,35 @@ This ledger records defects discovered while retesting Phase 8B remediation bran
 **Required correction:** convert `SafetyOutbox.ack()` to a block body without non-local return from expression body; supply the nullable string array type expected by WorkManager without changing values; import the real diagnostics store in fall runtime. Then rerun the unchanged full Android CI.
 
 **Status:** OPEN — finding recorded before fix.
+
+---
+
+## P8B-R004 — Cloud history-codec CI gate omits the compiled codec module path
+
+**Severity:** P1 HIGH — cloud remediation CI stops before the remaining deterministic regressions and production dry-run can execute.
+
+**Observed baseline:** `v1-p8b-remediation-cloud` at `3adfa9ae1a38f9efd54e292a4fe3f471fead5bd1`.
+
+**Evidence:** GitHub Actions run `41624281473` passes locked dependency install, full TypeScript typecheck, parent asset build, production/P8B wiring and all D1 migrations, then fails at `Regression — history codec`; every later regression and Wrangler dry-run is skipped. `scripts/test-history-codec.mjs` requires `process.argv[2]` and throws `Pass compiled codec module path` when absent, while `.github/workflows/v1-phase8b-remediation-cloud-ci.yml` invokes it as `node scripts/test-history-codec.mjs` with no build step or module path.
+
+**Expected:** the history regression must execute against compiled `src/history-codec.ts` output without changing production semantics, and failure of the test itself—not missing test setup—must govern the gate.
+
+**Required correction:** compile `src/history-codec.ts` into a temporary ESM test module using the already locked toolchain, pass that path to `scripts/test-history-codec.mjs`, and leave all later cloud gates intact.
+
+**Status:** OPEN — finding recorded before CI correction.
+
+---
+
+## P8B-R005 — Android instrumentation regression still calls removed persistent-command helper
+
+**Severity:** P2 MEDIUM — production Kotlin now compiles, but the AndroidTest source is stale and blocks the full Gradle verification gate.
+
+**Observed baseline:** `v1-p8b-remediation-android` at `672d7f231ae7c410a0250e606ca0d4040bf7be84`.
+
+**Evidence:** GitHub Actions run `41624581508`, Gradle diagnostic artifact `13224104823` (`sha256:935fd8a2d90e6760b9eab5de67907512a3c3eb095218ae6d2649dcff4219e8d0`). Debug and release production Kotlin compilation complete, then `:app:compileDebugAndroidTestKotlin` fails at `Phase8ManagedPolicyInstrumentedTest.kt` lines 71, 97 and 118 because `ManagedPolicy.lastConsumedLocationCommandId` no longer exists. Current production code exposes `ManagedPolicy.lastLocationCommand(context)` and stores one-shot command history with status rather than a persistent consumed-ID policy helper.
+
+**Expected:** instrumentation regression must verify current one-shot behavior: a command is attempted at most once, repeated supervisor applies do not replay it, the command remains history with its ID and terminal status, and inherited Phase 7 commands migrate to completed history without replay.
+
+**Required correction:** update only the stale instrumentation assertions to read current command history and terminal status; do not reintroduce the removed helper or persistent desired-state semantics.
+
+**Status:** OPEN — finding recorded before test correction.
