@@ -109,13 +109,31 @@ jobs:
           TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           "$ADB" wait-for-device
 
-          # Do not wait for sys.boot_completed here. As soon as package/user services are ready,
-          # provision the already-installed test DPC while DevicePolicyManagerService still sees the
-          # deliberately pre-setup state from boot.
-          for i in $(seq 1 120); do
-            if "$ADB" shell pm path com.brick.safety 2>/dev/null | grep -Fq 'package:'; then break; fi
+          # adb becomes reachable before all framework services are registered. Wait only for the
+          # services Device Owner provisioning genuinely needs, and continuously reassert the real
+          # pre-setup flags while they start. This avoids waiting for full boot (which lets bare AOSP
+          # auto-finalize setup) without bypassing DevicePolicyManager's owner/account checks.
+          ready=0
+          for i in $(seq 1 90); do
+            "$ADB" shell settings put secure user_setup_complete 0 >/dev/null 2>&1 || true
+            "$ADB" shell settings put global device_provisioned 0 >/dev/null 2>&1 || true
+            account_service="$("$ADB" shell service check account 2>/dev/null | tr -d '\r' || true)"
+            policy_service="$("$ADB" shell service check device_policy 2>/dev/null | tr -d '\r' || true)"
+            package_path="$("$ADB" shell pm path com.brick.safety 2>/dev/null | tr -d '\r' || true)"
+            if grep -Fq 'found' <<<"$account_service" && \
+               grep -Fq 'found' <<<"$policy_service" && \
+               grep -Fq 'package:' <<<"$package_path"; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          test "$ready" = "1"
+
+          "$ADB" shell settings put secure user_setup_complete 0
+          "$ADB" shell settings put global device_provisioned 0
+          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
+          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
           "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
           "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-reboot.txt
           grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-reboot.txt >/dev/null
@@ -123,13 +141,10 @@ jobs:
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
           ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
 
-          # Reassert immediately before the shell command to eliminate the emulator's no-SetupWizard
-          # auto-finalization race. This is still a genuine Android Device Owner precondition: we do
-          # not bypass DevicePolicyManagerService or modify its account/owner checks.
+          # Reassert immediately before provisioning too. Android still performs the actual Device
+          # Owner validation; the workflow only stabilizes the emulator's setup-state race.
           "$ADB" shell settings put secure user_setup_complete 0
           "$ADB" shell settings put global device_provisioned 0
-          test "$("$ADB" shell settings get secure user_setup_complete | tr -d '\r')" = "0"
-          test "$("$ADB" shell settings get global device_provisioned | tr -d '\r')" = "0"
           "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
           "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
           grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
