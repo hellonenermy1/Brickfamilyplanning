@@ -90,8 +90,35 @@ export function releaseStatus(env: Phase5CEnv) {
 }
 
 function safeAuditPath(raw: string) {
-  const u = new URL(raw);
-  return u.pathname.slice(0, 240);
+  // Never persist attacker-controlled path segments, device IDs, pairing-session IDs or URLs.
+  // Log a fixed vocabulary instead; unknown segments intentionally collapse to {redacted}.
+  const segments = new URL(raw).pathname.split("/").slice(1).filter(Boolean);
+  const fixed = new Set([
+    "parent", "api", "pair", "pin", "start", "confirm", "status", "devices", "device",
+    "revoke", "geofences", "ble-anchors", "location-control", "live-track",
+    "wifi-schedules", "rename", "trips", "end", "retention", "screen-time",
+    "commutes", "history", "events", "crashes", "state", "health", "reliability",
+    "battery-drain", "audit", "release", "onemap", "reverse", "logout", "login"
+  ]);
+  const safe = segments.map((segment, index) => {
+    const deviceRoot = segments[0] === "parent" && segments[1] === "api" &&
+      segments[2] === "device";
+    if (deviceRoot && index === 3) return "{device}";
+    if (deviceRoot && index === 5 && ["geofences", "ble-anchors", "trips"].includes(segments[4])) {
+      return "{resource}";
+    }
+    if (segments[0] === "parent" && segments[1] === "api" && segments[2] === "pair" &&
+        segments[3] === "pin" && index === 4 && segment !== "start") return "{session}";
+    return fixed.has(segment) ? segment : "{redacted}";
+  });
+  return ("/" + safe.join("/")).slice(0, 240);
+}
+
+async function pseudonymousAuditDeviceRef(id: string) {
+  // A device ID is a randomly generated UUID: its truncated digest permits D1 audit correlation
+  // without writing its raw ID. Do not apply this approach to low-entropy user-supplied secrets.
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
+  return Array.from(new Uint8Array(bytes)).slice(0, 12).map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
 export async function recordAudit(
@@ -103,8 +130,15 @@ export async function recordAudit(
 ) {
   const sanitizedDetail: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(detail)) {
-    if (forbiddenCrashKey.test(key)) continue;
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) sanitizedDetail[key] = value;
+    if (key === "deviceId" && typeof value === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(value)) {
+      sanitizedDetail.deviceRef = await pseudonymousAuditDeviceRef(value);
+      continue;
+    }
+    // Do not persist arbitrary details or raw IDs/tokens. Audit outcomes remain observable
+    // through the event_type, method, route template, status and a small safe reason vocabulary.
+    if (key === "reason" && typeof value === "string" && /^[a-z0-9_-]{1,64}$/i.test(value)) {
+      sanitizedDetail.reason = value;
+    }
   }
   await env.DB.prepare(
     "INSERT INTO audit_log(event_type,method,path,status,created_at,detail_json) VALUES(?1,?2,?3,?4,?5,?6)"
