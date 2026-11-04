@@ -1,5 +1,9 @@
 # Brick V1 — Phase 8C.19 Race/Concurrency Audit (2026-11-04)
 
+
+**FINAL RACE AUDIT UPDATE — PASS on the frozen Android software boundary.** The last direct held-writer tests (production `purgeBrick` vs service, diagnostic sampler, fall HandlerThread, pre-existing signing task, independent deprovision-origin migration and post-purge late Binder/crypto callbacks) completed successfully as part of [120-test Android 15 emulator run 41769491366](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769491366). Final source `2c492efff01095e17f96af3c24ac07ac0b5c3739`. P8C-008 and other original race findings now **VERIFIED CLOSED in the final closure matrix**. The old `RETEST IN PROGRESS` statements in the preserved chronological report below are historical. OPPO-specific lifecycle/Binder timing remains device verification in Phase 9. [Final decision](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md).
+
+
 **Scope:** `hellonenermy1/Brickfamilyplanning`, branch `v1-p8c-android-deep-audit`. **State:** RETEST IN PROGRESS, not unconditional PASS. Source identity must be read from the exact test run; docs-only commits do not certify new source. Original Phase 8 PDF 8C.19 and its strict no-P1 exit rules apply.
 
 ## Real high-risk races investigated
