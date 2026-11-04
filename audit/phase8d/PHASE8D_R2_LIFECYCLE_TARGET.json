@@ -1,0 +1,30 @@
+{
+  "rules": [
+    {
+      "id": "brick-v1-raw-history-30d",
+      "enabled": true,
+      "conditions": {
+        "prefix": "history/raw/"
+      },
+      "deleteObjectsTransition": {
+        "condition": {
+          "type": "Age",
+          "maxAge": 2592000
+        }
+      }
+    },
+    {
+      "id": "brick-v1-trusted-history-90d",
+      "enabled": true,
+      "conditions": {
+        "prefix": "history/trusted/"
+      },
+      "deleteObjectsTransition": {
+        "condition": {
+          "type": "Age",
+          "maxAge": 7776000
+        }
+      }
+    }
+  ]
+}
