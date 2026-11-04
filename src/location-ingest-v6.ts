@@ -85,7 +85,7 @@ async function queueLocations(env: LocationIngestEnv, deviceId: string, location
  * This separation is intentional: backlog from two reboot epochs can arrive out of order, so a lower
  * logical epoch may still contain the newest event-time point and must be allowed to update live state.
  */
-export async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]) {
+export async function persistAccepted(env: LocationIngestEnv, deviceId: string, packets: LivePacket[], publishLive = true) {
   const logicalHighest = packets.reduce((best, packet) => order(best, packet) < 0 ? packet : best);
   const liveCandidate = newestCapturedPacket(packets);
   const now = Date.now();
@@ -122,10 +122,9 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   }
   const insertedCount = insertResult?.meta.changes ?? 0;
   let liveAdvanced = false;
-  if (insertedCount > 0) {
-    // The DO decides live ordering by capture time first. We still call it for a newly inserted packet
-    // even when D1's logical watermark did not advance, because cross-epoch backlog can arrive out of
-    // order and a lower epoch may contain the newest captured location.
+  if (publishLive && insertedCount > 0) {
+    // Direct test/legacy callers preserve this behavior. Public ingest routes must
+    // defer parent-visible DO state until Queue submission is durable.
     liveAdvanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(liveCandidate);
   }
   return {
@@ -135,6 +134,14 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
     accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence })),
     revoked: false
   };
+}
+
+async function publishAfterQueue(env: LocationIngestEnv, deviceId: string, packets: LivePacket[]): Promise<{ liveAdvanced: boolean; revoked: boolean }> {
+  // Another D1 read narrows the cross-store revocation window. Full atomicity
+  // between D1, Queue and DO is impossible here and remains a live Phase8D gate.
+  if (!(await device(env, deviceId))) return { liveAdvanced: false, revoked: true };
+  const advanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(newestCapturedPacket(packets));
+  return { liveAdvanced: advanced, revoked: false };
 }
 
 async function tryRefineAfterPreciseEndpoint(env: LocationIngestEnv, deviceId: string, preciseEndpointCount: number) {
@@ -158,13 +165,15 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   // Persist/verify current D1 device identity before sending any Queue message. On
   // Queue failure return 503; the child retries and the immutable D1 idempotency
   // index accepts the duplicate retry while Queue durability is recovered.
-  const persisted = await persistAccepted(env, deviceId, [packet]);
+  const persisted = await persistAccepted(env, deviceId, [packet], false);
   if (persisted.revoked) return json({ error: "device unauthorized" }, 401);
   try { await queueLocations(env, deviceId, [{ packet, rawPacket }]); }
   catch { return json({ error: "location queue unavailable; retry" }, 503); }
+  const published = await publishAfterQueue(env, deviceId, [packet]);
+  if (published.revoked) return json({ error: "device unauthorized" }, 401);
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
-  return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: persisted.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
+  return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: published.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
 
 export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
@@ -191,13 +200,15 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
   for (let i = 1; i < rawPackets.length; i++) if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
 
   const packets = await Promise.all(rawPackets.map(packet => trustedPacket(packet, env)));
-  const persisted = await persistAccepted(env, deviceId, packets);
+  const persisted = await persistAccepted(env, deviceId, packets, false);
   if (persisted.revoked) return json({ error: "device unauthorized" }, 401);
   try { await queueLocations(env, deviceId, packets.map((packet, i) => ({ packet, rawPacket: rawPackets[i] }))); }
   catch { return json({ error: "location queue unavailable; retry" }, 503); }
+  const published = await publishAfterQueue(env, deviceId, packets);
+  if (published.revoked) return json({ error: "device unauthorized" }, 401);
   await evaluateSafetyBatchV6(env, deviceId, packets);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
-  return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: persisted.liveAdvanced, routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length });
+  return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: published.liveAdvanced, routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length });
 }
 
 export async function previewLatestLocationV6(req: Request, env: LocationIngestEnv, deviceId: string) {
