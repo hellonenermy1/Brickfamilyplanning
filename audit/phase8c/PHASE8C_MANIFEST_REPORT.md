@@ -78,3 +78,18 @@ Gradle merged-manifest audit run [41756272480](https://github.com/hellonenermy1/
 The latter three are permission-protected AndroidX integration surfaces, not unrestricted Brick actions. The upstream WorkManager manifest explicitly enables DiagnosticsReceiver with `DUMP`; the initial new audit assertion incorrectly expected disabled. This was corrected at `82f0e98a`. Sources: [AndroidX WorkManager manifest](https://github.com/androidx/androidx/blob/androidx-main/work/work-runtime/src/main/AndroidManifest.xml), [AndroidX ProfileInstallReceiver docs](https://developer.android.com/reference/androidx/profileinstaller/ProfileInstallReceiver).
 
 The exhaustive merged-manifest CI still fails if any additional component is exported or any expected permission changes. A source/merged-manifest pass does **not** substitute for final signed APK and installed device evidence.
+
+
+## Verified historical signed RC snapshot — run 41756635965
+
+Exact run: [41756635965](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41756635965), job `126334174221`, completed **SUCCESS** with permanent signing identity, compiled APK verification and signed artifact upload.
+
+- Artifact: `brick-v1-phase8c-signed-rc-abf4713327149eefd2b716bd3c7fb2fd14b1c3a5` (GitHub artifact id `13289287846`).
+- Source commit: `abf4713327149eefd2b716bd3c7fb2fd14b1c3a5`.
+- Package `com.brick.safety`, versionCode `10`, versionName `1.0.0-rc.1`, minSdk 29, targetSdk 35.
+- APK SHA-256 (computed again from downloaded APK bytes, matching the uploaded signed provenance):
+  `b0e7caf9220cc4121c33491f9de4175e08ddf913451b787552b9ee72b459db0e`
+- `apksigner verify --verbose --print-certs`: APK Signature Scheme **v3 verified** (v1/v2 not enabled); RSA **4096-bit** single signing identity; certificate SHA-256 `bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790`, matching pinned original.
+- Actual compiled APK manifest attributes `android:allowBackup=false` and `android:usesCleartextTraffic=false`; no debug/test-only receiver in binary manifest.
+
+**Important limitation:** this is a legitimate signed APK **for `abf47133`**, not the last Phase 8C Android production source. The subsequent privacy-race correction at `0bd66aea` changes `app/src/main` and must be signed and verified separately. Do NOT substitute the older successful signed snapshot for the final current-source release gate.
