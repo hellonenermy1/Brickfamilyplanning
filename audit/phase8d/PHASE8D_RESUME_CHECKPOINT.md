@@ -223,3 +223,33 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 **No production or device impact:** No deployed Workers, secrets, Cloudflare R2/D1 objects, Queues, Access policies, mobile/APK/Android, or family data were changed; only audit branch scripts, workflow, a test fixture and documentation. The read-only workflow's live job red status is a **missing evidence/access failure**, not a source regression.
 
 **Next highest-priority real milestone:** Enable scoped Cloudflare read access, obtain exact active SHA/Worker/Queue/DLQ/R2/Access config results, fix mismatches only after verifying deployed reality, then authorize **separate isolated** destructive full D1+R2+DO restore and fault injection. The PDF Phase8D.1–19 exit gate still applies, 8D NOT PASS, 8E/8F NOT STARTED.
+
+---
+
+## 2026-11-04 Phase 8D P8D-038–042 — live Cloudflare drift truthful-source remediation checkpoint
+
+**Starting branch SHA:** `8eb73928d0d20ece276b8a88992ae8bdd2f70438`; continued same `v1-p8d-backend-deep-audit` branch, no reset. **Latest source/workflow SHA fully green:** `1a04bff4533e592d6dd505a8e9b46c2a4154b6a6`, [CI 41835676509](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41835676509) all THREE jobs SUCCESS; subsequent executable changes for remediation/dev workflows also source-CI verified at same run SHA (check GitHub compare if superseded by docs). Documents appended later and not required to be executable retests. NO Android changes, no Cloudflare resources or production deployment mutated.
+
+**Live GET-only evidence:** [41834309379](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41834309379) and [41835091894](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41835091894). Synthetic attestor succeeded, live account attestor failed with:
+- **Production deployment:** BLOCKED exact source-SHA provenance; active Worker version lacks readable Git annotation; original naive deployment-tag test produced a false attestation.
+- **Development deployment:** BLOCKED same provenance reason; prior green was false-positive from deployment tag.
+- **Production bindings:** DRIFT seven missing `HISTORY`, `MAPS`, `EVENTS`, `PARENT_HISTORY_RATE`, `PARENT_WS_RATE`, `PARENT_GEOCODE_RATE`, `PARENT_COMMUTE_RATE`.
+- **Development bindings:** DRIFT missing `PARENT_GEOCODE_RATE` and `PARENT_COMMUTE_RATE`.
+- **Queue/DLQ:** DRIFT not found after paginated account-level GET; cannot infer queue never existed in a different account or that records were lost.
+- **R2 lifecycle:** BLOCKED read-only audit token lacks R2 metadata GET permission, not proof bucket nonexistent.
+- **Access app:** BLOCKED read-only audit token lacks Access Apps and Policies read permission, not proof app absent.
+
+**Work actually completed:**
+1. **P8D-038 8D.1:** corrected active Worker deployment/version provenance. Uses actual version-specific metadata GET; no fabricated source SHA when tag absent/permission denied; synthetic tests now cover missing metadata and split traffic.
+2. **P8D-039 8D.9:** properly paginates exact allowlisted Cloudflare Queue GET, hard-capped at 20 pages; reports total count and separate Queue/DLQ matches without dumping unrelated names; synthetic 100+2 queues test GREEN.
+3. **P8D-040 8D.1/.9/.14:** new source contract test matches production/dev Wrangler Worker main, D1, R2, Queue+DLQ, DO, distinct rate namespaces and Access placeholders; CI GREEN. Source config has expected bindings but deployed Cloudflare does NOT.
+4. **P8D-041 8D.1/.9/.11/.17:** deterministic sanitized 7-target remedial plan script and negative tests. The live workflow now uploads both audit result and plan; plan automatically rejects incomplete/duplicate/UNKNOWN and **never makes Cloudflare mutations or asserts release PASS**. Corrected its Node module exact-entrypoint guard after [failed CI 41835145599](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41835145599); strict GREEN 41835676509.
+5. **P8D-042 8D.19/.11/.14:** repaired old `deploy-brick-development.yml` which targeted obsolete `v1-p6c-parent-beta-cloud` and checked for obsolete 6-digit PIN. New workflow **manual dispatch only**, requires audited dev branch, high-entropy secret `BRICK_DEV_PARENT_ACCESS_TOKEN`, current `setup:development`, zero production R2/Queue, exact dev D1, all new quotas, real parent deny/forged-header smoke; production release pipeline still manually gated behind accepted branch and `FINAL STATUS: PASS`. Source tests GREEN 41835676509. **Dev was NOT redeployed**.
+6. **8D.19 deployment history:** Current accessible 100 GitHub Actions records contained no `Deploy Brick` production workflow execution, and `v1-p8d-accepted-backend` accepted branch not present among fetched branches; cannot claim full GitHub historical absence or exact Cloudflare deployment origin. Production remains forbidden until approved live sign-off.
+7. **Live safety classification:** separated actual missing deployed bindings/Queue names from R2+Access permission blockers and unverifiable Worker SHA, preventing false “all fixed” claim. No live R2/Access read permission was granted (requires token admin).
+
+**Docs:** `audit/phase8d/PHASE8D_LIVE_DRIFT_REMEDIATION_2026-11-04.md`, updated 19-section execution matrix, findings and retest. Source vs live evidence explicitly separated. This run did NOT run destructive Cloudflare tests, real isolated D1/R2/DO recovery, release rollback, real Queue interleavings, live WS/Access authorization or device/Android tests.
+
+**Next best verified action:** Cloudflare token owner grants only Account `Workers R2 Storage Read` and `Access: Apps and Policies Read` to the *existing dedicated audit token* for this account, then rerun the read-only audit. Next, manually qualify isolated development workflow once its dedicated high-entropy dev parent token is configured and approved; do NOT directly deploy source to production until 8D final acceptance and Cloudflare backups/recovery proof.
+
+**Phase 8D IN PROGRESS / NOT PASS.** No Phase 8E/8F, no production deploy, no Android source edits. This checkpoint supersedes the earlier uncorrected 7-target “dev provenance attested” claim from [attempt 3, 41827760516](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41827760516).
