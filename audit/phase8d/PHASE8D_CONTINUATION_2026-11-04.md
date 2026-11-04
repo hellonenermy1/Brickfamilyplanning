@@ -1,6 +1,6 @@
 # Phase 8D continuation — routed revocation, development parity and recovery coverage
 
-**State: IN PROGRESS / NOT PASS.** Continued existing `v1-p8d-backend-deep-audit` from `ea23177c21d39864a152f9963d68b939d1a754bb`. No Android change, deployment, live SQL, Cloudflare resource creation or family-data access. Current source CI result must be attached after the commit; local results below are not a hosted CI claim.
+**State: IN PROGRESS / NOT PASS.** Continued existing `v1-p8d-backend-deep-audit` from `ea23177c21d39864a152f9963d68b939d1a754bb`. No Android change, deployment, live SQL, Cloudflare resource creation or family-data access. Executable SHA `00e0174a3181a52550840a178bf29b4d5d1e087c`: [hosted source CI](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41854951853) **3/3 jobs SUCCESS**. Hosted and local scopes are distinguished below.
 
 ## Confirmed defects and corrections
 
@@ -25,7 +25,7 @@ Four groups PASS:
 
 Harness startup initially used a temporary module outside its default module root, causing workerd path resolution failure. Setting an explicit disposable modulesRoot fixed the harness. Neither harness configuration issue is claimed as a Brick production defect.
 
-This is **local workerd evidence**, not active deployed Worker provenance, real Cloudflare service quotas/concurrency/hibernation, physical phone behavior, full DO disaster recovery or production rollback. The recovery API still restores D1 only; HISTORY/DO inventories and controlled cutover remain separate gates. Larger durable backups increase memory/response-size risk: current row/decoded-size checks fail closed; hosted scale/limit validation remains required.
+This is **local workerd evidence**, not active deployed Worker provenance, real Cloudflare service quotas/concurrency/hibernation, physical phone behavior, full DO disaster recovery or production rollback. The recovery API still restores D1 only; HISTORY/DO inventories and controlled cutover remain separate gates. Larger durable backups increase memory/response-size risk: the current per-table row limit fails closed, but decompression/decoded-size bounds and hosted scale/limit validation remain required.
 
 ## Regression scope
 
@@ -46,10 +46,17 @@ Token owner must add only scoped **Workers R2 Storage Read, Access Apps and Poli
 
 ## Next execution gates, preserve all prior work
 
-1. Inspect exact new hosted source CI, resolve regressions before claiming source closure.
+1. Preserve exact hosted source CI proof; current source regressions are green.
 2. Obtain read-only metadata scopes, verify active source, prod/dev D1 isolation and Access app/policy.
 3. Prepare authorized binding/Queue/Access remediation with rollback; no production release before separate accepted branch and final PASS.
 4. Upgrade isolated live drill to actual current D1/R2 snapshots plus DO state/inventory, destruction and recovery; exercise scale/limits and rollback.
 5. Complete live Queue crash/ACK/retry/DLQ and cross-store revocation faults, session ownership/WS reconnect/hibernation, retention and release rollback. Keep all 19-section matrix and 525 requirements traceability honest.
 
 **No 8D final acceptance; no Phase 8E/8F started.** Frozen Android `2c492efff01095e17f96af3c24ac07ac0b5c3739` unchanged.
+
+
+## Hosted source CI verified — 00e0174a3181a52550840a178bf29b4d5d1e087c
+
+[Source audit run 41854951853](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41854951853) **SUCCESS, 3/3 jobs**: deployment contract 126660945591 (7/7 steps), backup inventory 126660944772 (7/7), source build 126660945431 (64/64). Actual job log read after completion: all new routed-revoke, dev migration/route, v3 coverage/legacy-drill refusal, native workerd groups and prior regressions pass. SQLite CLI epoch/PIN race/schema checks and isolated source-destruction/38-table restore also pass in Ubuntu CI; earlier local CLI unavailability is resolved by this hosted evidence, not relabeled as a local pass. Evidence extract: `PHASE8D_SOURCE_CI_41854951853.txt`; lines are log summaries, not an asserted independent-test count.
+
+P8D-050/051 corrections are SOURCE/CI VERIFIED at this SHA; P8D-002 expanded D1 recovery is SOURCE/CI VERIFIED but full cloud D1+R2+DO recovery P1 remains OPEN. Cross-store atomic revoke, deployed dev parity and live configuration/security remain unproven. Follow-up changes after this executable SHA are documentation/evidence only. Frozen Android unchanged; no deployment, Cloudflare mutation or family data access. **Phase 8D NOT PASS; 8E/8F not started.**

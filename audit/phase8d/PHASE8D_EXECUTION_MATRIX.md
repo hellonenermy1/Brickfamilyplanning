@@ -36,3 +36,10 @@
 **P8D-001**, then **P8D-002**, then **8D.2 endpoint inventory + 8D.3/8D.6 trust boundaries**. Collect live Cloudflare identity in parallel using an authorized read-only action; until accessible keep 8D.1 blocked.
 
 Current continuation: 8D.3/.7/.10 P8D-050 actual routed Fast Live + persisted DO revoke fence corrected and locally verified; 8D.1/.8/.19 P8D-051 fresh development schema/entry/upgrade parity corrected; 8D.16 P8D-002 v3 38 durable-table recovery and all-48-table classification locally verified. Native local workerd exercises D1/Queue/R2/DO/JWT/WS alarm/reload/current D1 recovery. Hosted CI pending exact commit; all live gates stay OPEN. See `PHASE8D_CONTINUATION_2026-11-04.md`.
+
+
+## Hosted source CI verified — 00e0174a3181a52550840a178bf29b4d5d1e087c
+
+[Source audit run 41854951853](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41854951853) **SUCCESS, 3/3 jobs**: deployment contract 126660945591 (7/7 steps), backup inventory 126660944772 (7/7), source build 126660945431 (64/64). Actual job log read after completion: all new routed-revoke, dev migration/route, v3 coverage/legacy-drill refusal, native workerd groups and prior regressions pass. SQLite CLI epoch/PIN race/schema checks and isolated source-destruction/38-table restore also pass in Ubuntu CI; earlier local CLI unavailability is resolved by this hosted evidence, not relabeled as a local pass. Evidence extract: `PHASE8D_SOURCE_CI_41854951853.txt`; lines are log summaries, not an asserted independent-test count.
+
+P8D-050/051 corrections are SOURCE/CI VERIFIED at this SHA; P8D-002 expanded D1 recovery is SOURCE/CI VERIFIED but full cloud D1+R2+DO recovery P1 remains OPEN. Cross-store atomic revoke, deployed dev parity and live configuration/security remain unproven. Follow-up changes after this executable SHA are documentation/evidence only. Frozen Android unchanged; no deployment, Cloudflare mutation or family data access. **Phase 8D NOT PASS; 8E/8F not started.**

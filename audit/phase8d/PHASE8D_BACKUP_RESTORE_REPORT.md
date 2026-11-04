@@ -1,3 +1,5 @@
+> **Current evidence supersedes the historical implementation details below.** Executable `00e0174a3181a52550840a178bf29b4d5d1e087c`, [CI 41854951853](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41854951853) 3/3 jobs SUCCESS: v3 captures/restores 38 durable tables in one snapshot transaction, all 48 schema tables have an explicit recovery class. Nonempty coverage, native workerd D1/R2 snapshot/fresh restore and SQLite source-destruction drill pass. Historical v1/v2 are explicitly incomplete current coverage. The old live v2 helper now fails before network/resource creation; it needs upgrading. Full live D1+R2+DO recovery, scale/decoded-size limits and cutover remain OPEN. See `PHASE8D_CONTINUATION_2026-11-04.md`. The historical per-table torn snapshot concern below was already corrected before this continuation; it is not the current implementation.
+
 # Phase 8D — Backup / restore evidence (8D.16, P8D-002)
 
 **Source SHA:** `168b192f2912a44144d55ec2bae3bc64d1580e58` (backup changes in `5138b3c3`; later changes to unrelated dev authentication/controls do not alter backup logic).
