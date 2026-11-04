@@ -12,7 +12,8 @@ async function fixture({revokeInQueue=false,revokeAtLastAuth=false,collision=fal
  const env={DB:adapter(db,(sql)=>{if(sql.includes('SELECT public_key_spki_b64,revoked_at')){authReads++;if(revokeAtLastAuth&&authReads===3)db.prepare('UPDATE devices SET revoked_at=1 WHERE id=?1').run(DEVICE_A);}}),
   EVENTS:{async send(){sends++;if(revokeInQueue)db.prepare('UPDATE devices SET revoked_at=1 WHERE id=?1').run(DEVICE_A);}},
   DEVICE_RATE:{async limit(){return{success:true};}},BRICK_DEVICE:{idFromName(x){return x;},get(){return{async readSafetyHighWater(){return 0;},async commitSafetyHighWater(){},async pushSafetyEvent(){pushes++;}};}}};
- const send=async(extra={})=>worker.fetch(await key.signed('https://brick.invalid/api/device/'+DEVICE_A+'/event',{protocol:1,kind:'fall_detected',eventId:EVENT,eventSequence:1,createdAtMs:Date.now(),detail:{confidence:'high'},...extra}),env,{waitUntil(){}});
+ const createdAt=Date.now();
+ const send=async(extra={})=>worker.fetch(await key.signed('https://brick.invalid/api/device/'+DEVICE_A+'/event',{protocol:1,kind:'fall_detected',eventId:EVENT,eventSequence:1,createdAtMs:createdAt,detail:{confidence:'high'},...extra}),env,{waitUntil(){}});
  return{db,send,get sends(){return sends;},get pushes(){return pushes;},get authReads(){return authReads;}};
 }
 await check('P8D-057 fall revoked during Queue send returns401 without D1/DO event',async()=>{

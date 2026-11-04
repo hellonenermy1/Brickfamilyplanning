@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: brick-v1-phase8-production
@@ -29,6 +30,8 @@ jobs:
     steps:
       - name: Checkout selected Phase 8 ref
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js 24
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -40,13 +43,16 @@ jobs:
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'Missing workflow input: cloudflare_account_id' >&2; exit 1; }
           test "$GITHUB_REF_NAME" = "v1-p8d-accepted-backend" || { echo 'Production deployment requires the separately accepted v1-p8d-accepted-backend release branch; never deploy directly from the audit branch.' >&2; exit 1; }
           test -s audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.md || { echo 'Phase 8D final acceptance record is required for release branch.' >&2; exit 1; }
-          grep -F 'FINAL STATUS: PASS' audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.md >/dev/null || { echo 'Phase 8D final acceptance gate is not PASS.' >&2; exit 1; }
+          # FINAL STATUS: PASS must be an exact verdict backed by the structured
+          # PHASE8D_FINAL_ACCEPTANCE.json, reviewed evidence and unchanged CI source.
+          node scripts/verify-phase8d-release-acceptance.mjs
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "Deploying exact Phase 8 source SHA: $GITHUB_SHA"
 

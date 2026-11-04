@@ -21,6 +21,11 @@ for(const [name,text] of entries){
 assert.match(deploy,/test "\$GITHUB_REF_NAME" = "v1-p8d-accepted-backend"/);
 assert.match(deploy,/PHASE8D_FINAL_ACCEPTANCE\.md/);
 assert.match(deploy,/FINAL STATUS: PASS/);
+assert.doesNotMatch(deploy,/grep -F 'FINAL STATUS: PASS'/);
+assert.match(deploy,/verify-phase8d-release-acceptance\.mjs/);
+assert.match(deploy,/PHASE8D_FINAL_ACCEPTANCE\.json/);
+assert.match(deploy,/fetch-depth: 0/);
+assert.match(deploy,/actions: read/);
 assert.match(deploy,/test "\$\(git rev-parse HEAD\)" = "\$GITHUB_SHA"/);
 assert.match(deploy,/npm ci --no-audit --no-fund/);
 assert.match(deploy,/npm audit --audit-level=high/);

@@ -1,4 +1,4 @@
-import { persistActiveSafetyEvent, validSafetyCoordinates } from "./safety-event-write";
+import { persistActiveSafetyEvent, checkSafetyEventIdentity, validSafetyCoordinates } from "./safety-event-write";
 import { readBoundedBody } from "./bounded-body";
 import { validateSafetyReplayWindow } from "./device-json-security";
 import type { BrickDevice, RealtimeSafetyEvent } from "./device-do";
@@ -39,31 +39,29 @@ export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, devi
   const detailJson = JSON.stringify(d);
   if (detailJson.length > 4096) return json({ error: "fall evidence bundle too large" }, 400);
 
-  const existing = await env.DB.prepare("SELECT id,kind FROM safety_events WHERE id=?1 AND device_id=?2").bind(eventId, deviceId).first<{ id: string; kind: string }>();
-  if (existing) {
-    const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1").bind(deviceId).first<{ revoked_at: number | null }>();
-    if (!life || life.revoked_at !== null) return json({ error: "device unauthorized" }, 401);
-    if (existing.kind !== "fall_detected") return json({ error: "safety event identity conflict" }, 409);
-    return json({ ok: true, eventId, duplicate: true });
-  }
+  const now = Date.now();
+  const lat = typeof value.latitude === "number" ? value.latitude : null;
+  const lon = typeof value.longitude === "number" ? value.longitude : null;
+  const accuracy = typeof value.accuracyM === "number" ? value.accuracyM : null;
+  const write = { id: eventId, deviceId, kind: "fall_detected", deviceCreatedAt: createdAt, serverCreatedAt: now,
+    latitude: lat, longitude: lon, accuracyM: accuracy, detailJson };
+  const identity = await checkSafetyEventIdentity(env.DB, write);
+  if (identity === "revoked") return json({ error: "device unauthorized" }, 401);
+  if (identity === "conflict") return json({ error: "safety event identity conflict" }, 409);
+  if (identity === "duplicate") return json({ ok: true, eventId, duplicate: true });
 
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
-  const highWater = await stub.readSafetyHighWater();
-  if (sequence <= highWater) return json({ error: "replayed or out-of-order safety event" }, 409);
+  // SafetyOutbox sends by priority, not sequence. An unseen, correctly signed
+  // older UUID inside the allowed window must not be discarded by a DO maximum.
+  // UUID + immutable persisted event content is the retry identity; this counter
+  // remains diagnostic and must not become a global arrival-order requirement.
 
   // Queue durability is required before ACK, exactly like other critical safety events. LOW/MEDIUM
   // also use the queue because the evidence bundle is small and safety-relevant.
   try { await env.EVENTS.send({ type: "safety_receipt", deviceId, eventId, kind: "fall_detected", createdAtMs: createdAt }); }
   catch { return json({ error: "safety durability queue unavailable" }, 503); }
 
-  const lat = typeof value.latitude === "number" && Number.isFinite(value.latitude) && value.latitude >= -90 && value.latitude <= 90 ? value.latitude : null;
-  const lon = typeof value.longitude === "number" && Number.isFinite(value.longitude) && value.longitude >= -180 && value.longitude <= 180 ? value.longitude : null;
-  const accuracy = typeof value.accuracyM === "number" && Number.isFinite(value.accuracyM) && value.accuracyM >= 0 && value.accuracyM <= 100_000 ? value.accuracyM : null;
-  const now = Date.now();
-  const outcome = await persistActiveSafetyEvent(env.DB, {
-    id: eventId, deviceId, kind: "fall_detected", deviceCreatedAt: createdAt, serverCreatedAt: now,
-    latitude: lat, longitude: lon, accuracyM: accuracy, detailJson
-  });
+  const outcome = await persistActiveSafetyEvent(env.DB, write);
   if (outcome === "revoked") return json({ error: "device unauthorized" }, 401);
   if (outcome === "conflict") return json({ error: "safety event identity conflict" }, 409);
   if (outcome === "duplicate") return json({ ok: true, eventId, duplicate: true });

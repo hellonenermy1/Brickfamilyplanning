@@ -1,0 +1,23 @@
+Baseline28d8a73d82cb99c09ac3f3bf8bc9bff3912fd571 (code9b2601d). Synthetic signed Worker/nativeSQLite; no Cloudflare data.
+
+061/062:
+FAIL P8D-061 same UUID changed timestamp conflicts: fall_detected: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed coordinates conflicts: fall_detected: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed accuracy conflicts: fall_detected: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed detail conflicts: fall_detected: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed timestamp conflicts: sos_started: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed coordinates conflicts: sos_started: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed accuracy conflicts: sos_started: Expected values to be strictly equal:
+FAIL P8D-061 same UUID changed detail conflicts: sos_started: Expected values to be strictly equal:
+PASS P8D-061 semantically identical detail with different object key order remains duplicate
+FAIL P8D-062 older queued fall survives a higher delivered fall sequence: Expected values to be strictly equal:
+FAIL P8D-062 reconstructed DO diagnostic high-water does not discard valid UUID: Expected values to be strictly equal:
+PASS P8D-062 stale timestamp still refused despite distinct valid UUID
+
+063:
+REPRODUCED old production substring gate accepted invalid acceptance case1; exit0
+REPRODUCED old production substring gate accepted invalid acceptance case2; exit0
+REPRODUCED old production substring gate accepted invalid acceptance case3; exit0
+
+064:
+AssertionError [ERR_ASSERTION]: deleted UUID while signed future-skew timestamp remained replay-valid

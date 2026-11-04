@@ -72,8 +72,9 @@ try {
   console.log("PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT");
 
   const safetyId = "33333333-3333-4333-8333-333333333333";
+  const safetyCreatedAt = Date.now();
   async function signedSafety(extra = {}) {
-    const body = JSON.stringify({ protocol:1, kind:"fall_detected", eventId:safetyId, eventSequence:1, createdAtMs:Date.now(), detail:{confidence:"high"}, ...extra });
+    const body = JSON.stringify({ protocol:1, kind:"fall_detected", eventId:safetyId, eventSequence:1, createdAtMs:safetyCreatedAt, detail:{confidence:"high"}, ...extra });
     const bytes = new TextEncoder().encode(body);
     const signature = Buffer.from(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},key.pair.privateKey,bytes)).toString("base64");
     return mf.dispatchFetch("http://localhost/api/device/"+DEVICE_A+"/event",{method:"POST",headers:{"X-Brick-Signature":signature,"Content-Type":"application/json"},body});

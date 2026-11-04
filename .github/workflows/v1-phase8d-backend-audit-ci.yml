@@ -72,6 +72,7 @@ jobs:
           node scripts/test-phase8d-fast-live-revoke.mjs /tmp/brick-p8d-prod-worker.mjs
           node scripts/test-phase8d-do-telemetry-fences.mjs /tmp/brick-p8d-prod-worker.mjs
           node scripts/test-phase8d-safety-route-races.mjs /tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-safety-retry-contract.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: P8D-051 current development route schema and interrupted upgrade parity
         run: |
           npx --no-install esbuild src/worker-v10.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-dev-worker.mjs
@@ -214,7 +215,9 @@ jobs:
           npx --no-install esbuild src/commute-scheduler.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-commute-scheduler.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-commute-scheduler-sqlite.mjs /tmp/brick-p8d-commute-scheduler.mjs
       - name: 8D.19 enforce immutable CI actions, accepted-branch deployment gate and source SHA
-        run: node scripts/test-phase8d-release-gates.mjs
+        run: |
+          node scripts/test-phase8d-release-gates.mjs
+          node scripts/test-phase8d-release-acceptance.mjs
       - name: P8D-029 fail-closed OneMap and commute parent quotas
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
@@ -274,6 +277,7 @@ jobs:
           npx --no-install esbuild src/phase5c.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-phase5c.mjs
           npx --no-install esbuild src/phase5-ops.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-ops.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-retention-sqlite.mjs /tmp/brick-p8d-retention.mjs /tmp/brick-p8d-phase5c.mjs /tmp/brick-p8d-ops.mjs
+          node scripts/test-phase8d-safety-retention-replay.mjs /tmp/brick-p8d-retention.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: P8D-013 redaction of identifiers in D1 audit path and detail
         run: |
           npx --no-install esbuild src/phase5c.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-phase5c.mjs
