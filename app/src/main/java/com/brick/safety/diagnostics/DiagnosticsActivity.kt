@@ -83,6 +83,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     private fun buildPostPurgeUi(): View {
+        val invalidStage = DeprovisionManager.stage(this) == DeprovisionManager.Stage.INVALID
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
         val root = LinearLayout(this).apply {
@@ -90,12 +91,16 @@ class DiagnosticsActivity : AppCompatActivity() {
             setPadding(dp(20), dp(24), dp(20), dp(28))
         }
         root.addView(TextView(this).apply {
-            text = "Brick removal"
+            text = if (invalidStage) "Brick recovery required" else "Brick removal"
             textSize = 23f
             setTypeface(typeface, Typeface.BOLD)
         })
         root.addView(TextView(this).apply {
-            text = "Brick local state has been purged. Only the uninstall handoff remains. No tracking, diagnostics, recovery, evidence, keys, or other Brick runtime state will be recreated."
+            text = if (invalidStage) {
+                "Deprovision metadata is invalid. Brick stays stopped to protect your data and device policies. Purge/release state cannot be verified. An authorised repair is required before the deprovision flow can continue."
+            } else {
+                "Brick local state has been purged. Only the uninstall handoff remains. No tracking, diagnostics, recovery, evidence, keys, or other Brick runtime state will be recreated."
+            }
             textSize = 14f
             setPadding(0, dp(10), 0, dp(18))
         })
@@ -105,7 +110,8 @@ class DiagnosticsActivity : AppCompatActivity() {
             textSize = 13f
         })
         root.addView(Button(this).apply {
-            text = "Uninstall Brick"
+            text = if (invalidStage) "Deprovision repair required" else "Uninstall Brick"
+            isEnabled = !invalidStage
             isAllCaps = false
             setOnClickListener {
                 val result = DeprovisionManager.uninstall(applicationContext)
@@ -345,6 +351,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     private fun confirmAdvanceDeprovision() {
         val stage = DeprovisionManager.stage(this)
         val next = when (stage) {
+            DeprovisionManager.Stage.INVALID -> "RECOVERY REQUIRED"
             DeprovisionManager.Stage.NONE -> "AUTHORISE/FREEZE"
             DeprovisionManager.Stage.AUTHORISE_FREEZE -> "QUIESCE"
             DeprovisionManager.Stage.QUIESCE -> "UNDO DEVICE MANAGEMENT"
@@ -359,6 +366,7 @@ class DiagnosticsActivity : AppCompatActivity() {
             .setPositiveButton("CONTINUE") { _, _ ->
                 worker.execute {
                     val result = when (stage) {
+                        DeprovisionManager.Stage.INVALID -> DeprovisionManager.Result(stage, false, "deprovision state invalid; repair required")
                         DeprovisionManager.Stage.NONE -> DeprovisionManager.authoriseFreeze(applicationContext)
                         DeprovisionManager.Stage.AUTHORISE_FREEZE -> DeprovisionManager.quiesce(applicationContext)
                         DeprovisionManager.Stage.QUIESCE -> DeprovisionManager.undoDeviceManagement(applicationContext)
