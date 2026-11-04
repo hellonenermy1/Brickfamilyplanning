@@ -212,3 +212,10 @@
 - **Reproduction:** count RFC-style quoted fields across 49 rows and compare to the header; create a fail-before-fix CI gate.
 - **Correction:** add a `source_evidence_level` header in the 6th position; preserve all 49 rows verbatim except evidence revisions grounded in executed tests; CI-enforce consistent schema, unique routes, nonempty fields and declared verification states.
 - **Status:** OPEN — finding recorded before remediation. Live endpoint reachability and complete route inventory remain separate 8D.2 tasks.
+  
+### P8D-012 exact-source correction and CI closure (2026-11-04)
+
+- **RED:** `04a39b439b4c5b5c35819e438258b1473f71b2df`, [run 41799035064](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799035064): new schema validator failed solely because 49 twelve-field rows had an eleven-field header. Two unrelated jobs passed.
+- **Fix:** `48e82f1e461ff9fe99ffea4613908c54211926fe` adds `source_evidence_level` as field 6, preserving all 49 routes, adds exact P8D-011 scope/evidence for WS row without claiming live PASS.
+- **GREEN:** [run 41799170739](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799170739): all three Phase 8D CI jobs SUCCESS including the 49-row exact-width/uniqueness/explicit-status regression.
+- **Disposition:** P8D-012 **FIXED → RETESTED → VERIFIED CLOSED** for **CSV evidence schema only**. Complete 8D.2 method/auth/input/output/rate/log evidence and runtime endpoint discovery remain pending.
