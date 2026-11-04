@@ -27,10 +27,11 @@ async function run(kind,html){
  }
  let timerId=0;
  const context={WebSocket:FakeSocket,location:{protocol:"https:",host:"brick.invalid"},navigator:{onLine:true},currentDevice:"",ws:null,phase5StateTimer:null,
-  phase5WsRetry:0,portalReconnectAttempt:0,portalLastMessageAt:0,
+  phase5WsRetry:0,phase5WsRenewTimer:null,portalReconnectAttempt:0,portalLastMessageAt:0,
   clearInterval(id){intervals.delete(id)},
   setInterval(fn,delay){const id=++timerId;intervals.add(id);return id;},
-  setTimeout(fn,delay){timeouts.push({fn,delay});return ++timerId;},
+  setTimeout(fn,delay){const id=++timerId;timeouts.push({id,fn,delay});return id;},
+  clearTimeout(id){const i=timeouts.findIndex(x=>x.id===id);if(i>=0)timeouts.splice(i,1);},
   wsMessage(m){received.push(m)},
   async refreshPhase5State(){},async loadLocationControl(){},
   setPortalLive(){},portalLog(){},
@@ -63,6 +64,15 @@ async function run(kind,html){
  third.onclose?.({code:4001,reason:"Subscription expired"});
  assert.equal(timeouts.length,1,kind+" normal expiry did not schedule reconnect");
  assert(timeouts[0].delay>=500&&timeouts[0].delay<=15000,kind+" retry outside bounded backoff");
+ context.connect("child-d");
+ const fourth=sockets[3];
+ fourth.onopen?.({});
+ const renew=timeouts.filter(t=>t.delay>=20000&&t.delay<=26000);
+ assert.equal(renew.length,1,kind+" must proactively renew before the 30-second server lease expires");
+ renew[0].fn();
+ assert.equal(sockets.length,5,kind+" proactive renewal did not open a new authenticated connection");
+ assert.equal(fourth.readyState,3,kind+" proactive renewal did not retire previous socket");
+ 
  console.log("PASS "+kind+" browser generated WS: obsolete events ignored, fallback refresh isolated, terminal revocation stops retry, 30s lease reconnect bounded");
 }
 await run("production",parentV8Html());
