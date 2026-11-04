@@ -15,7 +15,7 @@ const {parentConfirmPin}=await import(pathToFileURL(bundle).href);
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),"brick-p8d-pin-race-")),db=path.join(dir,"pin.sqlite");
 const id=crypto.randomUUID(),winner=crypto.randomUUID(),now=Date.now();
 const origin="https://brick.example";
-function dbRaw(sql){return execFileSync("sqlite3",["-json",db],{input:"PRAGMA foreign_keys=ON;\n"+sql,encoding:"utf8",maxBuffer:8*1024*1024}).trim();}
+function dbRaw(sql){return execFileSync("sqlite3",["-bail","-json",db],{input:"PRAGMA foreign_keys=ON;\n"+sql,encoding:"utf8",maxBuffer:8*1024*1024}).trim();}
 function q(sql){const out=dbRaw(sql);return out?JSON.parse(out):[];}
 function lit(v){if(v===null)return "NULL";if(typeof v==="string")return "'"+v.replaceAll("'","''")+"'";if(typeof v==="number"&&Number.isFinite(v))return String(v);throw Error("invalid SQL value");}
 function sub(sql,args){return sql.replace(/\?(\d+)/g,(_s,n)=>{const i=Number(n)-1;assert(i<args.length);return lit(args[i]);});}
@@ -48,11 +48,13 @@ const env={PAIR_RATE:{async limit(){return {success:true};}},DB:{
 }};
 const request=()=>new Request(origin+"/parent/api/pair/pin/"+id,{method:"POST",headers:{Origin:origin}});
 try{
- for(const file of ["001_init.sql","015_phase8_device_identity.sql","018_p8b_pin_pairing.sql"])q(fs.readFileSync(path.join("schema",file),"utf8"));
+ for(const file of ["001_init.sql","002_phase2_health.sql","003_phase4_safety.sql","004_phase5_operations.sql","007_phase5c_hardening.sql","008_v1_phase2_evidence.sql","009_v1_phase5_fusion.sql","010_phase5b_closure.sql","011_v1_phase6_location_control.sql","015_phase8_device_identity.sql","016_p8b_remediation.sql","017_p8b_provider_rate.sql","018_p8b_pin_pairing.sql"])q(fs.readFileSync(path.join("schema",file),"utf8"));
  const pair=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign","verify"]);
  const spki=Buffer.from(await crypto.subtle.exportKey("spki",pair.publicKey)).toString("base64");
  q("INSERT INTO pairing_pin_sessions(id,pin_hash,device_name,created_at,expires_at,claimed_at,pending_public_key_spki_b64,claim_secret_hash) VALUES("+lit(id)+",'fake-hash-unique','Child',"+(now-5000)+","+(now+600000)+","+(now-1000)+","+lit(spki)+",'synthetic-claim-hash')");
  const response=await parentConfirmPin(request(),env,id);
+ assert.equal(q("SELECT COUNT(*) AS n FROM devices")[0].n,1,"real UNIQUE index prevents double registration even on losing race");
+ assert.equal(q("SELECT device_id FROM pairing_pin_sessions WHERE id="+lit(id))[0].device_id,winner,"winner session must remain intact");
  assert.equal(response.status,200,"competing winner must resolve idempotently instead of false 500; got "+response.status);
  const body=await response.json();
  assert.equal(body.deviceId,winner,"loser must report already confirmed winning device");
