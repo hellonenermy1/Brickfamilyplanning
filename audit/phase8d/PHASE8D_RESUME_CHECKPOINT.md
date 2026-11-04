@@ -83,3 +83,14 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 - **New P8D-011 P1 provisional**: WS active subscription expiry and session/device revocation enforcement not demonstrated. Requires negative test+design+live isolated Cloudflare DO/WS proof.
 - **Still open:** 8D.1 actual Cloudflare deployment identity, P8D-002 full D1/R2/DO recovery, P8D-003 dev credential rotation and D1 session revocation, 8D.2 full route/method/authz inventory, 8D.9 real DLQ, 8D.10 WS, 8D.12 global CSRF, 8D.16 coherence and restore, 8D.17 retention, 8D.18 observability, 8D.19 live rollback.
 - **Verdict:** Phase 8D NOT PASS, Phase 8E/8F NOT AUTHORIZED, no production deploys.
+
+---
+
+## 2026-11-04 P8D-011 handoff — tested security fix, NOT Phase 8D closure
+
+- **Current audited branch:** `v1-p8d-backend-deep-audit`. **Last CI-tested source SHA:** `1af0ebb8497d4f2ce38eb342645292f00368c623`. Test-only failure [41797894520](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41797894520) → complete 3/3 source CI SUCCESS [41798531256](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41798531256).
+- **P8D-011:** an unleased DO socket previously returned 101. New parent-auth-bound maximum 30-second WS lease, sanitized Worker/DO boundary, hibernation attachment, alarm/expiry checks, explicit persistent device-revocation socket fencing, and dev-session logout socket invalidation pass real bundled DO tests using a Node-only Cloudflare shim. No other backend finding is claimed closed.
+- **Android code still frozen:** `2c492efff01095e17f96af3c24ac07ac0b5c3739`; permanent signed Phase 8C APK unchanged. **Production/development Cloudflare deployments unchanged and live binding/identity still UNKNOWN.**
+- **Outstanding P8D-011 closure:** isolated Cloudflare DO real socket authentication expiry; session logout/device revoke while connected; worker upgrade Origin and cross-family isolation; hibernation; browser reconnect without stale state and proactive renewal before a 30-second lease elapses. A Cloudflare alarm may run late, so current browser reconnect-on-close alone needs 8E scrutiny. The source/CI test does not prove all of this.
+- **Next source audit targets:** finish 8D.2 full 49-candidate endpoint inventory with actual routes/methods/auth/side effects and all source layers, 8D.12 browser mutation matrix, 8D.14 rate limits; separately investigate 8D.16 coherent cross-table backup and full isolated D1+R2+DO restore. 8D.1 real Cloudflare identity remains blocked without read-only connector evidence; P8D-003 live dev token/session rotation requires authorized operator action. No production deployment, credential changes or user data access.
+- **Acceptance remains:** 8D IN PROGRESS / NOT PASS; 8E/8F NOT AUTHORIZED; P8D-011 P1 provisional remains open until runtime verification. Global PDF 8D.1–8D.19 still governs closure.
