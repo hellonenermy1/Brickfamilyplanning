@@ -60,6 +60,11 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: P8D-003 development credential and session security regression
+        run: |
+          node scripts/test-phase8d-development-login-source.mjs
+          npx --no-install esbuild src/dev-parent-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dev-auth.mjs
+          node scripts/test-phase8d-development-login.mjs /tmp/brick-p8d-dev-auth.mjs
       - name: P8D-002 versioned backup restore regression
         run: |
           npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs

@@ -3,11 +3,11 @@ const INTERNAL_HEADER = "X-Brick-Dev-Parent-Verified";
 const INTERNAL_VALUE = "session-v1";
 const SESSION_MS = 30 * 86_400_000;
 const MAX_SESSION_CHARS = 128;
-const LOGIN_CODE_RE = /^\d{6}$/;
-const PIN_HASH_RE = /^[0-9a-f]{64}$/i;
+const LOGIN_TOKEN_RE = /^[A-Za-z0-9_-]{43,128}$/;
+const TOKEN_HASH_RE = /^[0-9a-f]{64}$/i;
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
-export type DevParentAuthEnv = { DB: D1Database; PARENT_LOGIN_RATE?: RateLimit; DEV_PARENT_PIN_HASH?: string };
+export type DevParentAuthEnv = { DB: D1Database; PARENT_LOGIN_RATE?: RateLimit; DEV_PARENT_LOGIN_HASH?: string };
 
 type SessionRow = { ok: number };
 
@@ -77,16 +77,16 @@ export function devParentOriginAllowed(req: Request) {
 function loginPage(message = "") {
   const safe = message.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent Beta Login</title><style>
-  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the reusable 6-digit beta access code. A successful sign-in keeps this browser signed in for 30 days.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Beta access code</label><input id="token" name="token" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{6}" minlength="6" maxlength="6" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
+  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the private, randomly generated development access token. Keep it outside GitHub.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Development access token</label><input id="token" name="token" type="password" autocomplete="current-password" pattern="[A-Za-z0-9_-]{43,128}" minlength="43" maxlength="128" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
 }
 
-async function readFormCode(req: Request) {
+async function readFormToken(req: Request) {
   const type = (req.headers.get("Content-Type") ?? "").toLowerCase();
   if (!type.startsWith("application/x-www-form-urlencoded")) return null;
   const text = await req.text();
-  if (text.length > 128) return null;
+  if (text.length > 200) return null;
   const value = new URLSearchParams(text).get("token")?.trim() ?? "";
-  return LOGIN_CODE_RE.test(value) ? value : null;
+  return LOGIN_TOKEN_RE.test(value) ? value : null;
 }
 
 function loginRateKey(req: Request) {
@@ -100,9 +100,9 @@ async function loginRateAllowed(req: Request, env: DevParentAuthEnv) {
   return result.success;
 }
 
-async function loginCodeValid(env: DevParentAuthEnv, code: string) {
-  const expected = env.DEV_PARENT_PIN_HASH?.trim().toLowerCase() ?? "";
-  if (!PIN_HASH_RE.test(expected)) return false;
+async function loginTokenValid(env: DevParentAuthEnv, code: string) {
+  const expected = env.DEV_PARENT_LOGIN_HASH?.trim().toLowerCase() ?? "";
+  if (!TOKEN_HASH_RE.test(expected)) return false;
   const actual = await sha256Hex(code);
   return constantTimeEqual(actual, expected);
 }
@@ -168,9 +168,9 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
         headers: { ...baseHeaders(), "Retry-After": "60" }
       });
     }
-    const code = await readFormCode(req);
-    if (!code) return new Response(loginPage("Enter the 6-digit beta access code."), { status: 400, headers: baseHeaders() });
-    if (!(await loginCodeValid(env, code))) return new Response(loginPage("That beta access code is incorrect."), { status: 401, headers: baseHeaders() });
+    const code = await readFormToken(req);
+    if (!code) return new Response(loginPage("Enter your private development access token."), { status: 400, headers: baseHeaders() });
+    if (!(await loginTokenValid(env, code))) return new Response(loginPage("That development token is incorrect."), { status: 401, headers: baseHeaders() });
     const now = Date.now();
     const session = await createSession(env, now);
     return new Response(null, { status: 303, headers: { Location: "/parent", "Set-Cookie": sessionCookie(session), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });

@@ -17,7 +17,7 @@ type Env = Record<string, unknown> & {
   DB?: D1Database;
   BRICK_MAP_SOURCE?: string;
   PARENT_LOGIN_RATE?: RateLimit;
-  DEV_PARENT_PIN_HASH?: string;
+  DEV_PARENT_LOGIN_HASH?: string;
 };
 const base = phase9 as ExportedHandler<Env>;
 
@@ -82,7 +82,7 @@ export default {
       const parentAuthEnv = {
         DB: env.DB,
         PARENT_LOGIN_RATE: env.PARENT_LOGIN_RATE,
-        DEV_PARENT_PIN_HASH: env.DEV_PARENT_PIN_HASH
+        DEV_PARENT_LOGIN_HASH: env.DEV_PARENT_LOGIN_HASH
       };
       const authRoute = await handleDevParentAuthRoute(cleanReq, parentAuthEnv);
       if (authRoute) return authRoute;

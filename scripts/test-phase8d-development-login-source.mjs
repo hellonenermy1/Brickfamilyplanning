@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const template = fs.readFileSync("wrangler.development.template.jsonc","utf8");
+const setup = fs.readFileSync("scripts/setup-v1-phase6-development-free.mjs","utf8");
+const auth = fs.readFileSync("src/dev-parent-auth.ts","utf8");
+const worker = fs.readFileSync("src/worker-v10.ts","utf8");
+assert(!template.includes("DEV_PARENT_PIN_HASH")&&!template.includes("DEV_PARENT_LOGIN_HASH"),"public dev template must not contain credential verifier");
+assert(!template.includes("931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"),"old PIN hash exposed");
+assert(setup.includes("wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH'"),"private secret provisioner absent");
+assert(setup.includes("BRICK_DEV_PARENT_ACCESS_TOKEN"),"operator-provided secret missing");
+assert(auth.includes("DEV_PARENT_LOGIN_HASH")&&worker.includes("DEV_PARENT_LOGIN_HASH"),"new secret not connected");
+assert(!auth.includes("DEV_PARENT_PIN_HASH")&&!worker.includes("DEV_PARENT_PIN_HASH"),"legacy auth remains reachable");
+console.log("P8D-003 PASS: development credential verifier not in Wrangler public vars, configured by secret binding.");

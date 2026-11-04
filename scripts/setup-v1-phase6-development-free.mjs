@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-v1-dev';
@@ -25,6 +26,11 @@ const SCHEMAS = [
 const token = process.env.CLOUDFLARE_API_TOKEN;
 const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
+// Explicit operator-supplied high-entropy token. Never publish or log the plaintext/hash.
+const devAccessToken = process.env.BRICK_DEV_PARENT_ACCESS_TOKEN || '';
+if (!/^[A-Za-z0-9_-]{43,128}$/.test(devAccessToken)) {
+  throw new Error('BRICK_DEV_PARENT_ACCESS_TOKEN must be a securely generated base64url token (at least 32 random bytes); no six-digit beta PIN.');
+}
 
 async function cf(path, init = {}) {
   const response = await fetch(API + path, {
@@ -149,7 +155,7 @@ if (template.includes('r2_buckets') || template.includes('"queues"') || template
   throw new Error('Card-free development template must not bind R2, Queues, Cloudflare Access, or Cron triggers.');
 }
 if (!template.includes('"DEV_PARENT_AUTH_MODE": "d1-session-v1"')) throw new Error('D1 parent session auth is not enabled in the development template.');
-if (!template.includes('"DEV_PARENT_PIN_HASH": "931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d"')) throw new Error('Expected reusable development parent PIN hash is missing.');
+if (template.includes('DEV_PARENT_PIN_HASH') || template.includes('DEV_PARENT_LOGIN_HASH')) throw new Error('Development login hash must be a Cloudflare secret, never a public Wrangler var.');
 if (!template.includes('"name": "PARENT_LOGIN_RATE"')) throw new Error('Development parent login rate limiter is missing.');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, mapSource));
 
@@ -166,6 +172,21 @@ const hostMatch = String(deployOutput).match(/https:\/\/([a-zA-Z0-9.-]+\.workers
 if (!hostMatch) throw new Error('Development worker hostname was not detected after deploy.');
 const workerHost = hostMatch[1];
 
+// Provision the hash as a private Worker secret, never as a public Wrangler var.
+// If secret provisioning fails, the new login route fails closed.
+const loginHash = createHash('sha256').update(devAccessToken, 'utf8').digest('hex');
+await new Promise((resolve, reject) => {
+  const child = spawn(npx, ['wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH', '--config', GENERATED_CONFIG], {
+    shell: process.platform === 'win32',
+    env: { ...process.env },
+    stdio: ['pipe', 'ignore', 'ignore']
+  });
+  child.on('error', reject);
+  child.on('exit', code => code === 0 ? resolve() : reject(new Error('Unable to configure private development login secret')));
+  child.stdin.end(loginHash + '\n');
+});
+
+
 console.log('[card-free dev 6/6] Writing non-secret deployment state…');
 const sourceGitSha = process.env.GITHUB_SHA || 'local-unverified';
 const state = {
@@ -179,7 +200,7 @@ const state = {
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
-  parentLoginMode: 'reusable-6-digit-pin-v1',
+  parentLoginMode: 'private-high-entropy-token-v2',
   schedulerMode: 'request-driven-d1-lease-no-cron',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
@@ -198,4 +219,4 @@ console.log(`Parent auth:      ${state.parentAuthMode}`);
 console.log(`Parent login:     ${state.parentLoginMode}`);
 console.log(`Scheduler:        ${state.schedulerMode}`);
 console.log(`Map:              ${state.mapMode}`);
-console.log('Reusable parent beta PIN is configured; plaintext PIN is intentionally not written to logs.');
+console.log('Private high-entropy development login hash configured as Cloudflare secret; token never logged.');
