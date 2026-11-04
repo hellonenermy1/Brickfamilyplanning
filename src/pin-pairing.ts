@@ -120,16 +120,45 @@ export async function parentConfirmPin(req: Request, env: PinPairingEnv, session
   const canonicalKey = await canonicalDevicePublicKey(row.pending_public_key_spki_b64);
   if (!canonicalKey) return json({ error: "invalid P-256 device key in pairing session" }, 400);
   const deviceId = crypto.randomUUID();
+  // A competing parent confirmation may have committed after the SELECT above.
+  // A false 500 on retry is misleading; query the winning session when necessary.
+  const confirmedId = async (): Promise<string | null> => {
+    const current = await env.DB.prepare(
+      "SELECT device_id FROM pairing_pin_sessions WHERE id=?1 AND confirmed_at IS NOT NULL AND device_id IS NOT NULL"
+    ).bind(sessionId).first<{ device_id: string }>();
+    return current?.device_id ?? null;
+  };
   try {
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)").bind(deviceId, row.device_name, canonicalKey, now),
-      env.DB.prepare("INSERT OR IGNORE INTO retention_settings(device_id,safety_event_days,updated_at) VALUES(?1,180,?2)").bind(deviceId, now),
-      env.DB.prepare("UPDATE pairing_pin_sessions SET confirmed_at=?1,device_id=?2 WHERE id=?3 AND confirmed_at IS NULL AND cancelled_at IS NULL AND expires_at>=?1").bind(now, deviceId, sessionId)
+    const results = await env.DB.batch([
+      // The first INSERT is conditional on the same unconfirmed session. D1.batch
+      // serializes all three statements; competing confirmations cannot create ghost devices.
+      env.DB.prepare(`INSERT INTO devices(id,name,public_key_spki_b64,created_at)
+        SELECT ?1,?2,?3,?4 WHERE EXISTS
+        (SELECT 1 FROM pairing_pin_sessions WHERE id=?5 AND pending_public_key_spki_b64=?6
+         AND claimed_at IS NOT NULL AND confirmed_at IS NULL AND cancelled_at IS NULL AND expires_at>=?4)`)
+        .bind(deviceId, row.device_name, canonicalKey, now, sessionId, row.pending_public_key_spki_b64),
+      env.DB.prepare(`INSERT OR IGNORE INTO retention_settings(device_id,safety_event_days,updated_at)
+        SELECT ?1,180,?2 WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1)`).bind(deviceId, now),
+      env.DB.prepare(`UPDATE pairing_pin_sessions SET confirmed_at=?1,device_id=?2
+        WHERE id=?3 AND pending_public_key_spki_b64=?4 AND claimed_at IS NOT NULL
+        AND confirmed_at IS NULL AND cancelled_at IS NULL AND expires_at>=?1`)
+        .bind(now, deviceId, sessionId, row.pending_public_key_spki_b64)
     ]);
+    if (results[0]?.meta.changes === 1 && results[2]?.meta.changes === 1) {
+      return json({ ok: true, deviceId, status: "confirmed" });
+    }
+    const winner = await confirmedId();
+    if (winner) return json({ ok: true, deviceId: winner, status: "confirmed" });
+    return json({ error: "pairing session changed or expired; retry from parent" }, 409);
   } catch {
-    return json({ error: "device registration failed; retry parent confirmation" }, 500);
+    // Preserve the winning identity after a UNIQUE race. Do not disguise an
+    // unrelated D1 failure as success.
+    try {
+      const winner = await confirmedId();
+      if (winner) return json({ ok: true, deviceId: winner, status: "confirmed" });
+    } catch { /* DB unavailable: return 503 instead of guessing a result. */ }
+    return json({ error: "device registration temporarily unavailable; retry parent confirmation" }, 503);
   }
-  return json({ ok: true, deviceId, status: "confirmed" });
 }
 
 /** Child proves possession of the high-entropy claim secret; PIN replay alone cannot read the result. */
