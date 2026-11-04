@@ -8,7 +8,9 @@ const WORKERS=["brick-family-v1","brick-family-v1-dev"];
 const PROBES=[
  {path:"/parent",expect:"denied"},
  {path:"/parent/api/devices",expect:"denied"},
- {path:"/parent",expect:"denied",forged:true}
+ {path:"/parent",expect:"denied",forged:true},
+ {path:"/parent/api/devices",expect:"denied",forged:true},
+ {path:"/parent/map/status",expect:"denied"}
 ];
 const accountRe=/^[0-9a-f]{32}$/i,subdomainRe=/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 export async function probeParentSurface({token,accountId,metadataFetch=fetch,httpFetch=fetch}={}){
