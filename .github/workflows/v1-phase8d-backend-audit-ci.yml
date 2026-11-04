@@ -10,6 +10,9 @@ on:
       - 'audit/phase8d/PHASE8D_ENDPOINT_MATRIX_V2.csv'
       - 'audit/phase8d/PHASE8D_DEVELOPMENT_ENDPOINTS.csv'
       - 'wrangler.template.jsonc'
+      - 'wrangler.development.template.jsonc'
+      - 'audit/phase8d/PHASE8D_R2_LIFECYCLE_TARGET.json'
+      - 'audit/phase8d/PHASE8D_R2_LIFECYCLE_TARGET.md'
       - '.github/workflows/deploy-brick.yml'
       - '.github/workflows/v1-phase8d-backend-audit-ci.yml'
   workflow_dispatch:
@@ -105,6 +108,10 @@ jobs:
         run: node scripts/test-phase8d-layered-route-coverage.mjs
       - name: P8D-012 require 49 source endpoint rows have unambiguous named CSV schema
         run: node scripts/test-phase8d-endpoint-matrix.mjs
+      - name: 8D.14 require isolated fail-closed history and WebSocket rate guards
+        run: |
+          npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-parent-read-rate.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: 8D.12 reject cross-site Origin on every known parent mutation
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
@@ -124,6 +131,8 @@ jobs:
           node scripts/test-phase8d-development-login.mjs /tmp/brick-p8d-dev-auth.mjs
       - name: 8D.8 production SQLite schema and constraints, including revocation history
         run: node --disable-warning=ExperimentalWarning scripts/test-phase8d-sqlite-integrity.mjs
+      - name: 8D.17 validate bounded R2 raw/trusted 30/90-day lifecycle target
+        run: node scripts/test-phase8d-r2-lifecycle-target.mjs
       - name: 8D.17 per-device retention, cross-family isolation and crash/health/audit cleanup
         run: |
           npx --no-install esbuild src/phase4.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-retention.mjs
