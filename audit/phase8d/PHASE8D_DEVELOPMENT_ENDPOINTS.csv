@@ -1,0 +1,4 @@
+method,path,auth,source,side_effect,status
+GET,/parent/login,public-development-only,src/dev-parent-auth.ts,render-login,source-reviewed-runtime-pending
+POST,/parent/login,rate-limited-private-high-entropy-token,src/dev-parent-auth.ts,D1-session-create,source-reviewed-runtime-pending
+POST,/parent/logout,existing-cookie-origin-check,src/dev-parent-auth.ts,D1-session-revoke-and-close-DO-sockets,source-CI-partial-live-pending
