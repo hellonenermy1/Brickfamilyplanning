@@ -2,6 +2,7 @@ import baseWorker, { BrickDevice } from "./worker-v9";
 import { maybeHandleFallEvent, type FallEventEnv } from "./fall-event-route";
 import { ingestScreenTime, parentScreenTime, type ScreenTimeEnv } from "./screen-time-route";
 import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summary";
+import { nextCommuteRefreshCandidates } from "./commute-scheduler";
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
 import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -134,9 +135,11 @@ export default {
     // it cannot crowd out safety/current-state work.
     const now = Date.now();
     try {
-      const devices = await env.DB.prepare("SELECT id FROM devices WHERE revoked_at IS NULL ORDER BY id LIMIT 100").all<{ id: string }>();
-      for (const row of devices.results) {
-        ctx.waitUntil(refreshCommutes(env, row.id, now - 2 * 86_400_000, now).catch(() => undefined));
+      // Fixed first-100 selection starves higher sorted IDs forever. Maintain a durable
+      // cursor and cover a bounded rotating set each cron without crowding safety ACK work.
+      const candidates = await nextCommuteRefreshCandidates(env.DB, 20, now);
+      for (const id of candidates) {
+        ctx.waitUntil(refreshCommutes(env, id, now - 2 * 86_400_000, now).catch(() => undefined));
       }
     } catch { /* base worker health/alerts remain independent */ }
   }
