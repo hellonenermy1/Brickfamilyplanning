@@ -45,7 +45,7 @@ const deploy = [
   ["production deploy workflow requires schema 018",()=>assert.ok(workflow.includes("schema/018_p8b_pin_pairing.sql"),"workflow still checks old migration set")],
   ["production deploy workflow cannot deploy from obsolete branch",()=>assert.ok(!workflow.includes('= "v1-p8-cloud-hardening"'),"workflow hard-requires obsolete pre-P8B branch")],
 ];
-const essentialTables=["devices","device_location_control","geofences","geofence_state","ble_anchors","trips","retention_settings","safety_events","health_incidents","crash_reports","audit_log","device_replay_state","device_live_track_control","device_wifi_schedules","device_wifi_schedule_result","device_capability_profile","screen_time_daily","commute_summaries"];
+const essentialTables=["devices","device_location_control","geofences","geofence_state","ble_anchors","trips","retention_settings","safety_events","health_incidents","crash_reports","audit_log","device_replay_state","device_live_track_control","device_wifi_schedules","device_wifi_schedule_result","device_capability_profile","screen_time_daily","commute_summaries","witness_authorizations","ground_receivers","evidence_records","device_commands","phase5_refined_intervals"];
 const backups=[
   ["D1 backup includes all essential P8B state tables",()=>{const names=unquoteArray(backup,"BACKUP_TABLES");for(const name of essentialTables)assert.ok(names.includes(name),"missing backup table "+name);}],
   ["D1 restore order includes all essential P8B state tables",()=>{const names=unquoteArray(restore,"RESTORE_ORDER");for(const name of essentialTables)assert.ok(names.includes(name),"missing restore table "+name);}],

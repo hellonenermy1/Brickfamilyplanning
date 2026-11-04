@@ -66,6 +66,22 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: P8D-050 actual routed Fast Live and durable DO revoke fence
+        run: |
+          npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-fast-live-revoke.mjs /tmp/brick-p8d-prod-worker.mjs
+      - name: P8D-051 current development route schema and interrupted upgrade parity
+        run: |
+          npx --no-install esbuild src/worker-v10.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-dev-worker.mjs
+          node scripts/test-phase8d-development-parity.mjs /tmp/brick-p8d-dev-worker.mjs
+          node scripts/test-phase8d-development-migration-retry.mjs
+      - name: P8D-002 full schema recovery policy and nonempty durable-state roundtrip
+        run: |
+          npx --no-install esbuild src/backup-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-backup.mjs
+          npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
+          node scripts/test-phase8d-recovery-coverage.mjs /tmp/brick-p8d-backup.mjs /tmp/brick-p8d-restore.mjs
+      - name: Native workerd D1 Queue R2 DO Access WebSocket and recovery integration
+        run: node scripts/test-phase8d-workerd-integration.mjs
       - name: 8D.15 check built public assets for server-only credentials
         run: node scripts/test-phase8d-public-secret-surface.mjs
       - name: P8D-007 concurrent R2 segment durability regression

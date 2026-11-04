@@ -45,6 +45,11 @@ export async function handleFastLive(req: Request, env: FastLiveEnv, deviceId: s
     return json({ previewed: false, reason: "not_recent", backendReceivedAtMs });
   }
   const packet = await constrainFallbackToRoute(rawPacket, env.MAPS);
+  // Route work may await storage. The identity read before signature verification
+  // is not authority to write current state after a concurrent D1 revocation.
+  const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1")
+    .bind(deviceId).first<{ revoked_at: number | null }>();
+  if (!life || life.revoked_at !== null) return json({ error: "device unauthorized" }, 401);
   const traceIdRaw = req.headers.get("X-Brick-Live-Trace") ?? "";
   const trace: LiveTraceInput = {
     id: TRACE_RE.test(traceIdRaw) ? traceIdRaw : `${packet.epoch}:${packet.sequence}`,
@@ -55,7 +60,12 @@ export async function handleFastLive(req: Request, env: FastLiveEnv, deviceId: s
     backendReceivedAtMs
   };
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
-  const committed = await stub.setLatestWithTrace(packet, trace);
+  let committed: Awaited<ReturnType<BrickDevice["setLatestWithTrace"]>>;
+  try { committed = await stub.setLatestWithTrace(packet, trace); }
+  catch { return json({ error: "live state unavailable; retry" }, 503); }
+  // D1 and DO are not one transaction. The DO's durable revoke fence closes
+  // the remaining window once revocation reaches the authoritative object.
+  if (committed.revoked) return json({ error: "device unauthorized" }, 401);
   return json({
     previewed: committed.advanced,
     epoch: packet.epoch,

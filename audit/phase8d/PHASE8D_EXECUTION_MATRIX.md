@@ -34,3 +34,5 @@
 
 ## Initial next execution targets
 **P8D-001**, then **P8D-002**, then **8D.2 endpoint inventory + 8D.3/8D.6 trust boundaries**. Collect live Cloudflare identity in parallel using an authorized read-only action; until accessible keep 8D.1 blocked.
+
+Current continuation: 8D.3/.7/.10 P8D-050 actual routed Fast Live + persisted DO revoke fence corrected and locally verified; 8D.1/.8/.19 P8D-051 fresh development schema/entry/upgrade parity corrected; 8D.16 P8D-002 v3 38 durable-table recovery and all-48-table classification locally verified. Native local workerd exercises D1/Queue/R2/DO/JWT/WS alarm/reload/current D1 recovery. Hosted CI pending exact commit; all live gates stay OPEN. See `PHASE8D_CONTINUATION_2026-11-04.md`.

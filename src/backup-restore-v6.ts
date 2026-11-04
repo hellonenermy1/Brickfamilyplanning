@@ -1,4 +1,5 @@
 import { BACKUP_TABLES, validateBackupBody } from "./backup-v6";
+import { EXTRA_RESTORE_SPECS } from "./recovery-extra-specs";
 import { canonicalizeHistoricalDeviceRows } from "./phase8-device-identity";
 
 type RestoreEnv = { DB: D1Database };
@@ -28,10 +29,31 @@ const RESTORE_ORDER = [
   "device_wifi_schedule_result",
   "device_capability_profile",
   "screen_time_daily",
-  "commute_summaries"
+  "commute_summaries",
+  "device_events",
+  "device_health_events",
+  "device_health_samples",
+  "evidence_batches",
+  "evidence_records",
+  "evidence_batch_records",
+  "device_evidence_state",
+  "evidence_provider_health",
+  "atlas_models",
+  "witness_authorizations",
+  "ground_receivers",
+  "device_commands",
+  "refined_history_runs",
+  "witness_aliases",
+  "witness_sightings",
+  "ground_sightings",
+  "learned_place_models",
+  "phase5_refined_intervals",
+  "phase5_hypothesis_frames",
+  "phase5_precise_endpoints"
 ] as const;
 
 const SPECS: Record<(typeof RESTORE_ORDER)[number], TableSpec> = {
+  ...EXTRA_RESTORE_SPECS,
   devices: {
     columns: ["id", "name", "public_key_spki_b64", "created_at", "last_seen_at", "revoked_at", "last_epoch", "last_sequence", "last_health_at", "health_status", "recovery_count", "pending_records", "app_version"],
     required: ["id", "name", "public_key_spki_b64", "created_at"]
@@ -187,6 +209,11 @@ function retirePendingCommands(snapshot: Snapshot) {
       row.result_reason = "cancelled_on_disaster_restore";
     }
   }
+  for (const row of snapshot.tables.device_commands) {
+    if (row.status === "pending") {
+      row.status = "expired"; row.result_json = JSON.stringify({ reason: "cancelled_on_disaster_restore" });
+    }
+  }
   for (const row of snapshot.tables.device_live_track_control) {
     if (row.command_status === "pending") {
       row.command_status = "expired";
@@ -211,7 +238,8 @@ export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer,
   retirePendingCommands(snapshot);
   await assertFreshTarget(env.DB);
   const restoredRows = await executeFreshRestore(env.DB, snapshot);
-  return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows };
+  return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows,
+    coverageComplete: (snapshot.missingTables ?? []).length === 0, missingTables: snapshot.missingTables ?? [] };
 }
 
 export const RESTORE_TABLE_ORDER = RESTORE_ORDER;

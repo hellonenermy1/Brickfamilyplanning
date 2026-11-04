@@ -57,6 +57,12 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+// Fail before any Cloudflare mutation: this legacy drill is not a current full-recovery proof.
+const restoreModule = await import(pathToFileURL(restoreModulePath).href + `?v=${Date.now()}`);
+assert(typeof restoreModule.restoreBackupToFreshD1 === 'function', 'bundled Brick restore module missing export');
+assert(JSON.stringify(restoreModule.RESTORE_TABLE_ORDER) === JSON.stringify(BACKUP_TABLES),
+  'Legacy 18-table live drill cannot qualify current 38-table v3 recovery; upgrade the isolated drill before resource creation');
+
 async function cf(path, init = {}) {
   const response = await fetch(API + path, {
     ...init,
@@ -319,8 +325,7 @@ state.databases.push({ ...target, deleted: false });
 await writeState(state);
 await applyBrickMigrations(target.id);
 
-const restoreModule = await import(pathToFileURL(restoreModulePath).href + `?v=${Date.now()}`);
-assert(typeof restoreModule.restoreBackupToFreshD1 === 'function', 'bundled Brick restore module missing export');
+
 const restoreResult = await restoreModule.restoreBackupToFreshD1(
   { DB: makeRestAdapter(target.id) },
   backupArrayBuffer,

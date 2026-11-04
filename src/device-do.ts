@@ -205,20 +205,26 @@ export class BrickDevice extends DurableObject<Env> {
     };
   }
 
-  private async commitLatest(packet: LivePacket, trace?: LiveTraceInput): Promise<{ advanced: boolean; doUpdatedAtMs: number }> {
+  private async commitLatest(packet: LivePacket, trace?: LiveTraceInput): Promise<{ advanced: boolean; doUpdatedAtMs: number; revoked: boolean }> {
+    await this.initialized;
     const state = this.stateFor(packet, trace);
-    const advanced = await this.ctx.storage.transaction(async txn => {
+    if (this.revoked) return { advanced: false, doUpdatedAtMs: state.receivedAt, revoked: true };
+    const committed = await this.ctx.storage.transaction(async txn => {
+      // Preserve archived current state as well as WebSocket privacy. Read the
+      // durable fence within the SAME transaction as the conditional latest put;
+      // memory alone is insufficient after object reconstruction/hibernation.
+      if (this.revoked || await txn.get<boolean>("wsRevoked") === true) return { advanced: false, revoked: true };
       const current = await txn.get<LatestState>("latest");
-      if (!shouldAdvanceLiveState(state, current)) return false;
+      if (!shouldAdvanceLiveState(state, current)) return { advanced: false, revoked: false };
       await txn.put("latest", state);
-      return true;
+      return { advanced: true, revoked: false };
     });
-    if (advanced) await this.broadcast({ type: "location", state });
-    return { advanced, doUpdatedAtMs: state.liveTrace?.doUpdatedAtMs ?? state.receivedAt };
+    if (committed.advanced) await this.broadcast({ type: "location", state });
+    return { ...committed, doUpdatedAtMs: state.liveTrace?.doUpdatedAtMs ?? state.receivedAt };
   }
 
   async setLatest(packet: LivePacket): Promise<boolean> { return (await this.commitLatest(packet)).advanced; }
-  async setLatestWithTrace(packet: LivePacket, trace: LiveTraceInput): Promise<{ advanced: boolean; doUpdatedAtMs: number }> {
+  async setLatestWithTrace(packet: LivePacket, trace: LiveTraceInput): Promise<{ advanced: boolean; doUpdatedAtMs: number; revoked: boolean }> {
     return this.commitLatest(packet, trace);
   }
 

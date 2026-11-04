@@ -23,20 +23,45 @@ export const BACKUP_TABLES = [
   "device_wifi_schedule_result",
   "device_capability_profile",
   "screen_time_daily",
-  "commute_summaries"
+  "commute_summaries",
+  "device_events",
+  "device_health_events",
+  "device_health_samples",
+  "evidence_batches",
+  "evidence_records",
+  "evidence_batch_records",
+  "device_evidence_state",
+  "evidence_provider_health",
+  "atlas_models",
+  "witness_authorizations",
+  "ground_receivers",
+  "device_commands",
+  "refined_history_runs",
+  "witness_aliases",
+  "witness_sightings",
+  "ground_sightings",
+  "learned_place_models",
+  "phase5_refined_intervals",
+  "phase5_hypothesis_frames",
+  "phase5_precise_endpoints"
 ] as const;
+const V2_TABLES = BACKUP_TABLES.slice(0, 18);
 const PRE_P8B_TABLES = BACKUP_TABLES.slice(0, 12);
+// Every declared table is classified; never revive short-lived credentials/rate/cache state.
+export const TRANSIENT_RECOVERY_TABLES = ["pairing_tokens", "pairing_pin_sessions", "provider_rate_window", "provider_cache"] as const;
+export const DEVELOPMENT_RECOVERY_TABLES = ["dev_object_store", "dev_object_chunks", "dev_parent_login_tokens", "dev_parent_sessions", "dev_maintenance_state", "dev_location_history"] as const;
 const LEGACY_V1_TABLES = PRE_P8B_TABLES.filter(table => table !== "device_location_control");
 
 type BackupSnapshot = {
-  format: "brick-d1-snapshot-v1" | "brick-d1-snapshot-v2";
+  format: "brick-d1-snapshot-v1" | "brick-d1-snapshot-v2" | "brick-d1-snapshot-v3";
+  missingTables?: string[];
   createdAt: number;
   excludes: string[];
   tables: Record<string, Record<string, unknown>[]>;
 };
 
 async function readAtomicTables(db: D1Database): Promise<Record<string, Record<string, unknown>[]>> {
-  // All 18 read statements are executed within ONE transaction on the D1 primary.
+  // All 38 read statements are executed within ONE transaction on the D1 primary.
   // Paging independently is unsafe: a concurrent transaction can update different
   // tables between reads and create a backup that never existed as one coherent state.
   // The extra row fails closed instead of silently truncating large tables.
@@ -90,7 +115,7 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   } catch {
     throw new Error("backup gzip/JSON is unreadable");
   }
-  if (!isRecord(value) || (value.format !== "brick-d1-snapshot-v1" && value.format !== "brick-d1-snapshot-v2")) throw new Error("unsupported backup format");
+  if (!isRecord(value) || !["brick-d1-snapshot-v1", "brick-d1-snapshot-v2", "brick-d1-snapshot-v3"].includes(String(value.format))) throw new Error("unsupported backup format");
   if (typeof value.createdAt !== "number" || !Number.isSafeInteger(value.createdAt) || value.createdAt <= 0) throw new Error("invalid backup timestamp");
   if (!Array.isArray(value.excludes) || !value.excludes.every(x => typeof x === "string")) throw new Error("invalid backup exclusions");
   if (!isRecord(value.tables)) throw new Error("invalid backup tables");
@@ -100,12 +125,16 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   const current = sameNames(tableNames, BACKUP_TABLES);
   const preP8B = sameNames(tableNames, PRE_P8B_TABLES);
   const legacy = sameNames(tableNames, LEGACY_V1_TABLES);
-  if (value.format === "brick-d1-snapshot-v2") {
-    if (!current) throw new Error("v2 backup must contain all Phase 8B durable tables");
+  if (value.format === "brick-d1-snapshot-v3") {
+    if (!current) throw new Error("v3 backup must contain all durable production tables");
+    value.missingTables = [];
   } else {
-    if (!preP8B && !legacy) throw new Error("v1 backup table set does not match historical schema");
-    if (legacy) tables.device_location_control = [];
-    // Earlier snapshots cannot invent new historical commands or summaries.
+    if (value.format === "brick-d1-snapshot-v2") {
+      if (!sameNames(tableNames, V2_TABLES)) throw new Error("v2 backup must contain all Phase 8B durable tables");
+    } else if (!preP8B && !legacy) throw new Error("v1 backup table set does not match historical schema");
+    // Compatibility is not complete recovery: retain an explicit missing-table
+    // result so an old snapshot cannot silently pass the current acceptance gate.
+    value.missingTables = BACKUP_TABLES.filter(table => !(table in tables));
     for (const table of BACKUP_TABLES) if (!(table in tables)) tables[table] = [];
   }
 
@@ -129,11 +158,9 @@ async function cleanupOldBackups(bucket: R2Bucket, now: number) {
 export async function snapshotD1ToR2(env: BackupEnv, now = Date.now()) {
   const tables = await readAtomicTables(env.DB);
   const snapshot: BackupSnapshot = {
-    format: "brick-d1-snapshot-v2",
+    format: "brick-d1-snapshot-v3",
     createdAt: now,
     excludes: [
-      "device_events: derivable packet-delivery evidence; detailed routes are already in R2 history",
-      "device_health_samples: high-volume operational telemetry retained separately in D1",
       "pairing_tokens: short-lived credentials are intentionally not backed up",
       "pairing_pin_sessions: one-time pairing credentials are never restored",
       "provider_rate_window: transient rate counters are never restored",
@@ -151,7 +178,7 @@ export async function snapshotD1ToR2(env: BackupEnv, now = Date.now()) {
   await env.HISTORY.put(key, body, {
     httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
     customMetadata: {
-      format: "brick-d1-snapshot-v2",
+      format: "brick-d1-snapshot-v3",
       createdAt: String(now),
       retentionDays: "30",
       sha256: bodySha256

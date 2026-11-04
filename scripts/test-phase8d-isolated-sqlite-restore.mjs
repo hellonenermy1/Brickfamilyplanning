@@ -56,10 +56,10 @@ try {
   ];
   sql(source,"BEGIN IMMEDIATE;\n"+fixture.join(";\n")+";\nCOMMIT;");
   const names=[...restore.RESTORE_TABLE_ORDER];
-  assert.equal(names.length,18,"expect all 18 durable tables");
+  assert.equal(names.length,38,"expect all 38 durable tables");
   const tables=Object.fromEntries(names.map(name=>[name,all(source,name)]));
-  for(const name of names.slice(12))assert.equal(tables[name].length,1,"must populate "+name);
-  const payload={format:"brick-d1-snapshot-v2",createdAt:Date.now(),excludes:["pairing_pin_sessions","provider_rate_window","provider_cache"],tables};
+  for(const name of names.slice(12,18))assert.equal(tables[name].length,1,"must populate "+name);
+  const payload={format:"brick-d1-snapshot-v3",createdAt:Date.now(),excludes:["pairing_pin_sessions","provider_rate_window","provider_cache"],tables};
   const zipped=gzipSync(Buffer.from(JSON.stringify(payload)));
   const body=zipped.buffer.slice(zipped.byteOffset,zipped.byteOffset+zipped.byteLength);
   const digest=crypto.createHash("sha256").update(zipped).digest("hex");
@@ -67,7 +67,7 @@ try {
   assert(!fs.existsSync(source),"source must be deleted before restore");
   install(target);
   const result=await restore.restoreBackupToFreshD1({DB:adapter(target)},body,digest);
-  assert.equal(result.format,"brick-d1-snapshot-v2");
+  assert.equal(result.format,"brick-d1-snapshot-v3");
   for(const name of names){
     const actual=all(target,name);
     assert.equal(result.restoredRows[name],tables[name].length,"result count "+name);
@@ -81,5 +81,5 @@ try {
   assert.equal(all(target,"devices")[0].revoked_at,1793000001000,"revocation lost");
   assert.equal(all(target,"device_replay_state")[0].last_health_sequence,201,"replay high-water lost");
   await assert.rejects(()=>restore.restoreBackupToFreshD1({DB:adapter(target)},body,digest),/restore target is not empty/);
-  console.log("P8D-002 PASS disposable SQLite: real schema, destroyed source, 18-table restore, no command replay or transient secret revival.");
+  console.log("P8D-002 PASS disposable SQLite: real schema, destroyed source, 38-table restore, no command replay or transient secret revival.");
 }finally {fs.rmSync(dir,{recursive:true,force:true});}

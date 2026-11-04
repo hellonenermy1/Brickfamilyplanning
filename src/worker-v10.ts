@@ -1,5 +1,6 @@
-import phase9, { BrickDevice } from "./worker-v9";
+import productionWorker, { BrickDevice } from "./worker-p8b";
 import { parentV7LiveHtml as parentV7Html } from "./parent-v7-live";
+import { parentP8BHtml } from "./parent-p8b";
 import { augmentPhase7ParentStateResponseV2 as augmentPhase7ParentStateResponse } from "./phase7-state-v2";
 import { cleanupDevelopmentObjectStore, developmentRuntimeEnv } from "./dev-free-runtime";
 import {
@@ -21,7 +22,7 @@ type Env = Record<string, unknown> & {
   PARENT_LOGIN_RATE?: RateLimit;
   DEV_PARENT_LOGIN_HASH?: string;
 };
-const base = phase9 as ExportedHandler<Env>;
+const base = productionWorker as ExportedHandler<Env>;
 
 function developmentParentResponse(baseResponse: Response, baseHtml: string) {
   const match = baseHtml.match(/<script\s+type=["']module["']\s+nonce=["']([^"']+)["']>/);
@@ -31,7 +32,7 @@ function developmentParentResponse(baseResponse: Response, baseHtml: string) {
       headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }
     });
   }
-  const html = parentV7Html().replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
+  const html = parentP8BHtml(parentV7Html()).replace('<script type="module">', `<script type="module" nonce="${match[1]}">`);
   const headers = new Headers(baseResponse.headers);
   headers.set("Cache-Control", "no-store");
   headers.set("X-Content-Type-Options", "nosniff");

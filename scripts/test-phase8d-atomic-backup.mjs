@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // P8D-002 8D.16: require a single transactional D1 batch for the entire
-// 18-table backup snapshot. Source regression uses synthetic concurrent mutation.
+// 38-table backup snapshot. Source regression uses synthetic concurrent mutation.
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 const file=process.argv[2];assert(file,"bundle backup-v6.ts");
@@ -8,7 +8,7 @@ const {snapshotD1ToR2,BACKUP_TABLES}=await import(pathToFileURL(file).href);
 let generation=0,looseReadCount=0,batchCount=0,stored=null;
 const db={
  prepare(sql){
-  const match=sql.match(/^SELECT \* FROM ([a-z_]+) LIMIT \?1(?: OFFSET \?2)?$/);
+  const match=sql.match(/^SELECT \* FROM ([a-z0-9_]+) LIMIT \?1(?: OFFSET \?2)?$/);
   assert(match,"unknown backup query "+sql);
   const table=match[1];
   assert(BACKUP_TABLES.includes(table));
@@ -25,7 +25,7 @@ const db={
   batchCount++;
   const observed=generation;
   generation=1;
-  assert.equal(stmts.length,BACKUP_TABLES.length,"all 18 table reads must share one D1 transaction");
+  assert.equal(stmts.length,BACKUP_TABLES.length,"all 38 table reads must share one D1 transaction");
   return stmts.map(({table,args})=>{
     assert.equal(args[0],500001,"each table query must fail closed on excessive rows");
     return {results:table==="devices"?[{id:"synthetic",name:"gen-"+observed}]:
@@ -44,5 +44,5 @@ assert.equal(looseReadCount,0,"loose reads would produce torn backup");
 assert(stored);
 const parsed=JSON.parse(await new Response(new Blob([stored.body]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
 assert.deepEqual([parsed.tables.devices[0].name,parsed.tables.device_capability_profile[0].profile_version],["gen-0",0],"mixed-generation backup");
-assert.equal(Object.keys(parsed.tables).length,18);
-console.log("PASS P8D-002: all 18 D1 tables captured in one transaction under synthetic concurrent mutation, no torn backup; Cloudflare isolation and R2/DO full restore still OPEN");
+assert.equal(Object.keys(parsed.tables).length,38);
+console.log("PASS P8D-002: all 38 D1 tables captured in one transaction under synthetic concurrent mutation, no torn backup; Cloudflare isolation and R2/DO full restore still OPEN");

@@ -69,7 +69,7 @@ function fakeDb(initial = {}) {
       sql, args,
       bind(...next) { return statement(sql, next); },
       async first() {
-        const m = sql.match(/^SELECT COUNT\(\*\) AS n FROM ([a-z_]+)$/i);
+        const m = sql.match(/^SELECT COUNT\(\*\) AS n FROM ([a-z0-9_]+)$/i);
         if (!m) throw new Error(`unexpected first SQL: ${sql}`);
         return { n: counts.get(m[1]) ?? 0 };
       }
@@ -83,7 +83,7 @@ function fakeDb(initial = {}) {
       const stagedCounts = new Map(counts);
       const stagedRows = new Map([...rows].map(([table, values]) => [table, values.map(row => ({ ...row }))]));
       for (const s of statements) {
-        const m = s.sql.match(/^INSERT INTO ([a-z_]+) \(([^)]+)\) VALUES \(([^)]+)\)$/i);
+        const m = s.sql.match(/^INSERT INTO ([a-z0-9_]+) \(([^)]+)\) VALUES \(([^)]+)\)$/i);
         if (!m) throw new Error(`unexpected batch SQL: ${s.sql}`);
         const table = m[1];
         if (!stagedCounts.has(table)) throw new Error(`unknown table ${table}`);
@@ -236,5 +236,8 @@ await assert.rejects(
   /semantic duplicate device identity/
 );
 
-assert.deepEqual([...restore.RESTORE_TABLE_ORDER], TABLES);
+assert.deepEqual([...restore.RESTORE_TABLE_ORDER].slice(0,18), TABLES);
+assert.equal(restore.RESTORE_TABLE_ORDER.length,38);
+assert.equal(result.coverageComplete,false);
+assert.equal(result.missingTables.length,20);
 console.log('P8D backup v2: six nonempty P8B tables preserved; pending commands retired; v1 11/12 table compatibility and corrupt snapshot rejection PASS.');

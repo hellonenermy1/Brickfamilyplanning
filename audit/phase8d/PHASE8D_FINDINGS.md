@@ -413,3 +413,30 @@ These six are **source-supported hypotheses** pending executed RED reproductions
 - **P8D-048, P1, 8D.11 SOURCE GATED:** Read-only future Access config audit now checks exact app details and one account-member allow policy, rejects bypass, wrong account, weaker cookies, additional policies. CI mock GREEN; Cloudflare Access Read token permission still BLOCKED.
 
 **Release blockers unchanged:** Real Cloudflare Queue/DLQ not found, R2 metadata permission blocked, D1 prod/dev resources unreadable, full D1+R2+DO isolated recovery, live Queue crash/ACK, WS session isolation, retention, release rollback not completed. **8D NOT PASS; no 8E/8F; no Cloudflare deploy or user-data change.**
+
+## P8D-050 — Actual Fast Live route bypasses tested revoke recheck; DO latest writes ignore persisted revoke fence
+
+- Requirements: SEC-005, BE-002/003/004, LIVE-001; sections 8D.3/.7/.10.
+- Baseline: ea23177c21d39864a152f9963d68b939d1a754bb. Severity P1 provisional until reproduction.
+- Evidence before correction: worker-v9 routes /location/live to fast-live.ts::handleFastLive, not the lower previewLatestLocationV6 exercised by the old revoke test. handleFastLive checks active identity only before asynchronous route work; BrickDevice.commitLatest writes latest without checking wsRevoked. The persisted flag currently gates sockets/broadcasts only, permitting archived current state mutation.
+- Reproduction: new test calls actual bundled worker-p8b with real P-256 signature and native SQLite; inject revocation after auth SELECT, then exercise persisted DO fence and class reconstruction. Include active success and DO outage response. Run before source changes.
+- Status: RECORDED BEFORE FIX; not live Cloudflare proof.
+
+## P8D-051 — Development qualification entry/schema omit current production overlay
+
+- Requirements: OPS-011/012, BE-002, COV-006; sections 8D.1/.8/.19. Severity P1 provisional release-qualification risk.
+- Baseline: ea23177. worker-v10 imports worker-v9, omitting worker-p8b routes; setup:development applies 001–015 subsets but not 016–018, although inherited v9 accesses P8B control tables and columns. Config parity tests only inspect binding names, not actual route/schema parity.
+- Reproduce on fresh disposable SQLite and actual bundled dev Worker before fixing. Development continues to use D1 adapters; it cannot qualify production Queue/R2 services.
+- Status: RECORDED BEFORE FIX; no development deployment authorized by this finding.
+
+## P8D-002 addendum — Complete recovery inventory beyond eighteen tables
+
+- Requirements: OPS-002/003, BE-009/010, WIT-002/011; section 8D.16. Existing P1 remains open.
+- Baseline backup omits durable witness_authorizations, ground_receivers and other model/evidence indexes created by 008–010. Eighteen-table coverage is not whole-schema coverage. Reproduce nonempty source snapshot/restore loss before correction; version any expanded format and retain historical v1/v2 compatibility with explicit incomplete-coverage reporting. Classify every source table, rather than restoring ephemeral credentials/counters blindly.
+
+
+## Current continuation — P8D-050/051 and P8D-002 expanded coverage
+
+Continued ea23177 on the same audit branch. P8D-050 five actual-route/DO tests reproduced four negative failures before fix and pass locally after fix. P8D-051 fresh development route/schema failures reproduced and corrected; interruption/retry, unknown migration drift rejection and prior-session revocation pass on native SQLite. P8D-002 actual missing witness/receiver backup reproduced; v3 now snapshots/restores 38 durable tables, classifies all 48 declared tables, expires generic pending commands and marks legacy snapshots incomplete. Full live recovery P1 remains OPEN.
+
+Native local workerd integration passes real D1/Queue/R2/DO route, Access JWT, idle WS alarm, persisted revoke after eviction and v3 fresh D1 restore. This is not live Cloudflare acceptance. Old 18-table mutating live drill now refuses current inventory before network/resource creation, covered by negative test. Details and limits: `PHASE8D_CONTINUATION_2026-11-04.md`. Hosted exact-SHA CI evidence pending commit. Fresh old-source live run 41839919454 attempt2 still has same binding/Queue/Access failures and missing audit token scopes. No deployment, Android change or family-data access. **8D NOT PASS.**

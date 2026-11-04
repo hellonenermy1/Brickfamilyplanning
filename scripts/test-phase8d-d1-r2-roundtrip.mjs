@@ -44,13 +44,13 @@ try{
  await processHistoryBatch({messages:[m]},{HISTORY:r2});assert.equal(m.ackCount,1);
  const historyKeys=[...r2.store.keys()].filter(x=>x.startsWith("history/"));assert.equal(historyKeys.length,2,"raw and trusted R2 objects required");
  const snap=await snapshotD1ToR2({DB:d1(db),HISTORY:r2},stamp);
- assert(snap.sha256&&snap.key.startsWith("backups/d1/"));assert.equal(BACKUP_TABLES.length,18);
+ assert(snap.sha256&&snap.key.startsWith("backups/d1/"));assert.equal(BACKUP_TABLES.length,38);
  const inventory=[...r2.store.keys()].sort();assert.equal(inventory.length,3,"1 backup plus 2 history objects");
  for(const key of inventory){const b=r2.store.get(key);await restoredR2.put(key,b.bytes,{httpMetadata:b.meta,customMetadata:b.metadata})}
  assert.deepEqual([...restoredR2.store.keys()].sort(),inventory,"R2 raw/trusted + snapshot inventory mismatch");
  for(const key of inventory)assert.equal(restoredR2.store.get(key).etag,r2.store.get(key).etag,"R2 bytes changed on isolated restore");
  const obj=await restoredR2.get(snap.key);const result=await restoreBackupToFreshD1({DB:d1(target)},await obj.arrayBuffer(),snap.sha256);
- assert.equal(Object.keys(result.restoredRows).length,18);
+ assert.equal(Object.keys(result.restoredRows).length,38);
  assert.equal(target.prepare("SELECT COUNT(*) n FROM devices").get().n,1);
  assert.equal(target.prepare("SELECT COUNT(*) n FROM safety_events").get().n,1);
  assert.equal(target.prepare("SELECT command_status FROM device_location_control").get().command_status,"expired","pending command replayed after restore");
@@ -63,5 +63,5 @@ try{
  const incomplete=bucket();await incomplete.put(snap.key,r2.store.get(snap.key).bytes);
  const missing=historyKeys.filter(k=>!incomplete.store.has(k));
  assert.equal(missing.length,2,"a D1-only backup must be marked missing R2 history");
- console.log("PASS 8D.16: actual snapshotD1ToR2 -> isolated 18-table D1 restore, command expiry, FK and byte-identical raw/trusted R2 inventory; D1-only restore detected INCOMPLETE; live DO state/Cloudflare restore OPEN");
+ console.log("PASS 8D.16: actual snapshotD1ToR2 -> isolated 38-table D1 restore, command expiry, FK and byte-identical raw/trusted R2 inventory; D1-only restore detected INCOMPLETE; live DO state/Cloudflare restore OPEN");
 }finally{db.close();target.close();}

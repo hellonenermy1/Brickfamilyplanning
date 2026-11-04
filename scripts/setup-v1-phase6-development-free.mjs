@@ -1,11 +1,14 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import os from 'node:os';
+import pathModule from 'node:path';
+import { applyDevelopmentSchema16, revokePriorDevelopmentSessions } from './phase8d-development-schema16.mjs';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-v1-dev';
 const D1_NAME = 'brick-family-v1-dev';
-const CURRENT_APP_VERSION = '0.6.0-phase6c-beta5-cardfree';
+const CURRENT_APP_VERSION = '1.0.0-rc.1';
 const TEMPLATE = 'wrangler.development.template.jsonc';
 const GENERATED_CONFIG = 'wrangler.development.jsonc';
 const STATE = 'setup-development-state.json';
@@ -20,7 +23,12 @@ const SCHEMAS = [
   'schema/010_phase5b_closure.sql',
   'schema/011_v1_phase6_location_control.sql',
   'schema/012_phase6c_free_runtime.sql',
-  'schema/013_phase6c_request_maintenance.sql'
+  'schema/013_phase6c_request_maintenance.sql',
+  'schema/014_phase6c_virtual_history.sql',
+  'schema/015_phase8_device_identity.sql',
+  'schema/016_p8b_remediation.sql',
+  'schema/017_p8b_provider_rate.sql',
+  'schema/018_p8b_pin_pairing.sql'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -135,7 +143,20 @@ async function applyMigrations(d1Id) {
       console.log(`Skipping ${path}; already recorded.`);
       continue;
     }
-    await applySchema(path);
+    if (path === 'schema/016_p8b_remediation.sql') {
+      const directory = await fs.mkdtemp(pathModule.join(os.tmpdir(), 'brick-dev-schema16-'));
+      try {
+        await applyDevelopmentSchema16({
+          source: await fs.readFile(path, 'utf8'),
+          columns: async () => (await d1Query(d1Id, 'PRAGMA table_info(device_location_control)'))[0].results.map(row => row.name),
+          execute: sql => d1Query(d1Id, sql),
+          applyRemainder: async sql => {
+            const file = pathModule.join(directory, '016-reentrant.sql');
+            await fs.writeFile(file, sql); await applySchema(file);
+          }
+        });
+      } finally { await fs.rm(directory, { recursive: true, force: true }); }
+    } else await applySchema(path);
     await d1Query(d1Id, 'INSERT OR REPLACE INTO brick_dev_migrations(name,applied_at) VALUES(?1,?2)', [path, Date.now()]);
   }
 }
@@ -161,9 +182,13 @@ await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, mapSource));
 
 console.log('[card-free dev 3/6] Applying Phase 1-6 + D1 object/session/maintenance schema…');
 await applyMigrations(d1Id);
+await run(process.execPath, ['scripts/ensure-development-legacy-columns.mjs']);
 
 console.log('[card-free dev 4/6] Removing obsolete one-time parent bootstrap tokens…');
 await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
+// A new login verifier does not revoke cookies issued under the old verifier.
+// End prior sessions durably before deploying the new authentication boundary.
+await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
 
 console.log('[card-free dev 5/6] Deploying isolated worker-v10…');
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -197,10 +222,13 @@ const state = {
   workerName: WORKER_NAME,
   workerHost,
   currentAppVersion: CURRENT_APP_VERSION,
+  schemaVersion: 18,
+  appliedSchemas: SCHEMAS,
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
   parentLoginMode: 'private-high-entropy-token-v2',
+  priorSessionsRevoked: true,
   schedulerMode: 'request-driven-d1-lease-no-cron',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
