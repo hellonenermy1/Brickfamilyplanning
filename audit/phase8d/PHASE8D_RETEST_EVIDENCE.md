@@ -30,3 +30,5 @@
 
 | P8D-011 missing verified WS lease | `2d624563` | [41797894520](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41797894520) | RED: an unleased DO /ws request returned HTTP 101, not 403 | Actual bundled DO with Node test shim; no live Cloudflare |
 | P8D-011 expiry/hibernation/logout/revocation hardened | `1af0ebb8` | [41798531256](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41798531256) | GREEN all 3 CI jobs; P8D-011 regression PASS | Source/CI simulated DO, not live Access/DO or browser continuous-session trial |
+| P8D-012 endpoint CSV schema corruption | `04a39b43` | [41799035064](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799035064) | RED: 49 twelve-field data rows vs eleven-field header | Audit artifact, not runtime |
+| P8D-012 named 12-column schema and 49 distinct candidates | `48e82f1e` | [41799170739](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799170739) | GREEN all 3 CI jobs, 49-row schema/uniqueness check | CSV structure only; routes not fully live-probed |
