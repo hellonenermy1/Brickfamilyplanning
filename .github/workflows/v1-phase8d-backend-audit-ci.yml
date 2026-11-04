@@ -74,6 +74,10 @@ jobs:
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
           npx --no-install esbuild src/queue-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-queue.mjs
           node scripts/test-phase8d-ack-faults.mjs /tmp/brick-p8d-history.mjs /tmp/brick-p8d-queue.mjs
+      - name: P8D-009 fallback pairing valid P-256 key and bounded request
+        run: |
+          npx --no-install esbuild src/pin-pairing.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-pin-pairing.mjs
+          node scripts/test-phase8d-pin-key-validation.mjs /tmp/brick-p8d-pin-pairing.mjs
       - name: P8D-006 deny mutations for revoked child identity
         run: |
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
