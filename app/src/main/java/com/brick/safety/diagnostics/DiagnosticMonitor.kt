@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.brick.safety.activity.ActivityState
 import com.brick.safety.data.Journal
 import com.brick.safety.location.BrickLocationService
+import com.brick.safety.maintenance.DeepOffManager
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
 import com.brick.safety.reliability.SafetyDispatcher
 import java.util.concurrent.Executors
@@ -34,8 +35,11 @@ object DiagnosticMonitor {
 
     @Synchronized
     fun start(context: Context) {
-        if (!started.compareAndSet(false, true)) return
         val app = context.applicationContext
+        // This is also an independently callable provider entry point. Application.onCreate's
+        // post-purge guard is not sufficient when a late callback invokes start() directly.
+        if (DeepOffManager.isActive(app)) return
+        if (!started.compareAndSet(false, true)) return
         DiagnosticStore.init(app)
         DiagnosticStore.log(DiagnosticStore.Severity.INFO, "process", "process_started", "pid=${android.os.Process.myPid()}")
         future = scheduler.scheduleWithFixedDelay({
