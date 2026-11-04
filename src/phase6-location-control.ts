@@ -49,16 +49,22 @@ export async function parentSetLocationControl(req: Request, env: LocationContro
 
   const now = Date.now();
   const commandId = crypto.randomUUID();
-  await env.DB.prepare(
+  const write = await env.DB.prepare(
     `INSERT INTO device_location_control(device_id,desired_enabled,command_id,issued_at,updated_at,command_status)
-     VALUES(?1,?2,?3,?4,?4,'pending')
+     SELECT ?1,?2,?3,?4,?4,'pending'
+     WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
      ON CONFLICT(device_id) DO UPDATE SET
        desired_enabled=excluded.desired_enabled,
        command_id=excluded.command_id,
        issued_at=CASE WHEN excluded.issued_at <= device_location_control.issued_at THEN device_location_control.issued_at + 1 ELSE excluded.issued_at END,
        updated_at=excluded.updated_at,
-       command_status='pending',completed_at=NULL,result_actual_enabled=NULL,result_success=NULL,result_reason=NULL,last_acked_command_id=NULL`
+       command_status='pending',completed_at=NULL,result_actual_enabled=NULL,result_success=NULL,result_reason=NULL,last_acked_command_id=NULL
+     WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)`
   ).bind(deviceId, body.enabled ? 1 : 0, commandId, now).run();
+  // Recheck in the same atomic SQLite statement as INSERT/UPSERT. A device can
+  // be revoked after the earlier read. Never acknowledge a command written to a
+  // revoked identity, or overwrite its last observed command history.
+  if ((write.meta.changes ?? 0) !== 1) return json({ error: "device no longer active" }, 410);
   const stored = await env.DB.prepare("SELECT issued_at FROM device_location_control WHERE device_id=?1 AND command_id=?2 LIMIT 1")
     .bind(deviceId, commandId).first<{ issued_at: number }>();
   return json({ ok: true, deviceId, commandId, targetEnabled: body.enabled, status: "pending", issuedAtMs: stored?.issued_at ?? now });
