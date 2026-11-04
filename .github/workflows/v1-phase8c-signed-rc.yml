@@ -44,6 +44,8 @@ jobs:
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
           echo "APKANALYZER=$APKANALYZER_PATH" >> "$GITHUB_ENV"
+          test -x "$SDK_ROOT/build-tools/35.0.0/aapt2"
+          echo "AAPT2=$SDK_ROOT/build-tools/35.0.0/aapt2" >> "$GITHUB_ENV"
           echo "APKSIGNER=$SDK_ROOT/build-tools/35.0.0/apksigner" >> "$GITHUB_ENV"
           echo "BRICK_KEYSTORE_PATH=$RUNNER_TEMP/brick-v1-rc.jks" >> "$GITHUB_ENV"
           mkdir -p p8c-signed-rc
@@ -100,16 +102,24 @@ jobs:
           set -euo pipefail
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK" && test -s "$APK"
-          test "$("$APKANALYZER" manifest application-id "$APK" | tr -d '\r')" = 'com.brick.safety'
-          test "$("$APKANALYZER" manifest version-code "$APK" | tr -d '\r')" = '10'
-          test "$("$APKANALYZER" manifest version-name "$APK" | tr -d '\r')" = '1.0.0-rc.1'
-          test "$("$APKANALYZER" manifest debuggable "$APK" | tr -d '\r')" = 'false'
-          "$APKANALYZER" manifest print "$APK" > p8c-signed-rc/merged-manifest.xml
-          grep -F 'android:allowBackup="false"' p8c-signed-rc/merged-manifest.xml >/dev/null
-          grep -F 'android:usesCleartextTraffic="false"' p8c-signed-rc/merged-manifest.xml >/dev/null
-          ! grep -F 'android:testOnly="true"' p8c-signed-rc/merged-manifest.xml
-          ! grep -F 'Phase8ResourceHarnessReceiver' p8c-signed-rc/merged-manifest.xml
-          ! grep -F 'Phase8RetirementHarnessReceiver' p8c-signed-rc/merged-manifest.xml
+          # Android apkanalyzer's XML decoder can choke on valid app text containing '&'.
+          # AAPT2 reads the compiled binary manifest directly; a successful release build
+          # is not sufficient proof of the APK's final packaged identity or security flags.
+          "$AAPT2" dump badging "$APK" > p8c-signed-rc/badging.txt
+          "$AAPT2" dump xmltree "$APK" --file AndroidManifest.xml > p8c-signed-rc/merged-manifest-tree.txt
+          manifest_tree=p8c-signed-rc/merged-manifest-tree.txt
+          badging=p8c-signed-rc/badging.txt
+          package_line="$(grep -m1 '^package: name=' "$badging")"
+          [[ "$package_line" == *"name='com.brick.safety'"* ]]
+          [[ "$package_line" == *"versionCode='10'"* ]]
+          [[ "$package_line" == *"versionName='1.0.0-rc.1'"* ]]
+          ! grep -q '^application-debuggable' "$badging"
+          grep -Eq '^[[:space:]]*A: android:allowBackup.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree"
+          grep -Eq '^[[:space:]]*A: android:usesCleartextTraffic.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree"
+          ! grep -Eq '^[[:space:]]*A: android:debuggable.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
+          ! grep -Eq '^[[:space:]]*A: android:testOnly.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
+          ! grep -F 'Phase8ResourceHarnessReceiver' "$manifest_tree"
+          ! grep -F 'Phase8RetirementHarnessReceiver' "$manifest_tree"
 
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee p8c-signed-rc/apk-signing-cert.txt
           ! grep -qi 'Android Debug' p8c-signed-rc/apk-signing-cert.txt
@@ -119,7 +129,7 @@ jobs:
           printf '%s\n' "$actual" > p8c-signed-rc/apk-signing-cert-sha256.txt
           cp "$APK" p8c-signed-rc/Brick-V1-1.0.0-rc.1.apk
           sha256sum p8c-signed-rc/Brick-V1-1.0.0-rc.1.apk | tee p8c-signed-rc/apk-sha256.txt
-          "$APKANALYZER" manifest permissions "$APK" > p8c-signed-rc/permissions.txt
+          "$AAPT2" dump permissions "$APK" > p8c-signed-rc/permissions.txt
           printf 'git_sha=%s\napplication_id=com.brick.safety\nversion_code=10\nversion_name=1.0.0-rc.1\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > p8c-signed-rc/provenance.txt
 
       - name: Remove materialized keystore
