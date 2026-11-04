@@ -123,7 +123,10 @@ jobs:
           ! grep -F 'p.getBoolean("fallHighActive"' "$wifi"
 
           grep -F 'lastLocationCallbackElapsed' "$service" >/dev/null
-          grep -F 'sample.rawAccepted && sample.source == PositionSource.FUSED' "$service" >/dev/null
+          grep -F 'MeasuredFixGate.acceptedElapsed(sample, now)' "$service" >/dev/null
+          grep -F 'MeasuredFixGate.clearsReacquisition(acceptedElapsed, now, reacquisitionTriggerMs())' "$service" >/dev/null
+          grep -F 'sample.rawAccepted || sample.source != PositionSource.FUSED' app/src/main/java/com/brick/safety/location/MeasuredFixGate.kt >/dev/null
+          grep -F 'testFortyRepeatedRejectedCallbacksCannotResetMeasuredReacquisitionDeadline' app/src/androidTest/java/com/brick/safety/location/Phase8FusedFreshnessInstrumentedTest.kt >/dev/null
           grep -F 'retryReacquisitionDue' "$service" >/dev/null
           grep -F 'registration.addOnSuccessListener { locationSubscribed = true }' "$service" >/dev/null
 
