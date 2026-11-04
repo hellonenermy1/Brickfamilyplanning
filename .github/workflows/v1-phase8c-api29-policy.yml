@@ -103,6 +103,10 @@ jobs:
             -e class 'com.brick.safety.maintenance.Phase8Api29WifiDeviceOwnerInstrumentedTest' \
             com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8c-api29-wifi-test.txt
           grep -E 'OK \(1 test\)|OK \(1 tests\)' /tmp/p8c-api29-wifi-test.txt >/dev/null
+          "$ADB" shell run-as com.brick.safety cat files/phase8_api29_wifi_capability.txt \
+            | tee /tmp/p8c-api29-wifi-capability.txt
+          grep -Eq '^(SUPPORTED_ANDROID10_EMULATOR|VERIFIED_UNSUPPORTED_ANDROID10_EMULATOR)' \
+            /tmp/p8c-api29-wifi-capability.txt
 
       - name: Execute P8C-009 provenance and reversal regression
         shell: bash
@@ -129,6 +133,7 @@ jobs:
           cp /tmp/p8c-api29-policy-before.txt p8c-api29-evidence/device-policy-before.txt 2>/dev/null || true
           cp /tmp/p8c-api29-test.txt p8c-api29-evidence/instrumentation.txt 2>/dev/null || true
           cp /tmp/p8c-api29-wifi-test.txt p8c-api29-evidence/wifi-transition-instrumentation.txt 2>/dev/null || true
+          cp /tmp/p8c-api29-wifi-capability.txt p8c-api29-evidence/wifi-capability-outcome.txt 2>/dev/null || true
           cp /tmp/p8c-api29-policy-after.txt p8c-api29-evidence/device-policy-after.txt 2>/dev/null || true
           timeout 15s "$ADB" logcat -d > p8c-api29-evidence/logcat.txt 2>&1 || true
 
