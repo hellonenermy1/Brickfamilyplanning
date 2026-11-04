@@ -1,5 +1,8 @@
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import { P8B_LOCATION_CONTROL_COLUMNS, stripHandledLocationControlAlters } from './phase8d-schema-compat.mjs';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-v1';
@@ -8,7 +11,7 @@ const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
 const DLQ = 'brick-family-v1-dlq';
 const ACCESS_APP_NAME = 'Brick Parent Dashboard';
-const CURRENT_APP_VERSION = '0.6.0-phase6-rc';
+const CURRENT_APP_VERSION = '1.0.0-rc.1';
 const GENERATED_CONFIG = 'wrangler.jsonc';
 const SCHEMAS = [
   'schema/001_init.sql',
@@ -20,7 +23,10 @@ const SCHEMAS = [
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
   'schema/011_v1_phase6_location_control.sql',
-  'schema/015_phase8_device_identity.sql'
+  'schema/015_phase8_device_identity.sql',
+  'schema/016_p8b_remediation.sql',
+  'schema/017_p8b_provider_rate.sql',
+  'schema/018_p8b_pin_pairing.sql'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -250,7 +256,7 @@ await run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'typecheck']
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '-p', 'tsconfig.web.json', '--noEmit']);
 
 const template = await fs.readFile('wrangler.template.jsonc', 'utf8');
-if (!template.includes('"main": "src/worker-v9.ts"')) throw new Error('Phase 8 setup requires wrangler.template.jsonc to target worker-v9.ts.');
+if (!template.includes('"main": "src/worker-p8b.ts"')) throw new Error('Brick V1 setup requires wrangler.template.jsonc to target worker-p8b.ts.');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, 'phase8-bootstrap-not-valid'));
 
 console.log('[7/20] Applying base schema…');
@@ -277,10 +283,27 @@ await applySchema(SCHEMAS[8]);
 console.log('[16/20] Applying Phase 8 permanent device-identity migration…');
 await applySchema(SCHEMAS[9]);
 
-// All tables and constraints required by worker-v9 now exist before the first activation. The
+// Migration 016 contains five non-idempotent SQLite ADD COLUMN statements. Repair only those
+// schema-defined columns individually, then run the *remaining exact migration* (all CREATE
+// statements) from a temporary SQL file. A repeated setup cannot abort on duplicate columns.
+console.log('[16b/20] Reconciling Phase 8B commands, Wi-Fi, screen time and commute schema…');
+await ensureColumns(d1Id, 'device_location_control', P8B_LOCATION_CONTROL_COLUMNS);
+const schema016 = stripHandledLocationControlAlters(await fs.readFile(SCHEMAS[10], 'utf8'));
+const temporarySchemaFolder = await fs.mkdtemp(path.join(os.tmpdir(), 'brick-v1-p8b-schema-'));
+try {
+  const temporarySchemaFile = path.join(temporarySchemaFolder, '016_p8b_idempotent.sql');
+  await fs.writeFile(temporarySchemaFile, schema016);
+  await applySchema(temporarySchemaFile);
+} finally {
+  await fs.rm(temporarySchemaFolder, { recursive: true, force: true });
+}
+await applySchema(SCHEMAS[11]);
+await applySchema(SCHEMAS[12]);
+
+// All tables and constraints required by worker-p8b now exist before the first activation. The
 // placeholder Access AUD deliberately fails parent JWT verification until the exact hostname is
 // reconciled with Cloudflare Access below; child APIs can continue operating with their own keys.
-console.log('[17/20] Activating schema-compatible worker-v9 with parent access locked down…');
+console.log('[17/20] Activating schema-compatible worker-p8b with parent access locked down…');
 const bootstrap = await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy', '--config', GENERATED_CONFIG], { capture: true });
 const hostMatch = String(bootstrap).match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/);
 if (!hostMatch) throw new Error('Worker deployed, but the workers.dev hostname was not detected. Refusing to configure Access against a guessed hostname.');
@@ -292,7 +315,7 @@ const access = await ensureAccess(workerHost);
 console.log('[19/20] Writing cryptographically verified Access configuration…');
 await fs.writeFile(GENERATED_CONFIG, renderWrangler(template, d1Id, teamDomain, access.aud));
 
-console.log('[20/20] Final-deploying worker-v9 with verified Access configuration…');
+console.log('[20/20] Final-deploying worker-p8b with verified Access configuration…');
 await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['wrangler', 'deploy', '--config', GENERATED_CONFIG]);
 
 let sourceGitSha = process.env.GITHUB_SHA?.trim() || '';
@@ -305,16 +328,16 @@ if (!/^[0-9a-f]{40}$/i.test(sourceGitSha)) throw new Error('Could not determine 
 const state = {
   phase: 8,
   v1ProgramPhase: 8,
-  phaseSlice: '8-cloud-identity-access-r2-queues-location-control',
+  phaseSlice: '8d-cloud-p8b-backend-candidate',
   releaseState: 'candidate-not-real-device-qualified',
   sourceGitSha,
-  schemaVersion: 15,
+  schemaVersion: 18,
   appliedSchemas: SCHEMAS,
   accountId,
   d1Id,
   workerHost,
   currentRelease: CURRENT_APP_VERSION,
-  workerEntry: 'src/worker-v9.ts',
+  workerEntry: 'src/worker-p8b.ts',
   resources: { D1_NAME, HISTORY_BUCKET, MAPS_BUCKET, EVENT_QUEUE, DLQ },
   access: { mode: 'cloudflare-access-rs256', appId: access.appId, aud: access.aud, teamDomain, destination: access.destination },
   retention: {
@@ -337,6 +360,6 @@ console.log(`Source Git SHA:    ${sourceGitSha}`);
 console.log(`Parent dashboard: https://${workerHost}/parent`);
 console.log(`Child API base:   https://${workerHost}`);
 console.log(`Current release:  ${CURRENT_APP_VERSION}`);
-console.log('Schemas 001–011 plus Phase 8 identity schema 015 were reconciled before worker-v9 activation.');
+console.log('Production schema chain through P8B 018 was reconciled before worker-p8b activation.');
 console.log('R2 history/maps + Queues/DLQ + Cloudflare Access are real Cloudflare resources.');
 console.log('This remains a release candidate until Phase 8 CI acceptance and required real OPPO/ColorOS qualification are completed.');
