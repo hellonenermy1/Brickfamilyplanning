@@ -3,7 +3,7 @@ import { readBoundedBody } from "./bounded-body";
 import { canonicalDevicePublicKey } from "./crypto";
 import { parentV5BHtml } from "./parent-v5b";
 import { privateMapStatus, servePrivateBasemap } from "./private-map";
-import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
+import { parentAuthorized, unauthorizedParent, verifyAccessRequest, type AccessAuthEnv } from "./access-auth";
 import { reserveHealthReplay, validatePairingPublicKey, validateSafetyReplayWindow } from "./device-json-security";
 import { ingestLocationBatchV6, ingestLocationV6, previewLatestLocationV6 } from "./location-ingest-v6";
 import { cleanupPhase5C, ingestCrashReport, listAudit, listCrashReports, recordAudit, releaseStatus } from "./phase5c";
@@ -59,9 +59,12 @@ function parentHtmlResponse() {
 function coreEnv(env: RuntimeEnv): CoreEnv { return env; }
 function mapEnv(env: RuntimeEnv) { return { MAPS: env.MAPS }; }
 
-function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>): Request<unknown, IncomingRequestCfProperties> {
+function authorizeForCore(req: Request<unknown, IncomingRequestCfProperties>, wsLeaseUntil?: number): Request<unknown, IncomingRequestCfProperties> {
   const headers = new Headers(req.headers);
+  // A client-provided lease is never trusted, even for other authenticated parent routes.
+  headers.delete("X-Brick-Internal-Ws-Lease-Until");
   headers.set("Cf-Access-Jwt-Assertion", "phase6-outer-wrapper-verified");
+  if (wsLeaseUntil !== undefined) headers.set("X-Brick-Internal-Ws-Lease-Until", String(wsLeaseUntil));
   return new Request(req, { headers }) as Request<unknown, IncomingRequestCfProperties>;
 }
 
@@ -271,12 +274,23 @@ export default {
     }
 
     if (u.pathname.startsWith("/parent/")) {
-      const denied = await requireParent(req, env); if (denied) return denied;
-      if (u.pathname.endsWith("/ws") && !sameOriginWebSocket(req)) return csrfDenied("same-origin WebSocket upgrade required");
+      // The first authenticated upgrade is NOT indefinite authorization. Every live stream must
+      // reconnect through the real parent authentication boundary at least every 30 seconds.
+      const claims = await verifyAccessRequest(req, env);
+      if (!claims) return unauthorizedParent(req);
+      const isWs = u.pathname.endsWith("/ws");
+      if (isWs && !sameOriginWebSocket(req)) return csrfDenied("same-origin WebSocket upgrade required");
       if (!sameOriginMutation(req)) return csrfDenied();
       const bodyDenied = await parentMutationBodyDenied(req);
       if (bodyDenied) return bodyDenied;
-      const response = await coreHandler.fetch(authorizeForCore(req), coreEnv(env), ctx);
+      let wsLeaseUntil: number | undefined;
+      if (isWs) {
+        const now = Date.now();
+        if (typeof claims.exp !== "number" || !Number.isSafeInteger(claims.exp)) return unauthorizedParent(req);
+        wsLeaseUntil = Math.min(claims.exp * 1000, now + 30_000);
+        if (wsLeaseUntil <= now) return unauthorizedParent(req);
+      }
+      const response = await coreHandler.fetch(authorizeForCore(req, wsLeaseUntil), coreEnv(env), ctx);
       if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) ctx.waitUntil(recordAudit(env, "parent_mutation", req, response.status));
       return response;
     }
