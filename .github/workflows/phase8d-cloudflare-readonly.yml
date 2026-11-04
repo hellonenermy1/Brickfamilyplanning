@@ -40,11 +40,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_AUDIT_READ_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/phase8d-cloudflare-readonly.mjs
+      - name: Generate non-mutating remediation plan for actual LIVE account results
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s phase8d-live-readonly-result.json ]; then
+            echo "Cloudflare attestation report was not produced; no remediation is authorized"
+            exit 1
+          fi
+          # Exit 2 signifies unresolved drift, never an automatic repair or a PASS.
+          code=0
+          node scripts/phase8d-remediation-plan.mjs phase8d-live-readonly-result.json || code=$?
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+          test -s phase8d-remediation-plan.json
       - name: Attach sanitized PASS/DRIFT/BLOCKED audit result
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: brick-phase8d-cloudflare-readonly-${{ github.sha }}
-          path: phase8d-live-readonly-result.json
+          path: |
+            phase8d-live-readonly-result.json
+            phase8d-remediation-plan.json
           if-no-files-found: warn
           retention-days: 14
