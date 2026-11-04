@@ -1,5 +1,8 @@
 # Brick V1 Phase 8C — PDF-aligned execution and evidence matrix
 
+**FINAL PDF 8C.1–8C.20 STATUS (2026-11-04): PASS / DONE at the pinned Android source and emulator audit scope.** All five CI gates PASS on production source `2c492efff01095e17f96af3c24ac07ac0b5c3739`, including the final 186-second CPU test. All 13 original P8C findings and the Live retry hot loop have formal corrected/retested/verified dispositions. The **authoritative current crosswalk** is [PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md); the exact originals and methods are in [the closure matrix](PHASE8C_FINDING_CLOSURE_MATRIX_2026-11-04.md). Older checkboxes/status sections below reflect previous test stages only. Phase 9 OPPO/ColorOS hardware claims remain pending.
+
+
 **Latest state (2026-11-04):** This matrix preserves the original early-session PDF coverage. Its older claims that the signing secrets are missing, no signed APK exists, or resource CI is unmeasured are **superseded** by [PHASE8C_CURRENT_ACCEPTANCE_GATE_2026-11-04.md](PHASE8C_CURRENT_ACCEPTANCE_GATE_2026-11-04.md), [PHASE8C_MANIFEST_REPORT.md](PHASE8C_MANIFEST_REPORT.md), and [PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md](PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md). Original findings remain historical; no Phase 8C unconditional PASS until final-source CI and concurrent purge-drain retest are verified. Latest PDF 8C.1–8C.20 section numbering remains authoritative.
 
 
