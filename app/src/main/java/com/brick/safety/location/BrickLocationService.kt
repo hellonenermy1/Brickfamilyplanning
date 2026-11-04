@@ -141,6 +141,7 @@ class BrickLocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        BrickServiceQuiescenceGate.serviceStarted()
         if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
             stopSelf()
             return
@@ -936,6 +937,11 @@ class BrickLocationService : Service() {
         liveIo.shutdownNow()
         if (::crashOutbox.isInitialized) crashOutbox.close()
         if (::journal.isInitialized) journal.close()
+        // shutdownNow does NOT join an already-running writer. Observe actual pool termination
+        // away from the Android main thread before allowing PURGE_BRICK to delete private data.
+        BrickServiceQuiescenceGate.serviceShutdownRequested(
+            listOf(networkIo, healthIo, liveIo, supervisor, fallbackTicker)
+        )
         super.onDestroy()
     }
 
