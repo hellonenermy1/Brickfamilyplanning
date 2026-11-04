@@ -219,3 +219,13 @@
 - **Fix:** `48e82f1e461ff9fe99ffea4613908c54211926fe` adds `source_evidence_level` as field 6, preserving all 49 routes, adds exact P8D-011 scope/evidence for WS row without claiming live PASS.
 - **GREEN:** [run 41799170739](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799170739): all three Phase 8D CI jobs SUCCESS including the 49-row exact-width/uniqueness/explicit-status regression.
 - **Disposition:** P8D-012 **FIXED → RETESTED → VERIFIED CLOSED** for **CSV evidence schema only**. Complete 8D.2 method/auth/input/output/rate/log evidence and runtime endpoint discovery remain pending.
+
+## P8D-013 — Audit-log paths retain raw device/session identifiers (8D.15 / 8D.18)
+
+**Severity:** P2 privacy/observability boundary; actual production log exposure not verified. **Source-confirmed:** `src/phase5c.ts` `safeAuditPath` records `new URL(raw).pathname.slice(0,240)` unchanged. For audited parent mutations, this can persist literal `/parent/api/device/<deviceId>/...` or `/parent/api/pair/pin/<sessionId>`. Query strings are already omitted. D1 audit access is authenticated, but raw identifiers are unnecessary to classify route operations.
+
+**Negative regression:** call actual `recordAudit` with synthetic UUID/token-bearing path, assert the stored pathname contains no synthetic identifier and is a known route template; reject malformed/unknown path names by redacting them rather than storing arbitrary input.
+
+**Required correction:** sanitize route parameters and unknown path segments before persisting; do not log query strings, tokens, raw coordinates, arbitrary headers, or full request bodies. Preserve a non-identifying route classification for observability. Scope is the D1 audit trail, **not** a claim that every Cloudflare/hosted application log is clean.
+
+**State:** OPEN — finding recorded before targeted regression and remediation.
