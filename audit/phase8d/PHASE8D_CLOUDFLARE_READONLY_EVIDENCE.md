@@ -40,3 +40,7 @@ A separate pre-existing 8D.18 test `scripts/test-phase8d-delivery-denominator-sq
 ## Remaining hard requirements
 
 All 19 8D sections still require their actual approved exit evidence; among others: active Cloudflare deployment identity, live method/auth/cross-family behavior, D1→Queue→R2 and DO crash injection with no false ACK, WebSocket session expiry/revocation, **complete real isolated D1 + R2 + DO restore**, age-based deletion and log/CDN secret audit, release migration and rollback. No Phase 8D PASS and no authorization for 8E/8F.
+
+### Latest explicit missing-credential result
+
+[GitHub audit workflow **41827760516**](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41827760516) retested after separating token-vs-account failure messages. The synthetic read-only seven-gate unit job **SUCCESS**. The actual Cloudflare metadata job **FAILED/BLOCKED** before any HTTP request with the exact sanitized reason: **“Dedicated read token AND account ID missing/invalid; no account requests made.”** This means the GitHub Actions job received neither a usable `CLOUDFLARE_AUDIT_READ_TOKEN` nor a valid 32-hex `CLOUDFLARE_ACCOUNT_ID`; it does not establish whether a token exists elsewhere in the user's account. Do not mark Cloudflare binding, Queue, lifecycle, Access or deployment facts verified. The main source CI [41827760587](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41827760587) separately passed all 3 jobs.
