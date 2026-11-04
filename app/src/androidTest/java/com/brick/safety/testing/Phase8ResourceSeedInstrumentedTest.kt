@@ -34,8 +34,19 @@ class Phase8ResourceSeedInstrumentedTest : BrickInstrumentationTestCase() {
                 packet[0] = 2
                 if (journal.append(808, seq, packet)) durable++
             }
-            assertEquals(1_000, durable)
-            assertEquals(1_000, journal.stats().pendingCount)
+            assertEquals("every fixture append must durably succeed", 1_000, durable)
+            assertTrue("runtime may produce additional normal positions during the fixture",
+                journal.stats().pendingCount >= 1_000)
+        }
+        // Check the fixture's exact 1,000-record identity independently of runtime-created rows.
+        app.openOrCreateDatabase("brick_journal.db", Context.MODE_PRIVATE, null).use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM packets WHERE epoch=808 AND seq BETWEEN 1 AND 1000 AND acked=0",
+                null
+            ).use { rows ->
+                assertTrue(rows.moveToFirst())
+                assertEquals("fixture's exact epoch+sequence set was not persisted", 1_000, rows.getInt(0))
+            }
         }
         assertTrue(statusFile.writeText("seeded=$durable api=loopback-refusal\n").let { statusFile.exists() })
     }
