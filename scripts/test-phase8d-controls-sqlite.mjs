@@ -26,7 +26,7 @@ function val(x) {
 function subst(sql,args) {return sql.replace(/\?(\d+)/g,(_m,n)=>val(args[Number(n)-1]));}
 let revokeDuringWrite=false;
 const env={DB:{
-  prepare(sql){return {bind(...args){return {
+  prepare(sql){return {bind(...args){return {sql,args,
     async first(){
       const result=q(subst(sql,args));
       if(revokeDuringWrite && sql.includes("SELECT revoked_at")) {
