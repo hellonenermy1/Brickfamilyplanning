@@ -85,6 +85,10 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(result.detail, result.ok)
         assertEquals(DeprovisionManager.Stage.PURGE_BRICK, result.stage)
         assertTrue(DeprovisionManager.isPostPurge(context))
+        // The non-sensitive, independent deletion-provenance guard must intentionally remain
+        // until Android uninstalls the package; everything else in the Brick inventory is purged.
+        assertTrue("post-purge independent no-backup guard was lost",
+            DeprovisionManager.originGuardFile(context).exists())
 
         databases.forEach { name ->
             assertFalse("database survived purge: $name", context.getDatabasePath(name).exists())
@@ -177,6 +181,9 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
     }
 
     private fun cleanupFixtures() {
+        val guard = DeprovisionManager.originGuardFile(context)
+        listOf(guard, File(guard.path + ".new"), File(guard.path + ".bak"))
+            .forEach { runCatching { it.delete() } }
         databases.forEach { runCatching { context.deleteDatabase(it) } }
         preferences.forEach { runCatching { context.deleteSharedPreferences(it) } }
         files.forEach { name ->
