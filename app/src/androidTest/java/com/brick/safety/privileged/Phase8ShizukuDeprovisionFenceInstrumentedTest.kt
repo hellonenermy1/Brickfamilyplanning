@@ -16,7 +16,7 @@ class Phase8ShizukuDeprovisionFenceInstrumentedTest : BrickInstrumentationTestCa
 
         // Set up the real controller, then remove its pre-existing optional runtime preferences.
         ShizukuBridgeController.initialize(app)
-        assertTrue(app.deleteSharedPreferences("brick"))
+        app.deleteSharedPreferences("brick")
         val brickXml = File(app.applicationInfo.dataDir, "shared_prefs/brick.xml")
         assertFalse(brickXml.exists())
 
