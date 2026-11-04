@@ -82,8 +82,19 @@ def main() -> int:
                 else:
                     unresolved.append(f"{rel}: unresolved AndroidKeyStore alias '{name}'")
 
-    # The deprovision stage/origin marker intentionally remains until the uninstall handoff.
+    # Two non-sensitive removal-provenance anchors are intentionally retained until Android
+    # uninstall: main stage XML and an independent AtomicFile marker in noBackupFilesDir.
+    # If a future refactor removes/changes this safety boundary, fail CI for manual review.
     found_prefs.pop("brick_deprovision_v1", None)
+    guard_contract = (
+        'ORIGIN_GUARD_FILE = "brick_deprovision_origin_v1.guard"',
+        'ORIGIN_GUARD_CONTENT = "BRICK_DEPROVISION_STARTED_V1"',
+        "context.applicationContext.noBackupFilesDir",
+        "private fun originGuardValid(context: Context): Boolean",
+        "private fun ensureOriginGuard(context: Context): Boolean",
+        "if (everStarted || guardPresent) Stage.INVALID else Stage.NONE",
+        "if (!ensureOriginGuard(context)) return false",
+    )
 
     missing = []
     for label, seen, expected in (
@@ -95,6 +106,13 @@ def main() -> int:
         for name in sorted(set(seen) - expected):
             missing.append(f"{label} {name} not in DeprovisionManager: {', '.join(sorted(seen[name]))}")
         print(f"{label}: discovered {len(seen)}, registered {len(expected)}")
+
+    for marker in guard_contract:
+        if marker not in deprov:
+            missing.append(f"independent no-backup deprovision guard changed or missing: {marker}")
+    # Never let the retained marker accidentally carry location, pairing, device keys or secrets.
+    if re.search(r'ORIGIN_GUARD_CONTENT\s*=\s*"(?!(?:BRICK_DEPROVISION_STARTED_V1"))', deprov):
+        missing.append("deprovision guard contents changed; requires privacy review")
 
     # AtomicFile may leave .new or .bak. Prevent reverting to base-file-only purge.
     if 'for (suffix in listOf("", ".new", ".bak"))' not in deprov:
