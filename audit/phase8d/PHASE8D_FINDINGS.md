@@ -107,3 +107,11 @@
 **Additional 8D.16 audit target (unclassified):** current `snapshotD1ToR2` walks multiple D1 tables with paged queries rather than a proven consistent cross-table snapshot while concurrent writes occur. Source inspection alone cannot show whether a recovery snapshot can tear across device/revocation/command states; reproduce with concurrent mutation and test consistency before closing 8D.16.
 
 **Production data:** untouched. **Android production source:** untouched. **Cloudflare deployed Worker/Access:** not inspected.
+
+
+## P8D-007 — Concurrent same-segment R2 read/merge/write may discard already-ACKed points
+- **Sections:** 8D.5 / 8D.6 / 8D.9 / 8D.16; requirements BE-006/BE-007/BE-010/DAT-011.
+- **Severity:** P1 provisional until adversarial same-segment queue replay reproduces data loss.
+- **Source evidence:** `src/history-store.ts` reads each segment once with `existingSegment(HISTORY, rawKey)`, merges with the current Queue delivery, then writes `raw` and `trusted` objects with unconditional `HISTORY.put` in `Promise.all`. Two concurrent queue consumers targeting the same device/epoch/15-minute segment can both read the same previous generation and each overwrite the other's packet after an ACK.
+- **Negative test:** `scripts/test-phase8d-history-concurrent-r2.mjs` uses an artificial barrier forcing two valid synthetic messages through the same segment with both initial raw reads completed before either put. It then requires *both acknowledged* packets in the raw segment and trusted receipt. This is source/behavior evidence, not a claim about observed production user data loss.
+- **Status:** OPEN — FAILING REPRO PENDING.
