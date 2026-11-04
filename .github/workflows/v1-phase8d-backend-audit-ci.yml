@@ -60,3 +60,31 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: Verify strict schema 016 transform and repeatable migration on SQLite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/test-phase8d-schema-compat.mjs --write-sql
+          db=/tmp/brick-phase8d-schema-replay.sqlite
+          for file in \
+            schema/001_init.sql \
+            schema/002_phase2_health.sql \
+            schema/003_phase4_safety.sql \
+            schema/004_phase5_operations.sql \
+            schema/007_phase5c_hardening.sql \
+            schema/008_v1_phase2_evidence.sql \
+            schema/009_v1_phase5_fusion.sql \
+            schema/010_phase5b_closure.sql \
+            schema/011_v1_phase6_location_control.sql \
+            schema/015_phase8_device_identity.sql; do
+            sqlite3 "$db" < "$file"
+          done
+          sqlite3 "$db" < /tmp/brick-p8d-016-columns.sql
+          for iteration in first repeat; do
+            sqlite3 "$db" < /tmp/brick-p8d-016-remainder.sql
+            sqlite3 "$db" < schema/017_p8b_provider_rate.sql
+            sqlite3 "$db" < schema/018_p8b_pin_pairing.sql
+          done
+          actual="$(sqlite3 "$db" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('device_live_track_control','device_wifi_schedules','device_wifi_schedule_result','device_capability_profile','screen_time_daily','commute_summaries','provider_cache','provider_rate_window','pairing_pin_sessions')")"
+          test "$actual" = "9"
+          echo "PASS schema 001-018 additive migration + repeated 016 CREATE/index statements"
