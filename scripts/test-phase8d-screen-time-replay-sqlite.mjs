@@ -5,7 +5,7 @@ const {ingestScreenTime}=await import(pathToFileURL(process.argv[2]).href);
 const db=newDatabase();
 try{
  const keys=await ecdsa();addDevice(db,DEVICE_A,keys.spki);
- const env={DB:adapter(db)};
+ const env={DB:adapter(db),DEVICE_RATE:{async limit(){return{success:true};}}};
  const now=Date.now(),day=new Date(now).toISOString().slice(0,10);
  const payload=(captured,total)=>({protocol:1,localDay:day,totalForegroundMs:total,sessionCount:2,capturedAtMs:captured,privacy:"aggregate_only_no_package_names"});
  const req=(p)=>keys.signed("https://brick.invalid/api/device/"+DEVICE_A+"/screen-time",p);
@@ -32,7 +32,7 @@ try{
     db.prepare("UPDATE devices SET revoked_at=?1 WHERE id=?2").run(now,DEVICE_A);
   }
  };
- const denied=await ingestScreenTime(await req(payload(now-2000,990000)),{DB:adapter(db,hook)},DEVICE_A);
+ const denied=await ingestScreenTime(await req(payload(now-2000,990000)),{...env,DB:adapter(db,hook)},DEVICE_A);
  assert.equal(denied.status,401,"post-auth revocation must be rejected");
  assert.equal(db.prepare("SELECT COUNT(*) n FROM screen_time_daily WHERE device_id=?1").get(DEVICE_A).n,0,"revoked device inserted aggregate");
  console.log("PASS P8D-019 screen-time: current > stale signed capture, JSON scalars rejected, post-auth revocation cannot insert");

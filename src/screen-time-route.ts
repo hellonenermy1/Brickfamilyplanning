@@ -1,7 +1,8 @@
+import { requireDeviceIngestRate, type DeviceIngestRateEnv } from "./device-ingest-rate";
 import { readBoundedBody } from "./bounded-body";
 import { verifyDeviceSignature } from "./crypto";
 
-export type ScreenTimeEnv = { DB: D1Database };
+export type ScreenTimeEnv = DeviceIngestRateEnv & { DB: D1Database };
 type Device = { public_key_spki_b64: string; revoked_at: number | null };
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -26,6 +27,8 @@ export async function ingestScreenTime(req: Request, env: ScreenTimeEnv, deviceI
       typeof sessions !== "number" || !Number.isSafeInteger(sessions) || sessions < 0 || sessions > 100_000 ||
       typeof captured !== "number" || !Number.isSafeInteger(captured) || Math.abs(Date.now() - captured) > 3 * 86_400_000 ||
       b.privacy !== "aggregate_only_no_package_names") return json({ error: "invalid screen-time summary" }, 400);
+  const rateDenied = await requireDeviceIngestRate(env, deviceId, "screen-time");
+  if (rateDenied) return rateDenied;
   const summary = JSON.stringify({ privacy: b.privacy, capturedAtMs: captured });
   const write = await env.DB.prepare(`INSERT INTO screen_time_daily(device_id,local_day,total_foreground_ms,session_count,summary_json,received_at)
     SELECT ?1,?2,?3,?4,?5,?6

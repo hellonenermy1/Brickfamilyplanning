@@ -1,9 +1,10 @@
+import { requireDeviceIngestRate, type DeviceIngestRateEnv } from "./device-ingest-rate";
 import { persistActiveSafetyEvent, checkSafetyEventIdentity, validSafetyCoordinates } from "./safety-event-write";
 import { readBoundedBody } from "./bounded-body";
 import { validateSafetyReplayWindow } from "./device-json-security";
 import type { BrickDevice, RealtimeSafetyEvent } from "./device-do";
 
-export type FallEventEnv = {
+export type FallEventEnv = DeviceIngestRateEnv & {
   DB: D1Database;
   EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
@@ -38,6 +39,8 @@ export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, devi
   if (!validSafetyCoordinates(value)) return json({ error: "invalid fall coordinates" }, 400);
   const detailJson = JSON.stringify(d);
   if (detailJson.length > 4096) return json({ error: "fall evidence bundle too large" }, 400);
+  const rateDenied = await requireDeviceIngestRate(env, deviceId, "fall");
+  if (rateDenied) return rateDenied;
 
   const now = Date.now();
   const lat = typeof value.latitude === "number" ? value.latitude : null;

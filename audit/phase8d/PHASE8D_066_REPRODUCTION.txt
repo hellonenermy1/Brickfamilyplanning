@@ -1,0 +1,16 @@
+Baselinebb0877bc; actual signed Worker/nativeSQLite.
+FAIL P8D-066 fall deny quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 fall missing quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 fall throw quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 fall invalid quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 screen-time deny quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 screen-time missing quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 screen-time throw quota refuses before state side effects: Expected values to be strictly equal:
+FAIL P8D-066 screen-time invalid quota refuses before state side effects: Expected values to be strictly equal:
+PASS P8D-066 fall unsigned request denied before authenticated quota
+PASS P8D-066 screen-time unsigned request denied before authenticated quota
+FAIL P8D-066 fall revocation during limiter await still cannot write: Expected values to be strictly equal:
+FAIL P8D-066 screen-time revocation during limiter await still cannot write: Expected values to be strictly equal:
+FAIL P8D-066 active handlers use distinct keys and preserve normal success: Expected values to be strictly deep-equal:
+
+After correction13 actual-route cases PASS locally; hosted exact-SHA pending.

@@ -8,7 +8,7 @@ let failures=0;
 async function check(label,fn){try{await fn();console.log('PASS '+label);}catch(e){failures++;console.error('FAIL '+label+': '+e.message);}}
 async function fixture(initialHigh=0){
  const db=newDatabase(),key=await ecdsa();addDevice(db,DEVICE_A,key.spki);const state=deviceState({safetyHighWater:initialHigh}),actual=new BrickDevice(state,{});let queues=0;
- const env={DB:adapter(db),EVENTS:{async send(){queues++;}},DEVICE_RATE:{async limit(){return{success:true};}},BRICK_DEVICE:{idFromName(x){return x;},get(){return actual;}}};
+ const env={DB:adapter(db),DEVICE_RATE:{async limit(){return{success:true};}},EVENTS:{async send(){queues++;}},DEVICE_RATE:{async limit(){return{success:true};}},BRICK_DEVICE:{idFromName(x){return x;},get(){return actual;}}};
  const createdAt=Date.now();const send=async(extra={})=>worker.fetch(await key.signed('https://brick.invalid/api/device/'+DEVICE_A+'/event',{protocol:1,kind:'fall_detected',eventId:ID,eventSequence:10,createdAtMs:createdAt,latitude:1.35,longitude:103.8,accuracyM:10,detail:{confidence:'high',nested:{a:1,b:2}},...extra}),env,{waitUntil(){}});
  return{db,state,actual,send,get queues(){return queues;}};
 }
