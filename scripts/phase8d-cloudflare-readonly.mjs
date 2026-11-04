@@ -160,7 +160,7 @@ export async function attest({token,accountId,request=fetch}={}) {
   const apps=Array.isArray(r)?r:Array.isArray(r?.apps)?r.apps:null;
   if(!apps)return {blocked:true,detail:"Cloudflare Access app listing not available"};
   const destinations=a=>Array.isArray(a?.destinations)?a.destinations.map(d=>d?.uri).filter(Boolean):a?.domain?[a.domain]:[];
-  const match=apps.filter(x=>destinations(x).some(s=>typeof s==="string"&&/^brick-family-v1\\.[a-z0-9.-]+\\.workers\\.dev\\/parent\\*$/i.test(s)));
+  const match=apps.filter(x=>destinations(x).some(s=>typeof s==="string"&&/^brick-family-v1\.[a-z0-9.-]+\.workers\.dev\/parent\*$/i.test(s)));
   if(match.length!==1)return {ok:false,detail:"Exactly one production Access parent* app not attested",evidence:{matchedAppCount:match.length}};
   const listed=match[0],appId=listed.id;
   if(typeof appId!=="string"||!/^[a-f0-9-]{32,36}$/i.test(appId))return {blocked:true,detail:"Access app identifier not readable"};
