@@ -53,7 +53,7 @@ export default {
 
     // Prevent authenticated, potentially expensive reads and WebSocket reconnect floods from
     // starving device ingestion/pairing. Two separately configured Cloudflare edge limits.
-    const costlyParent = u.pathname.match(/^\\/parent\\/api\\/device\\/([^/]+)\\/(history|ws)$/);
+    const costlyParent = u.pathname.match(/^\/parent\/api\/device\/([^/]+)\/(history|ws)$/);
     if (costlyParent && req.method === "GET") {
       const kind = costlyParent[2];
       const denied = await parentGuard(req, env); if (denied) return denied;
