@@ -73,7 +73,6 @@ jobs:
           node scripts/test-phase8d-history-concurrent-r2.mjs /tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-idempotence.mjs /tmp/brick-p8d-history.mjs
       - name: P8D-024 enforce Queue success before live DO publication
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/location-ingest-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-location-queue-before-live.mjs /tmp/brick-p8d-location.mjs
@@ -130,12 +129,10 @@ jobs:
       - name: P8D-012 require 49 source endpoint rows have unambiguous named CSV schema
         run: node scripts/test-phase8d-endpoint-matrix.mjs
       - name: P8D-027 deduplicate costly per-device commute refreshes
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/commute-refresh-claim.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-refresh-claim.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-commute-refresh-claim.mjs /tmp/brick-p8d-refresh-claim.mjs
       - name: P8D-028 validate bounded commute and screen-time query parameters
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/commute-summary.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-commute.mjs
           npx --no-install esbuild src/screen-time-route.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-screen.mjs
@@ -147,7 +144,6 @@ jobs:
       - name: 8D.19 enforce immutable CI actions, accepted-branch deployment gate and source SHA
         run: node scripts/test-phase8d-release-gates.mjs
       - name: P8D-029 fail-closed OneMap and commute parent quotas
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
           node scripts/test-phase8d-parent-expensive-route-rate.mjs /tmp/brick-p8d-prod-worker.mjs
@@ -189,12 +185,10 @@ jobs:
       - name: 8D.8 production SQLite schema and constraints, including revocation history
         run: node --disable-warning=ExperimentalWarning scripts/test-phase8d-sqlite-integrity.mjs
       - name: P8D-025 exactly-once bounded backend incident alerting
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/phase5-ops.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-ops.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-incident-alert-race.mjs /tmp/brick-p8d-ops.mjs
       - name: P8D-026 truthful delivery metric on extreme signed sequence jumps
-        continue-on-error: true # TEMPORARY ONLY: capture all six negative failures before any fix; remove before final acceptance.
         run: |
           npx --no-install esbuild src/phase5-ops.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-ops.mjs
           node --disable-warning=ExperimentalWarning scripts/test-phase8d-delivery-denominator-sqlite.mjs /tmp/brick-p8d-ops.mjs
