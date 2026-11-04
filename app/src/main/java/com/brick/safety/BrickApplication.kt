@@ -30,7 +30,8 @@ class BrickApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // After PURGE BRICK, only the deprovision stage preference may remain. Do not initialize
+        // After PURGE BRICK, only the deprovision stage preference and its tiny independent,
+        // non-sensitive no-backup origin guard may remain until Android uninstall. Do not initialize
         // diagnostics, keys, tracking, evidence, learned state, recovery work or any other store that
         // could recreate Brick-owned persistence while the user is between PURGE and UNINSTALL.
         if (DeprovisionManager.isPostPurge(this)) return
