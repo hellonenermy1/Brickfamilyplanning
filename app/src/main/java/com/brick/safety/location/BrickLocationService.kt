@@ -899,7 +899,10 @@ class BrickLocationService : Service() {
         if (::bleAnchorEngine.isInitialized) runCatching { bleAnchorEngine.stop() }
         runCatching { Phase4AtlasRuntime.stop() }
         locationSubscribed = false
-        if (!mustQuiesceAsync() && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
+        // Shutdown blocks old callbacks but must NOT disable normal crash/service-reclaim recovery.
+        // Only a durable deprovision stage or Deep Off suppresses scheduling.
+        if (DeprovisionManager.stage(this) == DeprovisionManager.Stage.NONE &&
+            !DeepOffManager.isActive(this) && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
             runCatching { RecoveryScheduler.ensureScheduled(this) }
             runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         }
