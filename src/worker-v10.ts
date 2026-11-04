@@ -6,6 +6,7 @@ import {
   authorizeDevParentRequest,
   cleanupDevParentAuth,
   devParentUnauthorized,
+  devParentSessionValid,
   handleDevParentAuthRoute,
   stripDevParentInternalHeader
 } from "./dev-parent-auth";
@@ -15,6 +16,7 @@ export { BrickDevice };
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 type Env = Record<string, unknown> & {
   DB?: D1Database;
+  BRICK_DEVICE?: DurableObjectNamespace<BrickDevice>;
   BRICK_MAP_SOURCE?: string;
   PARENT_LOGIN_RATE?: RateLimit;
   DEV_PARENT_LOGIN_HASH?: string;
@@ -67,6 +69,25 @@ function scheduleRequestDrivenMaintenance(env: Env & { DB: D1Database }, runtime
   }));
 }
 
+// A valid dev-session logout must also terminate already upgraded live streams. Close all
+// current parent sockets (not device identities) to avoid a vulnerable per-cookie/DO lookup.
+async function closeDevParentSockets(env: Env) {
+  if (!env.DB || !env.BRICK_DEVICE) throw new Error("dev parent socket invalidation unavailable");
+  let after = "";
+  for (let page = 0; page < 100; page++) {
+    const rows = await env.DB.prepare(
+      "SELECT id FROM devices WHERE id>?1 ORDER BY id LIMIT 100"
+    ).bind(after).all<{ id: string }>();
+    if (!rows.results.length) return;
+    for (const row of rows.results) {
+      await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(row.id)).closeParentSockets();
+    }
+    if (rows.results.length < 100) return;
+    after = rows.results[rows.results.length - 1].id;
+  }
+  throw new Error("too many development devices to invalidate safely");
+}
+
 export default {
   async fetch(req: Request<unknown, IncomingRequestCfProperties>, env: Env, ctx: ExecutionContext) {
     if (!env.DB) return new Response("Development D1 binding missing", { status: 503, headers: { "Cache-Control": "no-store" } });
@@ -84,8 +105,22 @@ export default {
         PARENT_LOGIN_RATE: env.PARENT_LOGIN_RATE,
         DEV_PARENT_LOGIN_HASH: env.DEV_PARENT_LOGIN_HASH
       };
+      const activeLogout = cleanReq.method === "POST" && u.pathname === "/parent/logout" &&
+        await devParentSessionValid(cleanReq, parentAuthEnv);
       const authRoute = await handleDevParentAuthRoute(cleanReq, parentAuthEnv);
-      if (authRoute) return authRoute;
+      if (authRoute) {
+        if (activeLogout && authRoute.status === 303) {
+          try { await closeDevParentSockets(env); }
+          catch {
+            // D1 has already revoked the cookie; existing sockets still expire by their <=30s lease.
+            return Response.json(
+              { error: "Development session revoked; live streams expire within 30 seconds" },
+              { status: 503, headers: { "Cache-Control": "no-store" } }
+            );
+          }
+        }
+        return authRoute;
+      }
 
       const authorized = await authorizeDevParentRequest(cleanReq, parentAuthEnv);
       if (!authorized) return devParentUnauthorized(cleanReq);
