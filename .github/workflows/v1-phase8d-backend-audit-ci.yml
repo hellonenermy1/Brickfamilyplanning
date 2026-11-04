@@ -91,6 +91,10 @@ jobs:
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-revoked-control.mjs /tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-controls-sqlite.mjs /tmp/brick-p8d-controls.mjs
+      - name: P8D-011 existing WebSocket expiry, hibernation and revocation negative regression
+        run: |
+          npx --no-install esbuild src/device-do.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-do.mjs
+          node scripts/test-phase8d-ws-session.mjs /tmp/brick-p8d-do.mjs
       - name: 8D.11 production Cloudflare Access RS256 JWT adversarial checks
         run: |
           npx --no-install esbuild src/access-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-access-jwt.mjs
