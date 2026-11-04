@@ -115,6 +115,10 @@ jobs:
           npx --no-install esbuild src/pin-pairing.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-key-validation.mjs /tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-confirm-race.mjs /tmp/brick-p8d-pin-pairing.mjs
+      - name: P8D-038 Cloudflare GET-only audit API shapes, version provenance, Queue pagination and denial cases
+        run: node scripts/test-phase8d-cloudflare-readonly.mjs
+      - name: P8D-040 source configuration parity for prod/dev D1, R2, Queue, DO and rate bindings
+        run: node scripts/test-phase8d-config-parity.mjs
       - name: 8D.13 signed command result finality, Wi-Fi freshness, capability profile and wrong-device cases
         run: |
           set -u
