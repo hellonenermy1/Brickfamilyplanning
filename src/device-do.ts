@@ -87,12 +87,81 @@ function newer(epoch: number, sequence: number, current: SequenceHighWater | nul
 }
 
 export class BrickDevice extends DurableObject<Env> {
-  private sockets = new Set<WebSocket>();
-  constructor(ctx: DurableObjectState, env: Env) { super(ctx, env); for (const ws of this.ctx.getWebSockets()) this.sockets.add(ws); }
+  private readonly MAX_SOCKET_LEASE_MS = 30_000;
+  private revoked = false;
+  private readonly initialized: Promise<void>;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Also applies on hibernation and class reload: a revoked device never revives an old socket.
+    this.initialized = this.ctx.storage.get<boolean>("wsRevoked").then(value => {
+      this.revoked = value === true;
+      if (this.revoked) this.closeAllParentSockets(4003, "Device revoked");
+      else this.closeExpiredSockets();
+    });
+    this.ctx.waitUntil(this.initialized);
+  }
+
+  private deadline(ws: WebSocket): number {
+    try {
+      const value = ws.deserializeAttachment() as { v?: unknown; expiresAt?: unknown } | null;
+      return value?.v === 1 && typeof value.expiresAt === "number" &&
+        Number.isSafeInteger(value.expiresAt) ? value.expiresAt : 0;
+    } catch { return 0; }
+  }
+
+  private closeAllParentSockets(code: number, reason: string) {
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.close(code, reason); } catch { /* revoked/expired socket cannot receive from broadcast */ }
+    }
+  }
+
+  private closeExpiredSockets(now = Date.now()) {
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.deadline(ws) <= now) {
+        try { ws.close(4001, "Subscription expired"); } catch { /* do not send to this socket */ }
+      }
+    }
+  }
+
+  private async scheduleExpiry() {
+    if (this.revoked) return;
+    const now = Date.now();
+    let earliest = Number.POSITIVE_INFINITY;
+    for (const ws of this.ctx.getWebSockets()) {
+      const deadline = this.deadline(ws);
+      if (deadline > now && deadline < earliest) earliest = deadline;
+    }
+    if (Number.isFinite(earliest)) {
+      const existing = await this.ctx.storage.getAlarm();
+      if (existing === null || existing > earliest) await this.ctx.storage.setAlarm(earliest);
+    }
+  }
+
+  async alarm() {
+    await this.initialized;
+    this.closeExpiredSockets();
+    await this.scheduleExpiry();
+  }
+
+  // Server-only RPC, invoked after durable D1 device revocation or valid development parent logout.
+  async revokeParentSockets() {
+    await this.initialized;
+    this.revoked = true;
+    // Persist the fence before closing: concurrent in-flight upgrades cannot resurrect live streams.
+    await this.ctx.storage.put("wsRevoked", true);
+    this.closeAllParentSockets(4003, "Subscription revoked");
+  }
 
   private async broadcast(payload: unknown) {
+    await this.initialized;
+    if (this.revoked) return;
+    this.closeExpiredSockets();
     const data = JSON.stringify(payload);
-    for (const ws of this.ctx.getWebSockets()) { try { ws.send(data); } catch { this.sockets.delete(ws); } }
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.deadline(ws) <= Date.now()) continue;
+      try { ws.send(data); } catch { try { ws.close(1011, "Subscription transport failed"); } catch {} }
+    }
   }
 
   private async snapshotPayload() {
@@ -168,13 +237,33 @@ export class BrickDevice extends DurableObject<Env> {
       return Response.json({ latest: snapshot.latest, state: snapshot.state, health: snapshot.health, networkEvidence: snapshot.networkEvidence, network: snapshot.networkEvidence, lastSafetyEvent: snapshot.lastSafetyEvent });
     }
     if (u.pathname === "/ws") {
+      await this.initialized;
+      if (this.revoked) return new Response("Subscription revoked", { status: 410 });
+      const now = Date.now();
+      const rawUntil = req.headers.get("X-Brick-Internal-Ws-Lease-Until");
+      const expiresAt = rawUntil === null ? NaN : Number(rawUntil);
+      if (req.method !== "GET" || req.headers.get("Upgrade")?.toLowerCase() !== "websocket" ||
+          !Number.isSafeInteger(expiresAt) || expiresAt <= now || expiresAt > now + this.MAX_SOCKET_LEASE_MS) {
+        return new Response("Valid parent WebSocket lease required", { status: 403 });
+      }
+      // Arm the idle alarm BEFORE accepting a socket; failed alarm storage must fail closed.
+      const currentAlarm = await this.ctx.storage.getAlarm();
+      if (currentAlarm === null || currentAlarm > expiresAt) await this.ctx.storage.setAlarm(expiresAt);
+      if (this.revoked) return new Response("Subscription revoked", { status: 410 });
       const pair = new WebSocketPair(); const client = pair[0], server = pair[1];
-      this.ctx.acceptWebSocket(server); this.sockets.add(server);
-      this.ctx.waitUntil(this.snapshotPayload().then(snapshot => { try { server.send(JSON.stringify(snapshot)); } catch { this.sockets.delete(server); } }));
+      this.ctx.acceptWebSocket(server);
+      server.serializeAttachment({ v: 1, expiresAt });
+      this.ctx.waitUntil(this.snapshotPayload().then(snapshot => {
+        if (this.revoked || this.deadline(server) <= Date.now()) {
+          try { server.close(4001, "Subscription expired"); } catch {}
+          return;
+        }
+        try { server.send(JSON.stringify(snapshot)); } catch { try { server.close(1011, "Snapshot failed"); } catch {} }
+      }));
       return new Response(null, { status: 101, webSocket: client });
     }
     return new Response("Not found", { status: 404 });
   }
-  webSocketClose(ws: WebSocket) { this.sockets.delete(ws); }
-  webSocketError(ws: WebSocket) { this.sockets.delete(ws); }
+  webSocketClose(_ws: WebSocket) { /* Hibernation API owns socket lifecycle. */ }
+  webSocketError(_ws: WebSocket) { /* Expiry alarm / next broadcast prunes failed sockets. */ }
 }
