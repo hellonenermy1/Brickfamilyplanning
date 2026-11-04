@@ -8,6 +8,8 @@ on:
       - 'scripts/test-phase8d-cloudflare-readonly.mjs'
       - 'scripts/phase8d-live-parent-denial.mjs'
       - 'scripts/test-phase8d-live-parent-denial.mjs'
+      - 'scripts/phase8d-d1-catalog-readonly.mjs'
+      - 'scripts/test-phase8d-d1-catalog-readonly.mjs'
       - '.github/workflows/phase8d-cloudflare-readonly.yml'
 permissions:
   contents: read
@@ -26,6 +28,7 @@ jobs:
           node-version: '22'
       - run: node scripts/test-phase8d-cloudflare-readonly.mjs
       - run: node scripts/test-phase8d-live-parent-denial.mjs
+      - run: node scripts/test-phase8d-d1-catalog-readonly.mjs
   live-metadata:
     name: "Cloudflare seven read-only metadata checks (live required)"
     needs: read-only-test
@@ -89,5 +92,29 @@ jobs:
         with:
           name: brick-phase8d-parent-denial-${{ github.sha }}
           path: phase8d-parent-denial-result.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  d1-catalog:
+    name: "Live D1 database catalog isolation (no user rows)"
+    needs: read-only-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+      - name: Cloudflare D1 database names and distinct IDs (GET only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_AUDIT_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/phase8d-d1-catalog-readonly.mjs
+      - name: Preserve D1 metadata result, never table contents
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8d-d1-catalog-${{ github.sha }}
+          path: phase8d-d1-catalog-result.json
           if-no-files-found: warn
           retention-days: 14
