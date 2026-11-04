@@ -6,6 +6,8 @@ import com.brick.safety.activity.ActivityMode
 import com.brick.safety.activity.ActivityState
 import com.brick.safety.atlas.CompanionPresenceStore
 import com.brick.safety.reliability.BootReceiver
+import com.brick.safety.reliability.FallDetectorRuntime
+import com.brick.safety.diagnostics.DiagnosticMonitor
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.ServiceControl
 import com.brick.safety.testing.BrickInstrumentationTestCase
@@ -21,6 +23,8 @@ class Phase8PostPurgeIsolationInstrumentedTest : BrickInstrumentationTestCase() 
         "brick_companion_presence",
         "brick_deep_off_v1",
         "brick_diagnostics",
+        "brick_diag_state",
+        "brick_diag_flags",
         "brick_wifi_schedule_v1",
         "brick_device_role_v1"
     )
@@ -60,6 +64,14 @@ class Phase8PostPurgeIsolationInstrumentedTest : BrickInstrumentationTestCase() 
         RecoveryScheduler.scheduleSoon(context, 1)
         RecoveryScheduler.scheduleEvidenceSoon(context, 1)
         ServiceControl.ensureTracking(context)
+        // A callback may call an auxiliary singleton directly even after Application.onCreate
+        // was skipped. No standalone diagnostic/fall start or mirror update may recreate stores.
+        repeat(5) {
+            DiagnosticMonitor.start(context)
+            FallDetectorRuntime.start(context)
+            FallDetectorRuntime.refreshHighAlert(context)
+            FallDetectorRuntime.clearHighAlert(context)
+        }
         BootReceiver().onReceive(context, Intent(Intent.ACTION_BOOT_COMPLETED))
         BootReceiver().onReceive(context, Intent(Intent.ACTION_TIME_CHANGED))
 
