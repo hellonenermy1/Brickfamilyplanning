@@ -2,6 +2,17 @@
 
 **Audit branch:** `v1-p8c-android-deep-audit` in `hellonenermy1/Brickfamilyplanning`. **Date:** 2026-11-04. **Status:** **IN PROGRESS — NOT A FINAL PASS** until the final-source checks and all P1 original reproductions have evidence. This follows the user-approved `Brick V1 Phase 8 Full Audit Execution Plan` 8C.1–8C.20, with its global fail-closed rule: code inspection, unchecked source, or missing test evidence cannot count as PASS.
 
+## Final-source evidence reconciliation — 2026-11-04
+
+- **Production source freeze:** `2c492efff01095e17f96af3c24ac07ac0b5c3739`. Its later `28ca478b` and `51b8e990` commits add instrumentation/workflow only; `app/src/main` unchanged in that comparison.
+- **Android 15 emulator test:** [41769491366](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769491366), job `126375586464`: **SUCCESS, 120 methods across 35 suites** including independently held service, diagnostic, fall and signing writers, legacy metadata-lock ABBA deadlock reproduction, and both cold-start corruption/no-XML cases.
+- **Android deep audit:** [41769474692](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769474692), job `126375533578`: **SUCCESS** for Gradle build + unit tests + lint + R8 + AndroidTest compilation, source regression gates, complete source persistence inventory and strict merged exported-component manifest.
+- **Signed artifact `2c492eff`:** [41769396317](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396317), package `com.brick.safety` version 10/1.0.0-rc.1; independently recomputed APK SHA-256 `2d1fb331a8a1f6c5efb805ed93c0adfd68e205d5435416a51e772b593336a28c`, pinned original signing cert `bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790`.
+- **Later build `28ca478b`:** [41769474781](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769474781), signed original cert; independently recomputed APK SHA-256 `6ec59794adbf192c5d547875fe494895ba814225be6c021ca5fc7c5437867bcb`. The two builds have different byte hashes despite the same `app/src/main` code: do not claim reproducible/binary-identical APKs. The release artifact chosen for deployment must use its exact recorded hash.
+- **Android 10 Device Owner:** [41769396337](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396337) **SUCCESS** on the same `2c492eff` source; Wi-Fi capability is unsupported in this AOSP emulator and is reported honestly as failed/actual ON.
+
+**Only outstanding cross-cutting CI gate when this addendum was written:** 183-second final-source resource budget run completion and final formal P1 closure ledger. No source-only assumptions can replace that result. Real OPPO physical behaviors remain Phase 9.
+
 ## Android release candidate identity
 
 - App ID: `com.brick.safety`; versionCode `10`; versionName `1.0.0-rc.1`; target SDK 35, minimum SDK 29.
@@ -22,7 +33,7 @@
 | **8C.8 Atlas/provider isolation** | Provider isolation and optional Shizuku timeout/rebind tests in emulator; privilege must never block Brick Core |
 | **8C.9 Local durability** | Journal, SafetyOutbox and crash-state fault/reopen tests passed; see `PHASE8C_DURABILITY_REPORT.md` |
 | **8C.10 Exact ACK** | Regression verifies durability before send and exact ACK before local finalization; never count HTTP emission as confirmed delivery |
-| **8C.11 Backlog** | High-backlog emulator test suite and 1,000-row refused-endpoint resource fixture passed; do not infer arbitrary 100,000-record/physical disk capacity without evidence |
+| **8C.11 Backlog** | `Phase8BacklogScaleInstrumentedTest` actually inserts encrypted synthetic 100, 10,000 and **100,000** rows and verifies exact ACK, ordering and reopened state; a separate 1,000-row refused-endpoint workload measures runtime resources. This is emulator SQLite evidence, not unlimited physical storage capacity. |
 | **8C.12 SOS / I'M SAFE** | SOS transition atomicity, critical-before-normal delivery and fall safety interlock tests passed in emulator |
 | **8C.13 Device Owner** | Real Android 10 Device Owner test [41762063429](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41762063429): Wi-Fi OFF rejected by AOSP, correctly `failed` with actual ON; auto-time provenance reversal passed. Real OPPO device-only toggling pending |
 | **8C.14 Shizuku** | Held capability Binder timeout and new-lane recovery tests pass; late callback and stale generation do not recreate privacy keys |
