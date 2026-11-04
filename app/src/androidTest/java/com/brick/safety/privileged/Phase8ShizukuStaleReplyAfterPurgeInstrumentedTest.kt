@@ -14,7 +14,7 @@ class Phase8ShizukuStaleReplyAfterPurgeInstrumentedTest : BrickInstrumentationTe
         val app = instrumentation.targetContext.applicationContext
         val controller = ShizukuBridgeController
         val klass = controller.javaClass
-        val names = listOf("initialized", "foreground", "service", "serviceGeneration",
+        val names = listOf("appContext", "initialized", "foreground", "service", "serviceGeneration",
             "deprovisionShutdown", "capabilities", "lastError")
         fun field(name: String) = klass.getDeclaredField(name).apply { isAccessible = true }
         fun read(name: String): Any? = field(name).get(controller)
@@ -52,7 +52,8 @@ class Phase8ShizukuStaleReplyAfterPurgeInstrumentedTest : BrickInstrumentationTe
         val thread = Thread({ outcome.set(controller.wifi()) }, "p8c-held-privileged-reply")
         try {
             if (ks.containsAlias(alias)) ks.deleteEntry(alias)
-            write("initialized", false)
+            write("appContext", app)
+            write("initialized", true)
             write("foreground", false)
             write("deprovisionShutdown", false)
             write("serviceGeneration", 811L)
