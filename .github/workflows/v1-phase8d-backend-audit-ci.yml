@@ -7,6 +7,7 @@ on:
       - 'src/**'
       - 'schema/**'
       - 'scripts/**'
+      - 'audit/phase8d/PHASE8D_ENDPOINT_MATRIX_V2.csv'
       - 'wrangler.template.jsonc'
       - '.github/workflows/deploy-brick.yml'
       - '.github/workflows/v1-phase8d-backend-audit-ci.yml'
@@ -91,6 +92,8 @@ jobs:
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-revoked-control.mjs /tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-controls-sqlite.mjs /tmp/brick-p8d-controls.mjs
+      - name: P8D-012 require 49 source endpoint rows have unambiguous named CSV schema
+        run: node scripts/test-phase8d-endpoint-matrix.mjs
       - name: P8D-011 existing WebSocket expiry, hibernation and revocation negative regression
         run: |
           npx --no-install esbuild src/device-do.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-do.mjs
