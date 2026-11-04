@@ -8,11 +8,13 @@ import android.net.Uri
 import android.os.Build
 import android.os.UserManager
 import android.provider.Settings
+import android.util.AtomicFile
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.managed.BrickDeviceAdminReceiver
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.RecoveryScheduler
 import java.io.File
+import java.io.FileOutputStream
 import java.security.KeyStore
 
 /** Production V1 deprovisioner. All transitions are durable and monotonic. */
@@ -21,6 +23,8 @@ object DeprovisionManager {
     private const val KEY_STAGE = "stage"
     private const val KEY_EVER_STARTED = "deprovisionEverStarted"
     private const val KEY_UPDATED_AT = "updatedAtMs"
+    private const val ORIGIN_GUARD_FILE = "brick_deprovision_origin_v1.guard"
+    private const val ORIGIN_GUARD_CONTENT = "BRICK_DEPROVISION_STARTED_V1"
 
     /**
      * Brick-owned SQLite databases. Library-owned databases (for example WorkManager internals) are
@@ -75,23 +79,74 @@ object DeprovisionManager {
     data class Result(val stage: Stage, val ok: Boolean, val detail: String)
 
     /**
-     * Missing state is a fresh install only if no previous deprovision transition was recorded.
-     * Present-but-invalid values, wrong SharedPreferences types, or rollback to NONE after the
-     * durable origin marker must fail closed. Do not turn unknown provenance into normal startup.
+     * A deliberately tiny, independent provenance anchor retained in no-backup app-private
+     * storage until Android uninstalls Brick. It contains no account, location, keys or timestamps.
+     * The main deprovision preference and this file cannot both be lost without making a post-
+     * purge installation indistinguishable from a clean installation. That boundary is documented.
      */
-    fun stage(context: Context): Stage {
-        return runCatching {
-            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val everStarted = prefs.getBoolean(KEY_EVER_STARTED, false)
-            if (!prefs.contains(KEY_STAGE)) {
-                if (everStarted) Stage.INVALID else Stage.NONE
-            } else {
-                val raw = prefs.getString(KEY_STAGE, null)
-                val parsed = raw?.let { Stage.valueOf(it) } ?: Stage.INVALID
-                if (parsed == Stage.INVALID || (parsed == Stage.NONE && everStarted) || (parsed != Stage.NONE && !everStarted)) Stage.INVALID else parsed
-            }
-        }.getOrDefault(Stage.INVALID)
+    internal fun originGuardFile(context: Context): File =
+        File(context.applicationContext.noBackupFilesDir, ORIGIN_GUARD_FILE)
+
+    private fun originGuardSidecarExists(context: Context): Boolean {
+        val base = originGuardFile(context)
+        return File(base.path + ".new").exists() || File(base.path + ".bak").exists()
     }
+
+    private fun originGuardValid(context: Context): Boolean {
+        val base = originGuardFile(context)
+        if (!base.exists() || originGuardSidecarExists(context)) return false
+        return runCatching { base.readText(Charsets.UTF_8) == ORIGIN_GUARD_CONTENT }.getOrDefault(false)
+    }
+
+    /** AtomicFile writes/flushes the independent marker before first stage commit. */
+    @Synchronized
+    private fun ensureOriginGuard(context: Context): Boolean {
+        if (originGuardValid(context)) return true
+        val base = originGuardFile(context)
+        if (base.exists() || originGuardSidecarExists(context)) return false
+        val atomic = AtomicFile(base)
+        var output: FileOutputStream? = null
+        return try {
+            val stream = atomic.startWrite()
+            output = stream
+            stream.write(ORIGIN_GUARD_CONTENT.toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(stream)
+            originGuardValid(context)
+        } catch (_: Throwable) {
+            output?.let { runCatching { atomic.failWrite(it) } }
+            false
+        }
+    }
+
+    /**
+     * Missing metadata is "fresh NONE" only when there is no prior deprovision origin in either
+     * independent store. Unknown values, wrong stored types, an interrupted guard write, lost
+     * stage XML after a completed purge, or conflicting provenance are INVALID (quiesced).
+     * Old accepted-stage records with the original in-XML marker are migrated to the independent
+     * guard before they may progress. A bad or truncated existing guard is NEVER auto-repaired.
+     */
+    fun stage(context: Context): Stage = runCatching {
+        val app = context.applicationContext
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val everStarted = prefs.getBoolean(KEY_EVER_STARTED, false)
+        val base = originGuardFile(app)
+        val guardPresent = base.exists() || originGuardSidecarExists(app)
+        if (guardPresent && !originGuardValid(app)) return@runCatching Stage.INVALID
+
+        val parsed = if (!prefs.contains(KEY_STAGE)) Stage.NONE else {
+            prefs.getString(KEY_STAGE, null)?.let { Stage.valueOf(it) } ?: Stage.INVALID
+        }
+        when {
+            parsed == Stage.INVALID -> Stage.INVALID
+            parsed == Stage.NONE -> if (everStarted || guardPresent) Stage.INVALID else Stage.NONE
+            !everStarted -> Stage.INVALID
+            guardPresent -> parsed
+            // Source compatibility for a pre-guard, but correctly marked, in-progress V1 RC.
+            // If the repair cannot be committed, remain safely stopped and require attention.
+            ensureOriginGuard(app) -> parsed
+            else -> Stage.INVALID
+        }
+    }.getOrDefault(Stage.INVALID)
 
     /**
      * The INVALID state is deliberately handled as quiesced for all independently invoked Android
@@ -293,8 +348,10 @@ object DeprovisionManager {
         val current = stage(context)
         if (current == Stage.INVALID || target == Stage.NONE || target == Stage.INVALID) return false
         if (current.ordinal >= target.ordinal) return true
-        // Stage and origin marker are one synchronous preference transaction. A missing/truncated
-        // stage with a retained origin marker cannot be mistaken for a legitimate fresh install.
+        // Persist the independent, non-sensitive AtomicFile provenance guard first. A failed
+        // stage commit can at worst leave INVALID/recovery-required; it cannot re-enable tracking.
+        if (!ensureOriginGuard(context)) return false
+        // Stage and in-preference origin marker share one synchronous transaction.
         return context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_EVER_STARTED, true)
             .putString(KEY_STAGE, target.name)
