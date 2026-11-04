@@ -52,6 +52,7 @@ export async function attest({token,accountId,request=fetch}={}) {
   try{const x=await fn();record(name,x.ok?"ATTESTED":x.blocked?"BLOCKED":"DRIFT",x.detail);if(x.evidence)evidence[name]=x.evidence;}
   catch(e){record(name,"BLOCKED",/^Cloudflare GET returned HTTP (?:401|403)$/.test(String(e?.message))?"Cloudflare token lacks read permission": "Metadata GET unavailable or unexpected shape");}
  };
+ const activeVersions=new Map(); // Only the precise 100%-serving Worker version can certify active bindings.
  const deployment=async script=>{
   const data=await get("/accounts/"+accountId+"/workers/scripts/"+script+"/deployments");
   const arr=Array.isArray(data?.deployments)?data.deployments:null;
@@ -68,6 +69,12 @@ export async function attest({token,accountId,request=fetch}={}) {
   let version;
   try{version=await get("/accounts/"+accountId+"/workers/scripts/"+script+"/versions/"+v[0].version_id);}
   catch{return {blocked:true,detail:"Active version metadata unreadable (possible Worker version permission); source SHA remains unverified",evidence};}
+  if(version?.id&&version.id!==v[0].version_id)return {blocked:true,detail:"Version-detail ID does not match active deployment version",evidence};
+  activeVersions.set(script,version);
+  const activeBindings=version?.resources?.bindings;
+  evidence.activeVersionBindingCount=Array.isArray(activeBindings)?activeBindings.length:null;
+  evidence.scriptContentHash=typeof version?.resources?.script?.etag==="string"?version.resources.script.etag:null;
+  evidence.activeVersionSource=version?.metadata?.source??null;
   const candidates=[version?.annotations,version?.metadata?.annotations,version?.resources?.settings?.annotations,version?.resources?.script?.annotations];
   const ann=candidates.find(a=>a&&typeof a==="object"&&("workers/tag" in a||"workers/message" in a))??null;
   const fields=[ann?.["workers/tag"],ann?.["workers/message"]].filter(x=>typeof x==="string").join(" ");
@@ -81,29 +88,35 @@ export async function attest({token,accountId,request=fetch}={}) {
  await attempt("development_deployment",()=>deployment(DEV));
  let prodSettings=null,devSettings=null;
  await attempt("production_bindings",async()=>{
+  const active=activeVersions.get(PROD);
   prodSettings=await get("/accounts/"+accountId+"/workers/scripts/"+PROD+"/settings");
-  const bindings=Array.isArray(prodSettings?.bindings)?prodSettings.bindings:null;
-  if(!bindings)return {blocked:true,detail:"Cloudflare Worker setting bindings absent"};
-  const names=new Set(bindings.map(x=>x?.name));
+  const activeBindings=active?.resources?.bindings,latestBindings=prodSettings?.bindings;
+  if(!Array.isArray(activeBindings)||!Array.isArray(latestBindings))return {blocked:true,detail:"Active Worker version and script settings bindings BOTH required to verify active and next-release safety"};
   const expected=["DB","HISTORY","MAPS","BRICK_DEVICE","EVENTS","DEVICE_RATE","PAIR_RATE","PARENT_HISTORY_RATE","PARENT_WS_RATE","PARENT_GEOCODE_RATE","PARENT_COMMUTE_RATE"];
-  const missing=expected.filter(x=>!names.has(x));
-  const refs=Object.fromEntries(bindings.filter(x=>["DB","HISTORY","MAPS","EVENTS"].includes(x?.name)).map(x=>[x.name,x.id??x.bucket_name??x.queue_name??x.queue??null]));
-  const match=refs.HISTORY===HISTORY&&refs.MAPS===MAPS&&refs.EVENTS===QUEUE;
-  return {ok:missing.length===0&&match,detail:missing.length?("Missing required bindings: "+missing.join(",")):!match?"Production storage binding targets differ or are not visible":"Required production Worker binding names and storage targets present",
-    evidence:{bindingNames:expected.filter(x=>names.has(x)),bindingCount:bindings.length,storageReferences:refs}};
+  const activeNames=new Set(activeBindings.map(x=>x?.name)),latestNames=new Set(latestBindings.map(x=>x?.name));
+  const missingActive=expected.filter(x=>!activeNames.has(x)),missingSettings=expected.filter(x=>!latestNames.has(x));
+  const refs=Object.fromEntries(activeBindings.filter(x=>["DB","HISTORY","MAPS","EVENTS"].includes(x?.name)).map(x=>[x.name,x.id??x.database_id??x.bucket_name??x.queue_name??x.queue??null]));
+  const exact=refs.HISTORY===HISTORY&&refs.MAPS===MAPS&&refs.EVENTS===QUEUE;
+  const evidence={activeBindingCount:activeBindings.length,latestBindingCount:latestBindings.length,missingActiveBindings:missingActive,missingScriptSettingsBindings:missingSettings,storageTargetsKnown:exact};
+  if(missingActive.length||missingSettings.length)return {ok:false,detail:"Missing ACTIVE: "+(missingActive.join(",")||"none")+"; missing latest settings: "+(missingSettings.join(",")||"none"),evidence};
+  return {ok:exact,blocked:!exact,detail:exact?"Both active Worker version and latest settings expose expected bindings/targets":"Binding target values not visible or differ from template; requires review",evidence};
  });
  await attempt("development_isolation",async()=>{
+  const prodActive=activeVersions.get(PROD)?.resources?.bindings,devActive=activeVersions.get(DEV)?.resources?.bindings;
   devSettings=await get("/accounts/"+accountId+"/workers/scripts/"+DEV+"/settings");
-  const bs=Array.isArray(devSettings?.bindings)?devSettings.bindings:null;
-  if(!bs||!Array.isArray(prodSettings?.bindings))return {blocked:true,detail:"Both Worker settings required for isolation comparison"};
-  const prod=prodSettings.bindings,child=bs.find(x=>x.name==="DB"),parent=prod.find(x=>x.name==="DB");
-  const names=new Set(bs.map(x=>x?.name)),rate=bs.filter(x=>x.type==="ratelimit");
-  const same=child&&parent&&(child.id??child.database_id)===(parent.id??parent.database_id);
-  const expected=["DB","BRICK_DEVICE","PARENT_LOGIN_RATE","PARENT_GEOCODE_RATE","PARENT_COMMUTE_RATE"];
-  const missing=expected.filter(n=>!names.has(n));
-  return {ok:!!child&&!same&&missing.length===0&&!names.has("EVENTS")&&!names.has("HISTORY"),
-    detail:same?"CRITICAL: development and production D1 database bindings identical":missing.length?("Missing development bindings: "+missing.join(",")):"Development D1 and parent login/expensive rate paths separate, no production Queue/HISTORY binding",
-    evidence:{databaseReferencesDistinct:!!child&&!same,missingBindings:missing,unwantedProdQueue: names.has("EVENTS"),rateBindingCount:rate.length}};
+  const latest=devSettings?.bindings,expected=["DB","BRICK_DEVICE","PARENT_LOGIN_RATE","PARENT_GEOCODE_RATE","PARENT_COMMUTE_RATE"];
+  if(!Array.isArray(prodActive)||!Array.isArray(devActive)||!Array.isArray(latest))return {blocked:true,detail:"Production/development active-version bindings and dev script settings not fully readable"};
+  const activeNames=new Set(devActive.map(x=>x?.name)),latestNames=new Set(latest.map(x=>x?.name));
+  const missingActive=expected.filter(x=>!activeNames.has(x)),missingSettings=expected.filter(x=>!latestNames.has(x));
+  const source=prodActive.find(x=>x.name==="DB"),target=devActive.find(x=>x.name==="DB");
+  const prodId=source?.id??source?.database_id,devId=target?.id??target?.database_id;
+  const idsKnown=typeof prodId==="string"&&prodId.length>0&&typeof devId==="string"&&devId.length>0;
+  const same=idsKnown&&prodId===devId,shared=activeNames.has("EVENTS")||activeNames.has("HISTORY")||latestNames.has("EVENTS")||latestNames.has("HISTORY");
+  const evidence={missingActiveBindings:missingActive,missingScriptSettingsBindings:missingSettings,databaseReferencesDistinct:idsKnown&&!same,unwantedProdStorage:shared};
+  if(!idsKnown)return {blocked:true,detail:"Active D1 UUID references unavailable; isolation cannot be proven",evidence};
+  if(same||shared)return {ok:false,detail:same?"CRITICAL: active production and development D1 database IDs identical":"Development includes production Queue/HISTORY binding",evidence};
+  if(missingActive.length||missingSettings.length)return {ok:false,detail:"Missing ACTIVE dev: "+(missingActive.join(",")||"none")+"; missing latest settings: "+(missingSettings.join(",")||"none"),evidence};
+  return {ok:true,detail:"Active development D1 distinct from production; no production Queue/HISTORY, required rate/DO bindings present",evidence};
  });
  await attempt("queue_dlq",async()=>{
   const all=[],maxPages=20;
