@@ -1,3 +1,4 @@
+import { readBoundedBody } from "./bounded-body";
 import { validateSafetyReplayWindow } from "./device-json-security";
 import type { BrickDevice, RealtimeSafetyEvent } from "./device-do";
 
@@ -12,8 +13,15 @@ function json(data: unknown, status = 200) {
 }
 
 export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, deviceId: string): Promise<Response | null> {
-  let value: Record<string, unknown>;
-  try { value = await req.clone().json<Record<string, unknown>>(); } catch { return null; }
+  // Bound even an unsigned request before parsing. A forged, chunked multi-MB fall
+  // event cannot make the Worker buffer an arbitrary body ahead of signature checks.
+  const bounded = await readBoundedBody(req.clone(), 8192);
+  if (!bounded.ok) return json({ error: "fall event body too large or unreadable" }, bounded.reason === "too_large" ? 413 : 400);
+  let parsed: unknown;
+  try { parsed = JSON.parse(new TextDecoder().decode(bounded.body)); }
+  catch { return json({ error: "invalid event JSON" }, 400); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return json({ error: "invalid event JSON object" }, 400);
+  const value = parsed as Record<string, unknown>;
   if (value.kind !== "fall_detected") return null;
 
   const denied = await validateSafetyReplayWindow(req, env, deviceId);
