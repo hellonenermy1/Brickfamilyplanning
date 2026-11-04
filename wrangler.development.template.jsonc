@@ -24,6 +24,8 @@
     { "name": "PAIR_RATE", "namespace_id": "42002", "simple": { "limit": 20, "period": 60 } },
     { "name": "PARENT_HISTORY_RATE", "namespace_id": "42004", "simple": { "limit": 60, "period": 60 } },
     { "name": "PARENT_WS_RATE", "namespace_id": "42005", "simple": { "limit": 30, "period": 60 } },
+    { "name": "PARENT_GEOCODE_RATE", "namespace_id": "42006", "simple": { "limit": 120, "period": 60 } },
+    { "name": "PARENT_COMMUTE_RATE", "namespace_id": "42007", "simple": { "limit": 30, "period": 60 } },
     { "name": "PARENT_LOGIN_RATE", "namespace_id": "42003", "simple": { "limit": 6, "period": 60 } }
   ],
   "vars": {
