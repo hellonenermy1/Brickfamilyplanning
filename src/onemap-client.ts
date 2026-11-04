@@ -115,7 +115,10 @@ export async function reverseOneMap(env:OneMapEnv,lat:number,lon:number){
 }
 
 export async function parentReverseOneMap(req:Request,env:OneMapEnv){
-  const u=new URL(req.url),lat=Number(u.searchParams.get("lat")),lon=Number(u.searchParams.get("lon"));const requestId=(u.searchParams.get("requestId")??"").slice(0,120);
+  const u=new URL(req.url),rawLat=u.searchParams.get("lat"),rawLon=u.searchParams.get("lon");const requestId=(u.searchParams.get("requestId")??"").slice(0,120);
+  // Number(null) and Number("") are both zero; absent/blank parameters are not real coordinates.
+  if(rawLat===null||rawLon===null||!rawLat.trim()||!rawLon.trim())return json({error:"invalid coordinates",requestId},400);
+  const lat=Number(rawLat),lon=Number(rawLon);
   if(!Number.isFinite(lat)||lat< -90||lat>90||!Number.isFinite(lon)||lon< -180||lon>180)return json({error:"invalid coordinates",requestId},400);
   const result=await reverseOneMap(env,lat,lon);return json({...result,requestId});
 }
