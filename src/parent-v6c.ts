@@ -49,8 +49,8 @@ export function parentV6CHtml() {
     'debug pane'
   );
 
-  const globalsNeedle = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0,phase5StateTimer=null,phase5WsRetry=0,locationControlBusy=false;";
-  const globalsPatch = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0,phase5StateTimer=null,phase5WsRetry=0,locationControlBusy=false,portalReconnectAttempt=0,portalLastMessageAt=0,portalLastApiError='',portalLogEntries=[];";
+  const globalsNeedle = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0,phase5StateTimer=null,phase5WsRetry=0,phase5WsRenewTimer=null,locationControlBusy=false;";
+  const globalsPatch = "let marker=null,markerPopup=null,playMarker=null,ws=null,currentDevice='',snapshot=null,historyPoints=[],displayPoints=[],playTimer=null,playIndex=0,places=[],lastMarkerPoint=null,animationId=0,phase5StateTimer=null,phase5WsRetry=0,phase5WsRenewTimer=null,locationControlBusy=false,portalReconnectAttempt=0,portalLastMessageAt=0,portalLastApiError='',portalLogEntries=[];";
   html = replaceOnce(html, globalsNeedle, globalsPatch, 'diagnostic globals');
 
   const apiNeedle = "function api(path,opt){return fetch(path,opt).then(async r=>{const j=await r.json().catch(()=>({error:'Invalid server response'}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})}";
