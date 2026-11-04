@@ -144,7 +144,13 @@ export class BrickDevice extends DurableObject<Env> {
     await this.scheduleExpiry();
   }
 
-  // Server-only RPC, invoked after durable D1 device revocation or valid development parent logout.
+  // Session logout closes open streams, but does not permanently block future authenticated sessions.
+  async closeParentSockets() {
+    await this.initialized;
+    this.closeAllParentSockets(4003, "Parent session ended");
+  }
+
+  // Server-only RPC, invoked after durable D1 device revocation.
   async revokeParentSockets() {
     await this.initialized;
     this.revoked = true;
