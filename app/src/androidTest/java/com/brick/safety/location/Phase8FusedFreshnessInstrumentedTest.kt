@@ -70,6 +70,51 @@ class Phase8FusedFreshnessInstrumentedTest : BrickInstrumentationTestCase() {
         assertFalse("fallback/old callback must not be classified as fresh fused truth", stale.source == PositionSource.FUSED)
     }
 
+    fun testFortyRepeatedRejectedCallbacksCannotResetMeasuredReacquisitionDeadline() {
+        val now = SystemClock.elapsedRealtime()
+        val initialMeasuredMs = (now - 1_000L).coerceAtLeast(1L)
+        val measured = engine.evaluate(
+            location(initialMeasuredMs, 1.35210, 103.81980, 8f),
+            ActivitySnapshot(ActivityMode.UNKNOWN, 0, now)
+        )
+        assertTrue(measured.rawAccepted)
+        val accepted = MeasuredFixGate.acceptedElapsed(measured, SystemClock.elapsedRealtime())
+        assertEquals(initialMeasuredMs, accepted)
+        var lastAccepted = accepted!!
+        val triggerMs = 15_000L
+
+        repeat(40) {
+            // Callback arrival is current but the underlying Fused measurement predates the
+            // accepted anchor by 61 seconds. This is the exact P8C-002 repeated-rejection class.
+            val cb = SystemClock.elapsedRealtime()
+            val rejected = engine.evaluate(
+                location((cb - 61_000L).coerceAtLeast(1L), 1.35211, 103.81981, 20f),
+                ActivitySnapshot(ActivityMode.UNKNOWN, 0, cb)
+            )
+            assertFalse("stale callback suddenly accepted as measured", rejected.rawAccepted)
+            val next = MeasuredFixGate.acceptedElapsed(rejected, SystemClock.elapsedRealtime())
+            if (next != null) lastAccepted = next
+            assertEquals("rejected callback moved the last measured timestamp", initialMeasuredMs, lastAccepted)
+        }
+
+        // The supervisor still sees the original measured age after arbitrary rejected callbacks.
+        val syntheticSupervisorNow = lastAccepted + triggerMs + 1L
+        assertFalse("rejected callbacks cleared the real missing-fix condition",
+            MeasuredFixGate.clearsReacquisition(lastAccepted, syntheticSupervisorNow, triggerMs))
+
+        // A genuinely newer and accepted Android Fused measurement restores the measured state.
+        val newNow = SystemClock.elapsedRealtime()
+        val fresh = engine.evaluate(
+            location(newNow, 1.3521001, 103.8198001, 8f),
+            ActivitySnapshot(ActivityMode.UNKNOWN, 0, newNow)
+        )
+        assertTrue("fresh trusted Fused callback rejected unexpectedly", fresh.rawAccepted)
+        val newMeasured = MeasuredFixGate.acceptedElapsed(fresh, SystemClock.elapsedRealtime())
+        assertNotNull(newMeasured)
+        assertTrue(newMeasured!! > lastAccepted)
+        assertTrue(MeasuredFixGate.clearsReacquisition(newMeasured, SystemClock.elapsedRealtime(), triggerMs))
+    }
+
     private fun location(elapsedMs: Long, lat: Double, lon: Double, accuracyM: Float) =
         Location("fused-test").apply {
             latitude = lat
