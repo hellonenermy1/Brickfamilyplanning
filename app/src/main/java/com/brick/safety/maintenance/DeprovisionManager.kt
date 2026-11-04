@@ -19,6 +19,7 @@ import java.security.KeyStore
 object DeprovisionManager {
     private const val PREFS = "brick_deprovision_v1"
     private const val KEY_STAGE = "stage"
+    private const val KEY_EVER_STARTED = "deprovisionEverStarted"
     private const val KEY_UPDATED_AT = "updatedAtMs"
 
     /**
@@ -69,21 +70,42 @@ object DeprovisionManager {
         "brick_atlas_hmac_v1"
     )
 
-    enum class Stage { NONE, AUTHORISE_FREEZE, QUIESCE, UNDO_DEVICE_MANAGEMENT, PURGE_BRICK, UNINSTALL }
+    enum class Stage { INVALID, NONE, AUTHORISE_FREEZE, QUIESCE, UNDO_DEVICE_MANAGEMENT, PURGE_BRICK, UNINSTALL }
     data class Result(val stage: Stage, val ok: Boolean, val detail: String)
 
+    /**
+     * Missing state is a fresh install only if no previous deprovision transition was recorded.
+     * Present-but-invalid values, wrong SharedPreferences types, or rollback to NONE after the
+     * durable origin marker must fail closed. Do not turn unknown provenance into normal startup.
+     */
     fun stage(context: Context): Stage {
-        val raw = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_STAGE, Stage.NONE.name)
-        return runCatching { Stage.valueOf(raw ?: Stage.NONE.name) }.getOrDefault(Stage.NONE)
+        return runCatching {
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val everStarted = prefs.getBoolean(KEY_EVER_STARTED, false)
+            if (!prefs.contains(KEY_STAGE)) {
+                if (everStarted) Stage.INVALID else Stage.NONE
+            } else {
+                val raw = prefs.getString(KEY_STAGE, null)
+                val parsed = raw?.let { Stage.valueOf(it) } ?: Stage.INVALID
+                if (parsed == Stage.INVALID || (parsed == Stage.NONE && everStarted)) Stage.INVALID else parsed
+            }
+        }.getOrDefault(Stage.INVALID)
     }
 
-    fun isPostPurge(context: Context): Boolean = stage(context).ordinal >= Stage.PURGE_BRICK.ordinal
+    /**
+     * The INVALID state is deliberately handled as quiesced for all independently invoked Android
+     * entry points, but is never falsely labelled as successfully purged.
+     */
+    fun isPostPurge(context: Context): Boolean {
+        val current = stage(context)
+        return current == Stage.INVALID || current.ordinal >= Stage.PURGE_BRICK.ordinal
+    }
 
     @Synchronized
     fun authoriseFreeze(context: Context): Result {
         val app = context.applicationContext
         val current = stage(app)
+        if (current == Stage.INVALID) return Result(current, false, "deprovision state invalid; repair required")
         if (current.ordinal >= Stage.AUTHORISE_FREEZE.ordinal) return Result(current, true, "already authorised")
         val ok = persist(app, Stage.AUTHORISE_FREEZE)
         return Result(stage(app), ok, if (ok) "authorised and frozen" else "failed to persist authorisation")
@@ -262,8 +284,12 @@ object DeprovisionManager {
 
     private fun persist(context: Context, target: Stage): Boolean {
         val current = stage(context)
+        if (current == Stage.INVALID || target == Stage.NONE || target == Stage.INVALID) return false
         if (current.ordinal >= target.ordinal) return true
+        // Stage and origin marker are one synchronous preference transaction. A missing/truncated
+        // stage with a retained origin marker cannot be mistaken for a legitimate fresh install.
         return context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_EVER_STARTED, true)
             .putString(KEY_STAGE, target.name)
             .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
             .commit()
