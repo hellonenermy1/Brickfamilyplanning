@@ -53,7 +53,17 @@ function segmentKeys(group: Group) {
   };
 }
 
+// Legacy R2 segments may contain a reduced packet record; preserve the original
+// permissive segment reader so a new Queue write cannot silently discard older data.
 function validPacket(p: unknown): p is LivePacket {
+  if (!p || typeof p !== "object" || Array.isArray(p)) return false;
+  const x = p as Partial<LivePacket>;
+  return Number.isSafeInteger(x.epoch) && Number.isSafeInteger(x.sequence) && Number.isSafeInteger(x.wallTimeMs);
+}
+
+// Queue ingress is a separate trust boundary: validate the required delta fields
+// without tightening the historical R2 on-disk format without a migration.
+function validQueuePacket(p: unknown): p is LivePacket {
   if (!p || typeof p !== "object" || Array.isArray(p)) return false;
   const x = p as Partial<LivePacket>;
   const coord = (v: unknown, limit: number) => v === null || (Number.isSafeInteger(v) && Math.abs(v as number) <= limit);
@@ -127,7 +137,7 @@ function mergeReceipts(existing: ReceiptRow[], entries: Group["entries"], packet
 
 function originalForQueue(body: QueueBody, packet: LivePacket): LivePacket {
   const raw = body.rawPacket;
-  if (!validPacket(raw)) return packet;
+  if (!validQueuePacket(raw)) return packet;
   if (raw.epoch !== packet.epoch || raw.sequence !== packet.sequence || raw.wallTimeMs !== packet.wallTimeMs) return packet;
   return raw;
 }
@@ -156,7 +166,7 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
       continue;
     }
     if (body.type !== "location" || typeof body.deviceId !== "string" ||
-        !/^[A-Za-z0-9_-]{1,128}$/.test(body.deviceId) || !validPacket(body.packet)) {
+        !/^[A-Za-z0-9_-]{1,128}$/.test(body.deviceId) || !validQueuePacket(body.packet)) {
       message.ack();
       result.ignoredMessages += 1;
       continue;
