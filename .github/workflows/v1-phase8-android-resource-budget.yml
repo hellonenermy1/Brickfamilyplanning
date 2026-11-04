@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platform-tools' 'platforms;android-36' 'emulator' 'system-images;android-35;google_apis;x86_64'
-          gradle --no-daemon :app:assembleDebug --stacktrace
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
           echo no | "$AVDMANAGER" create avd --force --name brick-p8-resource --package 'system-images;android-35;google_apis;x86_64' --device 'pixel_6'
           sudo chmod 666 /dev/kvm || true
           "$ADB" start-server
@@ -64,6 +64,7 @@ jobs:
           done
           test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
           "$ADB" install -t app/build/outputs/apk/debug/app-debug.apk
+          "$ADB" install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 
           # Android 14+ foreground-location services require the corresponding runtime state. Grant
           # what the testOnly APK normally receives through Device Owner policy before measuring it.
@@ -90,20 +91,15 @@ jobs:
         run: |
           set -euo pipefail
           "$ADB" logcat -c
-          "$ADB" shell run-as com.brick.safety rm -f files/phase8_resource_seed_status.txt >/dev/null 2>&1 || true
-          "$ADB" shell am broadcast --receiver-foreground --include-stopped-packages \
-            -a com.brick.safety.testing.PHASE8_RESOURCE_SEED \
-            -n com.brick.safety/.testing.Phase8ResourceHarnessReceiver | tee resource-evidence/seed.txt
-
-          status=''
-          for i in $(seq 1 90); do
-            status="$("$ADB" shell run-as com.brick.safety cat files/phase8_resource_seed_status.txt 2>/dev/null | tr -d '\r' || true)"
-            case "$status" in
-              seeded=1000*) break ;;
-              failed=*) printf '%s\n' "$status" >&2; exit 1 ;;
-            esac
-            sleep 1
-          done
+          # Android goAsync() still has a broadcast timeout: the previous 1000-row receiver
+          # was killed by a real broadcast ANR before its 90-second status poll completed.
+          # Instrumentation owns the heavy seeding operation, with no BroadcastReceiver deadline.
+          "$ADB" shell am force-stop com.brick.safety >/dev/null 2>&1 || true
+          "$ADB" shell am instrument -w \
+            -e class com.brick.safety.testing.Phase8ResourceSeedInstrumentedTest \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee resource-evidence/seed-instrumentation.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)' resource-evidence/seed-instrumentation.txt >/dev/null
+          status="$("$ADB" shell run-as com.brick.safety cat files/phase8_resource_seed_status.txt 2>/dev/null | tr -d '\r')"
           printf '%s\n' "$status" | tee resource-evidence/seed-status.txt
           [[ "$status" == seeded=1000* ]]
 
