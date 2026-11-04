@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.os.SystemClock
 import com.brick.safety.activity.ActivityState
 import com.brick.safety.diagnostics.DiagnosticStore
@@ -35,7 +36,8 @@ object FallDetectorRuntime : SensorEventListener {
     private var manager: SensorManager? = null
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
-    private var started = false
+    @Volatile private var started = false
+    private val retiredThreads = ArrayDeque<HandlerThread>()
     private var candidateAtElapsed = 0L
     private var lastCandidateElapsed = 0L
     private var peakImpactG = 0f
@@ -46,8 +48,8 @@ object FallDetectorRuntime : SensorEventListener {
     @Synchronized
     fun start(context: Context) {
         val application = context.applicationContext
-        refreshHighAlert(application)
         if (started || DeepOffManager.isActive(application) || DeviceRoleStore.role(application) != DeviceRoleStore.Role.CHILD) return
+        refreshHighAlert(application)
         val sm = application.getSystemService(SensorManager::class.java)
         val accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
         val gyro = sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
@@ -61,20 +63,49 @@ object FallDetectorRuntime : SensorEventListener {
     @Synchronized
     fun stop() {
         if (!started) return
+        // The async HandlerThread can be inside evaluateCandidate when quitSafely is requested.
+        // Retain each old thread until DeprovisionManager has explicitly joined it.
+        started = false
         manager?.unregisterListener(this)
         handler?.removeCallbacksAndMessages(null)
-        thread?.quitSafely()
-        started = false; manager = null; handler = null; thread = null; app = null
+        thread?.let { retiring ->
+            retiredThreads.addLast(retiring)
+            retiring.quitSafely()
+        }
+        manager = null; handler = null; thread = null; app = null
         resetCandidate()
     }
 
+    /** Never delete the safety outbox while a stopped fall-evaluation handler is still executing. */
+    @Synchronized
+    fun awaitQuiescent(timeoutMs: Long): Boolean {
+        require(timeoutMs in 1L..30_000L)
+        if (started) return false
+        if (retiredThreads.isEmpty()) return true
+        if (Looper.myLooper() == Looper.getMainLooper()) return false
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        for (retiring in retiredThreads.toList()) {
+            val remaining = deadline - SystemClock.elapsedRealtime()
+            if (remaining <= 0L) return false
+            try { retiring.join(remaining) } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+            if (retiring.isAlive) return false
+            retiredThreads.remove(retiring)
+        }
+        return true
+    }
+
     fun clearHighAlert(context: Context) {
+        if (DeepOffManager.isActive(context.applicationContext)) return
         context.applicationContext.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
             .putBoolean("fallHighActive", false).remove("fallHighUntilMs").apply()
     }
 
     fun refreshHighAlert(context: Context) {
         val app = context.applicationContext
+        if (DeepOffManager.isActive(app)) return
         val until = SafetyDispatcher.highFallUntilMs(app)
         app.getSharedPreferences("brick", Context.MODE_PRIVATE).edit()
             .putBoolean("fallHighActive", until > System.currentTimeMillis())
@@ -111,6 +142,7 @@ object FallDetectorRuntime : SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     private fun evaluateCandidate() {
+        if (!started) return resetCandidate()
         val context = app ?: return resetCandidate()
         if (candidateAtElapsed == 0L) return
         val postMotion = if (postMotionSamples > 0) postMotionSum / postMotionSamples else 1f
