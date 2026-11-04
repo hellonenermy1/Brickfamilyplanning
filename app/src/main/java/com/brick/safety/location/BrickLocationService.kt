@@ -241,11 +241,10 @@ class BrickLocationService : Service() {
         lastLocationCallbackElapsed = now
         val sample = positionEngine.evaluate(location, activityEngine.snapshot())
 
-        if (sample.rawAccepted && sample.source == PositionSource.FUSED &&
-            sample.elapsedRealtimeMs > 0L && sample.elapsedRealtimeMs <= now) {
-            lastLocationElapsed = sample.elapsedRealtimeMs
-            val acceptedAgeMs = now - sample.elapsedRealtimeMs
-            if (acceptedAgeMs <= reacquisitionTriggerMs()) {
+        val acceptedElapsed = MeasuredFixGate.acceptedElapsed(sample, now)
+        if (acceptedElapsed != null) {
+            lastLocationElapsed = acceptedElapsed
+            if (MeasuredFixGate.clearsReacquisition(acceptedElapsed, now, reacquisitionTriggerMs())) {
                 measuredGeneration.incrementAndGet()
                 reacquisitionInProgress.set(false)
                 reacquisitionFailedForGap = false
