@@ -82,3 +82,28 @@
 - **Source finding:** P8B routes dispatch direct control handlers after parent authentication, without the revoked-device lifecycle gate enforced in older `worker-v6.ts`. The Live Track UPSERT and Wi-Fi schedule batch do not require `devices.revoked_at IS NULL`.
 - **Reproduction:** synthetic revoked-device D1 stub invoking both real exported handlers; run a pre-fix negative CI test before remediation. Additional concurrency/race verification required.
 - **Status:** OPEN — SOURCE CONFIRMED, runtime test pending.
+
+
+## 2026-11-04 exact-source continuation: P8D-002, P8D-003, P8D-006
+
+**P8D-002 source corrections and verified retests:**
+- Commit `5138b3c3fd28df98c7b0b1598fb8f02e3ee0c7f8`: 18-table versioned `brick-d1-snapshot-v2` backup + restore; accept only exact 11/12-table historical v1 snapshots or exact 18-table v2 snapshots; reject missing/extra v2 tables; persist newly added Wi-Fi schedules/results, Live Track command history, capabilities, screen time, commutes; preserve device revocation and replay high-water; expire in-flight one-shot commands on recovery; intentionally omit pairing PIN, rate windows, provider cache.
+- Commit `4e7bd489cefba9dec60c5d1cf03b8b31b8bb39e2`: nonempty P8B mock D1 restore tests and extended live D1-only destructive fixture script.
+- Commit `694d2094524a4b8bc1971e7d7a6d7a1695af2eef`: true disposable SQLite source destroyed, new SQLite source schema applied, all 18 D1 tables restored, pending commands retired, temporary credentials/cache NOT restored; CI **PASS** [41783806915](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41783806915).
+- Current **FIXED — SOURCE + REAL SQLITE CI VERIFIED, CLOUD D1/R2/DO RECOVERY UNVERIFIED**. This remains an **OPEN P1** pending Cloudflare isolated full-stack restore proof, continuity under writes, and R2/DO reconciliation. Do not call a local SQLite drill an actual D1 production-data recovery.
+
+**P8D-003 development credential correction:**
+- Commit `b096a712f9e260e3d9bc967517026590c404c2da`: removed the public six-digit SHA-256 verifier; worker/dev auth now requires high-entropy 43–128 base64url token; deploy script configures only its SHA-256 hash as Wrangler Worker **secret**, not as `vars`; unset secret fails closed. No login token/hash is logged. Unit tests cover wrong/short/missing secret, cookies, origin, rate, logout and forged internal marker.
+- CI **PASS** [41784259743](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784259743).
+- Existing development Worker deployment still **UNKNOWN**. Git history still contains the compromised low-entropy verifier, so affected actual beta login must be rotated out-of-band and old D1 sessions revoked if the beta is live. **P1 provisional remains OPEN — live exposure/rotation not verified**.
+
+**P8D-006 revoked-device P8B controls:**
+- Baseline `src/worker-v9.ts:144–153` bypasses `worker-v6.ts` archived-device handling by dispatching direct P8B control routes. `parentSetLiveTrack` and `parentSetWifiSchedules` lacked revoked-device checks.
+- Recorded first, then dedicated regression reproduced the P1 scenario: CI **FAIL** [41784727728](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784727728) on `e1e6f9e1ebea450dae83a91076aa633bb2598399`.
+- Fix SHA `168b192f2912a44144d55ec2bae3bc64d1580e58`: require active device before writes; Live Track SQL INSERT/UPSERT constrained by `revoked_at IS NULL`, Wi-Fi schedule DELETE/INSERT similarly guarded and postchecked.
+- Exact same regression, typecheck, browser build, backup and deployment CI **PASS** [41784886446](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784886446).
+- **FIXED → RETESTED → SOURCE/CI VERIFIED**, Cloudflare D1/route concurrency and actual deployment remain unverified; do not declare complete Phase 8D security sign-off.
+
+**Additional 8D.16 audit target (unclassified):** current `snapshotD1ToR2` walks multiple D1 tables with paged queries rather than a proven consistent cross-table snapshot while concurrent writes occur. Source inspection alone cannot show whether a recovery snapshot can tear across device/revocation/command states; reproduce with concurrent mutation and test consistency before closing 8D.16.
+
+**Production data:** untouched. **Android production source:** untouched. **Cloudflare deployed Worker/Access:** not inspected.

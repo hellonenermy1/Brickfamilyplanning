@@ -35,3 +35,23 @@ Branch `v1-p8d-backend-deep-audit` is now beyond its baseline due to **audit-onl
 5. Update findings/matrix and keep exact SHAs after each test.
 
 Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**. 
+
+---
+
+## 2026-11-04 post-unknown-error continuation — VERIFIED, NOT PRODUCTION DEPLOYED
+
+**Branch:** `v1-p8d-backend-deep-audit`. **Frozen Phase 8C Android source:** `2c492efff01095e17f96af3c24ac07ac0b5c3739` unchanged. Final tested production/backend source **`168b192f2912a44144d55ec2bae3bc64d1580e58`**. Later audit-document-only commits must never be confused with retested code.
+
+**Source commits/evidence:**
+- `5138b3c3` P8D-002 snapshot v2 covers 18 D1 durable tables, old 11/12-table v1 compatibility, no pending command resurrection.
+- `4e7bd489` backup fixture and CI; full green [41783419493](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41783419493).
+- `694d2094` real disposable SQLite source deletion / fresh restore; full green [41783806915](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41783806915).
+- `b096a712` P8D-003 remove public development six-digit PIN hash and require private high-entropy token hash; full green [41784259743](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784259743).
+- `e1e6f9e1` P8D-006 negative regression deliberately **RED** [41784727728](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784727728).
+- `168b192f` P8D-006 revoked-device control mutation guard fix; exact same regression **GREEN** [41784886446](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784886446).
+
+**8D remains OPEN / NOT PASS:** P8D-001 only source/deploy contract tested, production Cloudflare ID and bindings UNKNOWN. P8D-002 source/real SQLite restored but Cloudflare D1/R2/DO full disaster recovery unverified; remains P1. P8D-003 production dev credentials/sessions not rotated/attested; provisional P1. P8D-004 ACK/Queue/R2 durability unverified. P8D-005 environment separation unverified. P8D-006 source/CI retested, live SQL/route race proof pending.
+
+**Next substantive work:** finish 8D.2 exhaustive public/parent/device endpoint inventory (initial candidate register in `PHASE8D_ENDPOINT_INVENTORY_DRAFT.csv`), runtime auth/device revocation + cross-device tests, real Cloudflare read-only deployment attestation, R2/DO recovery/drill, coherent backup under concurrent writes. Then 8D.1–8D.19 closure and final 525-ledger mapping. Do not use production data for fault injection or perform deployment without explicit release approval.
+
+**Dev beta migration requires operator-controlled `BRICK_DEV_PARENT_ACCESS_TOKEN`** (32 random bytes base64url minimum) and private Worker-secret provisioning, plus real old-session revocation/credential rotation on the affected development deployment. See `PHASE8D_SECURITY_REPORT.md`. Do not put the token in GitHub or in chat.
