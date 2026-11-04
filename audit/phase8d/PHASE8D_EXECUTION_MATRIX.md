@@ -6,7 +6,7 @@
 | PDF section | Scope | Initial status | Mandatory proof to obtain |
 |---|---|---|---|
 | 8D.1 | Actual deployment identity/config | BLOCKED — LIVE EVIDENCE | Active SHA+deployment ID, routes/domain, production/dev bindings, schema, flags and secrets-present without values |
-| 8D.2 | Every backend API | SOURCE INVENTORY IN PROGRESS — 49 candidate paths; runtime/method probes pending | Exhaustive route inventory across worker-p8b→v9→v8→v7→v6→v5b→index, methods/authz/inputs/effects/storage/logging, public-surface probes |
+| 8D.2 | Every backend API | 49 candidate paths retained; 12-column schema fixed and CI VERIFIED P8D-012; full source/method/auth probe inventory still pending | Exhaustive route inventory across worker-p8b→v9→v8→v7→v6→v5b→index, methods/authz/inputs/effects/storage/logging, public-surface probes |
 | 8D.3 | Signed device authentication | SOURCE/CI PARTIAL — P-256 health and PIN claims; other signed paths unverified | Valid/wrong/missing/revoked/forged/replayed/expired signature and cross-device tests |
 | 8D.4 | Input validation | SOURCE/CI PARTIAL — health and PIN malformed/oversized; full API pending | Malformed/oversized/truncated/duplicate/unknown payload and bounded errors |
 | 8D.5 | Sequence/epoch idempotency | SQLITE/CI PARTIAL — ordered epoch/replay matrix; live ingest end-to-end pending | PDF 100,101,102 then 100,102,101,102,102; old/new epochs, huge jumps |
