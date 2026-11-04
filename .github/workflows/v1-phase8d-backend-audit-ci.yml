@@ -65,6 +65,11 @@ jobs:
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-concurrent-r2.mjs /tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-idempotence.mjs /tmp/brick-p8d-history.mjs
+      - name: 8D.5-7 actual SQLite epoch sequence and current-state ordering matrix
+        run: |
+          npx --no-install esbuild src/location-ingest-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location.mjs
+          npx --no-install esbuild src/live-state-order.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-live-order.mjs
+          node scripts/test-phase8d-location-epoch-sqlite.mjs /tmp/brick-p8d-location.mjs /tmp/brick-p8d-live-order.mjs
       - name: P8D.3-5 device ECDSA P-256 signed replay, revocation and invalid input
         run: |
           npx --no-install esbuild src/device-json-security.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-device-auth.mjs
