@@ -14,7 +14,7 @@
 | 8D.7 | Current-state ordering | SQLITE/CI PARTIAL — current-state event-time policy; DO/WS races pending | Older backlog/fallback/history vs fresh measurement/DO/WS interleavings |
 | 8D.8 | D1 schema/migration | SQLITE/CI PARTIAL — schema replay and PIN competing confirmation; full integrity pending | all 16 migrations, upgrade from existing schema, clean install, FK/index/queries, rollback |
 | 8D.9 | Queue/DLQ | SOURCE/CI PARTIAL — concurrent R2 CAS + fault matrix; live DLQ pending | duplicate/poison/retry/exhaustion/replay, R2 two-object put failures |
-| 8D.10 | WebSocket | OPEN P8D-011 — existing WS session expiry/revocation unverified | parent auth before DO upgrade, family isolation, revocation, stale sessions, hibernation, cleanup |
+| 8D.10 | WebSocket | P8D-011 RED→GREEN SOURCE/CI VERIFIED at `1af0ebb8`; LIVE DO/WS + browser reconnection pending; P1 open | parent auth before DO upgrade, family isolation, verified revocation, expiry/alarm across hibernation, proactive parent renewal, cleanup |
 | 8D.11 | Parent sessions | SOURCE/CI PARTIAL — production RSA JWT, dev sessions; live Access pending | Access JWT key/aud/exp/iss and development cookie/session/rotation/fixation |
 | 8D.12 | CSRF/Origin | SOURCE/CI PARTIAL — pairing Origin/CSRF; all browser mutations pending | all mutating parent routes and upgrade requests reject cross-site |
 | 8D.13 | Commands | SOURCE/CI PARTIAL — pairing and revoked controls; phone command proof pending | parent→D1→child delivery→actual-state result audit, nonce/expiry/replay/wrong device |
