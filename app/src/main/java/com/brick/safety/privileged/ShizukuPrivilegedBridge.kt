@@ -44,15 +44,25 @@ object ShizukuBridgeController {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            if (deprovisionShutdown) {
-                binding = false
+            // Serialize the callback's service adoption with the permanent purge fence.
+            // Without this lock, a callback can pass an early flag check and then publish a
+            // connected service after shutdown has already cleared it.
+            val rejected = synchronized(deprovisionFence) {
+                if (deprovisionShutdown) {
+                    binding = false
+                    true
+                } else {
+                    binding = false
+                    service = binder?.let { IBrickPrivilegedService.Stub.asInterface(it) }
+                    serviceGeneration += 1L
+                    lastError = if (service == null) "Shizuku service returned no binder" else null
+                    false
+                }
+            }
+            if (rejected) {
                 runCatching { Shizuku.unbindUserService(args(), connection, true) }
                 return
             }
-            binding = false
-            service = binder?.let { IBrickPrivilegedService.Stub.asInterface(it) }
-            serviceGeneration += 1L
-            lastError = if (service == null) "Shizuku service returned no binder" else null
             refreshCapabilities()
         }
 
