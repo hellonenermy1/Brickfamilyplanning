@@ -253,3 +253,26 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 **Next best verified action:** Cloudflare token owner grants only Account `Workers R2 Storage Read` and `Access: Apps and Policies Read` to the *existing dedicated audit token* for this account, then rerun the read-only audit. Next, manually qualify isolated development workflow once its dedicated high-entropy dev parent token is configured and approved; do NOT directly deploy source to production until 8D final acceptance and Cloudflare backups/recovery proof.
 
 **Phase 8D IN PROGRESS / NOT PASS.** No Phase 8E/8F, no production deploy, no Android source edits. This checkpoint supersedes the earlier uncorrected 7-target “dev provenance attested” claim from [attempt 3, 41827760516](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41827760516).
+
+---
+
+## 2026-11-04 late — P8D-043–049 real Cloudflare acceptance and release-gate hardening
+
+**Continue same branch, do not restart.** START `ab033dbf9b529573d9f4ce80c83f189e35bd590d`. LATEST EXECUTABLE GREEN `d74b30d97e97a01ce55171f1931c685d51f4d180` in [CI 41839919380](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919380) **three of three jobs PASS**. Further commits after executable SHA are documentation-only (verify). **Live Cloudflare [41839919454](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454) remains non-PASS intentionally** (confirmed failures/blocked scopes). No production or development deployment, no Cloudflare resource writes, no Android changes.
+
+**Seven tracked acceptance-focused targets completed to stated scopes:**
+1. **P8D-043** source+live active-version binding and D1-reference corroboration: Cloudflare deployment's exact active version `resources.bindings` shows **all 7 expected prod missing plus 2 dev missing** also absent from script settings. Source contract tests reject active/latest drift and shared D1; real distinct D1 resource names still unverified.
+2. **P8D-044** authentic, status-only Workers.dev parent safety probe from Cloudflare GET-discovered host, with no response body/cookies/user data.
+3. **P8D-045** actual D1 catalog GET-only metadata probe: **HTTP 401 missing D1 Read scope**; no SQL/records queried. Synthetic distinct/shared/missing/401 mocked tests PASS.
+4. **P8D-046** classified prod `/parent` HTTP 303 to **same-origin /parent/login**; local login publicly 200; development expected 302/local login. No user-data exposure demonstrated.
+5. **P8D-047** repaired production release verifier's **real false Access PASS**: previously accepted arbitrary 303. Now requires true HTTPS CF Access login challenge, disallows public prod local login, rejects forged development internal header on production API. New isolated module `phase8d-access-denial-policy.mjs`, mock negative tests GREEN. This protects **future production deployments only**; current production remains live policy mismatch.
+6. **P8D-048** strict future Access config read-only GET checks on app and policies, one account-member allow, no bypass/wrong account, strong session/cookie config. Negative mock tests GREEN; live token still lacks Access read permission.
+7. **P8D-049** expanded anonymous GET probe to **12** endpoint/forged cases: **9 ATTESTED, 2 production /parent redirects BLOCKED/inconclusive and 1 production /parent/login publicly HTTP200 FAIL**. Both prod/dev device-list API, including forged dev auth header, returned 401; both map status 401; dev login public by design and dev parent requests redirected to login.
+
+**True live outcome:** [41839919454](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454) — 7-gate Cloudflare metadata still prod/dev binding DRIFT, Queue/DLQ absent, SHA unknown, R2/Access read BLOCKED; D1 catalog HTTP401 BLOCKED; parent login production HTTP200 FAIL. **Do not call 8D PASS or deploy audit branch**. The anonymous API 401s prove rejection, not Cloudflare Access policy validity.
+
+**Latest durable detailed evidence:** `audit/phase8d/PHASE8D_LIVE_SECURITY_ACCEPTANCE_2026-11-04.md`, findings, retest ledger and matrix updated.
+
+**Immediate next user/admin unblock:** Edit only the scoped `CLOUDFLARE_AUDIT_READ_TOKEN` permissions for this account to include **Workers R2 Storage Read, Access: Apps and Policies Read, D1 Read** (no Write). Then rerun independent [read-only workflow](https://github.com/hellonenermy1/Brickfamilyplanning/actions/workflows/phase8d-cloudflare-readonly.yml). After Access policy is readable, repair real prod Access /parent* login boundary through authorized reversible Cloudflare change with rollback/smoke; prioritize before any new production release. Then prepare isolated D1+R2+DO restore, Queue producer/consumer DLQ, cross-store fault injection, WS lifecycle, migrations/rollback. Production CI deploy still gated on separate accepted branch and final PASS.
+
+**No manual prompt counter or manufactured estimate can replace those gates.** Phase8D remains **IN PROGRESS / NOT PASS**, 8E/8F NOT STARTED.
