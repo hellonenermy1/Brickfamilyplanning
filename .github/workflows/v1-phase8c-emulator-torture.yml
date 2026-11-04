@@ -134,6 +134,7 @@ jobs:
             'com.brick.safety.privileged.Phase8ShizukuStaleReplyAfterPurgeInstrumentedTest'
             'com.brick.safety.crypto.Phase8CryptoPostPurgeIsolationInstrumentedTest'
             'com.brick.safety.maintenance.Phase8ServiceWriterDrainInstrumentedTest'
+            'com.brick.safety.maintenance.Phase8AuxiliaryWriterDrainInstrumentedTest'
             'com.brick.safety.maintenance.Phase8AuxiliaryProducerDrainInstrumentedTest'
           )
           : > /tmp/p8c-instrumentation.txt
