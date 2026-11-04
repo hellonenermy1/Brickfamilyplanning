@@ -27,22 +27,21 @@ object BrickServiceQuiescenceGate {
         Thread({
             // An uninterruptible Binder/HTTP operation can ignore interrupt. This daemon
             // intentionally waits as long as that old writer exists; purge uses a bounded wait.
-            try {
-                for (executor in executors) {
-                    while (!executor.isTerminated) {
-                        try {
-                            executor.awaitTermination(1L, TimeUnit.SECONDS)
-                        } catch (_: InterruptedException) {
-                            // Continue observing; a stopped thread cannot be certified by a
-                            // cancelled await. The process dying kills all its writers.
-                        }
+            for (executor in executors) {
+                while (!executor.isTerminated) {
+                    try {
+                        executor.awaitTermination(1L, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        // Continue observing; a stopped thread cannot be certified by a
+                        // cancelled await. The process dying kills all its writers.
                     }
                 }
-            } finally {
-                synchronized(monitor) {
-                    if (activeInstances > 0) activeInstances--
-                    monitor.notifyAll()
-                }
+            }
+            // Do not release the purge barrier on an unexpected watcher failure; that would
+            // mislabel still-live writers as terminated. A timeout is deliberately fail-closed.
+            synchronized(monitor) {
+                if (activeInstances > 0) activeInstances--
+                monitor.notifyAll()
             }
         }, "brick-service-drain").apply {
             isDaemon = true
