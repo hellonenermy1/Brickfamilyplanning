@@ -3,11 +3,11 @@ import { execFileSync } from 'node:child_process';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
-const EXPECTED_RELEASE = '0.8.0-phase8-beta1-test';
+const EXPECTED_RELEASE = '1.0.0-rc.1';
 const EXPECTED_RELEASE_STATE = 'candidate-not-real-device-qualified';
 const EXPECTED_V1_PROGRAM_PHASE = 8;
-const EXPECTED_SCHEMA_VERSION = 15;
-const EXPECTED_WORKER_ENTRY = 'src/worker-v9.ts';
+const EXPECTED_SCHEMA_VERSION = 18;
+const EXPECTED_WORKER_ENTRY = 'src/worker-p8b.ts';
 const HISTORY_BUCKET = 'brick-family-v1-history';
 const MAPS_BUCKET = 'brick-family-v1-maps';
 const EVENT_QUEUE = 'brick-family-v1-events';
@@ -23,7 +23,10 @@ const REQUIRED_SCHEMAS = [
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
   'schema/011_v1_phase6_location_control.sql',
-  'schema/015_phase8_device_identity.sql'
+  'schema/015_phase8_device_identity.sql',
+  'schema/016_p8b_remediation.sql',
+  'schema/017_p8b_provider_rate.sql',
+  'schema/018_p8b_pin_pairing.sql'
 ];
 const REQUIRED_TABLES = [
   'devices', 'device_health_samples', 'health_incidents', 'safety_events', 'geofences',
@@ -33,7 +36,9 @@ const REQUIRED_TABLES = [
   'device_commands', 'refined_history_runs',
   'witness_aliases', 'witness_sightings', 'ground_sightings', 'learned_place_models',
   'phase5_refined_intervals', 'phase5_hypothesis_frames', 'phase5_precise_endpoints',
-  'device_location_control'
+  'device_location_control', 'device_live_track_control', 'device_wifi_schedules',
+  'device_wifi_schedule_result', 'device_capability_profile', 'screen_time_daily',
+  'commute_summaries', 'provider_cache', 'provider_rate_window', 'pairing_pin_sessions'
 ];
 
 const token = process.env.CLOUDFLARE_API_TOKEN;
@@ -103,8 +108,8 @@ const sourceGitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf
 assert(/^[0-9a-f]{40}$/.test(sourceGitSha), 'could not determine exact checked-out Git SHA');
 assert(state?.phase === 8, 'setup-state phase is not 8');
 assert(state?.v1ProgramPhase === EXPECTED_V1_PROGRAM_PHASE, 'setup-state V1 program phase is not 8');
-assert(state?.schemaVersion === EXPECTED_SCHEMA_VERSION, 'setup-state schema version is not 15');
-assert(state?.workerEntry === EXPECTED_WORKER_ENTRY, 'setup-state worker entry is not worker-v9.ts');
+assert(state?.schemaVersion === EXPECTED_SCHEMA_VERSION, 'setup-state schema version is not 18');
+assert(state?.workerEntry === EXPECTED_WORKER_ENTRY, 'setup-state worker entry is not worker-p8b.ts');
 assert(state?.sourceGitSha === sourceGitSha, 'setup-state source SHA does not match the checked-out deployment source');
 assert(Array.isArray(state?.appliedSchemas), 'setup-state applied schema list is missing');
 for (const schema of REQUIRED_SCHEMAS) assert(state.appliedSchemas.includes(schema), `setup-state did not record required migration: ${schema}`);
