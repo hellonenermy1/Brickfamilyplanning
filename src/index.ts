@@ -259,7 +259,17 @@ async function listSafetyEvents(req: Request, env: Env, id: string) {
 async function parentDeviceProxy(req: Request, env: Env, id: string, kind: "state" | "ws") {
   const d = await ensureParentDevice(req, env, id); if (d) return d;
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id));
-  return kind === "state" ? noStore(await stub.fetch(new Request("https://do/state"))) : stub.fetch(new Request("https://do/ws", { method: req.method, headers: req.headers }));
+  if (kind === "state") return noStore(await stub.fetch(new Request("https://do/state")));
+  // Never forward a browser's cookies, Access token or arbitrary headers to the DO.
+  // The outer verified parent wrapper creates this short internal lease after validating the session.
+  const lease = req.headers.get("X-Brick-Internal-Ws-Lease-Until");
+  return stub.fetch(new Request("https://do/ws", {
+    method: req.method,
+    headers: {
+      Upgrade: req.headers.get("Upgrade") ?? "",
+      ...(lease === null ? {} : { "X-Brick-Internal-Ws-Lease-Until": lease })
+    }
+  }));
 }
 
 async function runOpsWatchdog(env: Env) {
