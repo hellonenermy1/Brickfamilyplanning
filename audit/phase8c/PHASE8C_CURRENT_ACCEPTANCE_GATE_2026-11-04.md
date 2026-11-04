@@ -1,5 +1,9 @@
 # Brick V1 — Phase 8C current acceptance gate (2026-11-04)
 
+
+**FINAL STATUS UPDATE (2026-11-04): PHASE 8C DONE / PASS.** All five required CI gates passed on the same Android production source `2c492efff01095e17f96af3c24ac07ac0b5c3739`: [signed APK](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396317), [deep audit](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769474692), [120-test emulator suite](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769491366), [real API29 Device Owner](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396337), and [186-second resource test](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396389). All 13 original findings and the additional CPU hot loop are **VERIFIED CLOSED within Android source/emulator scope**. See [final acceptance decision](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md) and [final closure matrix](PHASE8C_FINDING_CLOSURE_MATRIX_2026-11-04.md). **The earlier `NOT YET 8C PASS` narrative below is historical, not the current verdict.** Physical OPPO behavior remains `IMPLEMENTED — DEVICE VERIFICATION PENDING` in Phase 9; no production release is authorized by Phase 8C alone.
+
+
 **Branch:** `v1-p8c-android-deep-audit`. **Verdict:** **NOT YET 8C PASS**. This document supersedes *current status* claims in earlier audit reports without rewriting original historical findings. Follow the original PDF 8C.1–8C.20 and strict exit gate: no open P0/P1, no unexplained lifecycle/unknown safety-event path or unknown persistent-data path.
 
 ## Completed, independently observed verifications
