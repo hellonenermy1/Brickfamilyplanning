@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   signed-rc:
@@ -144,3 +145,19 @@ jobs:
           path: p8c-signed-rc/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish exact-commit Phase 8C status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          state=failure
+          if [ "$JOB_STATUS" = success ]; then state=success; fi
+          gh api --method POST "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f "state=$state" \
+            -f "context=brick/p8c/signed-release" \
+            -f "description=Phase 8C exact-commit CI: $JOB_STATUS" \
+            -f "target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
