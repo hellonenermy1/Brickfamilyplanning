@@ -36,6 +36,7 @@ import com.brick.safety.network.LiveApi
 import com.brick.safety.reliability.CoreUploadRetryPolicy
 import com.brick.safety.reliability.DurableLocationDelivery
 import com.brick.safety.reliability.HealthEvidence
+import com.brick.safety.reliability.LiveRetryPolicy
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
 import com.google.android.gms.location.*
@@ -102,6 +103,9 @@ class BrickLocationService : Service() {
     @Volatile private var locationSubscribed = false
     @Volatile private var trackingIntervalMs = 3_000L
     @Volatile private var nextUploadAttemptElapsed = 0L
+    @Volatile private var nextLiveAttemptElapsed = 0L
+    // Mutated only by the single-threaded liveIo lane; the deadline is visible to all callbacks.
+    private var consecutiveLiveFailures = 0
     @Volatile private var reacquisitionDeadlineElapsed = 0L
     @Volatile private var lastReacquireAttemptElapsed = 0L
     @Volatile private var reacquisitionFailedForGap = false
@@ -288,8 +292,10 @@ class BrickLocationService : Service() {
     private fun kickLivePump() {
         if (mustQuiesceAsync()) return
         if (!::connectivity.isInitialized || !networkAvailable()) return
+        if (SystemClock.elapsedRealtime() < nextLiveAttemptElapsed) return
         if (!livePumpRunning.compareAndSet(false, true)) return
         liveIo.execute {
+            var failed = false
             try {
                 while (!mustQuiesceAsync() && networkAvailable()) {
                     val candidate = latestLive.getAndSet(null) ?: break
@@ -299,9 +305,10 @@ class BrickLocationService : Service() {
                     val sendTrace = candidate.trace.copy(sendStartWallMs = System.currentTimeMillis())
                     val result = runCatching { LiveApi.send(base, deviceId, candidate.payload, sendTrace) }
                     if (result.isFailure) {
-                        // Preserve newest current candidate for the next validated network wake, but
-                        // never overwrite a newer candidate that arrived while this request failed.
+                        // Retain only current best-effort Live state. The durable Journal is separate.
+                        // Android-validated Wi-Fi does not imply our API is reachable; retry later.
                         latestLive.compareAndSet(null, candidate)
+                        failed = true
                         break
                     }
                     val r = result.getOrThrow()
@@ -315,8 +322,25 @@ class BrickLocationService : Service() {
                     )
                 }
             } finally {
+                if (failed && !mustQuiesceAsync() && latestLive.get() != null) {
+                    consecutiveLiveFailures = (consecutiveLiveFailures + 1).coerceAtMost(6)
+                    val delayMs = LiveRetryPolicy.delayMs(consecutiveLiveFailures)
+                    nextLiveAttemptElapsed = SystemClock.elapsedRealtime() + delayMs
+                    if (!supervisor.isShutdown) {
+                        runCatching {
+                            supervisor.schedule({ kickLivePump() }, delayMs, TimeUnit.MILLISECONDS)
+                        }
+                    }
+                } else if (!failed) {
+                    consecutiveLiveFailures = 0
+                    nextLiveAttemptElapsed = 0L
+                }
+                // Set the backoff deadline before releasing the single-flight flag, otherwise
+                // network callbacks can immediately re-enter the same failed request in a hot loop.
                 livePumpRunning.set(false)
-                if (!mustQuiesceAsync() && latestLive.get() != null && networkAvailable()) kickLivePump()
+                if (!failed && !mustQuiesceAsync() && latestLive.get() != null && networkAvailable()) {
+                    kickLivePump()
+                }
             }
         }
     }
