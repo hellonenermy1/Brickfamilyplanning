@@ -1,0 +1,249 @@
+{
+  "executableSha": "9b2601d9742c02bf55e45f5a2ddaf40e2661a916",
+  "scope": "Local source-build run commands, with explicit omissions below; command-group counts are not independent test counts or a full CI pass",
+  "groupsAttempted": 55,
+  "successfulGroups": 54,
+  "failedGroups": [
+    {
+      "name": "P8D-006 deny mutations for revoked child identity",
+      "exit": 1
+    }
+  ],
+  "failedGroupCause": "sqlite3 ENOENT in test-phase8d-controls-sqlite.mjs; no assertion failure in that group",
+  "omittedSteps": [
+    "npm ci (lock unchanged/dependencies already installed)",
+    "typecheck and browser build (checked separately/prior build)",
+    "native workerd integration (run separately and passed)",
+    "strict SQLite CLI schema replay (CLI unavailable)"
+  ],
+  "omittedCommands": [
+    "test-phase8d-location-epoch-sqlite.mjs",
+    "test-phase8d-pin-confirm-race.mjs",
+    "test-phase8d-revoked-control.mjs",
+    "test-phase8d-isolated-sqlite-restore.mjs"
+  ],
+  "groups": [
+    {
+      "name": "P8D-050 actual routed Fast Live and durable DO revoke fence",
+      "exit": 0
+    },
+    {
+      "name": "P8D-051 current development route schema and interrupted upgrade parity",
+      "exit": 0
+    },
+    {
+      "name": "P8D-002 full schema recovery policy and nonempty durable-state roundtrip",
+      "exit": 0
+    },
+    {
+      "name": "P8D-060 actual safety evaluation state ownership and transaction rollback",
+      "exit": 0
+    },
+    {
+      "name": "8D.15 historical Git scanner positive and negative controls",
+      "exit": 0
+    },
+    {
+      "name": "8D.15 check built public assets for server-only credentials",
+      "exit": 0
+    },
+    {
+      "name": "P8D-007 concurrent R2 segment durability regression",
+      "exit": 0
+    },
+    {
+      "name": "P8D-024 enforce Queue success before live DO publication",
+      "exit": 0
+    },
+    {
+      "name": "P8D-021 prevent revoked device location D1, Queue, and DO writes",
+      "exit": 0
+    },
+    {
+      "name": "8D.5-7 actual SQLite epoch sequence and current-state ordering matrix",
+      "exit": 0
+    },
+    {
+      "name": "P8D-018 reject oversized or invalid pre-auth fall event JSON",
+      "exit": 0
+    },
+    {
+      "name": "P8D-019 validate signed screen time monotonicity and revoke race on real SQLite",
+      "exit": 0
+    },
+    {
+      "name": "P8D-020 reject signed health replay updates after revocation interleaving",
+      "exit": 0
+    },
+    {
+      "name": "P8D.3-5 device ECDSA P-256 signed replay, revocation and invalid input",
+      "exit": 0
+    },
+    {
+      "name": "8D.9 poison, D1 outage, durable and missing safety receipt replay through DLQ",
+      "exit": 0
+    },
+    {
+      "name": "P8D-004 R2/Queue safety ACK fault matrix",
+      "exit": 0
+    },
+    {
+      "name": "P8D-009 fallback pairing valid P-256 key and bounded request",
+      "exit": 0
+    },
+    {
+      "name": "P8D-047 release must require verified Access login challenge (never arbitrary 303)",
+      "exit": 0
+    },
+    {
+      "name": "P8D-044 actual live parent security probe mock denies forged/public/unsafe URLs",
+      "exit": 0
+    },
+    {
+      "name": "P8D-045 Cloudflare GET-only D1 metadata and prod-dev isolation contract",
+      "exit": 0
+    },
+    {
+      "name": "P8D-038 Cloudflare GET-only audit API shapes, version provenance, Queue pagination and denial cases",
+      "exit": 0
+    },
+    {
+      "name": "P8D-042 prevent production auto-deploy and obsolete Phase 6C dev deploy contract",
+      "exit": 0
+    },
+    {
+      "name": "P8D-041 deterministic non-mutating seven-target Cloudflare remediation contract",
+      "exit": 0
+    },
+    {
+      "name": "P8D-040 source configuration parity for prod/dev D1, R2, Queue, DO and rate bindings",
+      "exit": 0
+    },
+    {
+      "name": "8D.13 signed command result finality, Wi-Fi freshness, capability profile and wrong-device cases",
+      "exit": 0
+    },
+    {
+      "name": "8D.9 reject malformed Queue history poison without losing valid sibling",
+      "exit": 0
+    },
+    {
+      "name": "8D.16 actual D1 snapshot-to-restore plus byte-identical R2 history drill",
+      "exit": 0
+    },
+    {
+      "name": "8D.2 production parent endpoint method inventory denies unauthenticated calls",
+      "exit": 0
+    },
+    {
+      "name": "8D.15 public parent/browser asset leakage gate",
+      "exit": 0
+    },
+    {
+      "name": "P8D-016 reject location-control command if device revoked between read and UPSERT",
+      "exit": 0
+    },
+    {
+      "name": "P8D-006 deny mutations for revoked child identity",
+      "exit": 1
+    },
+    {
+      "name": "8D.2 discover layered production routes and separate development login/logout",
+      "exit": 0
+    },
+    {
+      "name": "P8D-012 require 49 source endpoint rows have unambiguous named CSV schema",
+      "exit": 0
+    },
+    {
+      "name": "P8D-027 deduplicate costly per-device commute refreshes",
+      "exit": 0
+    },
+    {
+      "name": "P8D-028 validate bounded commute and screen-time query parameters",
+      "exit": 0
+    },
+    {
+      "name": "P8D-023 prove bounded commute scheduler rotates across 100+ devices",
+      "exit": 0
+    },
+    {
+      "name": "8D.19 enforce immutable CI actions, accepted-branch deployment gate and source SHA",
+      "exit": 0
+    },
+    {
+      "name": "P8D-029 fail-closed OneMap and commute parent quotas",
+      "exit": 0
+    },
+    {
+      "name": "P8D-022 verify OneMap missing and malformed reverse coordinates fail closed",
+      "exit": 0
+    },
+    {
+      "name": "8D.14 require isolated fail-closed history and WebSocket rate guards",
+      "exit": 0
+    },
+    {
+      "name": "8D.12 reject cross-site Origin on every known parent mutation",
+      "exit": 0
+    },
+    {
+      "name": "8D.10 browser production and dev WebSocket device-switch, terminal revoke and reconnect",
+      "exit": 0
+    },
+    {
+      "name": "8D.10 full Worker websocket auth, Origin, internal lease and device scope",
+      "exit": 0
+    },
+    {
+      "name": "P8D-011 existing WebSocket expiry, hibernation and revocation negative regression",
+      "exit": 0
+    },
+    {
+      "name": "8D.11 production Cloudflare Access RS256 JWT adversarial checks",
+      "exit": 0
+    },
+    {
+      "name": "P8D-003 development credential and session security regression",
+      "exit": 0
+    },
+    {
+      "name": "8D.8 production SQLite schema and constraints, including revocation history",
+      "exit": 0
+    },
+    {
+      "name": "P8D-025 exactly-once bounded backend incident alerting",
+      "exit": 0
+    },
+    {
+      "name": "P8D-026 truthful delivery metric on extreme signed sequence jumps",
+      "exit": 0
+    },
+    {
+      "name": "8D.17 validate retention merge preserves all existing R2 lifecycle rules",
+      "exit": 0
+    },
+    {
+      "name": "8D.17 validate bounded R2 raw/trusted 30/90-day lifecycle target",
+      "exit": 0
+    },
+    {
+      "name": "8D.17 per-device retention, cross-family isolation and crash/health/audit cleanup",
+      "exit": 0
+    },
+    {
+      "name": "P8D-013 redaction of identifiers in D1 audit path and detail",
+      "exit": 0
+    },
+    {
+      "name": "P8D-002 require atomic cross-table D1 snapshot under synthetic concurrent mutation",
+      "exit": 0
+    },
+    {
+      "name": "P8D-002 versioned backup restore regression",
+      "exit": 0
+    }
+  ],
+  "hostedRun": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858",
+  "hostedStatusAtCheckpoint": "queued; all3 jobs not started, no hosted PASS claimed"
+}

@@ -1,6 +1,6 @@
 # Brick V1 — Phase 8D durable continuation checkpoint
 
-> Latest verified executable: `0a7e6eb6cbb35eae3d36d0621d8a7d3caa48f287`, source CI 41859178762 all 3 jobs PASS. Private repo authenticated access works. Read latest tail and `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`; P8D-054/055/056 source/CI verified. Local Git scan scoped evidence saved. Cloudflare live attempt3 still NOT PASS. Historical entries retain their original scope.
+> Latest source: `9b2601d9742c02bf55e45f5a2ddaf40e2661a916`; source CI41862396858 QUEUED at checkpoint, not a PASS. Previous CI-verified executable0a7e6eb (CI41859178762 all3 jobs green). Read latest tail and `PHASE8D_SAFETY_ACCEPTANCE_2026-11-04.md`;24 new focused tests/native integration pass locally. Private repo access works. Live Cloudflare still NOT PASS.
 
 **Current state:** Phase 8D STARTED, NOT PASS, opened 2026-11-04. Created branch `v1-p8d-backend-deep-audit` from `v1-p8c-android-deep-audit` at SHA `70a3c287425e9276585fbff85909dcf699dcf2f2`.
 
@@ -331,3 +331,12 @@ Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live so
 Continued807025e. Actual signed Worker/native SQLite RED reproduced11 negative route failures (one positive control passed), and actual safety evaluator RED reproduced3 ownership/publication failures (one positive control passed). Source fixes now pass24 focused tests: conditional active-device safety insertion, actual duplicate ownership/kind, fall coordinate validation, atomic guarded event/state transaction and newly-inserted-only publication, bounded re-read/retry on lost newer snapshot. Prior Phase7 safety-quality fixture passes. Native Workers safety route coverage extended; full hosted exact-SHA CI pending.
 
 Scope/remaining replay and cross-store gaps explicit in `PHASE8D_SAFETY_ACCEPTANCE_2026-11-04.md`; no global eventSequence ledger or live acceptance inferred. No schema/Android/deploy/settings/Cloudflare writes or family-data access. Existing live blockers unchanged. **8D NOT PASS.**
+
+
+## Exact source commit and queued hosted verification
+
+Executable `9b2601d9742c02bf55e45f5a2ddaf40e2661a916` pushed on the same audit branch. [Hosted CI41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) currently **QUEUED**, all3 jobs unstarted on repeated API checks. No runner-failure/billing/permission cause established; no hosted PASS inferred. Prior green executable remains0a7e6eb for CI claims.
+
+Current source local evidence:24 focused signed-route/evaluator checks PASS, Phase7 safety-quality fixture PASS, typecheck PASS, native actual Workers D1/Queue/R2/DO/Access/WS/recovery plus signed fall route PASS. Broader source-build command run:55 groups attempted,54 exited0 within explicit command omissions,1 stopped at missing sqlite3 executable in test-phase8d-controls-sqlite.mjs. Other CLI-dependent commands/schema replay were omitted; this is not a full local CI pass. Exact grouping/omissions: `PHASE8D_LOCAL_REGRESSION_9b2601d.json`.
+
+P8D-057/058/059/060 status: **SOURCE FIXED, LOCAL RETEST VERIFIED, HOSTED CI PENDING**. Next continuation must inspect this exact hosted run and job logs, resolve any real regression, then record source closure. Do not restart or call the queued run green. Existing live Cloudflare findings, distinct-ID sequence replay ledger, full cloud recovery/rollback and remaining audit gates stay OPEN. No deployment, schema migration, Android/family data or settings changes. **Phase8D NOT PASS.**

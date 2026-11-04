@@ -45,3 +45,12 @@ Existing Fast Live, DO telemetry/revocation/markers and native integration regre
 Latest inspected live evidence remains41839919454 attempt3, old attestor source d74b30d: prod seven/dev two missing bindings, expected Queue/DLQ absent, deployed source unknown, R2/Access read permission blocked, D1 catalog401 and public production local-login policy failure. None is fixed by these source commits. Dedicated read token still needs Workers R2 Storage Read, Access Apps & Policies Read and D1 Read for the correct account; no token values requested.
 
 Full isolated current Cloudflare D1+R2+DO backup/destroy/restore/cutover, live fault/ACK/DLQ, ownership/session/WS/rate enforcement, retention/log/rotation, migration/rollback, configured repository protection and19-section/525-requirement reconciliation remain open. **No final8D PASS; no8E/8F.**
+
+
+## Exact source commit and queued hosted verification
+
+Executable `9b2601d9742c02bf55e45f5a2ddaf40e2661a916` pushed on the same audit branch. [Hosted CI41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) currently **QUEUED**, all3 jobs unstarted on repeated API checks. No runner-failure/billing/permission cause established; no hosted PASS inferred. Prior green executable remains0a7e6eb for CI claims.
+
+Current source local evidence:24 focused signed-route/evaluator checks PASS, Phase7 safety-quality fixture PASS, typecheck PASS, native actual Workers D1/Queue/R2/DO/Access/WS/recovery plus signed fall route PASS. Broader source-build command run:55 groups attempted,54 exited0 within explicit command omissions,1 stopped at missing sqlite3 executable in test-phase8d-controls-sqlite.mjs. Other CLI-dependent commands/schema replay were omitted; this is not a full local CI pass. Exact grouping/omissions: `PHASE8D_LOCAL_REGRESSION_9b2601d.json`.
+
+P8D-057/058/059/060 status: **SOURCE FIXED, LOCAL RETEST VERIFIED, HOSTED CI PENDING**. Next continuation must inspect this exact hosted run and job logs, resolve any real regression, then record source closure. Do not restart or call the queued run green. Existing live Cloudflare findings, distinct-ID sequence replay ledger, full cloud recovery/rollback and remaining audit gates stay OPEN. No deployment, schema migration, Android/family data or settings changes. **Phase8D NOT PASS.**

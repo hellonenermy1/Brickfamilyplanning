@@ -151,3 +151,12 @@ Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live so
 Continued807025e. Actual signed Worker/native SQLite RED reproduced11 negative route failures (one positive control passed), and actual safety evaluator RED reproduced3 ownership/publication failures (one positive control passed). Source fixes now pass24 focused tests: conditional active-device safety insertion, actual duplicate ownership/kind, fall coordinate validation, atomic guarded event/state transaction and newly-inserted-only publication, bounded re-read/retry on lost newer snapshot. Prior Phase7 safety-quality fixture passes. Native Workers safety route coverage extended; full hosted exact-SHA CI pending.
 
 Scope/remaining replay and cross-store gaps explicit in `PHASE8D_SAFETY_ACCEPTANCE_2026-11-04.md`; no global eventSequence ledger or live acceptance inferred. No schema/Android/deploy/settings/Cloudflare writes or family-data access. Existing live blockers unchanged. **8D NOT PASS.**
+
+
+## Exact source commit and queued hosted verification
+
+Executable `9b2601d9742c02bf55e45f5a2ddaf40e2661a916` pushed on the same audit branch. [Hosted CI41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) currently **QUEUED**, all3 jobs unstarted on repeated API checks. No runner-failure/billing/permission cause established; no hosted PASS inferred. Prior green executable remains0a7e6eb for CI claims.
+
+Current source local evidence:24 focused signed-route/evaluator checks PASS, Phase7 safety-quality fixture PASS, typecheck PASS, native actual Workers D1/Queue/R2/DO/Access/WS/recovery plus signed fall route PASS. Broader source-build command run:55 groups attempted,54 exited0 within explicit command omissions,1 stopped at missing sqlite3 executable in test-phase8d-controls-sqlite.mjs. Other CLI-dependent commands/schema replay were omitted; this is not a full local CI pass. Exact grouping/omissions: `PHASE8D_LOCAL_REGRESSION_9b2601d.json`.
+
+P8D-057/058/059/060 status: **SOURCE FIXED, LOCAL RETEST VERIFIED, HOSTED CI PENDING**. Next continuation must inspect this exact hosted run and job logs, resolve any real regression, then record source closure. Do not restart or call the queued run green. Existing live Cloudflare findings, distinct-ID sequence replay ledger, full cloud recovery/rollback and remaining audit gates stay OPEN. No deployment, schema migration, Android/family data or settings changes. **Phase8D NOT PASS.**
