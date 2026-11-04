@@ -80,8 +80,11 @@ function onlyIfUnchanged(etag: string | null): R2Conditional | Headers {
 
 function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: number): LivePacket[] {
   const bySequence = new Map<number, LivePacket>();
-  for (const packet of existing) if (packet.epoch === epoch) bySequence.set(packet.sequence, packet);
-  for (const packet of incoming) if (packet.epoch === epoch) bySequence.set(packet.sequence, packet);
+  // D1 treats (device,epoch,sequence) as an immutable logical identity. Queue
+  // delivery and HTTP retries MUST NOT rewrite its first committed R2 coordinates.
+  // Preserve existing state; within one batch the first observed copy also wins.
+  for (const packet of existing) if (packet.epoch === epoch && !bySequence.has(packet.sequence)) bySequence.set(packet.sequence, packet);
+  for (const packet of incoming) if (packet.epoch === epoch && !bySequence.has(packet.sequence)) bySequence.set(packet.sequence, packet);
   const merged = [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
   if (merged.length > MAX_PACKETS_PER_SEGMENT) throw new Error("history segment packet bound exceeded");
   return merged;
