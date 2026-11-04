@@ -279,11 +279,13 @@ jobs:
           assert actual == expected, f'exported surface mismatch: actual={sorted(actual)} expected={sorted(expected)}'
           assert launchers == ['com.brick.safety.ui.MainActivity'], f'unexpected launchers: {launchers}'
           assert all(perm is not None for kind,name,perm in actual if name != 'com.brick.safety.ui.MainActivity')
-          # WorkManager's diagnostics receiver must remain disabled in release by default.
+          # AndroidX WorkManager intentionally enables its diagnostics receiver, but grants
+          # callers access only with Android's privileged android.permission.DUMP.
           diagnostics=[node for node in app.findall('receiver')
                        if node.get(ns+'name') == 'androidx.work.impl.diagnostics.DiagnosticsReceiver']
           assert len(diagnostics) == 1
-          assert diagnostics[0].get(ns+'enabled') == 'false', 'WorkManager diagnostic receiver unexpectedly enabled'
+          assert diagnostics[0].get(ns+'permission') == 'android.permission.DUMP'
+          assert diagnostics[0].get(ns+'enabled') == 'true', 'AndroidX diagnostics manifest changed; audit before updating'
           print('merged release manifest/exported surface OK:', sorted(actual))
           PY
 
