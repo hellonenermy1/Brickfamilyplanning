@@ -197,6 +197,54 @@ jobs:
           echo 'PASS: cold restart with malformed deprovision stage did not recreate monitored stores' \
             | tee -a p8c-emulator-evidence/corrupt-stage-cold-start.txt
 
+      - name: Prove whole deprovision XML loss stays fail-closed across cold start
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_data=/data/user/0/com.brick.safety
+          "$ADB" shell am force-stop com.brick.safety >/dev/null 2>&1 || true
+          "$ADB" shell pm clear com.brick.safety >/dev/null
+          "$ADB" shell am instrument -w \
+            -e class com.brick.safety.maintenance.Phase8MissingStageColdStartSeedInstrumentedTest \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner \
+            | tee p8c-emulator-evidence/missing-stage-fixture.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)' p8c-emulator-evidence/missing-stage-fixture.txt >/dev/null
+          "$ADB" shell run-as com.brick.safety ls "$app_data/no_backup/brick_deprovision_origin_v1.guard" >/dev/null
+          if "$ADB" shell run-as com.brick.safety ls "$app_data/shared_prefs/brick_deprovision_v1.xml" >/dev/null 2>&1; then
+            echo "::error::Destroyed deprovision XML remained before cold-process restart"
+            exit 1
+          fi
+
+          "$ADB" shell am force-stop com.brick.safety
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity \
+            | tee p8c-emulator-evidence/missing-stage-cold-start.txt
+          grep -F 'Activity: com.brick.safety/.diagnostics.DiagnosticsActivity' p8c-emulator-evidence/missing-stage-cold-start.txt >/dev/null
+          sleep 2
+          "$ADB" shell run-as com.brick.safety ls "$app_data/no_backup/brick_deprovision_origin_v1.guard" >/dev/null
+          if "$ADB" shell run-as com.brick.safety ls "$app_data/shared_prefs/brick_deprovision_v1.xml" >/dev/null 2>&1; then
+            echo "::error::Missing deprovision XML was recreated during fail-closed startup"
+            exit 1
+          fi
+          for path in \
+            shared_prefs/brick.xml \
+            shared_prefs/brick_position.xml \
+            shared_prefs/brick_activity.xml \
+            shared_prefs/brick_diagnostics.xml \
+            shared_prefs/brick_ble_anchors.xml \
+            databases/brick_diagnostics.db \
+            databases/brick_journal.db \
+            databases/brick_evidence.db \
+            files/brick_phase3_state.bin \
+            files/brick_atlas_v1.bin \
+            files/brick_learned_places_v1.bin; do
+            if "$ADB" shell run-as com.brick.safety ls "$app_data/$path" >/dev/null 2>&1; then
+              echo "::error::Missing-stage cold startup recreated Brick store: $path"
+              exit 1
+            fi
+          done
+          echo 'PASS: independent no-backup guard blocks all tested store resurrection after whole stage-file loss' \
+            | tee -a p8c-emulator-evidence/missing-stage-cold-start.txt
+
       - name: Capture package and database state
         if: always()
         shell: bash
