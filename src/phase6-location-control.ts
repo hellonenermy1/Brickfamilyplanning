@@ -161,7 +161,8 @@ export async function noteLocationControlHealth(req: JsonCloneRequest, env: Loca
     `UPDATE device_location_control SET
        last_acked_command_id=?1,command_status=?2,completed_at=COALESCE(?3,?4),result_actual_enabled=?5,
        result_success=?6,result_reason=?7,updated_at=?4
-     WHERE device_id=?8 AND command_id=?1`
+     WHERE device_id=?8 AND command_id=?1 AND command_status='pending'
+       AND issued_at>=?4-600000`
   ).bind(commandId, commandStatus, completedAt, now, actualAfter === null ? null : actualAfter ? 1 : 0,
     commandStatus === "completed" ? 1 : 0, reason, deviceId).run();
 }
