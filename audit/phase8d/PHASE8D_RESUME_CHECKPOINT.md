@@ -19,3 +19,19 @@ Current software source: production `wrangler.template.jsonc` points `src/worker
 **Next requirement IDs:** `OPS-011`, `OPS-012`, `OPS-002`, `OPS-003`, `SEC-013`, `BE-001`. Every subsequent session must record exact SHA, actual tests, finding status and next unresolved items.
 
 To finish Phase 8D: all 19 sections 8D.1–8D.19 mapped/tested with evidence; 13/13 old Android findings stay closed at their frozen source; zero P0/P1 Cloud findings; every public endpoint/auth/persistence path accounted; real isolated backup→destroy→fresh restore demonstrated; final acceptance report with exact PASS logs. Phase 8E and Phase 8F are NOT automatically approved.
+---
+
+## Run continuation after first CI cycle (2026-11-04)
+
+Branch `v1-p8d-backend-deep-audit` is now beyond its baseline due to **audit-only tests and backend deployment-tool fixes**; Android frozen source is not changed. First checked result: [original red 41776381607](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41776381607). After fixes, [41777166077](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41777166077): **source-build + migration replay PASS, deployment-contract PASS, backup-contract FAIL**. First fix source SHA `e62b301f3bd99ee3e10aab41134573dbb00c7165`.
+
+**Do not claim P8D-001 fully CLOSED:** its source/CI correction passes, but live Cloudflare deploy/source/Access/schema is still UNKNOWN and explicitly blocked. The production deploy workflow intentionally requires non-existent `v1-p8d-accepted-backend` and PASS report to avoid deploying the audit branch.
+
+**Next primary tasks:**
+1. P8D-002: inventory every D1 table and R2/DO state, define explicit recoverable/excluded-state policy, version backup format with backwards compatibility, ensure no expired command/PIN replay on restore, revise real destructive isolated restore drill and test with nonempty new P8B tables.
+2. P8D-003: remove/restrict published six-digit reusable development code hash and run independent session/origin/cross-environment tests. Live exposure must not be inferred.
+3. Read-only live Cloudflare snapshot with safe credentials managed through trusted Actions secrets or authenticated connector; no repo plaintext secrets or unapproved production mutation.
+4. 8D.2 full nested Worker API inventory, followed by 8D.3–8D.19 authenticated fault testing.
+5. Update findings/matrix and keep exact SHAs after each test.
+
+Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**. 
