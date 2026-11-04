@@ -102,15 +102,19 @@ object DeprovisionManager {
         return runCatching { base.readText(Charsets.UTF_8) == ORIGIN_GUARD_CONTENT }.getOrDefault(false)
     }
 
+    // Do not use DeprovisionManager's singleton monitor for migration. A late DeviceKeys
+    // operation may hold the signer monitor while reading its stage, while purge holds the
+    // DeprovisionManager monitor and waits for DeviceKeys. The guard's file alone needs a lock.
+    private val originGuardMonitor = Any()
+
     /** AtomicFile writes/flushes the independent marker before first stage commit. */
-    @Synchronized
-    private fun ensureOriginGuard(context: Context): Boolean {
-        if (originGuardValid(context)) return true
+    private fun ensureOriginGuard(context: Context): Boolean = synchronized(originGuardMonitor) {
+        if (originGuardValid(context)) return@synchronized true
         val base = originGuardFile(context)
-        if (base.exists() || originGuardSidecarExists(context)) return false
+        if (base.exists() || originGuardSidecarExists(context)) return@synchronized false
         val atomic = AtomicFile(base)
         var output: FileOutputStream? = null
-        return try {
+        try {
             val stream = atomic.startWrite()
             output = stream
             stream.write(ORIGIN_GUARD_CONTENT.toByteArray(Charsets.UTF_8))
