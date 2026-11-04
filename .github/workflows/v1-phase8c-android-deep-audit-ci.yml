@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   android-deep-audit:
@@ -283,3 +284,19 @@ jobs:
           path: gradle-p8c.log
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish exact-commit Phase 8C status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          state=failure
+          if [ "$JOB_STATUS" = success ]; then state=success; fi
+          gh api --method POST "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f "state=$state" \
+            -f "context=brick/p8c/android-deep-audit" \
+            -f "description=Phase 8C exact-commit CI: $JOB_STATUS" \
+            -f "target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
