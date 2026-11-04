@@ -1,0 +1,9 @@
+# P8C-008 — Android service stop does not join in-flight writers
+
+**Date:** 2026-11-04, recorded before source modification. **Severity:** P1 (existing post-purge finding). 
+
+In `DeepOffManager.quiesce()`, `Context.stopService(Intent(...BrickLocationService...))` requests asynchronous termination and immediately returns. The production `BrickLocationService.onDestroy()` calls `shutdownNow()` on network, live, health, supervisor and fallback executor pools, but `shutdownNow()` is not a promise that an already executing task has finished. Some calls (HTTP, Binder, IO) can ignore interruption or complete after `onDestroy()`. Deprovision `purgeBrick()` awaits WorkManager chains, but has no corresponding synchronous in-process BrickLocationService/executor drain barrier before deleting `brick` prefs, SQLite journals and private files. A task past its initial deprovision guard could still commit after deletion.
+
+**Correction:** Register active tracking-service instance(s); on shutdown, asynchronously observe termination of all five executors without blocking Android's service main thread; expose a monotonic bounded `awaitQuiescent` called by `purgeBrick()` **before data deletion**. Timeout, main-thread deadlock risk or unknown state must abort purge without false success. Test the actual production `purgeBrick` function while a deliberately uninterruptible executor remains in flight: purge cannot delete the seeded private preference until it is released, then must complete. Include cases where the wait times out and cannot silently advance `PURGE_BRICK`. Guard against duplicate service starts and process exits.
+
+**Limit:** This covers the location-service executor pools. It is not an automatic proof for every other process-level asynchronous provider; retain the full P8C-008 finding until provider/WorkManager/crypto/Shizuku coverage and latest Android tests are reconciled.
