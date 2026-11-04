@@ -143,9 +143,14 @@ jobs:
             '"brick_companion_presence"' \
             '"brick_beta_safety"' \
             '"brick_learned_places_v1.bin"' \
-            '"brick_atlas_hmac_v1"'; do
+            '"brick_atlas_hmac_v1"' \
+            '"brick_ble_anchors"'; do
             grep -F "$required" "$deprov" >/dev/null
           done
+          # AtomicFile state can survive in .new or legacy .bak after a crash. Purge all variants.
+          grep -F 'for (suffix in listOf("", ".new", ".bak"))' "$deprov" >/dev/null
+          grep -F 'listOf("", ".new", ".bak")' app/src/androidTest/java/com/brick/safety/maintenance/Phase8PurgeInventoryInstrumentedTest.kt >/dev/null
+          grep -F '"brick_ble_anchors"' app/src/main/java/com/brick/safety/location/BleAnchorEngine.kt >/dev/null
           grep -F 'ShizukuBridgeController.shutdown()' "$deprov" >/dev/null
           grep -F 'RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)' "$deprov" >/dev/null
           grep -F 'fun cancelAllAndAwaitForDeprovision' "$recovery" >/dev/null
