@@ -14,6 +14,10 @@ let firstRawGets=0, releaseReads;
 const bothRead=new Promise(resolve=>releaseReads=resolve);
 let puts=0, conflicts=0;
 const bucket={
+ async head(key) {
+   const current=values.get(key);
+   return current ? {etag:current.etag} : null;
+ },
  async get(key) {
    const old=values.get(key);
    if (key.startsWith("history/raw/") && firstRawGets++ < 2) {
