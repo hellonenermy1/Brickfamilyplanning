@@ -15,12 +15,19 @@ export const BACKUP_TABLES = [
   "health_incidents",
   "crash_reports",
   "audit_log",
-  "device_replay_state"
+  "device_replay_state",
+  "device_live_track_control",
+  "device_wifi_schedules",
+  "device_wifi_schedule_result",
+  "device_capability_profile",
+  "screen_time_daily",
+  "commute_summaries"
 ] as const;
-const LEGACY_V1_TABLES = BACKUP_TABLES.filter(table => table !== "device_location_control");
+const PRE_P8B_TABLES = BACKUP_TABLES.slice(0, 12);
+const LEGACY_V1_TABLES = PRE_P8B_TABLES.filter(table => table !== "device_location_control");
 
 type BackupSnapshot = {
-  format: "brick-d1-snapshot-v1";
+  format: "brick-d1-snapshot-v1" | "brick-d1-snapshot-v2";
   createdAt: number;
   excludes: string[];
   tables: Record<string, Record<string, unknown>[]>;
@@ -72,7 +79,7 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   } catch {
     throw new Error("backup gzip/JSON is unreadable");
   }
-  if (!isRecord(value) || value.format !== "brick-d1-snapshot-v1") throw new Error("unsupported backup format");
+  if (!isRecord(value) || (value.format !== "brick-d1-snapshot-v1" && value.format !== "brick-d1-snapshot-v2")) throw new Error("unsupported backup format");
   if (typeof value.createdAt !== "number" || !Number.isSafeInteger(value.createdAt) || value.createdAt <= 0) throw new Error("invalid backup timestamp");
   if (!Array.isArray(value.excludes) || !value.excludes.every(x => typeof x === "string")) throw new Error("invalid backup exclusions");
   if (!isRecord(value.tables)) throw new Error("invalid backup tables");
@@ -80,14 +87,16 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   const tables = value.tables as Record<string, unknown>;
   const tableNames = Object.keys(tables).sort();
   const current = sameNames(tableNames, BACKUP_TABLES);
+  const preP8B = sameNames(tableNames, PRE_P8B_TABLES);
   const legacy = sameNames(tableNames, LEGACY_V1_TABLES);
-  if (!current && !legacy) throw new Error("backup table set does not match Brick V1");
-
-  // Backups created before Phase 8 did not include persistent location-control state. They remain
-  // recoverable; a legacy restore simply starts with no explicit override, which is the historical
-  // default. New backups must carry the table so disaster recovery does not silently flip a
-  // parent's desired tracking state or forget which command the phone acknowledged.
-  if (legacy) tables.device_location_control = [];
+  if (value.format === "brick-d1-snapshot-v2") {
+    if (!current) throw new Error("v2 backup must contain all Phase 8B durable tables");
+  } else {
+    if (!preP8B && !legacy) throw new Error("v1 backup table set does not match historical schema");
+    if (legacy) tables.device_location_control = [];
+    // Earlier snapshots cannot invent new historical commands or summaries.
+    for (const table of BACKUP_TABLES) if (!(table in tables)) tables[table] = [];
+  }
 
   for (const table of BACKUP_TABLES) {
     const rows = tables[table];
@@ -110,12 +119,15 @@ export async function snapshotD1ToR2(env: BackupEnv, now = Date.now()) {
   const tables: Record<string, Record<string, unknown>[]> = {};
   for (const table of BACKUP_TABLES) tables[table] = await readTable(env.DB, table);
   const snapshot: BackupSnapshot = {
-    format: "brick-d1-snapshot-v1",
+    format: "brick-d1-snapshot-v2",
     createdAt: now,
     excludes: [
       "device_events: derivable packet-delivery evidence; detailed routes are already in R2 history",
       "device_health_samples: high-volume operational telemetry retained separately in D1",
-      "pairing_tokens: short-lived credentials are intentionally not backed up"
+      "pairing_tokens: short-lived credentials are intentionally not backed up",
+      "pairing_pin_sessions: one-time pairing credentials are never restored",
+      "provider_rate_window: transient rate counters are never restored",
+      "provider_cache: reconstructible external cache is never restored"
     ],
     tables
   };
@@ -129,7 +141,7 @@ export async function snapshotD1ToR2(env: BackupEnv, now = Date.now()) {
   await env.HISTORY.put(key, body, {
     httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
     customMetadata: {
-      format: "brick-d1-snapshot-v1",
+      format: "brick-d1-snapshot-v2",
       createdAt: String(now),
       retentionDays: "30",
       sha256: bodySha256

@@ -22,7 +22,13 @@ const RESTORE_ORDER = [
   "health_incidents",
   "crash_reports",
   "audit_log",
-  "device_replay_state"
+  "device_replay_state",
+  "device_live_track_control",
+  "device_wifi_schedules",
+  "device_wifi_schedule_result",
+  "device_capability_profile",
+  "screen_time_daily",
+  "commute_summaries"
 ] as const;
 
 const SPECS: Record<(typeof RESTORE_ORDER)[number], TableSpec> = {
@@ -31,7 +37,7 @@ const SPECS: Record<(typeof RESTORE_ORDER)[number], TableSpec> = {
     required: ["id", "name", "public_key_spki_b64", "created_at"]
   },
   device_location_control: {
-    columns: ["device_id", "desired_enabled", "command_id", "issued_at", "updated_at", "last_actual_enabled", "last_actual_at", "last_acked_command_id"],
+    columns: ["device_id", "desired_enabled", "command_id", "issued_at", "updated_at", "last_actual_enabled", "last_actual_at", "last_acked_command_id", "command_status", "completed_at", "result_actual_enabled", "result_success", "result_reason"],
     required: ["device_id", "desired_enabled", "command_id", "issued_at", "updated_at"]
   },
   geofences: {
@@ -73,6 +79,30 @@ const SPECS: Record<(typeof RESTORE_ORDER)[number], TableSpec> = {
   device_replay_state: {
     columns: ["device_id", "last_health_sequence", "updated_at"],
     required: ["device_id", "last_health_sequence", "updated_at"]
+  },
+  device_live_track_control: {
+    columns: ["device_id","command_id","requested_active","issued_at","expires_at","command_status","last_actual_active","completed_at","result_reason"],
+    required: ["device_id","command_id","requested_active","issued_at","expires_at","command_status"]
+  },
+  device_wifi_schedules: {
+    columns: ["id","device_id","enabled","target_enabled","local_minute_of_day","days_mask","grace_minutes","updated_at"],
+    required: ["id","device_id","enabled","target_enabled","local_minute_of_day","days_mask","grace_minutes","updated_at"]
+  },
+  device_wifi_schedule_result: {
+    columns: ["device_id","schedule_id","target_enabled","actual_enabled","status","attempted_at","detail","received_at"],
+    required: ["device_id","schedule_id","target_enabled","status","attempted_at","received_at"]
+  },
+  device_capability_profile: {
+    columns: ["device_id","profile_version","profile_json","device_updated_at","received_at"],
+    required: ["device_id","profile_version","profile_json","device_updated_at","received_at"]
+  },
+  screen_time_daily: {
+    columns: ["device_id","local_day","total_foreground_ms","session_count","summary_json","received_at"],
+    required: ["device_id","local_day","total_foreground_ms","session_count","summary_json","received_at"]
+  },
+  commute_summaries: {
+    columns: ["id","device_id","started_at","ended_at","distance_m","duration_ms","transport_mode","mode_confidence","start_label","end_label","provenance","created_at"],
+    required: ["id","device_id","started_at","ended_at","distance_m","duration_ms","transport_mode","mode_confidence","provenance","created_at"]
   }
 };
 
@@ -144,6 +174,29 @@ async function executeFreshRestore(db: D1Database, snapshot: Snapshot) {
 }
 
 /**
+ * Restoring history must never reissue commands left pending during a disaster.
+ * Only explicit NEW post-recovery user requests may trigger one-shot actions.
+ */
+function retirePendingCommands(snapshot: Snapshot) {
+  const at = Date.now();
+  for (const row of snapshot.tables.device_location_control) {
+    if (row.command_status == null || row.command_status === "pending") {
+      row.command_status = "expired";
+      row.completed_at = at;
+      row.result_success = 0;
+      row.result_reason = "cancelled_on_disaster_restore";
+    }
+  }
+  for (const row of snapshot.tables.device_live_track_control) {
+    if (row.command_status === "pending") {
+      row.command_status = "expired";
+      row.completed_at = at;
+      row.result_reason = "cancelled_on_disaster_restore";
+    }
+  }
+}
+
+/**
  * Restores a Brick logical D1 snapshot only into a newly created, empty database whose current
  * migrations have already been applied. This function is intentionally not exposed as an HTTP
  * route. If any batch fails, discard the fresh target database and start the drill/recovery again;
@@ -155,6 +208,7 @@ export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer,
   // representation before it reaches the text UNIQUE index, and reject semantic duplicate keys so a
   // recovery cannot recreate two logical devices for one cryptographic identity.
   snapshot.tables.devices = await canonicalizeHistoricalDeviceRows(snapshot.tables.devices);
+  retirePendingCommands(snapshot);
   await assertFreshTarget(env.DB);
   const restoredRows = await executeFreshRestore(env.DB, snapshot);
   return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows };
