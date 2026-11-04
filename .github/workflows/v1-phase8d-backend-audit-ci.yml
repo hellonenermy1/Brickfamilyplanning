@@ -64,6 +64,11 @@ jobs:
         run: |
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-concurrent-r2.mjs /tmp/brick-p8d-history.mjs
+      - name: P8D-004 R2/Queue safety ACK fault matrix
+        run: |
+          npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
+          npx --no-install esbuild src/queue-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-queue.mjs
+          node scripts/test-phase8d-ack-faults.mjs /tmp/brick-p8d-history.mjs /tmp/brick-p8d-queue.mjs
       - name: P8D-006 deny mutations for revoked child identity
         run: |
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
