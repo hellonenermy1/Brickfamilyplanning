@@ -24,6 +24,7 @@ object DeviceKeys {
         runCatching { validateExistingPairedIdentity() }
     }
 
+    @Synchronized
     fun getOrCreate(): KeyPair {
         // The platform cannot stop a Binder/network callback that is already in flight. Guard
         // the crypto boundary itself so late signed sends cannot recreate purged AndroidKeyStore
@@ -55,6 +56,7 @@ object DeviceKeys {
 
     fun publicSpkiBase64(): String = Base64.getEncoder().encodeToString(getOrCreate().public.encoded)
 
+    @Synchronized
     fun sign(payload: ByteArray): String {
         val pair = getOrCreate()
         val signature = Signature.getInstance("SHA256withECDSA")
