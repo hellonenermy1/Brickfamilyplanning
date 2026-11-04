@@ -24,7 +24,11 @@ export async function attest({token,accountId,request=fetch}={}) {
    checks,evidence});
  const validId=typeof accountId==="string"&&/^[a-f0-9]{32}$/i.test(accountId);
  if(!token||!validId){
-  for(const label of ["production_deployment","development_deployment","production_bindings","development_isolation","queue_dlq","history_lifecycle","parent_access"])record(label,"BLOCKED","Scoped Cloudflare token/account ID missing; no account requests made");
+  const reason=!token&&!validId?"Dedicated read token AND account ID missing/invalid"
+    : !token?"Dedicated read-only audit token not configured"
+      :"Cloudflare account ID missing or invalid";
+  for(const label of ["production_deployment","development_deployment","production_bindings","development_isolation","queue_dlq","history_lifecycle","parent_access"])
+    record(label,"BLOCKED",reason+"; no account requests made");
   return result();
  }
  const get=async path=>{
