@@ -1,5 +1,9 @@
 # Brick V1 — Phase 8C Manifest and Package Report
 
+
+**FINAL SOURCE PACKAGE VERIFICATION — PASS (2026-11-04).** Frozen production code `2c492efff01095e17f96af3c24ac07ac0b5c3739` produced a valid release APK in [signed workflow 41769396317](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396317). Verified public APK SHA-256 `2d1fb331a8a1f6c5efb805ed93c0adfd68e205d5435416a51e772b593336a28c`, original RSA-4096 signing cert SHA-256 `BF:DE:B4:97:14:FE:A7:14:53:6C:47:F8:12:6D:EE:D7:00:F0:0B:2D:D1:13:C5:C0:D4:52:99:2D:7E:D5:F7:90`. [Deep audit 41769474692](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769474692) validated R8, exact protected export set and production manifest. **The initial `967e5d5c` freeze named below is a historical snapshot**, not the current accepted APK/source identity. [Final decision](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md).
+
+
 Production freeze: `967e5d5ceb7e485af997eb0f6380e9544cd39e79`
 
 ## Build identity
