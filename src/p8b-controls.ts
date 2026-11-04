@@ -6,6 +6,17 @@ const ID_RE = /^[A-Za-z0-9._:-]{1,96}$/;
 const MAX_BODY = 32 * 1024;
 const LIVE_TRACK_MAX_MS = 10 * 60_000;
 
+// The later P8B control routes are intercepted before worker-v6's archived-device
+// dispatcher. Enforce revocation at this trust boundary, not only in the old layer.
+async function requireWritableDevice(env: P8BControlEnv, deviceId: string): Promise<Response | null> {
+  if (!DEVICE_RE.test(deviceId)) return json({ error: "invalid device" }, 400);
+  const row = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1 LIMIT 1")
+    .bind(deviceId).first<{ revoked_at: number | null }>();
+  if (!row) return json({ error: "device not found" }, 404);
+  if (row.revoked_at !== null) return json({ error: "device revoked; controls are read-only" }, 410);
+  return null;
+}
+
 type CloneJson = { clone(): { json<T>(): Promise<T> } };
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }); }
 async function body(req: Request): Promise<Record<string, unknown> | null> {
@@ -14,15 +25,18 @@ async function body(req: Request): Promise<Record<string, unknown> | null> {
 }
 
 export async function parentSetLiveTrack(req: Request, env: P8BControlEnv, deviceId: string) {
-  if (!DEVICE_RE.test(deviceId)) return json({ error: "invalid device" }, 400);
+  const denied = await requireWritableDevice(env, deviceId); if (denied) return denied;
   const b = await body(req); if (!b || typeof b.active !== "boolean") return json({ error: "expected {active:boolean}" }, 400);
   const now = Date.now(), id = crypto.randomUUID(), expires = now + LIVE_TRACK_MAX_MS;
-  await env.DB.prepare(
+  const result = await env.DB.prepare(
     `INSERT INTO device_live_track_control(device_id,command_id,requested_active,issued_at,expires_at,command_status)
-     VALUES(?1,?2,?3,?4,?5,'pending')
+     SELECT ?1,?2,?3,?4,?5,'pending'
+     WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
      ON CONFLICT(device_id) DO UPDATE SET command_id=excluded.command_id,requested_active=excluded.requested_active,
-       issued_at=excluded.issued_at,expires_at=excluded.expires_at,command_status='pending',last_actual_active=NULL,completed_at=NULL,result_reason=NULL`
+       issued_at=excluded.issued_at,expires_at=excluded.expires_at,command_status='pending',last_actual_active=NULL,completed_at=NULL,result_reason=NULL
+     WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)`
   ).bind(deviceId, id, b.active ? 1 : 0, now, expires).run();
+  if (result.meta.changes !== 1) return json({ error: "device no longer active" }, 410);
   return json({ ok: true, commandId: id, requestedActive: b.active, status: "pending", issuedAtMs: now, expiresAtMs: expires });
 }
 
@@ -40,6 +54,7 @@ export async function parentGetLiveTrack(env: P8BControlEnv, deviceId: string) {
 }
 
 export async function parentSetWifiSchedules(req: Request, env: P8BControlEnv, deviceId: string) {
+  const denied = await requireWritableDevice(env, deviceId); if (denied) return denied;
   const b = await body(req); const list = b?.schedules;
   if (!Array.isArray(list) || list.length > 8) return json({ error: "expected schedules array <=8" }, 400);
   const normalized: Array<{id:string;enabled:boolean;targetEnabled:boolean;localMinuteOfDay:number;daysMask:number;graceMinutes:number}> = [];
@@ -54,10 +69,12 @@ export async function parentSetWifiSchedules(req: Request, env: P8BControlEnv, d
     seen.add(x.id); normalized.push(x as typeof normalized[number]);
   }
   const now = Date.now();
-  const statements = [env.DB.prepare("DELETE FROM device_wifi_schedules WHERE device_id=?1").bind(deviceId), ...normalized.map(s =>
-    env.DB.prepare("INSERT INTO device_wifi_schedules(id,device_id,enabled,target_enabled,local_minute_of_day,days_mask,grace_minutes,updated_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)")
+  const statements = [env.DB.prepare("DELETE FROM device_wifi_schedules WHERE device_id=?1 AND EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)").bind(deviceId), ...normalized.map(s =>
+    env.DB.prepare(`INSERT INTO device_wifi_schedules(id,device_id,enabled,target_enabled,local_minute_of_day,days_mask,grace_minutes,updated_at)
+      SELECT ?1,?2,?3,?4,?5,?6,?7,?8 WHERE EXISTS (SELECT 1 FROM devices WHERE id=?2 AND revoked_at IS NULL)`)
       .bind(s.id, deviceId, s.enabled ? 1 : 0, s.targetEnabled ? 1 : 0, s.localMinuteOfDay, s.daysMask, s.graceMinutes, now))];
   await env.DB.batch(statements);
+  const after = await requireWritableDevice(env, deviceId); if (after) return after;
   return json({ ok: true, schedules: normalized });
 }
 
