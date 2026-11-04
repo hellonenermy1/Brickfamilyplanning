@@ -165,6 +165,15 @@ jobs:
           grep -F 'if (deprovisionShutdown) return' "$shizuku_bridge" >/dev/null
           test -f app/src/androidTest/java/com/brick/safety/privileged/Phase8ShizukuDeprovisionFenceInstrumentedTest.kt
           grep -F 'testLateShizukuCallbacksCannotRecreatePrefsAfterPermanentShutdown' app/src/androidTest/java/com/brick/safety/privileged/Phase8ShizukuDeprovisionFenceInstrumentedTest.kt >/dev/null
+          # P8C-008: stopService does not guarantee in-flight writers have terminated.
+          grep -F 'BrickServiceQuiescenceGate.awaitQuiescent(25_000L)' "$deprov" >/dev/null
+          grep -F 'BrickServiceQuiescenceGate.serviceStarted()' "$service" >/dev/null
+          grep -F 'BrickServiceQuiescenceGate.serviceShutdownRequested(' "$service" >/dev/null
+          test -f app/src/main/java/com/brick/safety/location/BrickServiceQuiescenceGate.kt
+          test -f app/src/androidTest/java/com/brick/safety/maintenance/Phase8ServiceWriterDrainInstrumentedTest.kt
+          grep -F 'testPurgingCannotDeletePrivateStateUntilUninterruptibleServiceWriterExits' app/src/androidTest/java/com/brick/safety/maintenance/Phase8ServiceWriterDrainInstrumentedTest.kt >/dev/null
+          grep -F 'LiveRetryPolicy.delayMs' "$service" >/dev/null
+          test -f app/src/test/java/com/brick/safety/reliability/LiveRetryPolicyTest.kt
           grep -F 'RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)' "$deprov" >/dev/null
           grep -F 'fun cancelAllAndAwaitForDeprovision' "$recovery" >/dev/null
           grep -F 'WifiScheduleManager.workNamesForDeprovision(app)' "$recovery" >/dev/null
