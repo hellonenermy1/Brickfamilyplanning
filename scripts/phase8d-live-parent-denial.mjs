@@ -34,7 +34,8 @@ export async function probeParentSurface({token,accountId,metadataFetch=fetch,ht
   catch{record(name,"BLOCKED","Worker subdomain status unreadable");continue;}
   if(state?.enabled!==true){record(name,"BLOCKED","Worker.dev is not enabled; actual route/custom domain unresolved");continue;}
   const host=name+"."+subdomain+".workers.dev";
-  for(const item of PROBES){
+  const probes=[...PROBES,{path:"/parent/login",expect:name.endsWith("-dev")?"public-dev-login":"no-public-prod-login"}];
+  for(const item of probes){
     const label=name+item.path+(item.forged?":forged-header":"");
     const headers=item.forged?{"X-Brick-Dev-Parent-Verified":"session-v1"}:{};
     try{
@@ -43,20 +44,32 @@ export async function probeParentSurface({token,accountId,metadataFetch=fetch,ht
       result.requestsSent++;
       const status=response.status;
       const redirect=response.headers?.get?.("location")??null;
-      const knownRedirect=typeof redirect==="string"&&(
-        /^\/cdn-cgi\/access\//.test(redirect)||
-        /^https:\/\/[a-z0-9.-]+\.cloudflareaccess\.com\//i.test(redirect)||
-        (name.endsWith("-dev")&&(/^\/parent\/login(?:\?|$)/.test(redirect)||redirect==="https://"+host+"/parent/login"))
-      );
-      if(status===401||status===403||([302,303,307].includes(status)&&knownRedirect)){
-        record(label,"ATTESTED","Unauthenticated GET denied (HTTP "+status+")");continue;
+      // Classification only. Never record the redirect URL or query.
+      let category="missing-or-invalid";
+      if(typeof redirect==="string")try{
+        const target=new URL(redirect,"https://"+host);
+        if(target.protocol==="https:"&&/^[a-z0-9.-]+\.cloudflareaccess\.com$/i.test(target.hostname))category="cloudflare-access";
+        else if(target.hostname===host&&target.pathname.startsWith("/cdn-cgi/access/"))category="cloudflare-access";
+        else if(target.hostname===host&&target.pathname==="/parent/login")category="same-origin-parent-login";
+        else if(target.hostname===host&&target.pathname.startsWith("/parent"))category="same-origin-parent-other";
+        else category="unrelated-target";
+      }catch{}
+      const denied=status===401||status===403||([302,303,307].includes(status)&&(
+        category==="cloudflare-access"||(name.endsWith("-dev")&&category==="same-origin-parent-login")));
+      if(item.expect==="public-dev-login"){
+        record(label,status===200?"ATTESTED":"BLOCKED",status===200?"Development login page present, HTTP 200 (body ignored)":"Development login HTTP "+status+" inconclusive");continue;
       }
+      if(item.expect==="no-public-prod-login"){
+        record(label,status===404||denied?"ATTESTED":status===200?"FAIL":"BLOCKED",
+          status===404?"Production login route absent, HTTP 404":status===200?"Production publicly served a local login page":"Production login HTTP "+status+" redirect category "+category);continue;
+      }
+      if(denied){record(label,"ATTESTED","Unauthenticated GET denied (HTTP "+status+")");continue;}
       if(status===200){record(label,"FAIL","Protected parent URL publicly returned HTTP 200");continue;}
-      record(label,"BLOCKED","HTTP "+status+" inconclusive: cannot certify parent denial");
+      record(label,"BLOCKED","HTTP "+status+" inconclusive; redirect category "+category);
     }catch{record(label,"BLOCKED","Public host request failed/timed out; availability and auth unknown");}
   }
  }
- result.allPass=result.checks.length===PROBES.length*WORKERS.length&&result.checks.every(x=>x.status==="ATTESTED");
+ result.allPass=result.checks.length===(PROBES.length+1)*WORKERS.length&&result.checks.every(x=>x.status==="ATTESTED");
  return result;
 }
 export function parentSummary(result){
