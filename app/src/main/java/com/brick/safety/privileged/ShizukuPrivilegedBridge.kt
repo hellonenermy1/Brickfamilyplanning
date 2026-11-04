@@ -137,9 +137,10 @@ object ShizukuBridgeController {
     }
 
     fun onAppForegroundChanged(isForeground: Boolean) {
-        if (deprovisionShutdown || !initialized) return
+        if (deprovisionShutdown) return
+        // Remember a foreground event that precedes initialize(), without making Binder calls.
         foreground = isForeground
-        if (isForeground) {
+        if (isForeground && initialized) {
             if (hasPermission()) bindNow() else maybeRequestPermission()
         }
     }
