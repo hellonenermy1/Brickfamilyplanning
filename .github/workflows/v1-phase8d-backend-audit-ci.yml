@@ -14,6 +14,7 @@ on:
       - 'audit/phase8d/PHASE8D_R2_LIFECYCLE_TARGET.json'
       - 'audit/phase8d/PHASE8D_R2_LIFECYCLE_TARGET.md'
       - '.github/workflows/deploy-brick.yml'
+      - '.github/workflows/deploy-brick-development.yml'
       - '.github/workflows/v1-phase8d-backend-audit-ci.yml'
   workflow_dispatch:
 
@@ -117,6 +118,8 @@ jobs:
           node scripts/test-phase8d-pin-confirm-race.mjs /tmp/brick-p8d-pin-pairing.mjs
       - name: P8D-038 Cloudflare GET-only audit API shapes, version provenance, Queue pagination and denial cases
         run: node scripts/test-phase8d-cloudflare-readonly.mjs
+      - name: P8D-042 prevent production auto-deploy and obsolete Phase 6C dev deploy contract
+        run: node scripts/test-phase8d-deployment-workflow-safety.mjs
       - name: P8D-041 deterministic non-mutating seven-target Cloudflare remediation contract
         run: node scripts/test-phase8d-remediation-plan.mjs
       - name: P8D-040 source configuration parity for prod/dev D1, R2, Queue, DO and rate bindings
