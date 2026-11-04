@@ -109,10 +109,16 @@ object DeviceKeys {
     }
 
     private fun recordIdentityFault(reason: String) {
-        appContext?.getSharedPreferences("brick", Context.MODE_PRIVATE)?.edit()
-            ?.putString(PREF_IDENTITY_FAULT, reason.take(80))
-            ?.putLong("signingIdentityFaultWallMs", System.currentTimeMillis())
-            ?.commit()
+        // A missing/replaced paired key is a permanent fail-closed condition until authorised
+        // re-enrolment, not a reason to rewrite the same private prefs thousands of times while
+        // network retries are refused. Preserve the timestamp of the first observed fault.
+        val prefs = appContext?.getSharedPreferences("brick", Context.MODE_PRIVATE) ?: return
+        val boundedReason = reason.take(80)
+        if (prefs.getString(PREF_IDENTITY_FAULT, null) == boundedReason) return
+        prefs.edit()
+            .putString(PREF_IDENTITY_FAULT, boundedReason)
+            .putLong("signingIdentityFaultWallMs", System.currentTimeMillis())
+            .commit()
     }
 
     private fun fingerprint(spki: ByteArray): String = MessageDigest.getInstance("SHA-256")
