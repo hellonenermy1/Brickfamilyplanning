@@ -72,11 +72,14 @@ try {
   console.log("PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT");
 
   const ns = await mf.getDurableObjectNamespace("BRICK_DEVICE"), stub = ns.get(ns.idFromName(DEVICE_A));
-  const wsResponse = await stub.fetch("https://do/ws", { headers: { Upgrade: "websocket", "X-Brick-Internal-Ws-Lease-Until": String(Date.now() + 1000) } });
+  const wsResponse = await stub.fetch("https://do/ws", { headers: { Upgrade: "websocket", "X-Brick-Internal-Ws-Lease-Until": String(Date.now() + 3000) } });
   assert.equal(wsResponse.status, 101); const ws = wsResponse.webSocket; ws.accept();
   let expired = false; ws.addEventListener("close", event => { expired = event.code === 4001; });
-  await until(() => expired, "real DO idle lease alarm", 45_000);
-  console.log("PASS native workerd DO WebSocket lease and idle storage alarm expiry");
+  await mf.unsafeEvictDurableObject("brick-local", "BrickDevice", { name: DEVICE_A, webSockets: "hibernate" });
+  assert.equal(expired, false, "hibernation must preserve an unexpired socket");
+  assert.equal((await parent("/parent/api/device/" + DEVICE_A + "/state")).status, 200);
+  await until(() => expired, "real DO idle lease alarm after hibernation/reconstruction", 45_000);
+  console.log("PASS native workerd DO WebSocket survives hibernation/reconstruction and expires through idle storage alarm");
 
   const revoked = await parent("/parent/api/device/" + DEVICE_A + "/revoke", { method: "POST" });
   assert.equal(revoked.status, 200);

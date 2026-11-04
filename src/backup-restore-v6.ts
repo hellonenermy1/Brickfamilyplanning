@@ -1,4 +1,4 @@
-import { BACKUP_TABLES, validateBackupBody } from "./backup-v6";
+import { BACKUP_TABLES, TRANSIENT_RECOVERY_TABLES, validateBackupBody } from "./backup-v6";
 import { EXTRA_RESTORE_SPECS } from "./recovery-extra-specs";
 import { canonicalizeHistoricalDeviceRows } from "./phase8-device-identity";
 
@@ -154,7 +154,7 @@ async function tableCount(db: D1Database, table: string): Promise<number> {
 }
 
 async function assertFreshTarget(db: D1Database) {
-  for (const table of BACKUP_TABLES) {
+  for (const table of [...BACKUP_TABLES, ...TRANSIENT_RECOVERY_TABLES]) {
     if (await tableCount(db, table) !== 0) throw new Error(`restore target is not empty: ${table}`);
   }
 }
@@ -236,6 +236,11 @@ export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer,
   // recovery cannot recreate two logical devices for one cryptographic identity.
   snapshot.tables.devices = await canonicalizeHistoricalDeviceRows(snapshot.tables.devices);
   retirePendingCommands(snapshot);
+  // Validate the entire payload before the first committed batch. This avoids
+  // deterministic late-column/type failures leaving an otherwise fresh target partial.
+  // SQL constraint/service failures can still leave partial batches: discard that
+  // isolated target and retry into a newly created database, never production.
+  for (const table of RESTORE_ORDER) for (const row of snapshot.tables[table]) validatedColumns(table, row);
   await assertFreshTarget(env.DB);
   const restoredRows = await executeFreshRestore(env.DB, snapshot);
   return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows,

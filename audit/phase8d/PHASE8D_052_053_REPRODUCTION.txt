@@ -1,0 +1,23 @@
+Baseline: ec9d61d; local synthetic reproduction BEFORE source corrections.
+P8D-052: two late malformed-row failures and four occupied transient targets accepted.
+FAIL P8D-052 late invalid table row leaves earlier devices untouched: validation occurred after an earlier table committed
+
+1 !== 0
+
+FAIL P8D-052 late invalid table row leaves earlier devices untouched: validation occurred after an earlier table committed
+
+1 !== 0
+
+FAIL P8D-052 occupied transient target refused: pairing_tokens: Missing expected rejection.
+FAIL P8D-052 occupied transient target refused: pairing_pin_sessions: Missing expected rejection.
+FAIL P8D-052 occupied transient target refused: provider_rate_window: Missing expected rejection.
+FAIL P8D-052 occupied transient target refused: provider_cache: Missing expected rejection.
+
+P8D-053:
+FAIL P8D-053 compressed input rejected before decompression at max+1: The input did not match the regular expression /compressed.*limit/. Input:
+
+'Error: backup gzip/JSON is unreadable'
+
+FAIL P8D-053 high-ratio valid gzip rejected while decoding at max+1: Missing expected rejection.
+PASS P8D-053 exact decoded byte boundary accepts a structurally valid snapshot
+FAIL P8D-053 oversized generated snapshot never publishes or deletes recovery objects: Missing expected rejection.

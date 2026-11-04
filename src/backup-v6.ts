@@ -5,6 +5,33 @@ const BACKUP_RETENTION_MS = 30 * 86_400_000;
 // Cloudflare D1 batch() is one transaction. One atomic SELECT per table avoids torn
 // snapshots when a multi-table update commits during the scheduled backup.
 const MAX_TABLE_ROWS = 500_000;
+// Explicit supported recovery envelope, not a Cloudflare quota assertion. Keep
+// producer and decoder limits aligned so a published backup is recoverable.
+export const MAX_BACKUP_COMPRESSED_BYTES = 8 * 1024 * 1024;
+export const MAX_BACKUP_DECODED_BYTES = 16 * 1024 * 1024;
+class BackupSizeLimitError extends Error {}
+
+async function boundedDecodedBytes(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BACKUP_DECODED_BYTES) {
+        await reader.cancel().catch(() => {});
+        throw new BackupSizeLimitError("backup decoded byte limit exceeded");
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength; }
+  return joined;
+}
 export const BACKUP_TABLES = [
   "devices",
   "device_location_control",
@@ -82,6 +109,7 @@ async function readAtomicTables(db: D1Database): Promise<Record<string, Record<s
 
 async function gzipJson(value: unknown): Promise<ArrayBuffer> {
   const raw = new TextEncoder().encode(JSON.stringify(value));
+  if (raw.byteLength > MAX_BACKUP_DECODED_BYTES) throw new BackupSizeLimitError("backup decoded byte limit exceeded");
   const compressed = new Blob([raw]).stream().pipeThrough(new CompressionStream("gzip"));
   return new Response(compressed).arrayBuffer();
 }
@@ -102,6 +130,7 @@ function sameNames(actual: string[], expected: readonly string[]) {
 
 export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: string): Promise<BackupSnapshot> {
   if (!body.byteLength) throw new Error("backup body is empty");
+  if (body.byteLength > MAX_BACKUP_COMPRESSED_BYTES) throw new BackupSizeLimitError("backup compressed byte limit exceeded");
   if (expectedSha256 !== undefined) {
     if (!/^[0-9a-f]{64}$/i.test(expectedSha256)) throw new Error("invalid expected backup hash");
     const actual = await sha256Hex(body);
@@ -111,8 +140,9 @@ export async function validateBackupBody(body: ArrayBuffer, expectedSha256?: str
   let value: unknown;
   try {
     const decompressed = new Blob([body]).stream().pipeThrough(new DecompressionStream("gzip"));
-    value = JSON.parse(await new Response(decompressed).text());
-  } catch {
+    value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(await boundedDecodedBytes(decompressed)));
+  } catch (error) {
+    if (error instanceof BackupSizeLimitError) throw error;
     throw new Error("backup gzip/JSON is unreadable");
   }
   if (!isRecord(value) || !["brick-d1-snapshot-v1", "brick-d1-snapshot-v2", "brick-d1-snapshot-v3"].includes(String(value.format))) throw new Error("unsupported backup format");

@@ -80,6 +80,8 @@ jobs:
           npx --no-install esbuild src/backup-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-backup.mjs
           npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
           node scripts/test-phase8d-recovery-coverage.mjs /tmp/brick-p8d-backup.mjs /tmp/brick-p8d-restore.mjs
+          node scripts/test-phase8d-recovery-preflight.mjs /tmp/brick-p8d-backup.mjs /tmp/brick-p8d-restore.mjs
+          node scripts/test-phase8d-backup-limits.mjs /tmp/brick-p8d-backup.mjs
       - name: Native workerd D1 Queue R2 DO Access WebSocket and recovery integration
         run: node scripts/test-phase8d-workerd-integration.mjs
       - name: 8D.15 check built public assets for server-only credentials
