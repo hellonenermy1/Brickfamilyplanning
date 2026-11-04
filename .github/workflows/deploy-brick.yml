@@ -1,4 +1,4 @@
-name: Deploy Brick V1 Phase 8 Candidate
+name: Deploy Brick V1 — accepted backend candidate only
 
 on:
   workflow_dispatch:
@@ -44,7 +44,9 @@ jobs:
           set -euo pipefail
           test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo 'Missing GitHub Actions secret: CLOUDFLARE_API_TOKEN' >&2; exit 1; }
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo 'Missing workflow input: cloudflare_account_id' >&2; exit 1; }
-          test "$GITHUB_REF_NAME" = "v1-p8-cloud-hardening" || { echo 'Phase 8 production deployment must run from v1-p8-cloud-hardening' >&2; exit 1; }
+          test "$GITHUB_REF_NAME" = "v1-p8d-accepted-backend" || { echo 'Production deployment requires the separately accepted v1-p8d-accepted-backend release branch; never deploy directly from the audit branch.' >&2; exit 1; }
+          test -s audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.md || { echo 'Phase 8D final acceptance record is required for release branch.' >&2; exit 1; }
+          grep -F 'FINAL STATUS: PASS' audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.md >/dev/null || { echo 'Phase 8D final acceptance gate is not PASS.' >&2; exit 1; }
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "Deploying exact Phase 8 source SHA: $GITHUB_SHA"
 
@@ -62,7 +64,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F '"main": "src/worker-v9.ts"' wrangler.template.jsonc >/dev/null
+          grep -F '"main": "src/worker-p8b.ts"' wrangler.template.jsonc >/dev/null
+          grep -F 'from "./worker-v9"' src/worker-p8b.ts >/dev/null
           grep -F 'from "./worker-v8"' src/worker-v9.ts >/dev/null
           grep -F 'from "./worker-v7"' src/worker-v8.ts >/dev/null
           grep -F 'from "./worker-v6"' src/worker-v7.ts >/dev/null
@@ -80,7 +83,11 @@ jobs:
           grep -F "'schema/010_phase5b_closure.sql'" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F "'schema/011_v1_phase6_location_control.sql'" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F "'schema/015_phase8_device_identity.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/016_p8b_remediation.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/017_p8b_provider_rate.sql'" scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F "'schema/018_p8b_pin_pairing.sql'" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F 'await applySchema(SCHEMAS[9]);' scripts/setup-v1-phase6.mjs >/dev/null
+          grep -F 'stripHandledLocationControlAlters' scripts/setup-v1-phase6.mjs >/dev/null
           grep -F 'idx_devices_public_key_spki_unique' schema/015_phase8_device_identity.sql >/dev/null
           grep -F "brick-raw-evidence-30d" scripts/setup-v1-phase6.mjs >/dev/null
           grep -F 'device_location_control' schema/011_v1_phase6_location_control.sql >/dev/null
@@ -96,8 +103,9 @@ jobs:
           node --check scripts/verify-cloudflare-deployment.mjs
           npm audit --audit-level=high
           bash scripts/phase6-cloud-regression.sh
+          node scripts/audit-phase8d-contract.mjs all
 
-      - name: Provision resources, migrate through schema 015, and deploy Phase 8
+      - name: Provision resources, migrate through schema 018, and deploy approved Phase 8 candidate
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npm run setup
@@ -112,10 +120,10 @@ jobs:
           const s = JSON.parse(fs.readFileSync('setup-state.json', 'utf8'));
           const expected = process.env.GITHUB_SHA;
           if (s.sourceGitSha !== expected) throw new Error(`setup source ${s.sourceGitSha} != workflow ${expected}`);
-          if (s.v1ProgramPhase !== 8 || s.schemaVersion !== 15) throw new Error('Phase/schema provenance mismatch');
-          if (s.workerEntry !== 'src/worker-v9.ts') throw new Error('wrong worker entry');
+          if (s.v1ProgramPhase !== 8 || s.schemaVersion !== 18) throw new Error('Phase/schema provenance mismatch');
+          if (s.workerEntry !== 'src/worker-p8b.ts') throw new Error('wrong worker entry');
           if (s.access?.mode !== 'cloudflare-access-rs256') throw new Error('Access not verified');
-          if (!Array.isArray(s.appliedSchemas) || !s.appliedSchemas.includes('schema/015_phase8_device_identity.sql')) throw new Error('Phase 8 identity migration not recorded');
+          if (!Array.isArray(s.appliedSchemas) || !s.appliedSchemas.includes('schema/018_p8b_pin_pairing.sql')) throw new Error('Phase 8B latest migration not recorded');
           if (!s.resources?.HISTORY_BUCKET || !s.resources?.MAPS_BUCKET || !s.resources?.EVENT_QUEUE || !s.resources?.DLQ) throw new Error('required Cloudflare resources missing');
           NODE
 
