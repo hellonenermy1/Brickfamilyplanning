@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.util.AtomicFile
 import com.brick.safety.beta.BetaSafety
 import com.brick.safety.managed.BrickDeviceAdminReceiver
+import com.brick.safety.location.BrickServiceQuiescenceGate
 import com.brick.safety.privileged.ShizukuBridgeController
 import com.brick.safety.reliability.RecoveryScheduler
 import java.io.File
@@ -204,6 +205,12 @@ object DeprovisionManager {
         // completed, terminal rows are pruned, and a final query proves no Brick WorkInfo remains.
         if (!RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)) {
             return Result(stage(app), false, "Brick scheduled work did not quiesce within the verified boundary")
+        }
+        // stopService() and Executor.shutdownNow() are asynchronous. A running callback can
+        // otherwise outlive PURGE's deletion loop and recreate wiped private data. Require real
+        // service + five executor termination before touching databases, preferences or Keystore.
+        if (!BrickServiceQuiescenceGate.awaitQuiescent(25_000L)) {
+            return Result(stage(app), false, "Brick tracking service or in-flight writer not fully stopped")
         }
 
         for (name in brickDatabases) {
