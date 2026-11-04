@@ -20,6 +20,15 @@ try{
    reads++;if(reads===2)unblock();await gate;
   }
  });
+ // Cloudflare D1 serializes transactions. The synthetic adapter must also serialize
+ // both batched writers AFTER allowing their initial unalerted SELECTs to race.
+ const originalBatch=interleaved.batch.bind(interleaved);
+ let lastWriter=Promise.resolve();
+ interleaved.batch=(statements)=>{
+  const result=lastWriter.then(()=>originalBatch(statements));
+  lastWriter=result.catch(()=>undefined);
+  return result;
+ };
  const [one,two]=await Promise.all([alertPersistentIncidents({DB:interleaved},now),alertPersistentIncidents({DB:interleaved},now)]);
  assert.equal(reads,2,"must execute two reads before either writer");
  assert.equal(one.length+two.length,1,"concurrent cron snapshots delivered duplicate incident alert");
