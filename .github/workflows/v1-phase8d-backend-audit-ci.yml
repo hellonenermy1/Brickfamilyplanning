@@ -116,6 +116,8 @@ jobs:
           npx --no-install esbuild src/pin-pairing.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-key-validation.mjs /tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-confirm-race.mjs /tmp/brick-p8d-pin-pairing.mjs
+      - name: P8D-047 release must require verified Access login challenge (never arbitrary 303)
+        run: node scripts/test-phase8d-access-challenge-policy.mjs
       - name: P8D-044 actual live parent security probe mock denies forged/public/unsafe URLs
         run: node scripts/test-phase8d-live-parent-denial.mjs
       - name: P8D-045 Cloudflare GET-only D1 metadata and prod-dev isolation contract
