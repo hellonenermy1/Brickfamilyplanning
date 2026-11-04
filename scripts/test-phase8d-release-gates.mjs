@@ -25,6 +25,8 @@ assert.doesNotMatch(deploy,/grep -F 'FINAL STATUS: PASS'/);
 assert.match(deploy,/verify-phase8d-release-acceptance\.mjs/);
 assert.match(deploy,/PHASE8D_FINAL_ACCEPTANCE\.json/);
 assert.match(deploy,/fetch-depth: 0/);
+assert.match(deploy,/phase8d-current-private-key-scan\.mjs/);
+assert.doesNotMatch(deploy,/git grep -n -E/);
 assert.match(deploy,/actions: read/);
 assert.match(deploy,/test "\$\(git rev-parse HEAD\)" = "\$GITHUB_SHA"/);
 assert.match(deploy,/npm ci --no-audit --no-fund/);

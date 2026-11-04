@@ -93,7 +93,10 @@ jobs:
       - name: Native workerd D1 Queue R2 DO Access WebSocket and recovery integration
         run: node scripts/test-phase8d-workerd-integration.mjs
       - name: 8D.15 historical Git scanner positive and negative controls
-        run: node scripts/phase8d-secret-history-audit.mjs --self-test
+        run: |
+          node scripts/phase8d-secret-history-audit.mjs --self-test
+          node scripts/test-phase8d-current-private-key-scan.mjs
+          node scripts/phase8d-current-private-key-scan.mjs
       - name: 8D.15 check built public assets for server-only credentials
         run: node scripts/test-phase8d-public-secret-surface.mjs
       - name: P8D-007 concurrent R2 segment durability regression

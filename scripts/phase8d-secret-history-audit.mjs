@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 const RULES = [
-  ['private-key-material', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\s+[A-Za-z0-9+/=\r\n]{64,}-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
+  ['private-key-material', /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----\s+[A-Za-z0-9+/=\r\n]{64,}-----END (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/],
   ['github-classic-token', /\bgh[pousr]_[A-Za-z0-9]{36,255}\b/],
   ['github-fine-grained-token', /\bgithub_pat_[A-Za-z0-9_]{60,255}\b/],
   ['slack-token', /\bxox[baprs]-[A-Za-z0-9-]{20,255}\b/],
@@ -15,7 +15,8 @@ const RULES = [
 const WEAK = '931967fb6beab2e36f903438e73707c7e34bfec84c2492bb5cabc197e7bbc77d';
 export function categories(bytes, filename = '') {
   const text = bytes.toString('utf8'), result = [];
-  for (const [label, expression] of RULES) if (expression.test(text)) result.push(label);
+  const normalizedKeyText = text.replaceAll('\\n', '\n').replaceAll('\\r', '\r').replace(/^[ \t]+/gm, '');
+  for (const [label, expression] of RULES) if (expression.test(label === 'private-key-material' ? normalizedKeyText : text)) result.push(label);
   if (text.toLowerCase().includes(WEAK)) result.push('known-historical-weak-verifier-marker');
   if (bytes.length && /\.(?:jks|keystore|p12|pfx)$/i.test(filename)) result.push('credential-container-needs-review');
   return result;

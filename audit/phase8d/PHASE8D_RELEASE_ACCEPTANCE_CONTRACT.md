@@ -27,3 +27,6 @@ Final Markdown needs exactly one line `FINAL STATUS: PASS` outside code fences a
 Required actual CI workflow: .github/workflows/v1-phase8d-backend-audit-ci.yml. Required job names remain the deployment/schema contract, backup coverage contract and full source build/security/recovery suite. Every job must be completed-success on the specified current attempt; a previously green attempt is not enough after rerun failure. Verification also rejects fork/mismatched repository, wrong SHA/workflow, pagination gaps and API denial. Only read requests are made by this verifier.
 
 This gate cannot replace configured branch protection/admin bypass rules, safe Cloudflare credentials, live deployment validation, tested rollback or trusted human approval of evidence. It deliberately leaves production blocked now.
+
+
+The separate tracked key-container filename ban remains unchanged. Content scanning now requires private-key material rather than a marker alone, with escaped-newline, indentation and encrypted-key controls. This prevents synthetic scanner fixtures from blocking a valid release while retaining material detection. Other credentials, arbitrary encoding, historical exposure and rotation remain separate audit work.

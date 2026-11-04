@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           ! git ls-files | grep -Ei '\.(jks|keystore|p12|pfx|pem|key)$|\.jks\.b64$'
-          ! git grep -n -E -- '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
+          node scripts/phase8d-current-private-key-scan.mjs
 
       - name: Enforce current Phase 8 architecture and migration path
         shell: bash

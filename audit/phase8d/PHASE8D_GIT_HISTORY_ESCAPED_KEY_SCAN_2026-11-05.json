@@ -1,0 +1,152 @@
+{
+  "format": "brick-local-git-secret-audit-v1",
+  "head": "761655c5bdda8788b34031b30d7cd816920fceed",
+  "shallow": false,
+  "refs": [
+    "refs/heads/main 57343b3cab0c5c18572a8dcafda0a3cfc09209c0",
+    "refs/heads/v1-p8d-backend-deep-audit 761655c5bdda8788b34031b30d7cd816920fceed",
+    "refs/remotes/origin/HEAD 57343b3cab0c5c18572a8dcafda0a3cfc09209c0",
+    "refs/remotes/origin/apk-download 00dfa7a6e2f449c4632453e678fd8f1df1c88554",
+    "refs/remotes/origin/audit-progress 40ec504ce28c5068fa47b918ad89f686236cb2ba",
+    "refs/remotes/origin/backup/p6b-start-android-20261101 1dc7c815deedd9de05330f4812a5f6abbacd571d",
+    "refs/remotes/origin/backup/p6b-start-cloud-20261101 a4d7a2a8d0f23841d88d0d077415aad6af3475ee",
+    "refs/remotes/origin/main 57343b3cab0c5c18572a8dcafda0a3cfc09209c0",
+    "refs/remotes/origin/noop 5f5c8bab9187348ce6ad3cf1d701f337098098b8",
+    "refs/remotes/origin/p6-release-qualification-run 99a035b96005cec004d12b58344d250117b16b5b",
+    "refs/remotes/origin/phase1-child-apk 56e51629185eaae6e4d971350c698d95b97ca6f8",
+    "refs/remotes/origin/phase1-cloudflare-setup 0ca1b560345ff8cda5474a3153a6601a8d233964",
+    "refs/remotes/origin/phase2-child-reliability 0ec7f36e83463c1b204ceb6148ec4a0ea08d013d",
+    "refs/remotes/origin/phase2-cloudflare-reliability b37dbf1d078f5b75eabe68cc2fce274ef424fa8f",
+    "refs/remotes/origin/phase3-child-position-intelligence 4b6f957c7ec7cf69edacc65be690ae410ed4ea49",
+    "refs/remotes/origin/phase3-cloudflare-position-intelligence 554800f02a9529d2cc2e01d5c650b75f2287614f",
+    "refs/remotes/origin/phase4-child-safety-history c8e75cf933de3f3975bf4a3a1855de2beb58773c",
+    "refs/remotes/origin/phase4-cloudflare-safety-history 8f224b7cdfe127e55c3f32eece0e7bd765206676",
+    "refs/remotes/origin/phase5-child-health-ops c13e207199d8abeaf0743680ebd42e6c87cf9a76",
+    "refs/remotes/origin/phase5-cloudflare-parent-ops 27fb39dbe0e1cf50f9aee6b5f0e6b63d8617660c",
+    "refs/remotes/origin/phase5b-no-r2 7f77073190a9f0878e87b5c4a0fc90f202a4d92f",
+    "refs/remotes/origin/phase5b-private-map-places 2b5a3a5709f1c2e479547bce64363bb281776bca",
+    "refs/remotes/origin/phase5c-child-hardening ecc4ee31017809ceb3929ccabe66214705a45930",
+    "refs/remotes/origin/phase5c-hardening-audit dc7577d1faad53271b4e6fb7a0e21f3c53e5c2c1",
+    "refs/remotes/origin/phase6-child-final-audit 2d63a995994b5667e842ed0607f77df6364a7910",
+    "refs/remotes/origin/phase6-cloud-final-audit d9ffd5cda7c6622768f7c92f939e6a53f255ae44",
+    "refs/remotes/origin/phase6-cloud-final-audit-v2 50ed6169216c30e76f97edfe389a092d64a0bd75",
+    "refs/remotes/origin/phase6-final-hardening b23741d31ec6c51a5b00b6fe15b753b0d70d04c8",
+    "refs/remotes/origin/phase6-integration 8a7d1105361160b7ef8e7b8defd38fb9b686e2dd",
+    "refs/remotes/origin/recovery/device-owner-phase6c 83fc74a35d8a0e39a36e62dc80d7e05d94e99eb7",
+    "refs/remotes/origin/temp-noop f4dbbcc7d2fe4713aea64d235747eb3a56b6fbf4",
+    "refs/remotes/origin/v1-p1-contract c644edd7a189a2ddada7ff3d178907187deb55f0",
+    "refs/remotes/origin/v1-p2-evidence-android 9d1d04532abc52b679075fe2e330c3d2daafab3b",
+    "refs/remotes/origin/v1-p2-evidence-cloud 1d880b703dd5d0c5f581926426a0db29e6c67b8b",
+    "refs/remotes/origin/v1-p3-motion-positioning-android 48423e5ba84dd6273315581f6c101141e5eae9ac",
+    "refs/remotes/origin/v1-p3-motion-positioning-cloud 3db7c6c54fcf4a6b35afa22e91076178fde29de9",
+    "refs/remotes/origin/v1-p4-atlas-trust-android 93d7424d9d9f4a33c283c54411605a6f4871e799",
+    "refs/remotes/origin/v1-p4-atlas-trust-cloud 6c66ba8735b3362255e29ca51e50fcb52dcc1dff",
+    "refs/remotes/origin/v1-p5-unified-fusion-android ea021cb685292f31afb9adbf254fbfb6a1e18225",
+    "refs/remotes/origin/v1-p5-unified-fusion-cloud f467a7b41d2f68da92d9cddf0e8340b6ca3b00d1",
+    "refs/remotes/origin/v1-p5b-closure-android 055ef0b2990bb810a6dac24309f980285f8777b5",
+    "refs/remotes/origin/v1-p5b-closure-cloud 6a47d19dd2aa53e9e254696baeb187bc18d6cc05",
+    "refs/remotes/origin/v1-p6-device-control-android 00dfa7a6e2f449c4632453e678fd8f1df1c88554",
+    "refs/remotes/origin/v1-p6-device-control-cloud e4657294d1d5c377a41a32bd91c80d17a4e5a21b",
+    "refs/remotes/origin/v1-p6b-stabilize-android 74cab5c8c7289f27d7dd004daa0864d73ebda13a",
+    "refs/remotes/origin/v1-p6b-stabilize-cloud 6e72cb9153dff66da9d43473a33caa079f489724",
+    "refs/remotes/origin/v1-p6c-oppo-beta-android 0c2c7e58279fd0faeca7f3e4dcf461111bdbb33b",
+    "refs/remotes/origin/v1-p6c-oppo-beta-backup 00dfa7a6e2f449c4632453e678fd8f1df1c88554",
+    "refs/remotes/origin/v1-p6c-parent-beta-backup e4657294d1d5c377a41a32bd91c80d17a4e5a21b",
+    "refs/remotes/origin/v1-p6c-parent-beta-cloud 1a4e9c6c19ba372b49a500e0b227dbefe7bdac73",
+    "refs/remotes/origin/v1-p7-android-ux 8843bdae902050c8c1fd7e67ed7ac80662d0da93",
+    "refs/remotes/origin/v1-p7-cloud-ux 820fb8974ae185d74b4963b31b18a7fa0eafedf6",
+    "refs/remotes/origin/v1-p8-android-hardening 3de76dc2996b9a38050365d2217da2e4597f8fde",
+    "refs/remotes/origin/v1-p8-cloud-hardening b06a766f6906bdb9ea954267fb7f2d9c73d0910c",
+    "refs/remotes/origin/v1-p8a-contract-audit 0ddf2e1e8efbbcb838911ae1acb07b43ccb37579",
+    "refs/remotes/origin/v1-p8b-implementation-audit 4ea2db996f84acb5e9945b620ab0c46210500379",
+    "refs/remotes/origin/v1-p8b-integrated-candidate 204a141e90c078b6c2008778bd6c01bcbb8a4622",
+    "refs/remotes/origin/v1-p8b-remediation-android fcccf0ef680da07388060a9024ada486f6ee5124",
+    "refs/remotes/origin/v1-p8b-remediation-cloud c4394741008fe9441fb197bfb6e96cdc5e479d45",
+    "refs/remotes/origin/v1-p8c-android-deep-audit 70a3c287425e9276585fbff85909dcf699dcf2f2",
+    "refs/remotes/origin/v1-p8d-backend-deep-audit 761655c5bdda8788b34031b30d7cd816920fceed"
+  ],
+  "reachableCommits": 2239,
+  "blobCount": 2442,
+  "totalBytes": 20607934,
+  "coverage": "All blobs reachable from recorded LOCAL refs; not remote unadvertised/deleted refs, dangling objects, LFS payloads, release assets, deployed logs or rotation proof",
+  "status": "FINDINGS_REVIEW_REQUIRED",
+  "matches": [
+    {
+      "blobSha": "efe5f05de83d9c48f25263d76ec6951956c4e368",
+      "observedPath": "scripts/phase8d-secret-history-audit.mjs",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "22c4c713e9ac53dacf110957211c4e32f88b1ce2",
+      "observedPath": "scripts/test-phase8d-development-login-source.mjs",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "823754359df9649570fe56a099b731e1d8ce933a",
+      "observedPath": "scripts/test-phase8d-public-secret-surface.mjs",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "2b33d5bcbdfd654cd768b598487b44c19dfc6ec7",
+      "observedPath": ".github/workflows/deploy-brick-development.yml",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "4974294e0f946b54b76c9c86509e7820d761c551",
+      "observedPath": "scripts/setup-v1-phase6-development-free.mjs",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "5481ed2d4a5b310ac82d37467bf4e82895618222",
+      "observedPath": "wrangler.development.template.jsonc",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "55f99bb92b9781ebcbf5aacaf396a39501bec587",
+      "observedPath": ".github/workflows/v1-phase6c-parent-beta-ci.yml",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "62e328e76e75629be57e0b05ad612dbfec126e78",
+      "observedPath": ".github/workflows/v1-phase6c-parent-beta-ci.yml",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "e0b7211addf5b6ed20214b908c3b13f9d5a6902f",
+      "observedPath": "scripts/setup-v1-phase6-development-free.mjs",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "5f8cd5bdf110eb453d679c2651937609a728c34e",
+      "observedPath": "wrangler.development.template.jsonc",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    },
+    {
+      "blobSha": "d8fb0d2f4af753abb57a08a165584c47ff05749e",
+      "observedPath": ".github/workflows/tmp-phase6c-pin-deploy.yml",
+      "categories": [
+        "known-historical-weak-verifier-marker"
+      ]
+    }
+  ]
+}
