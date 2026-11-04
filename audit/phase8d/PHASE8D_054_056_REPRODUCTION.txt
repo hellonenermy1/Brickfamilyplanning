@@ -1,0 +1,11 @@
+Baseline3a294588613641fd9e608ff78a94a90bd8f8a921. Actual production-exported BrickDevice, deterministic storage fixture.
+FAIL P8D-054 revoked resident DO preserves all six archived state keys: Expected values to be strictly deep-equal:
+FAIL P8D-054 revoked reloaded DO preserves all six archived state keys: Expected values to be strictly deep-equal:
+FAIL P8D-054 persisted revoke observed after stale constructor memory: Expected values to be strictly deep-equal:
+FAIL P8D-055 concurrent sequence marker never regresses: Expected values to be strictly deep-equal:
+FAIL P8D-055 concurrent safety evaluation marker never regresses: Expected values to be strictly deep-equal:
+FAIL P8D-055 concurrent safety event marker never regresses: Expected values to be strictly deep-equal:
+FAIL P8D-056 delayed duplicate/legacy health cannot replace newer signed sequence: Expected values to be strictly deep-equal:
+PASS P8D-056 legacy health accepted before sequence-aware telemetry, active newer update retained
+
+After correction, eight focused checks PASS locally; native workerd internal RPC checks also PASS. Hosted exact-SHA evidence pending.

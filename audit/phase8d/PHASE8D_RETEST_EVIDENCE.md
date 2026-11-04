@@ -128,3 +128,10 @@ Fresh read-only live attempt3 of41839919454 still has the same production/dev bi
 P8D-052 and P8D-053 are **SOURCE/CI VERIFIED** at this SHA, to the exact limits above. Whole-restore SQL/service atomicity, high-volume D1 allocation/memory behavior and live cloud recovery remain OPEN. GitHub repository private and authenticated source/log/write access verified. main/audit branch metadata unprotected; no settings modified. Live read-only run 41839919454 attempt 3 remains failure with unchanged drift/scope/Access findings. No Android edits, deployment, Cloudflare writes or family data access. Follow-up commit is documentation/evidence only. **8D NOT PASS; no Phase 8E/8F.**
 
 Next: obtain scoped read metadata for Cloudflare, prepare authorized infrastructure/Access repair and isolated current full-stack recovery/rollback. Preserve branch ec9d61d→f93e3c8 lineage; do not restart or infer final PASS from source CI.
+
+
+## Continuation — P8D-054/055/056, local history scope
+
+Continued3a29458 on existing private audit branch. Seven negative DO tests reproduced failures before source edits, one active/legacy control passed. After fixes all8 focused tests pass: six archived telemetry/marker keys respect persisted revocation, three markers use transactional monotonic updates, health follows signed sequence and rejects delayed/duplicate/legacy downgrade. Native workerd actual RPC and hibernation/revocation checks pass locally. Source CI pending exact new commit.
+
+Read-only Git history scan:2234 reachable local commits,2382 unique blobs,19,215,060 bytes;10 blobs contain only known P8D-003 weak-verifier marker among checked categories. No matching values printed; findings-review status, not blanket absence/rotation proof. Evidence refs/paths/scopes in `PHASE8D_LOCAL_GIT_HISTORY_3a29458.json`; detailed report `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Cross-store races, exclusive safety evaluation, real Cloudflare recovery/security and all existing live blockers remain OPEN. No deployment, Android/family data or settings changes. **8D NOT PASS.**

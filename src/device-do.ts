@@ -228,19 +228,63 @@ export class BrickDevice extends DurableObject<Env> {
     return this.commitLatest(packet, trace);
   }
 
+  // Each state write checks the persisted fence within the same transaction as
+  // its compare/put. Constructor memory alone can be stale during revocation.
+  private async commitActiveValue<T>(key: string, value: T, advances: (current: T | undefined) => boolean = () => true): Promise<boolean> {
+    await this.initialized;
+    if (this.revoked) return false;
+    return this.ctx.storage.transaction(async txn => {
+      if (this.revoked || await txn.get<boolean>("wsRevoked") === true) return false;
+      const current = await txn.get<T>(key);
+      if (!advances(current)) return false;
+      await txn.put(key, value);
+      return true;
+    });
+  }
+
   async setHealth(health: DeviceHealth) {
     const stored: StoredHealth = { ...health, receivedAt: Date.now() };
-    await this.ctx.storage.put("health", stored);
-    await this.broadcast({ type: "health", health: stored });
+    const advanced = await this.commitActiveValue<StoredHealth>("health", stored, current => {
+      const next = health.healthSequence, prior = current?.healthSequence;
+      const validNext = typeof next === "number" && Number.isSafeInteger(next) && next > 0;
+      if (typeof prior === "number" && Number.isSafeInteger(prior) && prior > 0) return validNext && next! > prior;
+      // Compatibility only before the first counter-aware heartbeat. An old
+      // in-flight legacy payload must never downgrade an established sequence.
+      return next === undefined || validNext;
+    });
+    if (advanced) await this.broadcast({ type: "health", health: stored });
+    return advanced;
   }
-  async setNetworkEvidence(network: NetworkEvidence) { await this.ctx.storage.put("networkEvidence", network); await this.broadcast({ type: "networkEvidence", networkEvidence: network }); }
-  async pushSafetyEvent(event: RealtimeSafetyEvent) { const stored: StoredSafetyEvent = { ...event, receivedAt: Date.now() }; await this.ctx.storage.put("lastSafetyEvent", stored); await this.broadcast({ type: "safety_event", event: stored }); }
+  async setNetworkEvidence(network: NetworkEvidence) {
+    const advanced = await this.commitActiveValue("networkEvidence", network);
+    if (advanced) await this.broadcast({ type: "networkEvidence", networkEvidence: network });
+    return advanced;
+  }
+  async pushSafetyEvent(event: RealtimeSafetyEvent) {
+    const stored: StoredSafetyEvent = { ...event, receivedAt: Date.now() };
+    const advanced = await this.commitActiveValue("lastSafetyEvent", stored);
+    if (advanced) await this.broadcast({ type: "safety_event", event: stored });
+    return advanced;
+  }
   async readSequenceHighWater(): Promise<SequenceHighWater | null> { return (await this.ctx.storage.get<SequenceHighWater>("sequenceHighWater")) ?? null; }
-  async commitSequenceHighWater(epoch: number, sequence: number) { const current = await this.readSequenceHighWater(); if (newer(epoch, sequence, current)) await this.ctx.storage.put("sequenceHighWater", { epoch, sequence }); }
-  async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> { const current = (await this.ctx.storage.get<SequenceHighWater>("safetyEvaluationHighWater")) ?? null; return newer(epoch, sequence, current); }
-  async commitSafetyEvaluation(epoch: number, sequence: number) { const current = (await this.ctx.storage.get<SequenceHighWater>("safetyEvaluationHighWater")) ?? null; if (newer(epoch, sequence, current)) await this.ctx.storage.put("safetyEvaluationHighWater", { epoch, sequence }); }
+  async commitSequenceHighWater(epoch: number, sequence: number) {
+    return this.commitActiveValue<SequenceHighWater>("sequenceHighWater", { epoch, sequence }, current => newer(epoch, sequence, current ?? null));
+  }
+  async canEvaluateSafety(epoch: number, sequence: number): Promise<boolean> {
+    await this.initialized;
+    if (this.revoked) return false;
+    return this.ctx.storage.transaction(async txn => {
+      if (this.revoked || await txn.get<boolean>("wsRevoked") === true) return false;
+      return newer(epoch, sequence, (await txn.get<SequenceHighWater>("safetyEvaluationHighWater")) ?? null);
+    });
+  }
+  async commitSafetyEvaluation(epoch: number, sequence: number) {
+    return this.commitActiveValue<SequenceHighWater>("safetyEvaluationHighWater", { epoch, sequence }, current => newer(epoch, sequence, current ?? null));
+  }
   async readSafetyHighWater(): Promise<number> { return (await this.ctx.storage.get<number>("safetyHighWater")) ?? 0; }
-  async commitSafetyHighWater(sequence: number) { const current = await this.readSafetyHighWater(); if (sequence > current) await this.ctx.storage.put("safetyHighWater", sequence); }
+  async commitSafetyHighWater(sequence: number) {
+    return this.commitActiveValue<number>("safetyHighWater", sequence, current => sequence > (current ?? 0));
+  }
 
   async fetch(req: Request): Promise<Response> {
     const u = new URL(req.url);

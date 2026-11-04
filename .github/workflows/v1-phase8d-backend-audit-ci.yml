@@ -70,6 +70,7 @@ jobs:
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
           node scripts/test-phase8d-fast-live-revoke.mjs /tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-do-telemetry-fences.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: P8D-051 current development route schema and interrupted upgrade parity
         run: |
           npx --no-install esbuild src/worker-v10.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-dev-worker.mjs
@@ -84,6 +85,8 @@ jobs:
           node scripts/test-phase8d-backup-limits.mjs /tmp/brick-p8d-backup.mjs
       - name: Native workerd D1 Queue R2 DO Access WebSocket and recovery integration
         run: node scripts/test-phase8d-workerd-integration.mjs
+      - name: 8D.15 historical Git scanner positive and negative controls
+        run: node scripts/phase8d-secret-history-audit.mjs --self-test
       - name: 8D.15 check built public assets for server-only credentials
         run: node scripts/test-phase8d-public-secret-surface.mjs
       - name: P8D-007 concurrent R2 segment durability regression

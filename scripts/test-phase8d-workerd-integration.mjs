@@ -72,6 +72,22 @@ try {
   console.log("PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT");
 
   const ns = await mf.getDurableObjectNamespace("BRICK_DEVICE"), stub = ns.get(ns.idFromName(DEVICE_A));
+  // Native internal RPCs on a separate synthetic object, not public HTTP endpoints.
+  // Keep returned RPC references separate from the socket hibernation target.
+  const markerStub = ns.get(ns.idFromName("synthetic-rpc-audit"));
+  const health = n => ({ protocol: 1, healthSequence: n, healthSentAtMs: Date.now(), appVersion: "synthetic" });
+  await markerStub.setHealth(health(100));
+  await Promise.all([markerStub.setHealth(health(102)), markerStub.setHealth(health(101))]);
+  let archive = await (await markerStub.fetch("https://do/state")).json();
+  assert.equal(archive.health.healthSequence, 102);
+  await Promise.all([markerStub.commitSafetyHighWater(102), markerStub.commitSafetyHighWater(101)]);
+  assert.equal(await markerStub.readSafetyHighWater(), 102);
+  await Promise.all([markerStub.commitSequenceHighWater(2,1),markerStub.commitSequenceHighWater(1,999)]);
+  const sequenceMarker = await markerStub.readSequenceHighWater();
+  assert.equal(await sequenceMarker.epoch,2); assert.equal(await sequenceMarker.sequence,1);
+  await Promise.all([markerStub.commitSafetyEvaluation(2,1),markerStub.commitSafetyEvaluation(1,999)]);
+  assert.equal(await markerStub.canEvaluateSafety(1,999),false);
+  console.log("PASS native workerd internal RPC health ordering and three concurrent monotonic markers");
   const wsResponse = await stub.fetch("https://do/ws", { headers: { Upgrade: "websocket", "X-Brick-Internal-Ws-Lease-Until": String(Date.now() + 3000) } });
   assert.equal(wsResponse.status, 101); const ws = wsResponse.webSocket; ws.accept();
   let expired = false; ws.addEventListener("close", event => { expired = event.code === 4001; });
@@ -90,6 +106,18 @@ try {
     headers: { Upgrade: "websocket", "X-Brick-Internal-Ws-Lease-Until": String(Date.now() + 1000) }
   });
   assert.equal(fenced.status, 410);
+  const revokedStub = (await mf.getDurableObjectNamespace("BRICK_DEVICE")).get(ns.idFromName(DEVICE_A));
+  const archived = await (await revokedStub.fetch("https://do/state")).json();
+  assert.equal(await revokedStub.setHealth(health(200)), false);
+  assert.equal(await revokedStub.setNetworkEvidence({ country: "synthetic", region:null,city:null,colo:null,receivedAt:Date.now() }), false);
+  assert.equal(await revokedStub.pushSafetyEvent({id:"synthetic",kind:"sos",deviceCreatedAt:1,serverCreatedAt:1,latitude:null,longitude:null,accuracyM:null,detail:{}}),false);
+  assert.equal(await revokedStub.commitSafetyHighWater(200),false);
+  assert.equal(await revokedStub.commitSequenceHighWater(3,1),false);
+  assert.equal(await revokedStub.commitSafetyEvaluation(3,1),false);
+  assert.equal(await revokedStub.canEvaluateSafety(3,1),false);
+  assert.deepEqual(await (await revokedStub.fetch("https://do/state")).json(),archived);
+  console.log("PASS native workerd revoked/reconstructed DO rejects all six telemetry/marker writes and safety evaluation");
+
   assert.deepEqual((await (await parent("/parent/api/device/" + DEVICE_A + "/state")).json()).state, before);
   console.log("PASS native workerd revoked D1 identity, DO fence reconstruction, archived current state and denied subscription");
 

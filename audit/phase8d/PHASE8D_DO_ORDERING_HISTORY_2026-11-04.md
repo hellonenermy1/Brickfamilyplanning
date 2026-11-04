@@ -1,0 +1,56 @@
+# Phase 8D continuation — DO archival/order boundaries and Git history
+
+**IN PROGRESS / NOT PASS.** Continued the same branch from `3a294588613641fd9e608ff78a94a90bd8f8a921`, private GitHub ref verified unchanged. Previous executable green f93e3c8 remains the prior evidence until new hosted CI is attached. No Android edits, deployment, repository settings, Cloudflare resource/SQL writes or family data access.
+
+## Reproduced defects
+
+| Finding | Baseline failure | Correction | Evidence scope |
+|---|---|---|---|
+| P8D-054, confirmed P2 | Resident/reconstructed DO and stale constructor memory allowed health, network, latest safety event and three marker writes after persistent revocation. | Six writer methods check wsRevoked in the same transaction as compare/write; canEvaluateSafety refuses revoked state. Archived reads remain available. | Three focused archive checks; native workerd reconstructed object rejects all six writes and safety-evaluation permission. |
+| P8D-055, confirmed P2 | Concurrent 102 then101 calls left three read-then-put high-water markers at101; epoch comparison could also regress. | Atomic conditional transaction per marker, ordered by epoch then sequence (scalar sequence for safety event marker). | Three focused concurrency cases including epoch2/sequence1 against epoch1/999; native RPC marker checks. |
+| P8D-056, confirmed P2 | Health12 followed by delayed11, duplicate12 or unsequenced legacy overwrote the newer health snapshot. D1 replay reservation alone did not order subsequent DO publication. | Atomic health compare/write uses positive safe-integer healthSequence; duplicate/lower sequence rejected. Legacy accepted only before first sequence-aware record. | Two focused checks (stale/duplicate/legacy downgrade and active legacy/new sequence control); native RPC100/102/101 preserves102. |
+
+Seven baseline negative checks failed; legacy/active control passed. All eight focused checks pass after correction. `PHASE8D_054_056_REPRODUCTION.txt` records the sanitized failure labels. No claim of publicly callable DO RPC or verified live exploitation.
+
+State setters now return a boolean advancement result. Existing callers await and ignore it; rejected state writes do not broadcast. Health ordering follows the signed replay counter, not transport arrival time or an unsigned clock. Network and safety payloads receive a revocation fence; their broader delivery/time ordering semantics were not redesigned here.
+
+These fixes **do not** create atomic D1+DO+Queue commits, serialize entire safety evaluation, remove the D1-to-DO revocation gap, or prove deployed behavior. A valid canEvaluateSafety result is not an exclusive claim/lease; two simultaneous evaluators and later D1 safety work remain separate audit concerns. Full safety event dedup/ACK and cross-store crash gates remain OPEN.
+
+## Actual local native runtime
+
+Extended existing production-entry workerd integration, with real local D1, Queue, R2 and DO. New internal RPCs run on a separate synthetic DO so returned RPC references do not pin the WebSocket hibernation target. These are test-only calls; no public route or test bypass added to production.
+
+Native groups PASS locally:
+
+- Signed location -> D1 -> Queue -> compressed R2, duplicate idempotency, DO state and synthetic Access JWT controls.
+- Health publication ordering and three concurrent high-water markers.
+- WebSocket survives hibernation/reconstruction and expires by idle storage alarm.
+- After actual parent revocation and DO eviction/reconstruction, all six telemetry/marker writes returnfalse; safety evaluation refused; archived snapshot unchanged.
+- Revoked D1/Fast Live route, subscription denial, current-state archive preserved.
+- Actual38-table v3 snapshot/fresh D1 restore with revoked identity retained.
+
+Harness initially deep-compared a returned RPC object proxy, then held that reference while requesting eviction of the same object. Corrected test reads proxy fields and uses a separate synthetic marker object; native checks pass. Those harness issues are not claimed Brick source defects. This remains local workerd evidence, not live Cloudflare acceptance.
+
+## Read-only local Git history audit — 8D.15
+
+New reproducible `scripts/phase8d-secret-history-audit.mjs` scans all unique blobs reachable from recorded **local refs**, refuses shallow history and oversized/unbounded inputs, reads values only in memory and emits only blob SHA, observed path and category. One observed path per unique blob is recorded; identical content can have other historical paths. Its positive/negative self-test is blocking in source CI; shallow Actions checkout is not falsely described as a full history audit.
+
+Actual scan at HEAD3a29458:
+
+| Measure | Result |
+|---|---:|
+| Reachable commits | 2,234 |
+| Unique reachable blobs | 2,382 |
+| Blob bytes inspected | 19,215,060 |
+| Matching blobs | 10 |
+| Matching category | Known historical weak development-verifier marker only |
+
+Exact local refs and sanitized results: `PHASE8D_LOCAL_GIT_HISTORY_3a29458.json`. Known marker occurs in prior setup/template/workflow blobs and internal test/scanner source references. This confirms provenance for existing P8D-003; it is not proof of an active credential. No matches in the other inspected categories (private-key blocks with material, GitHub token formats, Slack tokens, Google key format, credential-container filenames). Status deliberately **FINDINGS_REVIEW_REQUIRED**, not a blanket clean-secret claim. Matching values/lines were not printed or saved.
+
+This does not cover unknown/deleted remote refs, dangling objects, LFS payloads, releases, deployment/CDN/log contents, low-entropy unknown secrets, arbitrary Cloudflare token formats or actual credential rotation. Private visibility does not invalidate prior public exposure. P8D-003 live rotation verification and broader secret review remain open.
+
+## Acceptance and next steps
+
+Current source CI must verify the new exact SHA, all prior regressions and native runtime before source closure. Existing live evidence41839919454 attempt3 (old attestor SHA d74b30d, 15:16Z) remains NOT PASS: seven production/two dev missing bindings, absent expected Queue/DLQ, deployed source unknown, R2/Access read scope blocked, D1 catalog401 and public prod local login policy failure. No new live deployment/read-scope change has been demonstrated in this continuation.
+
+Next unresolved work: deployed identity/bindings/Access, isolated current D1+R2+DO disaster recovery and cutover, Queue crash/ACK/DLQ, exclusive safety evaluation or equivalent idempotent D1 effects, live retention/rollback, configured repository protection and remaining method/auth/input coverage. Preserve the19-section and525-requirement ledgers; this report does not assert their exhaustive completion. **No Phase8D final PASS; no8E/8F.**
