@@ -17,7 +17,7 @@ assert.throws(()=>stripHandledLocationControlAlters(orig.replace("ADD COLUMN com
 assert.throws(()=>stripHandledLocationControlAlters(orig.replace("ALTER TABLE device_location_control ADD COLUMN result_reason TEXT;","")),/Missing migration 016 ALTERs/);
 assert.throws(()=>stripHandledLocationControlAlters(orig+"\nALTER TABLE devices ADD COLUMN arbitrary INTEGER;"),/Unreviewed remaining ALTER/);
 if (process.argv[2] === "--write-sql") {
-  writeFileSync("/tmp/brick-p8d-016-columns.sql",P8B_LOCATION_CONTROL_COLUMNS.map(([name,type]) => `ALTER TABLE device_location_control ADD COLUMN ${name} ${type};`).join("\\n") + "\\n");
+  writeFileSync("/tmp/brick-p8d-016-columns.sql",P8B_LOCATION_CONTROL_COLUMNS.map(([name,type]) => `ALTER TABLE device_location_control ADD COLUMN ${name} ${type};`).join("\n") + "\n");
   writeFileSync("/tmp/brick-p8d-016-remainder.sql",transformed);
 }
 process.stdout.write("PASS phase8d 016 migration transform: five exact ALTERs handled by introspection; no skipped CREATE TABLE/INDEX or unreviewed ALTER\n");
