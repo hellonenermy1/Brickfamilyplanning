@@ -10,6 +10,8 @@ import android.os.UserManager
 import android.provider.Settings
 import android.util.AtomicFile
 import com.brick.safety.beta.BetaSafety
+import com.brick.safety.diagnostics.DiagnosticMonitor
+import com.brick.safety.reliability.FallDetectorRuntime
 import com.brick.safety.managed.BrickDeviceAdminReceiver
 import com.brick.safety.location.BrickServiceQuiescenceGate
 import com.brick.safety.privileged.ShizukuBridgeController
@@ -211,6 +213,12 @@ object DeprovisionManager {
         // service + five executor termination before touching databases, preferences or Keystore.
         if (!BrickServiceQuiescenceGate.awaitQuiescent(25_000L)) {
             return Result(stage(app), false, "Brick tracking service or in-flight writer not fully stopped")
+        }
+        if (!DiagnosticMonitor.awaitQuiescent(5_000L)) {
+            return Result(stage(app), false, "Brick diagnostics writer not fully stopped")
+        }
+        if (!FallDetectorRuntime.awaitQuiescent(5_000L)) {
+            return Result(stage(app), false, "Brick fall-safety handler not fully stopped")
         }
 
         for (name in brickDatabases) {
