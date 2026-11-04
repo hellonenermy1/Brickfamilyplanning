@@ -61,13 +61,37 @@ async function verifyHistoricalBadConfirmation() {
  assert.equal(response.status,400,"historically invalid pending SPKI must not register a device");
  assert.equal(confirmedWrites,0,"invalid historical claim must not start a D1 batch");
 }
+async function verifyOriginAndRequestBounds() {
+ const before=mutationCount;
+ const startNoOrigin=await pairing.parentStartPin(new Request(origin+"/parent/api/pair/pin/start",{method:"POST",body:"{}"}),env);
+ assert.equal(startNoOrigin.status,403,"parent PIN creation must require Origin");
+ const startEvilOrigin=await pairing.parentStartPin(new Request(origin+"/parent/api/pair/pin/start",{method:"POST",headers:{Origin:"https://evil.example.test"},body:"{}"}),env);
+ assert.equal(startEvilOrigin.status,403,"cross-origin parent PIN creation must fail");
+ const confirmNoOrigin=await pairing.parentConfirmPin(new Request(origin+"/parent/api/pair/pin/"+sessionId,{method:"POST"}),env,sessionId);
+ assert.equal(confirmNoOrigin.status,403,"parent PIN confirmation must require Origin");
+ const oversizeParent=await pairing.parentStartPin(new Request(origin+"/parent/api/pair/pin/start",{method:"POST",headers:{Origin:origin},body:JSON.stringify({name:"N".repeat(20000)})}),env);
+ assert.equal(oversizeParent.status,413,"parent PIN mutation must enforce bounded request");
+ const oversizePublic=await pairing.childPinStatus(new Request(origin+"/api/pair/pin/status",{method:"POST",body:JSON.stringify({claimSecret:"N".repeat(20000)})}),env);
+ assert.equal(oversizePublic.status,413,"public PIN status must reject oversized request");
+ assert.equal(mutationCount,before,"denied cross-origin/oversized PIN requests cannot write");
+}
+async function verifyRateLimiting() {
+ const blocked={...env,PAIR_RATE:{async limit(){return {success:false};}}};
+ const before=mutationCount;
+ assert.equal((await pairing.childClaimPin(claim(spki),blocked)).status,429,"public claim rate ceiling");
+ assert.equal((await pairing.parentStartPin(new Request(origin+"/parent/api/pair/pin/start",{method:"POST",headers:{Origin:origin},body:"{}"}),blocked)).status,429,"parent PIN start rate ceiling");
+ assert.equal((await pairing.parentConfirmPin(new Request(origin+"/parent/api/pair/pin/"+sessionId,{method:"POST",headers:{Origin:origin}}),blocked,sessionId)).status,429,"parent confirmation rate ceiling");
+ assert.equal((await pairing.childPinStatus(new Request(origin+"/api/pair/pin/status",{method:"POST",body:"{}"}),blocked)).status,429,"public status rate ceiling");
+ assert.equal(mutationCount,before,"rate-denied requests cannot mutate pairing session");
+}
 const failures=[];
 for(const [name,fn] of [
  ["invalid SPKI claim",verifyInvalid],["canonical valid SPKI claim",verifyValidCanonical],
- ["oversized claim",verifyOversized],["invalid historical key parent confirm",verifyHistoricalBadConfirmation]
+ ["oversized claim",verifyOversized],["invalid historical key parent confirm",verifyHistoricalBadConfirmation],
+ ["same-origin and bounded pairing requests",verifyOriginAndRequestBounds],["pairing rate limits",verifyRateLimiting]
 ]) {
  try {await fn();console.log("PASS "+name);}
  catch(e){console.error("FAIL "+name+": "+e.message);failures.push(name);}
 }
 assert.equal(failures.length,0,"P8D-009 failures: "+failures.join(", "));
-console.log("PASS P8D-009: invalid and oversized PIN claims rejected, P-256 canonical identity enforced, invalid historical confirmation blocked.");
+console.log("PASS P8D-009 / 8D.12/.14: P-256 PIN identity, bounded bodies, Origin/CSRF and rate-limit guards verified.");
