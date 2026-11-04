@@ -31,11 +31,12 @@ export async function attest({token,accountId,request=fetch}={}) {
     record(label,"BLOCKED",reason+"; no account requests made");
   return result();
  }
- const get=async path=>{
-  if(typeof path!=="string"||!path.startsWith("/accounts/"+accountId+"/")||/[?#]/.test(path))throw Error("path not allowlisted");
+ const getEnvelope=async path=>{
+  if(typeof path!=="string"||!path.startsWith("/accounts/"+accountId+"/")||/[#]/.test(path))throw Error("path not allowlisted");
   const permitted=[
     /^\/accounts\/[a-f0-9]{32}\/workers\/scripts\/(?:brick-family-v1|brick-family-v1-dev)\/(?:deployments|settings)$/i,
-    /^\/accounts\/[a-f0-9]{32}\/queues$/i,
+    /^\/accounts\/[a-f0-9]{32}\/queues(?:\?per_page=100&page=(?:[1-9]|1[0-9]|20))?$/i,
+    /^\/accounts\/[a-f0-9]{32}\/workers\/scripts\/(?:brick-family-v1|brick-family-v1-dev)\/versions\/[0-9a-f-]{36}$/i,
     /^\/accounts\/[a-f0-9]{32}\/r2\/buckets\/(?:brick-family-v1-history|brick-family-v1-maps)(?:\/lifecycle)?$/i,
     /^\/accounts\/[a-f0-9]{32}\/access\/apps$/i
   ];
@@ -44,29 +45,37 @@ export async function attest({token,accountId,request=fetch}={}) {
   if(!res?.ok)throw Error("Cloudflare GET returned HTTP "+(res?.status??"unknown"));
   const data=await res.json();
   if(data?.success!==true||data.result==null)throw Error("Cloudflare GET response unavailable");
-  return data.result;
+  return {result:data.result,resultInfo:data.result_info??null};
  };
+ const get=async path=>(await getEnvelope(path)).result;
  const attempt=async(name,fn)=>{
   try{const x=await fn();record(name,x.ok?"ATTESTED":x.blocked?"BLOCKED":"DRIFT",x.detail);if(x.evidence)evidence[name]=x.evidence;}
   catch(e){record(name,"BLOCKED",/^Cloudflare GET returned HTTP (?:401|403)$/.test(String(e?.message))?"Cloudflare token lacks read permission": "Metadata GET unavailable or unexpected shape");}
  };
  const deployment=async script=>{
-  const result=await get("/accounts/"+accountId+"/workers/scripts/"+script+"/deployments");
-  const arr=Array.isArray(result?.deployments)?result.deployments:null;
-  if(!arr?.length)return {blocked:true,detail:"No active deployment record returned"};
+  const data=await get("/accounts/"+accountId+"/workers/scripts/"+script+"/deployments");
+  const arr=Array.isArray(data?.deployments)?data.deployments:null;
+  if(!arr?.length)return {blocked:true,detail:"No active Worker deployment record returned"};
   const d=arr[0],v=d?.versions;
-  if(typeof d.id!=="string"||!Array.isArray(v)||!v.length)return {blocked:true,detail:"Deployment ID/version percentages not available"};
-  const valid=v.every(x=>typeof x.version_id==="string"&&typeof x.percentage==="number"&&x.percentage>0&&x.percentage<=100);
+  if(typeof d.id!=="string"||!Array.isArray(v)||!v.length)return {blocked:true,detail:"Active deployment ID/traffic split not available"};
+  const valid=v.every(x=>/^[0-9a-f-]{36}$/i.test(x.version_id??"")&&typeof x.percentage==="number"&&x.percentage>0&&x.percentage<=100);
   const total=v.reduce((sum,x)=>sum+Number(x.percentage||0),0);
-  if(!valid||Math.abs(total-100)>0.001)return {ok:false,detail:"Active deployment has invalid traffic weights"};
-  const tag=d.annotations?.["workers/tag"],message=d.annotations?.["workers/message"];
-  // A matching source Git SHA is mandatory for release attestation. A deployment ID
-  // alone does not establish code provenance and never passes the final identity gate.
-  const git=(typeof tag==="string"?tag+" ":"")+(typeof message==="string"?message:"");
-  const sha=(git.match(/(?:brick-git-|source\s+)([0-9a-f]{12,40})/i)||[])[1];
-  return {ok:Boolean(sha)&&v.length===1&&v[0].percentage===100,
-   detail:sha?"Deployment ID and source Git SHA annotation present; single-version 100% required":"Active versions visible, exact Git SHA annotation not independently attested",
-   evidence:{deploymentId:d.id,versionIds:v.map(x=>x.version_id),trafficPercentages:v.map(x=>x.percentage),sourceShaPrefix:sha??null}};
+  if(!valid||Math.abs(total-100)>0.001)return {ok:false,detail:"Active deployment has invalid traffic weights or version IDs"};
+  const evidence={deploymentId:d.id,versionIds:v.map(x=>x.version_id),trafficPercentages:v.map(x=>x.percentage),sourceShaPrefix:null,provenanceSource:"none"};
+  if(v.length!==1||v[0].percentage!==100)return {blocked:true,detail:"Multiple live Worker versions; cannot assert single-release provenance",evidence};
+  // Deployment object annotations do not reliably identify the active Worker
+  // version. Cloudflare exposes version-specific annotations separately.
+  let version;
+  try{version=await get("/accounts/"+accountId+"/workers/scripts/"+script+"/versions/"+v[0].version_id);}
+  catch{return {blocked:true,detail:"Active version metadata unreadable (possible Worker version permission); source SHA remains unverified",evidence};}
+  const candidates=[version?.annotations,version?.metadata?.annotations,version?.resources?.settings?.annotations,version?.resources?.script?.annotations];
+  const ann=candidates.find(a=>a&&typeof a==="object"&&("workers/tag" in a||"workers/message" in a))??null;
+  const fields=[ann?.["workers/tag"],ann?.["workers/message"]].filter(x=>typeof x==="string").join(" ");
+  const sha=(fields.match(/(?:brick-git-|source\\s+)([0-9a-f]{12,40})/i)||[])[1]??null;
+  evidence.sourceShaPrefix=sha;
+  evidence.provenanceSource=sha?"active-version-annotations":"none";
+  return sha?{ok:true,detail:"Active Worker version has an identified Git source annotation at 100% traffic (not current audit SHA parity)",evidence}
+    :{blocked:true,detail:"Active version has no readable Git source annotation; this is not proof the code is defective",evidence};
  };
  await attempt("production_deployment",()=>deployment(PROD));
  await attempt("development_deployment",()=>deployment(DEV));
@@ -97,18 +106,27 @@ export async function attest({token,accountId,request=fetch}={}) {
     evidence:{databaseReferencesDistinct:!!child&&!same,missingBindings:missing,unwantedProdQueue: names.has("EVENTS"),rateBindingCount:rate.length}};
  });
  await attempt("queue_dlq",async()=>{
-  const r=await get("/accounts/"+accountId+"/queues");
-  const list=Array.isArray(r)?r:Array.isArray(r?.queues)?r.queues:null;
-  if(!list)return {blocked:true,detail:"Cloudflare Queue listing response shape unknown"};
-  const q=list.find(x=>x.queue_name===QUEUE),dlq=list.find(x=>x.queue_name===DLQ);
-  if(!q||!dlq)return {ok:false,detail:"Event Queue or DLQ missing"};
+  const all=[],maxPages=20;
+  for(let page=1;page<=maxPages;page++){
+    const response=await getEnvelope("/accounts/"+accountId+"/queues?per_page=100&page="+page);
+    const list=Array.isArray(response.result)?response.result:Array.isArray(response.result?.queues)?response.result.queues:null;
+    if(!list)return {blocked:true,detail:"Cloudflare Queue listing response shape unknown"};
+    all.push(...list);
+    const pages=Number(response.resultInfo?.total_pages);
+    if(Number.isInteger(pages)&&pages>maxPages)return {blocked:true,detail:"Queue listing exceeds 20-page safety bound",evidence:{pagesInspected:page,queueCount:all.length}};
+    if((Number.isInteger(pages)&&pages>0&&page>=pages)||list.length<100)break;
+    if(page===maxPages)return {blocked:true,detail:"Queue inventory truncated; cannot assert complete absence",evidence:{pagesInspected:page,queueCount:all.length}};
+  }
+  const q=all.find(x=>x.queue_name===QUEUE),dlq=all.find(x=>x.queue_name===DLQ);
+  const inventory={queueCount:all.length,queueFound:!!q,deadLetterFound:!!dlq};
+  if(!q||!dlq)return {ok:false,detail:"Expected Queue/DLQ absent from paginated account listing; verify deployed account before any creation",evidence:inventory};
   const consumer=Array.isArray(q.consumers)?q.consumers.find(x=>x.script_name===PROD):null;
   const replay=Array.isArray(dlq.consumers)?dlq.consumers.find(x=>x.script_name===PROD):null;
-  if(!consumer||!replay)return {blocked:true,detail:"Queue/DLQ consumer metadata incomplete"};
+  if(!consumer||!replay)return {blocked:true,detail:"Queue/DLQ found; consumer metadata unavailable",evidence:inventory};
   const enabled=q.settings?.delivery_paused!==true&&dlq.settings?.delivery_paused!==true;
   const correct=consumer.dead_letter_queue===DLQ&&Number(consumer.settings?.max_retries)>=5&&Number(replay.settings?.max_retries)>=20;
   return {ok:enabled&&correct,detail:!enabled?"Queue delivery paused":!correct?"Queue consumer/DLQ retry or linkage drift":"Queue and DLQ active, consumers and replay retries verified",
-    evidence:{queueFound:true,deadLetterFound:true,mainRetries:consumer.settings?.max_retries??null,dlqRetries:replay.settings?.max_retries??null,deadLetterTarget:consumer.dead_letter_queue??null}};
+    evidence:{...inventory,mainRetries:consumer.settings?.max_retries??null,dlqRetries:replay.settings?.max_retries??null,deadLetterTargetMatches:consumer.dead_letter_queue===DLQ}};
  });
  await attempt("history_lifecycle",async()=>{
   await get("/accounts/"+accountId+"/r2/buckets/"+HISTORY);
