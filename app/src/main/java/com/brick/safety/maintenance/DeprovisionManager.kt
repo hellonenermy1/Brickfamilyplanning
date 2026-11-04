@@ -222,48 +222,52 @@ object DeprovisionManager {
             return Result(stage(app), false, "Brick fall-safety handler not fully stopped")
         }
 
-        for (name in brickDatabases) {
-            val path = app.getDatabasePath(name)
-            if (path.exists()) {
-                val deleted = runCatching { app.deleteDatabase(name) }.getOrDefault(false)
-                if (!deleted || path.exists()) return Result(stage(app), false, "database purge failed: $name")
-            }
-        }
-
-        for (name in brickPreferences) {
-            val prefs = app.getSharedPreferences(name, Context.MODE_PRIVATE)
-            val committed = runCatching { prefs.edit().clear().commit() }.getOrDefault(false)
-            if (!committed || prefs.all.isNotEmpty()) return Result(stage(app), false, "preference purge failed: $name")
-        }
-
-        // AtomicFile uses a base file plus a possible pending ".new" write and legacy ".bak"
-        // backup. Deleting only the base is insufficient for privacy-safe purge: a crash before
-        // finishWrite() may leave private learning/location data in a sidecar.
-        for (name in brickFiles) {
-            for (suffix in listOf("", ".new", ".bak")) {
-                val fileName = name + suffix
-                val file = File(app.filesDir, fileName)
-                if (file.exists() && !runCatching { file.delete() }.getOrDefault(false)) {
-                    return Result(stage(app), false, "file purge failed: $fileName")
+        // The signer monitor covers the WHOLE deletion boundary, not just Keystore aliases:
+        // an admitted old signing task may still be persisting its paired-key fingerprint.
+        // Waiting only at key deletion would allow a late preference commit after prefs purge.
+        // Do not hold the lock during WorkManager/service/diagnostic/fall termination waits above.
+        return synchronized(DeviceKeys) {
+            for (name in brickDatabases) {
+                val path = app.getDatabasePath(name)
+                if (path.exists()) {
+                    val deleted = runCatching { app.deleteDatabase(name) }.getOrDefault(false)
+                    if (!deleted || path.exists()) return Result(stage(app), false, "database purge failed: $name")
                 }
-                if (file.exists()) return Result(stage(app), false, "file remains after purge: $fileName")
             }
-        }
 
-        // Synchronize with DeviceKeys.getOrCreate/sign so a cryptographic call admitted just
-        // before AUTHORISE_FREEZE cannot finish creating/reusing the identity after its deletion.
-        // Never hold this lock while waiting on the Android main thread or WorkManager.
-        val keyStorePurged = synchronized(DeviceKeys) {
-            runCatching {
+            for (name in brickPreferences) {
+                val prefs = app.getSharedPreferences(name, Context.MODE_PRIVATE)
+                val committed = runCatching { prefs.edit().clear().commit() }.getOrDefault(false)
+                if (!committed || prefs.all.isNotEmpty()) return Result(stage(app), false, "preference purge failed: $name")
+            }
+
+            // AtomicFile uses a base file plus a possible pending ".new" write and legacy ".bak"
+            // backup. Deleting only the base is insufficient for privacy-safe purge: a crash before
+            // finishWrite() may leave private learning/location data in a sidecar.
+            for (name in brickFiles) {
+                for (suffix in listOf("", ".new", ".bak")) {
+                    val fileName = name + suffix
+                    val file = File(app.filesDir, fileName)
+                    if (file.exists() && !runCatching { file.delete() }.getOrDefault(false)) {
+                        return Result(stage(app), false, "file purge failed: $fileName")
+                    }
+                    if (file.exists()) return Result(stage(app), false, "file remains after purge: $fileName")
+                }
+            }
+
+            // Synchronize with DeviceKeys.getOrCreate/sign so a cryptographic call admitted just
+            // before AUTHORISE_FREEZE cannot finish creating/reusing the identity after its deletion.
+            // Never hold this lock while waiting on the Android main thread or WorkManager.
+            val keyStorePurged = runCatching {
                 val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
                 brickKeyAliases.forEach { alias -> if (ks.containsAlias(alias)) ks.deleteEntry(alias) }
                 brickKeyAliases.none { ks.containsAlias(it) }
             }.getOrDefault(false)
-        }
-        if (!keyStorePurged) return Result(stage(app), false, "Brick Keystore purge failed")
+            if (!keyStorePurged) return Result(stage(app), false, "Brick Keystore purge failed")
 
-        val ok = persist(app, Stage.PURGE_BRICK)
-        return Result(stage(app), ok, if (ok) "Brick local state purged and verified" else "failed to persist purge stage")
+            val ok = persist(app, Stage.PURGE_BRICK)
+            Result(stage(app), ok, if (ok) "Brick local state purged and verified" else "failed to persist purge stage")
+        }
     }
 
     @Synchronized
