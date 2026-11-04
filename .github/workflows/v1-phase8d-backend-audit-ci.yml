@@ -129,6 +129,7 @@ jobs:
           node scripts/test-phase8d-development-login-source.mjs
           npx --no-install esbuild src/dev-parent-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dev-auth.mjs
           node scripts/test-phase8d-development-login.mjs /tmp/brick-p8d-dev-auth.mjs
+          node scripts/test-phase8d-dev-multi-session.mjs /tmp/brick-p8d-dev-auth.mjs
       - name: 8D.8 production SQLite schema and constraints, including revocation history
         run: node --disable-warning=ExperimentalWarning scripts/test-phase8d-sqlite-integrity.mjs
       - name: 8D.17 validate bounded R2 raw/trusted 30/90-day lifecycle target
