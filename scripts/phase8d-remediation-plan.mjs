@@ -2,6 +2,7 @@
 // Deterministic, NON-MUTATING Phase 8D remediation planning from a sanitized
 // Cloudflare metadata audit report. Never reads credentials or Cloudflare user data.
 import fs from "node:fs";
+import {pathToFileURL} from "node:url";
 
 const ACTIONS={
  production_deployment:{section:"8D.1/19",priority:"P1",action:"Read active production version metadata and immutable source provenance; compare with audited release SHA. If untagged, mark provenance UNKNOWN, not corrupt.",gate:"No production release until final 8D PASS and validated rollback."},
@@ -35,7 +36,7 @@ export function planFromAudit(report) {
    drift:steps.filter(x=>x.status==="DRIFT").length,blocked:steps.filter(x=>x.status==="BLOCKED").length},
   liveReadyForRelease:false,steps,summary:statuses};
 }
-if(process.argv[1]&&process.argv[1].endsWith("phase8d-remediation-plan.mjs")){
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const input=process.argv[2]||"phase8d-live-readonly-result.json";
  const report=JSON.parse(fs.readFileSync(input,"utf8"));
  const plan=planFromAudit(report);
