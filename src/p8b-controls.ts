@@ -127,8 +127,12 @@ function capabilitySnapshotFromHealth(b: Record<string, unknown>, now: number) {
 async function storeCapabilityProfile(env: P8BControlEnv, deviceId: string, profile: Record<string, unknown>, now: number) {
   const version = Number(profile.version), updated = Number(profile.updatedAtMs), text = JSON.stringify(profile);
   if (!Number.isInteger(version) || version < 1 || !Number.isSafeInteger(updated) || updated <= 0 || text.length > 16_000) return;
-  await env.DB.prepare(`INSERT INTO device_capability_profile(device_id,profile_version,profile_json,device_updated_at,received_at) VALUES(?1,?2,?3,?4,?5)
-    ON CONFLICT(device_id) DO UPDATE SET profile_version=excluded.profile_version,profile_json=excluded.profile_json,device_updated_at=excluded.device_updated_at,received_at=excluded.received_at`)
+  await env.DB.prepare(`INSERT INTO device_capability_profile(device_id,profile_version,profile_json,device_updated_at,received_at)
+    SELECT ?1,?2,?3,?4,?5 WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
+    ON CONFLICT(device_id) DO UPDATE SET profile_version=excluded.profile_version,profile_json=excluded.profile_json,device_updated_at=excluded.device_updated_at,received_at=excluded.received_at
+    WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
+      AND (excluded.profile_version>device_capability_profile.profile_version
+        OR (excluded.profile_version=device_capability_profile.profile_version AND excluded.device_updated_at>device_capability_profile.device_updated_at))`)
     .bind(deviceId, version, text, updated, now).run();
 }
 
@@ -144,7 +148,9 @@ export async function noteP8BHealth(req: CloneJson, env: P8BControlEnv, deviceId
   const actualLive = typeof b.liveTrackActive === "boolean" ? b.liveTrackActive : null;
   if (liveId && (liveStatus === "completed" || liveStatus === "failed")) {
     const reason = typeof b.liveTrackResultDetail === "string" ? b.liveTrackResultDetail.slice(0,120) : null;
-    await env.DB.prepare("UPDATE device_live_track_control SET command_status=?1,last_actual_active=?2,completed_at=?3,result_reason=?4 WHERE device_id=?5 AND command_id=?6")
+    // Final commands are immutable. Late signed health reports must not
+    // resurrect an expired command or change a completed result into failure.
+    await env.DB.prepare("UPDATE device_live_track_control SET command_status=?1,last_actual_active=?2,completed_at=?3,result_reason=?4 WHERE device_id=?5 AND command_id=?6 AND command_status='pending' AND expires_at>?3 AND EXISTS (SELECT 1 FROM devices WHERE id=?5 AND revoked_at IS NULL)")
       .bind(liveStatus, actualLive === null ? null : actualLive ? 1 : 0, now, reason, deviceId, liveId).run();
   } else if (actualLive !== null) {
     const pending = await env.DB.prepare("SELECT command_id,requested_active,expires_at FROM device_live_track_control WHERE device_id=?1 AND command_status='pending'")
@@ -161,9 +167,17 @@ export async function noteP8BHealth(req: CloneJson, env: P8BControlEnv, deviceId
     if (typeof x.scheduleId === "string" && ID_RE.test(x.scheduleId) && typeof x.targetEnabled === "boolean" && typeof x.status === "string" &&
         typeof x.attemptedAtMs === "number" && Number.isSafeInteger(x.attemptedAtMs)) {
       const actual = typeof x.actualEnabled === "boolean" ? x.actualEnabled : null;
+      // The phone can report late/out-of-order health packets. Accept only a
+      // still-configured schedule for the same device and matching target, and
+      // never roll back a newer execution result.
       await env.DB.prepare(`INSERT INTO device_wifi_schedule_result(device_id,schedule_id,target_enabled,actual_enabled,status,attempted_at,detail,received_at)
-        VALUES(?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(device_id) DO UPDATE SET schedule_id=excluded.schedule_id,target_enabled=excluded.target_enabled,
-        actual_enabled=excluded.actual_enabled,status=excluded.status,attempted_at=excluded.attempted_at,detail=excluded.detail,received_at=excluded.received_at`)
+        SELECT ?1,?2,?3,?4,?5,?6,?7,?8
+        WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
+          AND EXISTS (SELECT 1 FROM device_wifi_schedules WHERE device_id=?1 AND id=?2 AND target_enabled=?3)
+        ON CONFLICT(device_id) DO UPDATE SET schedule_id=excluded.schedule_id,target_enabled=excluded.target_enabled,
+        actual_enabled=excluded.actual_enabled,status=excluded.status,attempted_at=excluded.attempted_at,detail=excluded.detail,received_at=excluded.received_at
+        WHERE excluded.attempted_at>device_wifi_schedule_result.attempted_at
+          AND EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)`)
         .bind(deviceId, x.scheduleId, x.targetEnabled ? 1 : 0, actual === null ? null : actual ? 1 : 0, x.status.slice(0,40), x.attemptedAtMs, typeof x.detail === "string" ? x.detail.slice(0,120) : null, now).run();
     }
   }
