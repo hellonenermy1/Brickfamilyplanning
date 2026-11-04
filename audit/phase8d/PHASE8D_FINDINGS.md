@@ -297,3 +297,21 @@
 **GREEN complete baseline:** exact code `86b6b9295b2d1a58d37ff0addf37de35a4d3d3d5`, [Phase 8D CI 41812573198](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41812573198), all **3** jobs successful. Browser tests use generated real production/development HTML `connect()` and `refreshPhase5State()` functions, but mock WebSocket/network/timers; full Worker boundary tests simulate D1/DO. Previous accepted Phase 8C Android source/ APK unchanged.
 
 **Finding disposition:** P8D-017 **FIXED → SOURCE/CI RETESTED**. P8D-011 8D.10 **P1 provisional OPEN** pending isolated Cloudflare Access+DO real WebSocket upgrade, 30s alarm/hibernation and expiry timing, device revoke/logout concurrent-upgrade race, per-family/session isolation, real browser sleeps/tabs and sustained live stability. The D1 development logout currently closes all device sockets; per-session targeting is not demonstrated. Never claim a live PASS from these simulations.
+
+---
+
+## 2026-11-04 next-source deep audit — findings to verify before any fix
+
+**P8D-018 / 8D.4 — fall-event pre-auth, unbounded JSON read (P1 provisional).** `maybeHandleFallEvent` calls `req.clone().json()` before its `validateSafetyReplayWindow()` signature/body cap, then assumes a non-null object. Test 8KiB+ unauthenticated fall body and null/array; require a bounded read and consistent 400/413, with no D1/DO/Queue effects. Do not claim live exploit.
+
+**P8D-019 / 8D.3/.5 — signed screen-time non-monotonic daily overwrite and revoked-device time-of-check/time-of-write (P2 provisional).** `ingestScreenTime` checks device revocation before signature validation, then unconditionally overwrites the day row on CONFLICT. Older signed capture can overwrite a newer aggregate; revoked device can win after auth SELECT. It also assumes parsed JSON is a non-null object. Test against real SQLite, wrong/missing signature, stale captures, and post-read revocation.
+
+**P8D-020 / 8D.3/.5 — signed health replay write after device revocation race (P2 provisional).** `reserveHealthReplay` reads active device before verifying signature but its `device_replay_state` INSERT/UPSERT does not condition on current `devices.revoked_at`. Test actual SQL interleaving; ensure no replay state advances after revocation without changing accepted replay behavior.
+
+**P8D-021 / 8D.5/.6/.7 — location ingestion Queue/DO may outlive device revoke (P1 provisional).** After authorization once, `ingestLocationV6` enqueues first, then `persistAccepted` INSERTs events without a revocation predicate and may update DO despite a revoked D1 identity. An active→revoked interleaving before Queue send must not add post-revocation history/live state or produce HTTP 200. Test single + batch/preview, durable ACK semantics, and duplicates; explicitly retain queue-at-least-once and two-store non-atomic limitations.
+
+**P8D-022 / 8D.4/.14 — OneMap reverse endpoint treats missing coordinates as numeric zero (P3 input contract).** `Number(searchParams.get(...))` makes null/blank 0, which is a superficially valid Earth coordinate, and may return 200 outside-Singapore result instead of an input error. Test missing, empty, NaN, Infinity, out of bounds; do not consume provider budget on malformed input.
+
+**P8D-023 / 8D.18 — bounded scheduled commute refresh cannot reach devices beyond first 100 (P2 provisional operational fairness).** Current `worker-p8b.scheduled` performs `SELECT ... ORDER BY id LIMIT 100` every invocation without paging/cursor, so eligible devices past first 100 are never refreshed by this scheduled path. Test pagination/cursor with synthetic 105+ devices; keep per-run work bounded, don't starve critical SOS/health, and do not assert production scale without telemetry.
+
+These six are **source-supported hypotheses** pending executed RED reproductions and fixes; all Phase 8D live Cloudflare gates remain open.
