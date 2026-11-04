@@ -1,5 +1,10 @@
 # Brick V1 — Phase 8C Android Security Report
 
+**2026-11-04 later source-backed addendum (supersedes historical "secrets missing" statement below):** The permanent original signing keystore was recovered and five GitHub Actions secrets were configured by the owner. A signed, verified V1 RC passed [run 41764906510](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41764906510) at production source commit `42fb05db`, and a more recent signing workflow passed at [41767486372](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41767486372), commit `b05b33fe`. No private signing values were committed here. The public RSA-4096 signing certificate pin is `BF:DE:B4:97:14:FE:A7:14:53:6C:47:F8:12:6D:EE:D7:00:F0:0B:2D:D1:13:C5:C0:D4:52:99:2D:7E:D5:F7:90`. Later manifest binary verification explicitly checked backup/cleartext flags false and no debug-only harness in the signed APK.
+
+A separate P8C-008 late privileged/crypto test [41765068718](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41765068718) passed 112 tests, including blocked keystore rematerialization after purge. A further source fix gates location, diagnostics and fall writer termination before private deletion; its latest exact-source CI remains a separate acceptance gate. The original pre-fix report below remains historical evidence. P8C is **not yet a global PASS** from a signed APK alone.
+
+
 Production freeze: `967e5d5ceb7e485af997eb0f6380e9544cd39e79`
 
 ## Release signing and supply-chain identity
