@@ -17,19 +17,32 @@ export async function ingestScreenTime(req: Request, env: ScreenTimeEnv, deviceI
   const bounded = await readBoundedBody(req, 4096);
   if (!bounded.ok || !bounded.body.byteLength) return json({ error: "invalid payload" }, 400);
   if (!(await verifyDeviceSignature(d.public_key_spki_b64, bounded.body, sig))) return json({ error: "bad signature" }, 401);
-  let b: Record<string, unknown>;
-  try { b = JSON.parse(new TextDecoder().decode(bounded.body)) as Record<string, unknown>; } catch { return json({ error: "invalid JSON" }, 400); }
+  let parsed: unknown;
+  try { parsed = JSON.parse(new TextDecoder().decode(bounded.body)); } catch { return json({ error: "invalid JSON" }, 400); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return json({ error: "invalid JSON object" }, 400);
+  const b = parsed as Record<string, unknown>;
   const day = b.localDay, total = b.totalForegroundMs, sessions = b.sessionCount, captured = b.capturedAtMs;
   if (b.protocol !== 1 || typeof day !== "string" || !DAY_RE.test(day) || typeof total !== "number" || !Number.isSafeInteger(total) || total < 0 || total > 24 * 60 * 60_000 ||
       typeof sessions !== "number" || !Number.isSafeInteger(sessions) || sessions < 0 || sessions > 100_000 ||
       typeof captured !== "number" || !Number.isSafeInteger(captured) || Math.abs(Date.now() - captured) > 3 * 86_400_000 ||
       b.privacy !== "aggregate_only_no_package_names") return json({ error: "invalid screen-time summary" }, 400);
   const summary = JSON.stringify({ privacy: b.privacy, capturedAtMs: captured });
-  await env.DB.prepare(`INSERT INTO screen_time_daily(device_id,local_day,total_foreground_ms,session_count,summary_json,received_at)
-    VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(device_id,local_day) DO UPDATE SET
-    total_foreground_ms=excluded.total_foreground_ms,session_count=excluded.session_count,summary_json=excluded.summary_json,received_at=excluded.received_at`)
-    .bind(deviceId, day, total, sessions, summary, Date.now()).run();
-  return json({ ok: true, localDay: day });
+  const write = await env.DB.prepare(`INSERT INTO screen_time_daily(device_id,local_day,total_foreground_ms,session_count,summary_json,received_at)
+    SELECT ?1,?2,?3,?4,?5,?6
+    WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
+    ON CONFLICT(device_id,local_day) DO UPDATE SET
+    total_foreground_ms=excluded.total_foreground_ms,session_count=excluded.session_count,summary_json=excluded.summary_json,received_at=excluded.received_at
+    WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)
+      AND (CASE WHEN json_valid(screen_time_daily.summary_json)
+             THEN COALESCE(CAST(json_extract(screen_time_daily.summary_json,'$.capturedAtMs') AS INTEGER),0)
+             ELSE 0 END) < ?7`)
+    .bind(deviceId, day, total, sessions, summary, Date.now(), captured).run();
+  if ((write.meta.changes ?? 0) !== 1) {
+    const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1").bind(deviceId).first<{ revoked_at: number | null }>();
+    if (!life || life.revoked_at !== null) return json({ error: "device unauthorized" }, 401);
+    return json({ ok: true, localDay: day, duplicate: true });
+  }
+  return json({ ok: true, localDay: day, duplicate: false });
 }
 
 export async function parentScreenTime(env: ScreenTimeEnv, deviceId: string, days = 14) {
