@@ -1,6 +1,6 @@
 # Phase 8D continuation — private repository and recovery failure boundaries
 
-**IN PROGRESS / NOT PASS.** Continued `v1-p8d-backend-deep-audit` from `ec9d61d864a89dfd411b1c929e766bc509a985be`; previous executable green remains `00e0174` until this change receives exact-SHA hosted CI. No Android changes, deployment, live SQL/resource writes, secret access or family-record access.
+**IN PROGRESS / NOT PASS.** Continued `v1-p8d-backend-deep-audit` from `ec9d61d864a89dfd411b1c929e766bc509a985be`; latest executable `f93e3c858da1b270aa1cd4619995c1736c3a32e5` is green in hosted CI 41856987680, all 3 jobs. No Android changes, deployment, live SQL/resource writes, secret access or family-record access.
 
 ## Private GitHub access and controls
 
@@ -19,7 +19,7 @@ No settings were changed. Before release, configure applicable branch policy wit
 
 ## P8D-052 — deterministic recovery errors and stale transient state
 
-**Confirmed P2; correction locally verified, hosted CI pending.** Baseline native SQLite tests reproduced six failures:
+**Confirmed P2; correction SOURCE/CI VERIFIED at f93e3c8.** Baseline native SQLite tests reproduced six failures:
 
 - An unknown column or missing required field in the final restore table caused rejection only after devices had committed.
 - Targets containing pairing_tokens, pairing_pin_sessions, provider_rate_window or provider_cache were accepted despite being described as fresh; stale one-time credentials could remain beside restored identities.
@@ -32,7 +32,7 @@ Development-only D1 tables are not covered by this production restore API. Its l
 
 ## P8D-053 — supported backup byte envelope
 
-**Confirmed P2; correction locally verified, hosted CI pending.** Before correction, a structurally valid >16MiB gzip expansion was accepted, and an oversized generated snapshot was published. The existing per-table row cap did not bound byte volume.
+**Confirmed P2; correction SOURCE/CI VERIFIED at f93e3c8.** Before correction, a structurally valid >16MiB gzip expansion was accepted, and an oversized generated snapshot was published. The existing per-table row cap did not bound byte volume.
 
 Explicit supported envelope introduced:
 
@@ -66,4 +66,13 @@ Changing GitHub visibility or subscription did not change these live results. To
 
 Keep the previous 19-section/525-requirement tracking and findings. These changes do not close full P8D-002 recovery, deployed identity/schema, production Access policy, binding/Queue drift, live cross-store failure/ACK/DLQ proofs, real retention, rollback, repository protection or physical phone gates. Upgrade the old live 18-table helper before running it; its current guard still prevents accidental incomplete qualification.
 
-New blocking source CI includes recovery preflight and byte-limit tests; exact hosted result will be appended below. **No 8D final PASS; 8E/8F not started.**
+New blocking source CI includes recovery preflight and byte-limit tests; exact hosted result follows below. **No 8D final PASS; 8E/8F not started.**
+
+
+## Hosted source verification — f93e3c858da1b270aa1cd4619995c1736c3a32e5
+
+[Source CI 41856987680](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41856987680) **3/3 jobs SUCCESS**. Source job 126668176641: 64/64 steps; deployment job 126668176592: 7/7; backup job 126668175549: 7/7. Job log was fetched and inspected after completion, with no error/FAIL lines. Seven P8D-052 checks, four P8D-053 checks and native socket hibernation/reconstruction/expiry all pass, along with prior route/auth/Queue/recovery regressions and actual SQLite CLI source-destruction/38-table restore. Evidence: `PHASE8D_SOURCE_CI_41856987680.txt` (PASS summaries, not an asserted 95 independent tests).
+
+P8D-052 and P8D-053 are **SOURCE/CI VERIFIED** at this SHA, to the exact limits above. Whole-restore SQL/service atomicity, high-volume D1 allocation/memory behavior and live cloud recovery remain OPEN. GitHub repository private and authenticated source/log/write access verified. main/audit branch metadata unprotected; no settings modified. Live read-only run 41839919454 attempt 3 remains failure with unchanged drift/scope/Access findings. No Android edits, deployment, Cloudflare writes or family data access. Follow-up commit is documentation/evidence only. **8D NOT PASS; no Phase 8E/8F.**
+
+Next: obtain scoped read metadata for Cloudflare, prepare authorized infrastructure/Access repair and isolated current full-stack recovery/rollback. Preserve branch ec9d61d→f93e3c8 lineage; do not restart or infer final PASS from source CI.
