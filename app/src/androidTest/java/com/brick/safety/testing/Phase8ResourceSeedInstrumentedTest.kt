@@ -2,6 +2,7 @@ package com.brick.safety.testing
 
 import android.content.Context
 import com.brick.safety.data.Journal
+import com.brick.safety.crypto.DeviceKeys
 import com.brick.safety.maintenance.DeviceRoleStore
 import java.io.File
 
@@ -15,6 +16,11 @@ class Phase8ResourceSeedInstrumentedTest : BrickInstrumentationTestCase() {
         val statusFile = File(app.filesDir, "phase8_resource_seed_status.txt")
         statusFile.delete()
         val prefs = app.getSharedPreferences("brick", Context.MODE_PRIVATE)
+        // The previous fixture inserted a paired device ID without a signing key, creating a
+        // permanently invalid identity. This test must instead exercise a properly paired device.
+        assertFalse("resource fixture must start unpaired", prefs.contains("deviceId"))
+        DeviceKeys.initialize(app)
+        assertTrue("could not create pre-pairing signing identity", DeviceKeys.publicSpkiBase64().isNotBlank())
         assertTrue(
             prefs.edit()
                 .putString("deviceId", "80808080-8080-4080-8080-808080808080")
@@ -26,6 +32,8 @@ class Phase8ResourceSeedInstrumentedTest : BrickInstrumentationTestCase() {
                 .commit()
         )
         assertTrue(DeviceRoleStore.setChildAfterPairing(app))
+        assertTrue("signed traffic not possible after pairing", DeviceKeys.sign(byteArrayOf(0x42)).isNotBlank())
+        assertNull("unexpected paired-key continuity fault", DeviceKeys.identityFault(app))
 
         var durable = 0
         Journal(app).use { journal ->
