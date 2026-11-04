@@ -22,6 +22,8 @@ type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
   DEVICE_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   PAIR_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
+  PARENT_HISTORY_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
+  PARENT_WS_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   APP_ENV: string;
   CURRENT_APP_VERSION: string;
   CF_ACCESS_TEAM_DOMAIN: string;
@@ -47,6 +49,28 @@ export default {
       if (!type.includes("text/html")) return response;
       const headers = new Headers(response.headers); headers.set("Cache-Control", "no-store");
       return new Response(parentP8BHtml(await response.text()), { status: response.status, statusText: response.statusText, headers });
+    }
+
+    // Prevent authenticated, potentially expensive reads and WebSocket reconnect floods from
+    // starving device ingestion/pairing. Two separately configured Cloudflare edge limits.
+    const costlyParent = u.pathname.match(/^\\/parent\\/api\\/device\\/([^/]+)\\/(history|ws)$/);
+    if (costlyParent && req.method === "GET") {
+      const kind = costlyParent[2];
+      const denied = await parentGuard(req, env); if (denied) return denied;
+      if (kind === "ws") {
+        if (req.headers.get("Upgrade")?.toLowerCase() !== "websocket" ||
+            req.headers.get("Origin") !== u.origin) {
+          return json({ error: "same-origin WebSocket upgrade required" }, 403);
+        }
+      }
+      const rate = kind === "ws" ? env.PARENT_WS_RATE : env.PARENT_HISTORY_RATE;
+      // Missing bindings are a deployment failure. Never allow unbounded request work.
+      if (!rate || typeof rate.limit !== "function") return json({ error: "parent rate guard unavailable" }, 503);
+      const edgeIp = (req.headers.get("CF-Connecting-IP") ?? "unknown").slice(0, 96);
+      let allowed = false;
+      try { allowed = (await rate.limit({ key: `parent-${kind}:${edgeIp}` })).success; }
+      catch { return json({ error: "parent rate guard unavailable" }, 503); }
+      if (!allowed) return json({ error: "parent request rate limited" }, 429);
     }
 
     // Fallback PIN pairing never binds on the public child claim. The code is consumed into a
