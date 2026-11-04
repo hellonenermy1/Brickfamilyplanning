@@ -178,7 +178,11 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
     private fun cleanupFixtures() {
         databases.forEach { runCatching { context.deleteDatabase(it) } }
         preferences.forEach { runCatching { context.deleteSharedPreferences(it) } }
-        files.forEach { runCatching { File(context.filesDir, it).delete() } }
+        files.forEach { name ->
+            listOf("", ".new", ".bak").forEach { suffix ->
+                runCatching { File(context.filesDir, name + suffix).delete() }
+            }
+        }
         aliases.forEach { runCatching { deleteAlias(it) } }
     }
 }
