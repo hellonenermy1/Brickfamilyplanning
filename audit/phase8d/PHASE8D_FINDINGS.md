@@ -229,3 +229,19 @@
 **Required correction:** sanitize route parameters and unknown path segments before persisting; do not log query strings, tokens, raw coordinates, arbitrary headers, or full request bodies. Preserve a non-identifying route classification for observability. Scope is the D1 audit trail, **not** a claim that every Cloudflare/hosted application log is clean.
 
 **State:** OPEN — finding recorded before targeted regression and remediation.
+
+## P8D-014 — Raw/trusted production R2 history retention cannot be proved (8D.17)
+
+**Severity:** P1 provisional privacy/data-lifecycle concern; actual deployed R2 lifecycle rules and stored object ages are UNKNOWN. The current portal `src/phase4.ts:getRetention` advertises `rawHistoryDays:30` and `trustedHistoryDays:90`, but the checked-in scheduled `runRetentionCleanup` deletes only D1 safety events/pairing tokens/device event index. `cleanupPhase5C` handles D1 crash/audit, `cleanupOps` D1 health, `cleanupPhase5RefinedHistory` handles separate hypothesis/refined objects, and `backup-v6` deletes old `backups/d1/` objects. The inspected `src/history-store.ts` contains no production raw/trusted R2 history delete/sweep. There may be live R2 lifecycle policies not represented in GitHub; do not assume presence or absence without read-only Cloudflare evidence.
+
+**Required evidence and remediation decision:** inspect actual R2 lifecycle policy, retained samples and rules for `history/raw/` and `history/trusted/`; prove 30/90-day expiry, bounded failure/retry behavior, tenant/device scoping and no deletion of unexpired records; add CI/isolated R2 fault tests. If no policy exists, implement production-safe bounded cleanup and test before calling 8D.17 PASS.
+
+**Status:** OPEN / SOURCE GAP; runtime evidence blocked, no automatic deletion or production mutation authorized.
+
+## P8D-015 — Dedicated history/WebSocket request limits not demonstrated (8D.14)
+
+**Severity:** P2 provisional availability/resource-risk audit target. Production Wrangler source config has `DEVICE_RATE` (120/min) and `PAIR_RATE` (20/min), while development adds `PARENT_LOGIN_RATE` (6/min); OneMap has a separate D1 provider request budget. Source parent WebSocket upgrades and history read handlers authenticate, but no dedicated per-client history/WS rate guards were found in those paths. Edge-level WAF/Access/rate rules may exist in the Cloudflare account but are not observable here.
+
+**Required:** actual Cloudflare rule snapshot, quota budgets, synthetic abusive-call and reconnect tests, distinct safe limits for authenticated parent history, socket reconnect and costly reverse geocoding without starving SOS; verify normal multi-device / shared-IP behavior. Do not re-use pairing budget blindly.
+
+**Status:** OPEN — no live Cloudflare limits attested, no production change authorized.
