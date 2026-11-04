@@ -130,6 +130,10 @@ jobs:
         run: |
           npx --no-install esbuild src/phase5c.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-phase5c.mjs
           node scripts/test-phase8d-audit-path-privacy.mjs /tmp/brick-p8d-phase5c.mjs
+      - name: 8D.16 reproduce OPEN coherent-snapshot defect (negative audit evidence, not closure)
+        run: |
+          npx --no-install esbuild src/backup-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-backup.mjs
+          node scripts/reproduce-phase8d-backup-tear.mjs /tmp/brick-p8d-backup.mjs
       - name: P8D-002 versioned backup restore regression
         run: |
           npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
