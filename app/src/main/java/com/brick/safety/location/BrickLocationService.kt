@@ -25,6 +25,7 @@ import com.brick.safety.data.Journal
 import com.brick.safety.data.Protocol
 import com.brick.safety.diagnostics.DiagnosticStore
 import com.brick.safety.maintenance.DeepOffManager
+import com.brick.safety.maintenance.DeprovisionManager
 import com.brick.safety.maintenance.DeviceRoleStore
 import com.brick.safety.maintenance.WifiScheduleManager
 import com.brick.safety.managed.DesiredLocationState
@@ -105,9 +106,17 @@ class BrickLocationService : Service() {
     @Volatile private var lastReacquireAttemptElapsed = 0L
     @Volatile private var reacquisitionFailedForGap = false
     @Volatile private var lastObservedActivityMode = ActivityMode.UNKNOWN
+    @Volatile private var shuttingDown = false
+
+    // An in-flight FLP/provider/network callback must not reopen stores after deprovision begins.
+    // This is defense in depth, not a substitute for a separately verified whole-process drain.
+    private fun mustQuiesceAsync(): Boolean = shuttingDown || runCatching {
+        DeprovisionManager.stage(this) != DeprovisionManager.Stage.NONE || DeepOffManager.isActive(this)
+    }.getOrDefault(true)
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            if (mustQuiesceAsync()) return
             if (networkAvailable()) {
                 kickLivePump()
                 kickUploadPump(force = true)
@@ -116,6 +125,7 @@ class BrickLocationService : Service() {
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            if (mustQuiesceAsync()) return
             if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
                 kickLivePump()
@@ -127,7 +137,7 @@ class BrickLocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        if (DeepOffManager.isActive(this) || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
+        if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
             stopSelf()
             return
         }
@@ -187,6 +197,7 @@ class BrickLocationService : Service() {
     }
 
     private fun startTracking(intervalMs: Long) {
+        if (mustQuiesceAsync()) return
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             locationSubscribed = false
             return
@@ -221,6 +232,7 @@ class BrickLocationService : Service() {
     }
 
     private fun recordMeasured(location: Location) {
+        if (mustQuiesceAsync()) return
         val now = SystemClock.elapsedRealtime()
         lastLocationCallbackElapsed = now
         val sample = positionEngine.evaluate(location, activityEngine.snapshot())
@@ -241,6 +253,7 @@ class BrickLocationService : Service() {
     }
 
     private fun recordSample(sample: PositionSample) {
+        if (mustQuiesceAsync()) return
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         val deviceId = prefs.getString("deviceId", null) ?: return
         prefs.getString("apiBase", null) ?: return
@@ -273,11 +286,12 @@ class BrickLocationService : Service() {
     }
 
     private fun kickLivePump() {
+        if (mustQuiesceAsync()) return
         if (!::connectivity.isInitialized || !networkAvailable()) return
         if (!livePumpRunning.compareAndSet(false, true)) return
         liveIo.execute {
             try {
-                while (networkAvailable()) {
+                while (!mustQuiesceAsync() && networkAvailable()) {
                     val candidate = latestLive.getAndSet(null) ?: break
                     val prefs = getSharedPreferences("brick", MODE_PRIVATE)
                     val deviceId = prefs.getString("deviceId", null) ?: break
@@ -291,6 +305,7 @@ class BrickLocationService : Service() {
                         break
                     }
                     val r = result.getOrThrow()
+                    if (mustQuiesceAsync()) break
                     DiagnosticStore.log(
                         this,
                         DiagnosticStore.Severity.INFO,
@@ -301,13 +316,14 @@ class BrickLocationService : Service() {
                 }
             } finally {
                 livePumpRunning.set(false)
-                if (latestLive.get() != null && networkAvailable()) kickLivePump()
+                if (!mustQuiesceAsync() && latestLive.get() != null && networkAvailable()) kickLivePump()
             }
         }
     }
 
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
+            if (mustQuiesceAsync()) return@scheduleWithFixedDelay
             val now = SystemClock.elapsedRealtime()
             if (lastAtlasPulseElapsed <= 0L || now < lastAtlasPulseElapsed || now - lastAtlasPulseElapsed >= ATLAS_PULSE_MS) {
                 lastAtlasPulseElapsed = now
@@ -375,6 +391,7 @@ class BrickLocationService : Service() {
     }
 
     private fun beginReacquisition(now: Long, forceSubscriptionRepair: Boolean, sosPriority: Boolean = false) {
+        if (mustQuiesceAsync()) return
         if (reacquisitionInProgress.get()) return
         if (lastReacquireAttemptElapsed > 0L && now >= lastReacquireAttemptElapsed &&
             now - lastReacquireAttemptElapsed < REACQUIRE_MIN_RETRY_GAP_MS) return
@@ -422,12 +439,14 @@ class BrickLocationService : Service() {
         p.payload.size == LOCATION_V2_BYTES && p.payload.firstOrNull()?.toInt() == 2
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
+        if (mustQuiesceAsync()) return false
         val sent = DurableLocationDelivery.sendOne(journal, p) { payload -> BrickApi.sendLocation(baseUrl, deviceId, payload) }
         if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
         return sent
     }
 
     private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
+        if (mustQuiesceAsync()) return false
         if (batch.isEmpty()) return true
         val sent = DurableLocationDelivery.sendBatch(journal, batch) { pending ->
             BrickApi.sendLocationBatch(baseUrl, deviceId, pending.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) })
@@ -448,15 +467,17 @@ class BrickLocationService : Service() {
     }
 
     private fun previewNewestIfBacklogged(baseUrl: String, deviceId: String, pendingCount: Int) {
-        if (pendingCount <= 1) return
+        if (mustQuiesceAsync() || pendingCount <= 1) return
         val newest = runCatching { journal.latestPending() }.getOrNull() ?: return
         if (!isV2(newest)) return
         runCatching { BrickApi.sendLiveLocationPreview(baseUrl, deviceId, newest.payload) }
     }
 
     private fun drainCrashReports(baseUrl: String, deviceId: String): Boolean {
+        if (mustQuiesceAsync()) return false
         val pending = runCatching { crashOutbox.pending(10) }.getOrElse { return false }
         for (report in pending) {
+            if (mustQuiesceAsync()) return false
             val sent = runCatching {
                 BrickApi.sendCrashPayload(baseUrl, deviceId, report.payload, report.reportId)
                 crashOutbox.ack(report.reportId)
@@ -467,6 +488,7 @@ class BrickLocationService : Service() {
     }
 
     private fun resetCoreUploadFailureStreak() {
+        if (mustQuiesceAsync()) return
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         if (prefs.getInt(PREF_UPLOAD_FAILURE_STREAK, 0) != 0) {
             prefs.edit().putInt(PREF_UPLOAD_FAILURE_STREAK, 0).apply()
@@ -481,6 +503,7 @@ class BrickLocationService : Service() {
     }
 
     private fun kickUploadPump(force: Boolean = false) {
+        if (mustQuiesceAsync()) return
         val now = SystemClock.elapsedRealtime()
         if (!force && nextUploadAttemptElapsed > now) return
         if (!uploadPumpRunning.compareAndSet(false, true)) return
@@ -488,6 +511,7 @@ class BrickLocationService : Service() {
         networkIo.execute {
             var failed = false
             try {
+                if (mustQuiesceAsync()) return@execute
                 val prefs = getSharedPreferences("brick", MODE_PRIVATE)
                 val deviceId = prefs.getString("deviceId", null) ?: return@execute
                 val baseUrl = prefs.getString("apiBase", null) ?: return@execute
@@ -507,7 +531,7 @@ class BrickLocationService : Service() {
                     return@execute
                 }
                 previewNewestIfBacklogged(baseUrl, deviceId, pendingCount)
-                while (true) {
+                while (!mustQuiesceAsync()) {
                     val pending = runCatching { journal.nextPending(LOCATION_BATCH_SIZE) }.getOrElse {
                         failed = true
                         return@execute
@@ -539,7 +563,8 @@ class BrickLocationService : Service() {
                 failed = true
             } finally {
                 uploadPumpRunning.set(false)
-                val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
+                if (!mustQuiesceAsync()) {
+                    val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
                 val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true)
                 val pendingCore = runCatching { journal.stats().pendingCount > 0 }.getOrDefault(true)
                 val hasPending = pendingSafety || pendingCrash || pendingCore
@@ -551,11 +576,13 @@ class BrickLocationService : Service() {
                     nextUploadAttemptElapsed = SystemClock.elapsedRealtime() + delayMs
                     supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)
                 }
+                }
             }
         }
     }
 
     private fun noteRecovery() {
+        if (mustQuiesceAsync()) return
         recoveryCount += 1
         getSharedPreferences("brick", MODE_PRIVATE).edit()
             .putInt("recoveryCount", recoveryCount)
@@ -570,7 +597,7 @@ class BrickLocationService : Service() {
 
     private fun startSupervisor() {
         supervisor.scheduleWithFixedDelay({
-            if (DeepOffManager.isActive(this) || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
+            if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
                 stopSelf()
                 return@scheduleWithFixedDelay
             }
@@ -612,6 +639,7 @@ class BrickLocationService : Service() {
     }
 
     private fun maybeScanBleAnchors(now: Long, force: Boolean = false) {
+        if (mustQuiesceAsync()) return
         if (!::bleAnchorEngine.isInitialized || bleAnchorEngine.configuredCount() == 0 || !bleAnchorEngine.permissionGranted()) return
         val activity = activityEngine.snapshot().mode
         if (activity == ActivityMode.VEHICLE || activity == ActivityMode.BICYCLE || activity == ActivityMode.RUNNING) return
@@ -657,6 +685,7 @@ class BrickLocationService : Service() {
     }
 
     private fun checkBatterySafety() {
+        if (mustQuiesceAsync()) return
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         if (!prefs.contains("deviceId")) return
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -733,6 +762,7 @@ class BrickLocationService : Service() {
     }.getOrNull() ?: "unknown"
 
     private fun sendHealth(now: Long, locationEnabled: Boolean) {
+        if (mustQuiesceAsync()) return
         lastHealthElapsed = now
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
         val deviceId = prefs.getString("deviceId", null) ?: return
@@ -803,8 +833,10 @@ class BrickLocationService : Service() {
         }
 
         healthIo.execute {
+            if (mustQuiesceAsync()) return@execute
             runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) }
                 .onSuccess { sync ->
+                    if (mustQuiesceAsync()) return@onSuccess
                     prefs.edit().putBoolean("healthUploadPending", false).apply()
                     updateBleAnchorConfigs(sync.bleAnchors)
                     applyLocationCommand(deviceId, sync.locationCommand)
@@ -850,7 +882,7 @@ class BrickLocationService : Service() {
         .build()
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (!DeepOffManager.isActive(this) && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
+        if (!mustQuiesceAsync() && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
             runCatching { RecoveryScheduler.ensureScheduled(this) }
             runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         }
@@ -858,6 +890,7 @@ class BrickLocationService : Service() {
     }
 
     override fun onDestroy() {
+        shuttingDown = true
         if (::connectivity.isInitialized) runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
         if (::fused.isInitialized) runCatching { fused.removeLocationUpdates(callback) }
         if (::activityEngine.isInitialized) runCatching { activityEngine.stop() }
