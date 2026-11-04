@@ -1,0 +1,62 @@
+name: Brick V1 Phase 8D — Backend Trust Boundary Audit CI
+
+on:
+  push:
+    branches: [v1-p8d-backend-deep-audit]
+    paths:
+      - 'src/**'
+      - 'schema/**'
+      - 'scripts/**'
+      - 'wrangler.template.jsonc'
+      - '.github/workflows/deploy-brick.yml'
+      - '.github/workflows/v1-phase8d-backend-audit-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brick-phase8d-source-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deployment-contract:
+    name: P8D-001 — Reproduce production deployment/schema drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+      - name: Require reproducible production entry, schema and deploy contract
+        run: node scripts/audit-phase8d-contract.mjs deployment
+
+  backup-inventory:
+    name: P8D-002 — Reproduce backup coverage drift
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+      - name: Require explicit and complete essential-state backup/restore inventory
+        run: node scripts/audit-phase8d-contract.mjs backup
+
+  source-build:
+    name: Phase 8D source baseline TypeScript and locked dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install exact package lock
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck all Cloudflare Worker TypeScript
+        run: npm run typecheck
+      - name: Build parent/browser assets
+        run: npm run build:parent-assets
