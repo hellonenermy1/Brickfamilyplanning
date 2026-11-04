@@ -3,6 +3,7 @@ import { maybeHandleFallEvent, type FallEventEnv } from "./fall-event-route";
 import { ingestScreenTime, parentScreenTime, type ScreenTimeEnv } from "./screen-time-route";
 import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summary";
 import { nextCommuteRefreshCandidates } from "./commute-scheduler";
+import { claimCommuteRefresh } from "./commute-refresh-claim";
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
 import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -114,7 +115,11 @@ export default {
       const denied = await parentGuard(req, env); if (denied) return denied;
       const deviceId = decodeURIComponent(commuteParent[1]);
       const now = Date.now();
-      ctx.waitUntil(refreshCommutes(env, deviceId, now - 2 * 86_400_000, now).catch(() => undefined));
+      // Cached response is immediate. Recompute from R2 only after an atomic,
+      // per-device 10-minute refresh claim (also checked for active device).
+      if (await claimCommuteRefresh(env.DB, deviceId, now)) {
+        ctx.waitUntil(refreshCommutes(env, deviceId, now - 2 * 86_400_000, now).catch(() => undefined));
+      }
       return parentCommutes(env, deviceId, Number(u.searchParams.get("limit") ?? "50"));
     }
 
