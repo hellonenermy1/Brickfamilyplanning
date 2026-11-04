@@ -64,6 +64,7 @@ jobs:
         run: |
           npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
           node scripts/test-backup-restore.mjs /tmp/brick-p8d-restore.mjs
+          node scripts/test-phase8d-isolated-sqlite-restore.mjs /tmp/brick-p8d-restore.mjs
       - name: Verify strict schema 016 transform and repeatable migration on SQLite
         shell: bash
         run: |
