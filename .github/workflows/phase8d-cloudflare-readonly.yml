@@ -1,0 +1,50 @@
+name: "Brick Phase 8D — Cloudflare READ-ONLY Account Attestation"
+on:
+  workflow_dispatch:
+  push:
+    branches: [v1-p8d-backend-deep-audit]
+    paths:
+      - 'scripts/phase8d-cloudflare-readonly.mjs'
+      - 'scripts/test-phase8d-cloudflare-readonly.mjs'
+      - '.github/workflows/phase8d-cloudflare-readonly.yml'
+permissions:
+  contents: read
+concurrency:
+  group: brick-phase8d-readonly-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  read-only-test:
+    name: "Seven audit assertions — synthetic negative/positive contract"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+      - run: node scripts/test-phase8d-cloudflare-readonly.mjs
+  live-metadata:
+    name: "Cloudflare seven read-only metadata checks (live required)"
+    needs: read-only-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Use a dedicated scoped READ ONLY token, never the existing deployment token.
+    # No R2 objects, user D1 rows, raw logs, Worker source or secret values are accessed.
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+      - name: Inspect actual Cloudflare deployment and configuration (GET only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_AUDIT_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/phase8d-cloudflare-readonly.mjs
+      - name: Attach sanitized PASS/DRIFT/BLOCKED audit result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8d-cloudflare-readonly-${{ github.sha }}
+          path: phase8d-live-readonly-result.json
+          if-no-files-found: warn
+          retention-days: 14
