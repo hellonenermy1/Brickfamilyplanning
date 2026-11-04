@@ -2,7 +2,7 @@ name: Brick V1 Phase 8 — Android Resource Budget Evidence
 
 on:
   push:
-    branches: [v1-p8-android-hardening]
+    branches: [v1-p8-android-hardening, v1-p8c-android-deep-audit]
   workflow_dispatch:
 
 permissions:
