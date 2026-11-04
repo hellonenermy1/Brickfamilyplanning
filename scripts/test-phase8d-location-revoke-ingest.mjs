@@ -18,6 +18,10 @@ try{
  assert.equal(rejected.revoked,true,"revoked device must be refused by atomic D1 insert");
  assert.equal(db.prepare("SELECT COUNT(*) n FROM device_events WHERE device_id=?1").get(DEVICE_A).n,1);
  assert.equal(doCalls,1,"revoked device wrote DO state");
+ // The separate precise-endpoint SQL in the same D1 batch must obey the same revoke fence.
+ const rejectedPrecise=await persistAccepted(env,DEVICE_A,[{...p,sequence:9,quality:1,uncertaintyCm:500,wallTimeMs:now}]);
+ assert.equal(rejectedPrecise.revoked,true);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM phase5_precise_endpoints WHERE device_id=?1").get(DEVICE_A).n,0,"revoked child inserted precise refinement endpoint");
  db.prepare("UPDATE devices SET revoked_at=NULL WHERE id=?1").run(DEVICE_A);
  const bytes=new ArrayBuffer(43),v=new DataView(bytes);
  v.setUint8(0,1);v.setUint32(1,2);v.setBigUint64(5,3n);v.setBigUint64(13,1000n);
