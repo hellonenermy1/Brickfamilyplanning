@@ -165,6 +165,14 @@ jobs:
           # No worker may open a Brick preference as an instance property before its doWork guard.
           ! grep -F 'private val prefs = applicationContext.getSharedPreferences' "$evidence_worker"
 
+          # P8C-013: unknown/corrupt deprovision provenance must never re-enable purged state.
+          grep -F 'private const val KEY_EVER_STARTED = "deprovisionEverStarted"' "$deprov" >/dev/null
+          grep -F 'enum class Stage { INVALID, NONE' "$deprov" >/dev/null
+          grep -F 'return current == Stage.INVALID || current.ordinal >= Stage.PURGE_BRICK.ordinal' "$deprov" >/dev/null
+          grep -F 'DeprovisionManager.Stage.INVALID -> "RECOVERY REQUIRED"' app/src/main/java/com/brick/safety/diagnostics/DiagnosticsActivity.kt >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/maintenance/Phase8DeprovisionStageIntegrityInstrumentedTest.kt
+          grep -F 'testWrongTypedStageFailsClosedWithoutException' app/src/androidTest/java/com/brick/safety/maintenance/Phase8DeprovisionStageIntegrityInstrumentedTest.kt >/dev/null
+
           # P8C-006: a paired identity may never be silently regenerated or replaced.
           grep -F 'paired_signing_key_missing' "$device_keys" >/dev/null
           grep -F 'paired_signing_key_mismatch' "$device_keys" >/dev/null
