@@ -142,7 +142,7 @@ object DeprovisionManager {
         // Stop independently running optional/provider state before deleting its preferences/keys.
         // Failure to contact Shizuku is harmless; shutdown() also clears the local bridge and rotates
         // its executor, while the UserService has an idle-exit guard as a final fallback.
-        runCatching { ShizukuBridgeController.shutdown() }
+        runCatching { ShizukuBridgeController.shutdownForDeprovision() }
 
         // WorkManager cancellation is explicitly best-effort. PURGE may not proceed until every
         // Brick-owned unique chain has reached a terminal state, its cancellation operations have
