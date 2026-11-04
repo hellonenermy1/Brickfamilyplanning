@@ -27,3 +27,6 @@
 | P8D-010 idempotent retry fix | `7c9b0bc4` | [41794488568](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794488568) | GREEN | Real SQLite |
 | 8D.12/14 PIN Origin/rate checks | `2de85106` | [41794792235](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794792235) | GREEN | Pairing routes only |
 | 8D.15 built assets private markers | `d52fff68` | [41794954253](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794954253) | GREEN | Built assets only |
+
+| P8D-011 missing verified WS lease | `2d624563` | [41797894520](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41797894520) | RED: an unleased DO /ws request returned HTTP 101, not 403 | Actual bundled DO with Node test shim; no live Cloudflare |
+| P8D-011 expiry/hibernation/logout/revocation hardened | `1af0ebb8` | [41798531256](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41798531256) | GREEN all 3 CI jobs; P8D-011 regression PASS | Source/CI simulated DO, not live Access/DO or browser continuous-session trial |
