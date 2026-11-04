@@ -92,6 +92,10 @@ jobs:
           npx --no-install esbuild src/pin-pairing.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-key-validation.mjs /tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-confirm-race.mjs /tmp/brick-p8d-pin-pairing.mjs
+      - name: P8D-016 reject location-control command if device revoked between read and UPSERT
+        run: |
+          npx --no-install esbuild src/phase6-location-control.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location-control.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-location-control-revoke-race.mjs /tmp/brick-p8d-location-control.mjs
       - name: P8D-006 deny mutations for revoked child identity
         run: |
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
