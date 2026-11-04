@@ -150,7 +150,8 @@ export function preciseEndpointStatements(db: D1Database, deviceId: string, pack
     out.push(
       db.prepare(
         "INSERT OR IGNORE INTO phase5_precise_endpoints(device_id,epoch,sequence,wall_time_ms,latitude,longitude,uncertainty_m,created_at) " +
-        "VALUES(?1,?2,?3,?4,?5,?6,?7,?8)"
+        "SELECT ?1,?2,?3,?4,?5,?6,?7,?8 WHERE EXISTS " +
+        "(SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)"
       ).bind(deviceId, p.epoch, p.sequence, p.wallTimeMs, p.trustedLatE7 / 10_000_000, p.trustedLonE7 / 10_000_000, uncertaintyM, now)
     );
   }
