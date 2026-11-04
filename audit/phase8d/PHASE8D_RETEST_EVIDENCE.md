@@ -11,3 +11,10 @@
 | P8D-006 fixed revoked mutation | `168b192f` | [41784886446](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41784886446) | ALL CI GREEN | Source + mocked D1; Cloudflare concurrency pending |
 
 **Required closure:** tests at exact deployment SHA, live Cloudflare state/bindings, isolated complete-stack disaster restore, trust-boundary tests; no inferred PASS.
+
+| P8D-007: concurrent same-segment R2 overwrite | `ddd950be` | [41790943895](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41790943895) | RED: ACKed 100+101, raw retains only 101 | Synthetic R2, source |
+| P8D-007: conditional R2 merge+bounded retry | `6c71d878` | [41791153745](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791153745) | GREEN: concurrent raw/trusted retained | Source + synthetic R2; no live Cloudflare |
+| P8D-004: R2 partial write / safety receipt ACK fault | `701b716e` | [41791370163](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791370163) | GREEN: retries before persistence | Source + synthetic D1/R2 |
+| 8D.3–5: ECDSA P-256 device health auth/replay | `57c76914` | [41791527844](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791527844) | GREEN: wrong/revoked/tampered/expired/replayed | Signed health helper only |
+| P8D-008: duplicate sequence overwrites R2 | `43dc3f3c` | [41791762934](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791762934) | RED: original latitude overwritten | Source + synthetic R2 |
+| P8D-008: first-write-wins replay integrity | `6ef174d3` | [41791862854](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791862854) | GREEN: original raw/trusted packet retained | Source + synthetic R2; full CI 3/3 |

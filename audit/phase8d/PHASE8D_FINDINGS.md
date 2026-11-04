@@ -123,3 +123,31 @@
 - **Expected:** immutable first-accepted packet at the same device/epoch/sequence and earliest server receipt; duplicate delivery must be idempotently acknowledged without rewriting original raw or trusted history.
 - **Reproduction:** `scripts/test-phase8d-history-idempotence.mjs` stores a synthetic packet, then re-delivers same epoch/sequence with altered latitude; independently checks raw and trusted R2 objects, sequence count and receipt. Run before fix.
 - **Status:** OPEN — negative regression pending.
+
+
+---
+
+## 2026-11-04 Phase 8D.3–D.9 exact-source security and durability continuation
+
+**P8D-007 CONCURRENCY REPRODUCED THEN FIXED — not yet Cloudflare-live-verified**
+- RED exact source `ddd950be0aa79b91c32d6932b285d0bfe0082007`: [CI 41790943895](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41790943895), history test fails because two successful concurrent Queue deliveries yield final R2 raw sequence list `[101]` rather than `[100,101]`.
+- Implemented conditional R2 generation-bound writes in `src/history-store.ts` using current Cloudflare documented `onlyIf` on `put`; existing object ETag check and first-write `If-None-Match: *`. Bounded 8-attempt re-read/merge on precondition conflict; both independent raw/trusted put results awaited before claiming success. If exhausted, Queue message is retried, not ACKed.
+- GREEN exact source `6c71d8788e557cfe3831a79f99d706b6e204c062`: [CI 41791153745](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791153745), same adversarial barrier retains both sequence records and trusted receipts.
+- Source/CI result: **FIXED — RETESTED**, **live Cloudflare R2 conditional-write and multi-object consistency still unverified**.
+
+**P8D-004 ACK / SAFETY FAULT SEAM TESTED, NOT CLOSED**
+- [CI 41791370163](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791370163) verifies synthetic first trusted R2 failure after raw success → no Queue ACK, retry → idempotent ACK; sustained conditional-write exhaustion → retry; safety receipt not present in D1 / D1 outage → retry; matching durable D1 safety row → ACK.
+- For ordinary `ingestLocationV6`, HTTP ACK occurs after Queue send, D1 event/index batch, DO latest (when inserted), safety evaluation, optional bounded refinement; **R2 writes occur asynchronously in Queue consumer** and therefore HTTP ACK does NOT establish R2 history persistence. The queue's message ACK, not the HTTP ACK, is guarded on successful R2 writes. This is a documented distinction, not a claim of full end-to-end losslessness.
+- Still needed: live Cloudflare Queue/DLQ redelivery/retry-window proof, R2 partial-failure cleanup, HTTP crash-window injection, actual DO persistence, history through backup/restore.
+
+**8D.3/.4/.5 P-256 SIGNED HEALTH VERIFICATION, PARTIAL**
+- [CI 41791527844](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791527844) builds the actual `src/device-json-security.ts` and signs requests with real WebCrypto P-256. Valid sequence `100→102` is accepted; repeated `100`, delayed `101`, wrong key, wrong device, unknown/revoked device, modified signed body, missing signature, stale/future timestamp, malformed and oversized inputs are rejected without advancing the D1 replay watermark.
+- This verifies **only the signed health replay route helper** and does NOT qualify all location, SOS, safety, Ground, Witness or WebSocket paths nor the PDF's entire 100/101/102 epoch matrix.
+
+**P8D-008 SAME-SEQUENCE HISTORY REWRITE REPRODUCED THEN FIXED**
+- RED exact source `43dc3f3c6b9c612640cf70e4839879e4174a5994`: [CI 41791762934](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791762934), replaying same (device,epoch,sequence) with different latitude replaced a previously persisted raw history coordinate `13520000` with `13999999` (trusted history equally vulnerable).
+- Root cause `mergePackets` loaded old records into a Map but then overwrote identical logical sequence keys from every incoming Queue delivery, despite D1 `INSERT OR IGNORE`.
+- Fix SHA `6ef174d366932e75852d50667e8c836108d653da`: first committed packet wins; same-batch duplicates also preserve earliest copy. Earliest server receipt remains unchanged.
+- GREEN [CI 41791862854](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791862854), all three jobs, including original concurrent R2 and new replay integrity test. **Source/CI verified only; historical production R2 corruption and Cloudflare execution unknown**.
+
+**Audit invariants:** No production deployments, Cloudflare account calls, Android changes, live-user data inspection, or source-branch merges occurred during these tests. No secrets added. All RED→GREEN evidence is retained. Phase 8D remains NOT PASS.

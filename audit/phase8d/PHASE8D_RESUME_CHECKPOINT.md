@@ -55,3 +55,17 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 **Next substantive work:** finish 8D.2 exhaustive public/parent/device endpoint inventory (initial candidate register in `PHASE8D_ENDPOINT_INVENTORY_DRAFT.csv`), runtime auth/device revocation + cross-device tests, real Cloudflare read-only deployment attestation, R2/DO recovery/drill, coherent backup under concurrent writes. Then 8D.1–8D.19 closure and final 525-ledger mapping. Do not use production data for fault injection or perform deployment without explicit release approval.
 
 **Dev beta migration requires operator-controlled `BRICK_DEV_PARENT_ACCESS_TOKEN`** (32 random bytes base64url minimum) and private Worker-secret provisioning, plus real old-session revocation/credential rotation on the affected development deployment. See `PHASE8D_SECURITY_REPORT.md`. Do not put the token in GitHub or in chat.
+
+---
+
+## 2026-11-04 later Phase 8D continuation — exact source and RED/GREEN receipts
+
+**Active branch:** `v1-p8d-backend-deep-audit`. **Latest source pass:** `6ef174d366932e75852d50667e8c836108d653da` with ALL THREE jobs SUCCESS [41791862854](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791862854). Subsequent audit-only commits do not change qualified code.
+
+**8D.5/6/9 reliability discoveries:**
+- P8D-007: original same-segment concurrent R2 sends can both ACK while last-write-wins loses one location. RED [41790943895](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41790943895), fixed with CAS/ETag conditional writes and retry on collisions, GREEN [41791153745](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791153745).
+- P8D-008: duplicate epoch/sequence changed prior R2 coordinate. RED [41791762934](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791762934), first-write-wins fix, GREEN [41791862854](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791862854).
+- P8D-004: ACK/R2 partial failure matrix GREEN [41791370163](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791370163); still not full Cloudflare durability qualification.
+- 8D.3–5: real P-256 signed-health wrong key/device/revoked/tamper/replay/timestamp/size matrix GREEN [41791527844](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791527844); other API handlers and 100–101–102/epoch matrix not yet tested.
+
+**Mandatory remaining:** all 19 PDF sections 8D.1–8D.19 still require completion/mapping at appropriate scope. In particular 8D.1 actual deployed Cloudflare Worker SHA/bindings and dev secret rotation; 8D.2 full route probes/coverage; 8D.3–8D.5 all device and epoch paths; 8D.6/8D.9 live queue/DLQ; 8D.7 DO + history/fallback ordering; 8D.8 D1 concurrency; 8D.10 parent WebSockets; 8D.11–8D.15 session, CSRF, limits and secrets; 8D.16 D1+R2+DO isolated full-stack restore plus coherent snapshot under writes; 8D.17–8D.19 retention, observability, deployment and rollback. Do not advance to 8E or declare 8D PASS.
