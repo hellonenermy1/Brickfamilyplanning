@@ -269,10 +269,21 @@ jobs:
               ('service','com.brick.safety.atlas.BrickCompanionAssociationService','android.permission.BIND_COMPANION_DEVICE_SERVICE'),
               ('receiver','com.brick.safety.managed.BrickDeviceAdminReceiver','android.permission.BIND_DEVICE_ADMIN'),
               ('provider','rikka.shizuku.ShizukuProvider','android.permission.INTERACT_ACROSS_USERS_FULL'),
+              # These are AndroidX platform integration surfaces; each must retain its exact
+              # signature/system binding permission. Any new export or permission loss FAILS.
+              ('receiver','androidx.profileinstaller.ProfileInstallReceiver','android.permission.DUMP'),
+              ('receiver','androidx.work.impl.diagnostics.DiagnosticsReceiver','android.permission.DUMP'),
+              ('service','androidx.work.impl.background.systemjob.SystemJobService','android.permission.BIND_JOB_SERVICE'),
           }
           actual=set(exported)
           assert actual == expected, f'exported surface mismatch: actual={sorted(actual)} expected={sorted(expected)}'
           assert launchers == ['com.brick.safety.ui.MainActivity'], f'unexpected launchers: {launchers}'
+          assert all(perm is not None for kind,name,perm in actual if name != 'com.brick.safety.ui.MainActivity')
+          # WorkManager's diagnostics receiver must remain disabled in release by default.
+          diagnostics=[node for node in app.findall('receiver')
+                       if node.get(ns+'name') == 'androidx.work.impl.diagnostics.DiagnosticsReceiver']
+          assert len(diagnostics) == 1
+          assert diagnostics[0].get(ns+'enabled') == 'false', 'WorkManager diagnostic receiver unexpectedly enabled'
           print('merged release manifest/exported surface OK:', sorted(actual))
           PY
 
