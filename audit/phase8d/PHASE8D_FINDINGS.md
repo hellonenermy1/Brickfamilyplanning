@@ -479,6 +479,15 @@ Recorded before correction, baseline3a29458. 8D.3/.5/.7/.10, BE-002/003/004 and 
 
 ## Continuation — P8D-054/055/056, local history scope
 
-Continued3a29458 on existing private audit branch. Seven negative DO tests reproduced failures before source edits, one active/legacy control passed. After fixes all8 focused tests pass: six archived telemetry/marker keys respect persisted revocation, three markers use transactional monotonic updates, health follows signed sequence and rejects delayed/duplicate/legacy downgrade. Native workerd actual RPC and hibernation/revocation checks pass locally. Source CI pending exact new commit.
+Continued 3a29458 on existing private audit branch. Seven negative DO tests reproduced failures before source edits, one active/legacy control passed. After fixes all 8 focused tests pass: six archived telemetry/marker keys respect persisted revocation, three markers use transactional monotonic updates, health follows signed sequence and rejects delayed/duplicate/legacy downgrade. Native workerd actual RPC and hibernation/revocation checks pass locally. Source CI pending exact new commit.
 
 Read-only Git history scan:2234 reachable local commits,2382 unique blobs,19,215,060 bytes;10 blobs contain only known P8D-003 weak-verifier marker among checked categories. No matching values printed; findings-review status, not blanket absence/rotation proof. Evidence refs/paths/scopes in `PHASE8D_LOCAL_GIT_HISTORY_3a29458.json`; detailed report `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Cross-store races, exclusive safety evaluation, real Cloudflare recovery/security and all existing live blockers remain OPEN. No deployment, Android/family data or settings changes. **8D NOT PASS.**
+
+
+## Hosted source proof — 0a7e6eb6cbb35eae3d36d0621d8a7d3caa48f287
+
+[CI 41859178762](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41859178762) **3/3 jobs SUCCESS**. Source job 126675937098: 65/65 steps; backup126675937168:7/7; deployment126675937752:7/7. Actual completed source log fetched: no error/FAIL lines; eight new DO tests, native RPC ordering/revoked archive checks, WS hibernation/expiry, scanner controls and all prior regressions including SQLite source-destruction/38-table restore PASS. Extract: `PHASE8D_SOURCE_CI_41859178762.txt` (106 PASS summary lines, not 106 independent tests).
+
+P8D-054/055/056 **SOURCE/CI VERIFIED** to the exact scopes in `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Latest local full reachable-history scan at executable HEAD0a7e6eb:2235 commits/2394 unique blobs/19,483,355 bytes;11 known weak-verifier-marker matches only among checked categories, including scanner's own legacy reference. `PHASE8D_LOCAL_GIT_HISTORY_0a7e6eb.json` is sanitized evidence, not rotation or all-secret absence proof.
+
+Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live source/config/Access, full Cloudflare D1+R2+DO disaster recovery, retention/rollback, repository protection and remaining endpoint coverage stay OPEN. Live attempt3 of41839919454 is still the latest inspected live evidence; no claim that this code is deployed. No Android edits, deployment, Cloudflare writes, user family data or repository settings changed. Follow-up commit contains documentation/evidence only. **Phase8D NOT PASS; no Phase 8E/8F.**

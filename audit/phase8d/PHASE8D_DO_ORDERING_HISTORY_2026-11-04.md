@@ -1,6 +1,6 @@
 # Phase 8D continuation — DO archival/order boundaries and Git history
 
-**IN PROGRESS / NOT PASS.** Continued the same branch from `3a294588613641fd9e608ff78a94a90bd8f8a921`, private GitHub ref verified unchanged. Previous executable green f93e3c8 remains the prior evidence until new hosted CI is attached. No Android edits, deployment, repository settings, Cloudflare resource/SQL writes or family data access.
+**IN PROGRESS / NOT PASS.** Continued the same branch from `3a294588613641fd9e608ff78a94a90bd8f8a921`, private GitHub ref verified unchanged. New executable `0a7e6eb6cbb35eae3d36d0621d8a7d3caa48f287` verified in hosted CI 41859178762, all 3 jobs SUCCESS. No Android edits, deployment, repository settings, Cloudflare resource/SQL writes or family data access.
 
 ## Reproduced defects
 
@@ -51,6 +51,20 @@ This does not cover unknown/deleted remote refs, dangling objects, LFS payloads,
 
 ## Acceptance and next steps
 
-Current source CI must verify the new exact SHA, all prior regressions and native runtime before source closure. Existing live evidence41839919454 attempt3 (old attestor SHA d74b30d, 15:16Z) remains NOT PASS: seven production/two dev missing bindings, absent expected Queue/DLQ, deployed source unknown, R2/Access read scope blocked, D1 catalog401 and public prod local login policy failure. No new live deployment/read-scope change has been demonstrated in this continuation.
+Current exact-SHA source CI has verified all new and prior regressions; final proof below. Existing live evidence41839919454 attempt3 (old attestor SHA d74b30d, 15:16Z) remains NOT PASS: seven production/two dev missing bindings, absent expected Queue/DLQ, deployed source unknown, R2/Access read scope blocked, D1 catalog401 and public prod local login policy failure. No new live deployment/read-scope change has been demonstrated in this continuation.
 
-Next unresolved work: deployed identity/bindings/Access, isolated current D1+R2+DO disaster recovery and cutover, Queue crash/ACK/DLQ, exclusive safety evaluation or equivalent idempotent D1 effects, live retention/rollback, configured repository protection and remaining method/auth/input coverage. Preserve the19-section and525-requirement ledgers; this report does not assert their exhaustive completion. **No Phase8D final PASS; no8E/8F.**
+Next unresolved work: deployed identity/bindings/Access, isolated current D1+R2+DO disaster recovery and cutover, Queue crash/ACK/DLQ, exclusive safety evaluation or equivalent idempotent D1 effects, live retention/rollback, configured repository protection and remaining method/auth/input coverage. Preserve the 19-section and 525-requirement ledgers; this report does not assert their exhaustive completion. **No Phase8D final PASS; no Phase 8E/8F.**
+
+
+## Follow-up history scan at new executable source
+
+After committing0a7e6eb6cbb35eae3d36d0621d8a7d3caa48f287, the same read-only scanner inspected2,235 reachable local commits,2,394 unique blobs and19,483,355 bytes. It reported11 matched blobs, all the known weak-verifier marker category; the extra marker is the scanner's own explicit legacy-verifier reference. No match in the other defined categories. Exact sanitized refs/paths in `PHASE8D_LOCAL_GIT_HISTORY_0a7e6eb.json`. Findings-review status and all coverage/rotation limitations remain unchanged. This scan includes the new code commit but not later documentation commits.
+
+
+## Hosted source proof — 0a7e6eb6cbb35eae3d36d0621d8a7d3caa48f287
+
+[CI 41859178762](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41859178762) **3/3 jobs SUCCESS**. Source job 126675937098: 65/65 steps; backup126675937168:7/7; deployment126675937752:7/7. Actual completed source log fetched: no error/FAIL lines; eight new DO tests, native RPC ordering/revoked archive checks, WS hibernation/expiry, scanner controls and all prior regressions including SQLite source-destruction/38-table restore PASS. Extract: `PHASE8D_SOURCE_CI_41859178762.txt` (106 PASS summary lines, not 106 independent tests).
+
+P8D-054/055/056 **SOURCE/CI VERIFIED** to the exact scopes in `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Latest local full reachable-history scan at executable HEAD0a7e6eb:2235 commits/2394 unique blobs/19,483,355 bytes;11 known weak-verifier-marker matches only among checked categories, including scanner's own legacy reference. `PHASE8D_LOCAL_GIT_HISTORY_0a7e6eb.json` is sanitized evidence, not rotation or all-secret absence proof.
+
+Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live source/config/Access, full Cloudflare D1+R2+DO disaster recovery, retention/rollback, repository protection and remaining endpoint coverage stay OPEN. Live attempt3 of41839919454 is still the latest inspected live evidence; no claim that this code is deployed. No Android edits, deployment, Cloudflare writes, user family data or repository settings changed. Follow-up commit contains documentation/evidence only. **Phase8D NOT PASS; no Phase 8E/8F.**
