@@ -64,6 +64,10 @@ jobs:
         run: |
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-concurrent-r2.mjs /tmp/brick-p8d-history.mjs
+      - name: P8D.3-5 device ECDSA P-256 signed replay, revocation and invalid input
+        run: |
+          npx --no-install esbuild src/device-json-security.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-device-auth.mjs
+          node scripts/test-phase8d-device-auth-replay.mjs /tmp/brick-p8d-device-auth.mjs
       - name: P8D-004 R2/Queue safety ACK fault matrix
         run: |
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
