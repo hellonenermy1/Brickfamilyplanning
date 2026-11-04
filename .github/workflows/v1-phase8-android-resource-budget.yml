@@ -141,7 +141,10 @@ jobs:
           max_rss=0
           max_storage=0
           max_cpu_milli=0
+          prev_ticks="$start_ticks"
+          prev_sample_sec="$start_sec"
           for i in $(seq 1 18); do
+            sleep 10
             pid="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
             test "$pid" = "$baseline_pid"
 
@@ -152,9 +155,19 @@ jobs:
             fi
             [[ "$rss" =~ ^[0-9]+$ ]]
 
-            cpu="$("$ADB" shell top -b -n 1 -p "$pid" 2>/dev/null | tr -d '\r' | awk -v p="$pid" '$1==p {gsub(/%/,"",$9); print $9; exit}')"
-            if ! [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then cpu=0; fi
-            cpu_milli="$(awk -v c="$cpu" 'BEGIN { printf "%d", c*1000 }')"
+            # Do not silently report 0% CPU if Android top changes its column layout.
+            # Calculate process CPU from /proc/<pid>/stat tick deltas over a timed sample.
+            now_ticks="$("$ADB" shell cat /proc/$pid/stat | awk '{print $14+$15}' | tr -d '\r')"
+            now_sec="$(date +%s)"
+            [[ "$now_ticks" =~ ^[0-9]+$ ]]
+            test "$now_ticks" -ge "$prev_ticks"
+            delta_sec=$((now_sec - prev_sample_sec))
+            test "$delta_sec" -gt 0
+            cpu_milli="$(awk -v previous="$prev_ticks" -v now="$now_ticks" -v hz="$hz" -v sec="$delta_sec" 'BEGIN { if (hz <= 0 || sec <= 0) exit 1; printf "%d", ((now-previous)/hz/sec*100)*1000 }')"
+            [[ "$cpu_milli" =~ ^[0-9]+$ ]]
+            cpu="$(awk -v milli="$cpu_milli" 'BEGIN { printf "%.3f", milli/1000 }')"
+            prev_ticks="$now_ticks"
+            prev_sample_sec="$now_sec"
 
             storage="$("$ADB" shell run-as com.brick.safety du -sk . 2>/dev/null | tr -d '\r' | awk 'NR==1 {print $1}')"
             [[ "$storage" =~ ^[0-9]+$ ]]
@@ -162,7 +175,6 @@ jobs:
             [ "$rss" -gt "$max_rss" ] && max_rss="$rss"
             [ "$storage" -gt "$max_storage" ] && max_storage="$storage"
             [ "$cpu_milli" -gt "$max_cpu_milli" ] && max_cpu_milli="$cpu_milli"
-            sleep 10
           done
 
           end_ticks="$("$ADB" shell cat /proc/$baseline_pid/stat | awk '{print $14+$15}' | tr -d '\r')"
@@ -233,11 +245,11 @@ jobs:
           gradle --no-daemon :app:assembleRelease --stacktrace
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$APK"
-          APKANALYZER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -type f -name apkanalyzer | sort | tail -n 1)"
-          test -x "$APKANALYZER"
-          "$APKANALYZER" manifest print "$APK" > resource-evidence/release-manifest.xml
-          ! grep -F 'Phase8ResourceHarnessReceiver' resource-evidence/release-manifest.xml
-          ! grep -F 'PHASE8_RESOURCE_SEED' resource-evidence/release-manifest.xml
+          AAPT2="$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt2"
+          test -x "$AAPT2"
+          "$AAPT2" dump xmltree "$APK" --file AndroidManifest.xml > resource-evidence/release-manifest-tree.txt
+          ! grep -F 'Phase8ResourceHarnessReceiver' resource-evidence/release-manifest-tree.txt
+          ! grep -F 'PHASE8_RESOURCE_SEED' resource-evidence/release-manifest-tree.txt
 
       - name: Capture inspectable diagnostics
         if: always()
