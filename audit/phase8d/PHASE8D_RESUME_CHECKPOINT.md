@@ -183,3 +183,26 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 **Mandatory remaining (all approved Phase 8D sections must eventually close):** actual deployed Worker SHA/routes/bindings/secrets-present 8D.1; comprehensive live public endpoint methods and device auth 8D.2–4; 8D.5 epoch/replay cross-store; 8D.6/7 exact D1→Queue/DO→R2 crash windows; real DLQ replay/exhaustion 8D.9; WS Access/DO alarm/logout/revocation 8D.10; production auth/session/CSRF 8D.11/12; command lifecycle 8D.13; live rate rules 8D.14; Git history/CDN/log secrets 8D.15; full isolated D1+R2+DO destructive restore and rollback P8D-002/8D.16; real retention P8D-014/8D.17; real incident delivery 8D.18; release migration+rollback 8D.19.
 
 **Verdict:** `Phase 8D = IN PROGRESS, NOT PASS`; P0/P1 live proof still missing. Phase 8E/8F not started, Phase 9 OPPO physical field tests later. Keep historical Phase 8C approved APK unchanged. Do not confuse source-level green tests with actual deployed runtime state.
+
+
+---
+
+## 2026-11-04 Phase 8D P8D-030–037 eight-target execution handoff (verified)
+
+**Last tested executable source/workflow SHA:** `1fd03dd970021532c00f14e0a9a06dcafad8f857`. **All 3 jobs SUCCESS**: [GitHub CI 41822669148](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41822669148). New docs-only commits after that SHA are documentary, not a new executable audit. Exact baseline at start of this turn: `eafaddefb0dd1c0400390ec59ea5169a21fdc1d2`. No Android source/APK modifications or production/Cloudflare mutations.
+
+**Eight work targets completed to source/CI scope (no real Cloudflare):**
+1. **8D.13/P8D-030 location control:** terminal command result now cannot be changed or revived by later signed health, expired command excluded; native SQLite RED 41821975972 → GREEN 41822669148.
+2. **8D.13/P8D-031 live-track:** completed/expired result immutable, exact command ID, pending TTL and active D1 predicate; RED→GREEN same.
+3. **8D.13/P8D-032 Wi-Fi:** only current configured schedule/target and strictly newer attemptedAt accepted; revoked identities barred; RED→GREEN same.
+4. **8D.3/.13/P8D-033 capabilities:** profile version and equal-version capturedAt monotonic with atomic revoked gate; RED→GREEN same.
+5. **8D.9/P8D-034 Queue:** malformed/null/scalar/truncated/out-of-range/unknown poison ACK safely before R2, with separate strict Queue validator and permissive historical-R2 reader for migration compatibility. RED [41822194342](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41822194342) → GREEN 41822669148.
+6. **8D.16/P8D-035:** executed actual `snapshotD1ToR2` (not hand-crafted backup fixture), verified compressed snapshot SHA and all 18 source-backed tables, isolated native SQLite fresh restore, FK, safety row retention and pending command retirement; copied actual generated raw/trusted history objects byte-identically to a synthetic recovery R2 and demonstrated D1-only restore is incomplete. GREEN. **Real Cloudflare D1/R2/DO restore, DO live truth reconstruction, real cutover and rollback still P1 OPEN**.
+7. **8D.2/.3/.11/P8D-036:** 41 supported parent route/method combinations denied without production Access in actual bundled Worker; zero D1/DO/R2/Queue/background/rate side effects. GREEN; real Cloudflare auth/ownership/routes still unverified.
+8. **8D.15/P8D-037:** rendered prod+dev parent/public asset scanner with positive synthetic control, six actual public artifacts inspected for high-confidence server secret signatures and private-key blocks. GREEN; Git history, real CDN, logs remain UNKNOWN.
+
+**Access blockers explicitly tested, not guessed:** Direct Cloudflare tool not connected. GitHub deployment/environment API endpoints rejected by connector public-endpoint allowlist; branch-protection API returned 403 inaccessible to integration. Do not infer account configuration from source `wrangler.template.jsonc`. Isolated Cloudflare resource and real release rollback drills have NOT occurred.
+
+**Exit gate remains:** Phase 8D IN PROGRESS / NOT PASS, full 19-section PDF acceptance requirements (pp.44–54). Most consequential OPEN: 8D.1 live deployed SHA/bindings, 8D.2 live route inventory, 8D.3 real auth/revoke/family, 8D.6 D1→Queue/DO→R2 crash seams and client retry/ACK, 8D.9 DLQ exhaustion, 8D.10 Access/DO hibernation and session revocation, 8D.13 real command nonce delivery/result, 8D.15 history/CDN secret scan, 8D.16 real full isolated D1+R2+DO restore, 8D.17 Cloudflare R2 lifecycle and legacy paths, 8D.19 migration/rollback. All old source tests MUST NOT be counted as live proof. 8E/8F remain NOT STARTED.
+
+**Next best use of time:** Obtain authorized **read-only** Cloudflare account metadata and actual deployment identity before making more speculative backend changes; run destructive tests only against genuinely isolated pre-production D1/R2/Queue/DO resources. See `PHASE8D_LIVE_ACCEPTANCE_NEXT.md` for exact evidence checklist.
