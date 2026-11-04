@@ -91,9 +91,11 @@ try {
   await resumed.setNetworkEvidence({ country: "SG", city: null, region: null, colo: null, receivedAt: now });
   assert.equal(live.closed, true);
 
-  // Pre-upgrade attachments are not trusted: migrated DO sessions must fail closed.
-  const oldSocket = new TestSocket(); ctx.acceptWebSocket(oldSocket);
-  await resumed.setNetworkEvidence({ country: "SG", city: null, region: null, colo: null, receivedAt: now });
+  // Simulate a DO hibernating across deployment with an old subscription lacking a lease.
+  const legacyCtx = new State();
+  const oldSocket = new TestSocket(); legacyCtx.acceptWebSocket(oldSocket);
+  const migrated = new BrickDevice(legacyCtx, {});
+  await migrated.setNetworkEvidence({ country: "SG", city: null, region: null, colo: null, receivedAt: now });
   assert.equal(oldSocket.closed, true, "legacy unleased subscription not retired");
   assert.equal(oldSocket.sent.length, 0);
 
