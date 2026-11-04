@@ -115,6 +115,36 @@ jobs:
           npx --no-install esbuild src/pin-pairing.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-key-validation.mjs /tmp/brick-p8d-pin-pairing.mjs
           node scripts/test-phase8d-pin-confirm-race.mjs /tmp/brick-p8d-pin-pairing.mjs
+      - name: 8D.13 signed command result finality, Wi-Fi freshness, capability profile and wrong-device cases
+        run: |
+          set -u
+          npx --no-install esbuild src/phase6-location-control.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location-control.mjs
+          npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
+          fail=0
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-location-command-finality.mjs /tmp/brick-p8d-location-control.mjs || fail=1
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-live-command-finality.mjs /tmp/brick-p8d-controls.mjs || fail=1
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-wifi-result-freshness.mjs /tmp/brick-p8d-controls.mjs || fail=1
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-capability-profile-order.mjs /tmp/brick-p8d-controls.mjs || fail=1
+          exit "$fail"
+      - name: 8D.9 reject malformed Queue history poison without losing valid sibling
+        run: |
+          npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
+          node scripts/test-phase8d-queue-malformed-body.mjs /tmp/brick-p8d-history.mjs
+      - name: 8D.16 actual D1 snapshot-to-restore plus byte-identical R2 history drill
+        run: |
+          npx --no-install esbuild src/backup-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-backup.mjs
+          npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
+          npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-d1-r2-roundtrip.mjs /tmp/brick-p8d-backup.mjs /tmp/brick-p8d-restore.mjs /tmp/brick-p8d-history.mjs
+      - name: 8D.2 production parent endpoint method inventory denies unauthenticated calls
+        run: |
+          npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-parent-method-auth.mjs /tmp/brick-p8d-prod-worker.mjs
+      - name: 8D.15 public parent/browser asset leakage gate
+        run: |
+          npx --no-install esbuild src/parent-v8.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-prod-parent.mjs
+          npx --no-install esbuild src/parent-v7-live.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dev-parent.mjs
+          node scripts/test-phase8d-public-secret-exposure.mjs /tmp/brick-p8d-prod-parent.mjs /tmp/brick-p8d-dev-parent.mjs
       - name: P8D-016 reject location-control command if device revoked between read and UPSERT
         run: |
           npx --no-install esbuild src/phase6-location-control.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location-control.mjs
