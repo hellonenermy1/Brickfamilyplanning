@@ -1,5 +1,5 @@
 # Phase 8D.2: 49 source candidate routes; required PDF fields. UNKNOWNs intentionally explicit.
-"method","pattern","source_layer","auth_intent_source","storage_or_side_effect_unverified","input_contract","output_contract","rate_limit","logging_policy","retest_evidence","verification_status"
+"method","pattern","source_layer","auth_intent_source","storage_or_side_effect_unverified","source_evidence_level","input_contract","output_contract","rate_limit","logging_policy","retest_evidence","verification_status"
 "GET","/","index.ts","public","redirect","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
 "GET","/healthz","index.ts","public","environment name only","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","8D.3 signed-health tests partial","SOURCE-CANDIDATE ONLY"
 "POST","/api/pair/complete","worker-v5b.ts","public + pairing rate/key checks","D1 devices/pairing","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
@@ -28,7 +28,7 @@
 "POST","/parent/api/pair/pin/{session}","worker-p8b.ts","Cloudflare Access + origin","D1 device binding","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","P8D-009/010 pairing tests partial","SOURCE-CANDIDATE ONLY"
 "GET","/parent/api/device/{id}/state","worker-v9.ts/index.ts","Cloudflare Access","DO current truth","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
 "GET","/parent/api/device/{id}/events","index.ts","Cloudflare Access","D1 safety events","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
-"GET/UPGRADE","/parent/api/device/{id}/ws","index.ts via worker-v5b","Cloudflare Access + same-origin WS","DO live socket","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","P8D-011 unresolved session expiry","SOURCE-CANDIDATE ONLY"
+"GET/UPGRADE","/parent/api/device/{id}/ws","index.ts via worker-v5b","Verified Access JWT or D1 dev parent session; same-origin WS; bounded internal lease","DO live socket; DO persistent device-revoked fence","SOURCE/CI","GET Upgrade; <=30s internally issued lease; no browser-supplied lease accepted","101 valid; 403 missing or forged lease; 410 revoked; expiry closes","TO VERIFY","TO VERIFY","P8D-011 RED 41797894520 GREEN 41798531256; live DO and browser pending","SOURCE/CI PARTIAL — LIVE PENDING"
 "GET","/parent/api/device/{id}/health/incidents","index.ts","Cloudflare Access","D1 incidents","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","8D.3 signed-health tests partial","SOURCE-CANDIDATE ONLY"
 "GET","/parent/api/device/{id}/reliability","index.ts","Cloudflare Access","D1 reliability","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
 "GET/POST","/parent/api/device/{id}/geofences","index.ts","Cloudflare Access + origin on writes","D1 geofences","SOURCE ONLY","TO VERIFY","TO VERIFY","TO VERIFY","TO VERIFY","NOT TESTED","SOURCE-CANDIDATE ONLY"
