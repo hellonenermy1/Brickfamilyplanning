@@ -8,6 +8,7 @@ on:
       - 'schema/**'
       - 'scripts/**'
       - 'audit/phase8d/PHASE8D_ENDPOINT_MATRIX_V2.csv'
+      - 'audit/phase8d/PHASE8D_DEVELOPMENT_ENDPOINTS.csv'
       - 'wrangler.template.jsonc'
       - '.github/workflows/deploy-brick.yml'
       - '.github/workflows/v1-phase8d-backend-audit-ci.yml'
@@ -77,6 +78,10 @@ jobs:
         run: |
           npx --no-install esbuild src/device-json-security.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-device-auth.mjs
           node scripts/test-phase8d-device-auth-replay.mjs /tmp/brick-p8d-device-auth.mjs
+      - name: 8D.9 poison, D1 outage, durable and missing safety receipt replay through DLQ
+        run: |
+          npx --no-install esbuild src/queue-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dlq.mjs
+          node scripts/test-phase8d-dlq-poison.mjs /tmp/brick-p8d-dlq.mjs
       - name: P8D-004 R2/Queue safety ACK fault matrix
         run: |
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
@@ -92,8 +97,14 @@ jobs:
           npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-revoked-control.mjs /tmp/brick-p8d-controls.mjs
           node scripts/test-phase8d-controls-sqlite.mjs /tmp/brick-p8d-controls.mjs
+      - name: 8D.2 discover layered production routes and separate development login/logout
+        run: node scripts/test-phase8d-layered-route-coverage.mjs
       - name: P8D-012 require 49 source endpoint rows have unambiguous named CSV schema
         run: node scripts/test-phase8d-endpoint-matrix.mjs
+      - name: 8D.12 reject cross-site Origin on every known parent mutation
+        run: |
+          npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-global-csrf.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: P8D-011 existing WebSocket expiry, hibernation and revocation negative regression
         run: |
           npx --no-install esbuild src/device-do.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-do.mjs
@@ -107,6 +118,18 @@ jobs:
           node scripts/test-phase8d-development-login-source.mjs
           npx --no-install esbuild src/dev-parent-auth.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dev-auth.mjs
           node scripts/test-phase8d-development-login.mjs /tmp/brick-p8d-dev-auth.mjs
+      - name: 8D.8 production SQLite schema and constraints, including revocation history
+        run: node --disable-warning=ExperimentalWarning scripts/test-phase8d-sqlite-integrity.mjs
+      - name: 8D.17 per-device retention, cross-family isolation and crash/health/audit cleanup
+        run: |
+          npx --no-install esbuild src/phase4.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-retention.mjs
+          npx --no-install esbuild src/phase5c.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-phase5c.mjs
+          npx --no-install esbuild src/phase5-ops.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-ops.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-retention-sqlite.mjs /tmp/brick-p8d-retention.mjs /tmp/brick-p8d-phase5c.mjs /tmp/brick-p8d-ops.mjs
+      - name: P8D-013 redaction of identifiers in D1 audit path and detail
+        run: |
+          npx --no-install esbuild src/phase5c.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-phase5c.mjs
+          node scripts/test-phase8d-audit-path-privacy.mjs /tmp/brick-p8d-phase5c.mjs
       - name: P8D-002 versioned backup restore regression
         run: |
           npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
