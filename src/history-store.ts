@@ -54,9 +54,26 @@ function segmentKeys(group: Group) {
 }
 
 function validPacket(p: unknown): p is LivePacket {
-  if (!p || typeof p !== "object") return false;
+  if (!p || typeof p !== "object" || Array.isArray(p)) return false;
   const x = p as Partial<LivePacket>;
-  return Number.isSafeInteger(x.epoch) && Number.isSafeInteger(x.sequence) && Number.isSafeInteger(x.wallTimeMs);
+  const coord = (v: unknown, limit: number) => v === null || (Number.isSafeInteger(v) && Math.abs(v as number) <= limit);
+  const optionalInt = (v: unknown) => v === null || Number.isSafeInteger(v);
+  // Queue messages are internal, not necessarily trustworthy: poison or corrupted
+  // payloads must not reach R2 as an unreadable trusted-history delta segment.
+  return (x.version === 1 || x.version === 2) &&
+    Number.isSafeInteger(x.epoch) && x.epoch! >= 0 &&
+    Number.isSafeInteger(x.sequence) && x.sequence! > 0 &&
+    Number.isSafeInteger(x.wallTimeMs) && x.wallTimeMs! > 0 &&
+    coord(x.trustedLatE7, 900_000_000) && coord(x.trustedLonE7, 1_800_000_000) &&
+    (x.trustedLatE7 === null) === (x.trustedLonE7 === null) &&
+    Number.isSafeInteger(x.uncertaintyCm) && x.uncertaintyCm! >= 0 && x.uncertaintyCm! <= 50_000_000 &&
+    Number.isSafeInteger(x.batteryPct) && x.batteryPct! >= 0 && x.batteryPct! <= 100 &&
+    typeof x.charging === "boolean" && typeof x.fallback === "boolean" && typeof x.rawAccepted === "boolean" &&
+    Number.isSafeInteger(x.activity) && x.activity! >= 0 && x.activity! <= 5 &&
+    Number.isSafeInteger(x.activityConfidence) && x.activityConfidence! >= 0 && x.activityConfidence! <= 100 &&
+    Number.isSafeInteger(x.quality) && x.quality! >= 1 && x.quality! <= 7 &&
+    Number.isSafeInteger(x.source) && x.source! >= 0 && x.source! <= 6 &&
+    optionalInt(x.speedCms) && optionalInt(x.speedAccuracyCms) && optionalInt(x.bearingCdeg);
 }
 
 function validReceipt(value: unknown): value is ReceiptRow {
@@ -126,14 +143,20 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
   };
 
   for (const message of batch.messages) {
-    const body = message.body as QueueBody;
+    const body = message.body as QueueBody | null | undefined;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      message.ack();
+      result.ignoredMessages += 1;
+      continue;
+    }
     // Safety receipts are handled by queue-v6. Do not ACK here because that handler may have
     // deliberately requested a retry while waiting for the durable safety row to appear.
     if (body.type === "safety_receipt") {
       result.ignoredMessages += 1;
       continue;
     }
-    if (body.type !== "location" || typeof body.deviceId !== "string" || !body.packet || typeof body.packet !== "object") {
+    if (body.type !== "location" || typeof body.deviceId !== "string" ||
+        !/^[A-Za-z0-9_-]{1,128}$/.test(body.deviceId) || !validPacket(body.packet)) {
       message.ack();
       result.ignoredMessages += 1;
       continue;
