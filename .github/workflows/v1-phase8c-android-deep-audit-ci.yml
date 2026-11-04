@@ -218,6 +218,12 @@ jobs:
           ! grep -E -i '(firebase-analytics|play-services-ads|google-ads|facebook.*sdk|appsflyer|adjust|mixpanel|amplitude|segment-analytics)' app/gradle.lockfile
           ! grep -R -n -E 'TODO\("|NotImplementedError|UnsupportedOperationException\("TODO|return[[:space:]]+null[[:space:]]*//[[:space:]]*(TODO|FIXME)' app/src/main/java
 
+      - name: Full Android production persistent-store inventory gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/audit_brick_persistence.py
+
       - name: Manifest and exported-surface contract
         shell: bash
         run: |
