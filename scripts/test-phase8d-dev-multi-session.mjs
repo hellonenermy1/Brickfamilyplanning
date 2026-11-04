@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import {randomBytes,createHash,webcrypto} from "node:crypto";
+import {pathToFileURL} from "node:url";
+if(!globalThis.crypto)globalThis.crypto=webcrypto;
+const m=await import(pathToFileURL(process.argv[2]).href);
+const origin="https://brick-dev.invalid",token=randomBytes(32).toString("base64url");
+const hash=createHash("sha256").update(token).digest("hex"),rows=new Map();
+const env={DEV_PARENT_LOGIN_HASH:hash,PARENT_LOGIN_RATE:{async limit(){return {success:true}}},DB:{prepare(sql){return {bind(...a){return {async first(){const s=rows.get(a[0]);return s&&!s.revoked&&(sql.includes("expires_at>=?2")?s.exp>=a[1]:s.exp>a[1])?{ok:1}:null},async run(){if(sql.startsWith("INSERT"))rows.set(a[0],{exp:a[2],revoked:false});else if(sql.startsWith("UPDATE")){let x=rows.get(a[1]);if(x)x.revoked=true;}return {meta:{changes:1}}}}}}}}};
+const req=(cookie)=>new Request(origin+"/parent/api/devices",{headers:{Cookie:cookie}});
+async function login(cookie){const r=await m.handleDevParentAuthRoute(new Request(origin+"/parent/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded",Origin:origin,...cookie?{Cookie:cookie}:{}},body:new URLSearchParams({token})}),env);assert.equal(r.status,303);return r.headers.get("Set-Cookie").split(";")[0]}
+const a=await login(),b=await login(a);
+assert.notEqual(a,b,"fixation on repeated login");
+assert(await m.devParentSessionValid(req(a),env));
+assert(await m.devParentSessionValid(req(b),env));
+const expiry=rows.get(createHash("sha256").update(a.split("=")[1]).digest("hex")).exp;
+assert.equal(await m.devParentSessionValid(req(a),env,expiry),false,"exact expiry boundary still accepts session");
+assert.equal(await m.devParentSessionValid(req(a),env,expiry-1),true);
+const foreign=await m.handleDevParentAuthRoute(new Request(origin+"/parent/logout",{method:"POST",headers:{Origin:"https://evil.invalid",Cookie:a}}),env);
+assert.equal(foreign.status,403);
+assert(await m.devParentSessionValid(req(a),env));
+const logout=await m.handleDevParentAuthRoute(new Request(origin+"/parent/logout",{method:"POST",headers:{Origin:origin,Cookie:a}}),env);
+assert.equal(logout.status,303);
+assert.equal(await m.devParentSessionValid(req(a),env),false);
+assert.equal(await m.devParentSessionValid(req(b),env),true,"revoking one cookie revoked another");
+console.log("PASS 8D.11: two independent sessions, fixation resistance, exact expiry, Origin, selective logout");
