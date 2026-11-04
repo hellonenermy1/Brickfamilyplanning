@@ -3,6 +3,7 @@ package com.brick.safety.crypto
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.brick.safety.maintenance.DeprovisionManager
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -24,6 +25,13 @@ object DeviceKeys {
     }
 
     fun getOrCreate(): KeyPair {
+        // The platform cannot stop a Binder/network callback that is already in flight. Guard
+        // the crypto boundary itself so late signed sends cannot recreate purged AndroidKeyStore
+        // material or a Brick preference namespace during authorised removal.
+        val context = appContext ?: throw IllegalStateException("Brick signing identity not initialised")
+        check(DeprovisionManager.stage(context) == DeprovisionManager.Stage.NONE) {
+            "Brick signing is unavailable during deprovision"
+        }
         val existing = existingKeyPair()
         if (existing != null) {
             validatePairedKey(existing)
@@ -112,7 +120,9 @@ object DeviceKeys {
         // A missing/replaced paired key is a permanent fail-closed condition until authorised
         // re-enrolment, not a reason to rewrite the same private prefs thousands of times while
         // network retries are refused. Preserve the timestamp of the first observed fault.
-        val prefs = appContext?.getSharedPreferences("brick", Context.MODE_PRIVATE) ?: return
+        val context = appContext ?: return
+        if (DeprovisionManager.stage(context) != DeprovisionManager.Stage.NONE) return
+        val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
         val boundedReason = reason.take(80)
         if (prefs.getString(PREF_IDENTITY_FAULT, null) == boundedReason) return
         prefs.edit()
