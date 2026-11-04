@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 
-const CURRENT_APP_VERSION = '0.8.0-phase8-beta1-test';
+const CURRENT_APP_VERSION = '1.0.0-rc.1';
 const statePath = 'setup-state.json';
 
 const state = JSON.parse(await fs.readFile(statePath, 'utf8'));
-if (state.v1ProgramPhase !== 8 || state.schemaVersion !== 15 || state.workerEntry !== 'src/worker-v9.ts') {
+if (state.v1ProgramPhase !== 8 || state.schemaVersion !== 18 || state.workerEntry !== 'src/worker-p8b.ts') {
   throw new Error('Refusing to finalize release metadata for a non-Phase-8 deployment state.');
 }
 
