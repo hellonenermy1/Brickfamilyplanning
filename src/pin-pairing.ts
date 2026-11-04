@@ -1,4 +1,5 @@
-import { randomToken, sha256Hex } from "./crypto";
+import { canonicalDevicePublicKey, randomToken, sha256Hex } from "./crypto";
+import { readBoundedBody } from "./bounded-body";
 
 export type PinPairingEnv = {
   DB: D1Database;
@@ -18,6 +19,15 @@ type PinRow = {
 };
 
 const PIN_TTL_MS = 10 * 60_000;
+const MAX_PAIRING_JSON_BYTES = 4096;
+async function boundedJson(req: Request): Promise<{ body: Record<string, unknown> } | { denied: Response }> {
+  const result = await readBoundedBody(req, MAX_PAIRING_JSON_BYTES);
+  if (!result.ok) return { denied: json({ error: result.reason === "too_large" ? "pairing request too large" : "invalid pairing request" }, result.reason === "too_large" ? 413 : 400) };
+  let parsed: unknown;
+  try { parsed = JSON.parse(new TextDecoder().decode(result.body)); } catch { return { denied: json({ error: "invalid JSON" }, 400) }; }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { denied: json({ error: "invalid JSON object" }, 400) };
+  return { body: parsed as Record<string, unknown> };
+}
 const PIN_RE = /^\d{8}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -51,8 +61,8 @@ function statusOf(row: PinRow, now: number) {
 export async function parentStartPin(req: Request, env: PinPairingEnv) {
   if (!sameOrigin(req)) return json({ error: "same-origin request required" }, 403);
   if (!(await rate(env, "parent-pin-start"))) return json({ error: "rate limited" }, 429);
-  let body: Record<string, unknown> = {};
-  try { body = await req.json<Record<string, unknown>>(); } catch {}
+  const parsed = await boundedJson(req); if ("denied" in parsed) return parsed.denied;
+  const body = parsed.body;
   const name = (typeof body.name === "string" ? body.name : "Child device").trim().slice(0, 64) || "Child device";
   const now = Date.now(), expiresAt = now + PIN_TTL_MS;
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -69,15 +79,18 @@ export async function parentStartPin(req: Request, env: PinPairingEnv) {
 /** Public child claim consumes the low-entropy code exactly once but does not bind a device. */
 export async function childClaimPin(req: Request, env: PinPairingEnv) {
   if (!(await rate(env, clientKey(req, "claim")))) return json({ error: "rate limited" }, 429);
-  let body: Record<string, unknown>; try { body = await req.json<Record<string, unknown>>(); } catch { return json({ error: "invalid JSON" }, 400); }
+  const parsed = await boundedJson(req); if ("denied" in parsed) return parsed.denied;
+  const body = parsed.body;
   const pin = typeof body.pin === "string" ? body.pin.trim() : "";
   const publicKey = typeof body.publicKeySpkiB64 === "string" ? body.publicKeySpkiB64.trim() : "";
-  if (!PIN_RE.test(pin) || publicKey.length < 32 || publicKey.length > 2048) return json({ error: "invalid fallback code" }, 400);
+  if (!PIN_RE.test(pin) || publicKey.length < 32 || publicKey.length > 2048) return json({ error: "invalid fallback code or device key" }, 400);
   if (!(await rate(env, `pin-value:${(await sha256Hex(pin)).slice(0, 24)}`))) return json({ error: "rate limited" }, 429);
+  const canonicalKey = await canonicalDevicePublicKey(publicKey);
+  if (!canonicalKey) return json({ error: "invalid P-256 device key" }, 400);
   const now = Date.now(), pinHash = await sha256Hex(pin), claimSecret = randomToken(24), claimHash = await sha256Hex(claimSecret);
   const claimed = await env.DB.prepare(
     "UPDATE pairing_pin_sessions SET claimed_at=?1,pending_public_key_spki_b64=?2,claim_secret_hash=?3 WHERE pin_hash=?4 AND claimed_at IS NULL AND confirmed_at IS NULL AND cancelled_at IS NULL AND expires_at>=?1 RETURNING id,device_name,expires_at,claimed_at,pending_public_key_spki_b64,claim_secret_hash,confirmed_at,device_id,cancelled_at"
-  ).bind(now, publicKey, claimHash, pinHash).first<PinRow>();
+  ).bind(now, canonicalKey, claimHash, pinHash).first<PinRow>();
   if (!claimed) return json({ error: "invalid, expired, or already-used fallback code" }, 400);
   return json({ sessionId: claimed.id, claimSecret, expiresAt: claimed.expires_at, status: "pending_parent_confirmation" }, 202);
 }
@@ -103,10 +116,13 @@ export async function parentConfirmPin(req: Request, env: PinPairingEnv, session
   if (row.cancelled_at !== null || row.expires_at < now) return json({ error: "session expired or cancelled" }, 410);
   if (row.confirmed_at !== null && row.device_id) return json({ ok: true, deviceId: row.device_id, status: "confirmed" });
   if (row.claimed_at === null || !row.pending_public_key_spki_b64 || !row.claim_secret_hash) return json({ error: "child has not claimed this code yet" }, 409);
+  // A historical unvalidated claim must never become a permanently registered identity.
+  const canonicalKey = await canonicalDevicePublicKey(row.pending_public_key_spki_b64);
+  if (!canonicalKey) return json({ error: "invalid P-256 device key in pairing session" }, 400);
   const deviceId = crypto.randomUUID();
   try {
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)").bind(deviceId, row.device_name, row.pending_public_key_spki_b64, now),
+      env.DB.prepare("INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)").bind(deviceId, row.device_name, canonicalKey, now),
       env.DB.prepare("INSERT OR IGNORE INTO retention_settings(device_id,safety_event_days,updated_at) VALUES(?1,180,?2)").bind(deviceId, now),
       env.DB.prepare("UPDATE pairing_pin_sessions SET confirmed_at=?1,device_id=?2 WHERE id=?3 AND confirmed_at IS NULL AND cancelled_at IS NULL AND expires_at>=?1").bind(now, deviceId, sessionId)
     ]);
@@ -119,7 +135,8 @@ export async function parentConfirmPin(req: Request, env: PinPairingEnv, session
 /** Child proves possession of the high-entropy claim secret; PIN replay alone cannot read the result. */
 export async function childPinStatus(req: Request, env: PinPairingEnv) {
   if (!(await rate(env, clientKey(req, "status")))) return json({ error: "rate limited" }, 429);
-  let body: Record<string, unknown>; try { body = await req.json<Record<string, unknown>>(); } catch { return json({ error: "invalid JSON" }, 400); }
+  const parsed = await boundedJson(req); if ("denied" in parsed) return parsed.denied;
+  const body = parsed.body;
   const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
   const secret = typeof body.claimSecret === "string" ? body.claimSecret : "";
   if (!UUID_RE.test(sessionId) || secret.length < 24 || secret.length > 256) return json({ error: "invalid claim" }, 400);
