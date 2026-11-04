@@ -10,6 +10,7 @@ import android.os.UserManager
 import android.provider.Settings
 import android.util.AtomicFile
 import com.brick.safety.beta.BetaSafety
+import com.brick.safety.crypto.DeviceKeys
 import com.brick.safety.diagnostics.DiagnosticMonitor
 import com.brick.safety.reliability.FallDetectorRuntime
 import com.brick.safety.managed.BrickDeviceAdminReceiver
@@ -249,11 +250,16 @@ object DeprovisionManager {
             }
         }
 
-        val keyStorePurged = runCatching {
-            val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            brickKeyAliases.forEach { alias -> if (ks.containsAlias(alias)) ks.deleteEntry(alias) }
-            brickKeyAliases.none { ks.containsAlias(it) }
-        }.getOrDefault(false)
+        // Synchronize with DeviceKeys.getOrCreate/sign so a cryptographic call admitted just
+        // before AUTHORISE_FREEZE cannot finish creating/reusing the identity after its deletion.
+        // Never hold this lock while waiting on the Android main thread or WorkManager.
+        val keyStorePurged = synchronized(DeviceKeys) {
+            runCatching {
+                val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                brickKeyAliases.forEach { alias -> if (ks.containsAlias(alias)) ks.deleteEntry(alias) }
+                brickKeyAliases.none { ks.containsAlias(it) }
+            }.getOrDefault(false)
+        }
         if (!keyStorePurged) return Result(stage(app), false, "Brick Keystore purge failed")
 
         val ok = persist(app, Stage.PURGE_BRICK)
