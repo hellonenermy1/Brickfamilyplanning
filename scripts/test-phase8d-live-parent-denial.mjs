@@ -20,7 +20,7 @@ function fixture({subdomain="synthetic",prodEnabled=true,devEnabled=true,policy=
    assert.equal(init.method,"GET");assert.equal(init.redirect,"manual");
    assert(!("Authorization" in init.headers));
    assert(!("Cookie" in init.headers));
-   assert(/^https:\/\/brick-family-v1(?:-dev)?\.synthetic\.workers\.dev\/parent(?:\/api\/devices|\/login)?$/.test(url),"untrusted hostname/path "+url);
+   assert(/^https:\/\/brick-family-v1(?:-dev)?\.synthetic\.workers\.dev\/parent(?:\/api\/devices|\/map\/status|\/login)?$/.test(url),"untrusted hostname/path "+url);
    const code=policy==="public"?200:
      url.endsWith("/parent/login")?(url.includes("brick-family-v1-dev.")?200:404):
      policy==="redirect-wrong"?302:policy==="denied"?403:302;
@@ -31,9 +31,9 @@ function fixture({subdomain="synthetic",prodEnabled=true,devEnabled=true,policy=
 }
 const creds={token:"synthetic-token",accountId:id};
 const safe=fixture(),r=await probeParentSurface({...creds,...safe});
-assert.equal(r.allPass,true);assert.equal(r.checks.length,8);assert.equal(r.requestsSent,8);
-assert.equal(safe.cfCalls.length,3);assert.equal(safe.webCalls.length,8);
-assert.equal(safe.webCalls.filter(x=>Object.hasOwn(x.init.headers,"X-Brick-Dev-Parent-Verified")).length,2);
+assert.equal(r.allPass,true);assert.equal(r.checks.length,12);assert.equal(r.requestsSent,12);
+assert.equal(safe.cfCalls.length,3);assert.equal(safe.webCalls.length,12);
+assert.equal(safe.webCalls.filter(x=>Object.hasOwn(x.init.headers,"X-Brick-Dev-Parent-Verified")).length,4);
 assert(!JSON.stringify(r).includes("synthetic-token"));
 for(const conf of [{policy:"public"},{policy:"redirect-wrong"},{prodEnabled:false},{devEnabled:false},{metadata403:true},{subdomain:"evil.com/attack"}]){
  const env=fixture(conf),out=await probeParentSurface({...creds,...env});
@@ -43,4 +43,4 @@ for(const conf of [{policy:"public"},{policy:"redirect-wrong"},{prodEnabled:fals
 }
 const missing=await probeParentSurface({token:null,accountId:id,...fixture()});
 assert.equal(missing.requestsSent,0);assert.equal(missing.allPass,false);
-console.log("PASS 8D.2/.10/.11: 8 exact parent GET/forged/login-surface probes, only API-grounded hostname, no secret/response body, negative cases fail closed");
+console.log("PASS 8D.2/.10/.11: 12 exact parent GET/forged/login/map probes, only API-grounded hostname, no secret/response body, negative cases fail closed");
