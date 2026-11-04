@@ -151,3 +151,20 @@
 - GREEN [CI 41791862854](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791862854), all three jobs, including original concurrent R2 and new replay integrity test. **Source/CI verified only; historical production R2 corruption and Cloudflare execution unknown**.
 
 **Audit invariants:** No production deployments, Cloudflare account calls, Android changes, live-user data inspection, or source-branch merges occurred during these tests. No secrets added. All RED→GREEN evidence is retained. Phase 8D remains NOT PASS.
+
+
+## P8D-009 — Public fallback pairing claim accepts an unverified device public key (8D.3/.4/.13)
+- **Status:** OPEN — source-confirmed, failing SQLite/crypto regression pending.
+- **Severity:** P1 provisionally (device enrollment identity integrity).
+- **Expected:** a child claim can only move to parent-confirmable status with a canonical valid P-256 SPKI; invalid keys, malformed JSON and oversized unauthenticated bodies fail closed.
+- **Actual source:** `src/pin-pairing.ts:70-82` checks `publicKeySpkiB64` length 32..2048 but never calls `canonicalDevicePublicKey`. The parent confirmation inserts that unchecked string into `devices`; the signed-device authentication layer then cannot verify it. Public `req.json()` is not byte bounded before parsing.
+- **Negative test:** synthetic fallback PIN, invalid-length-but-not-P-256 SPKI, exercise actual public handler and ensure no claim/mutation; include true P-256 unpadded canonicalization and oversized body.
+- **Production impact:** unproven without deployed endpoint confirmation; no live family data tested.
+
+## P8D-010 — Racing parent confirmations may create an unpaired ghost device (8D.8/.13)
+- **Status:** OPEN — source-confirmed, real SQLite adversarial regression pending.
+- **Severity:** P1 provisional (enrollment state correctness).
+- **Expected:** only one device is created per confirmed claimed session; simultaneous/replayed confirmations must return the same winning identity or a non-success without creating a second device row.
+- **Actual source:** `parentConfirmPin` reads `confirmed_at IS NULL`, generates a UUID, then unconditionally inserts the device and retention record in a D1 batch. Only the final `UPDATE pairing_pin_sessions` has `confirmed_at IS NULL`, and its changes count is ignored. If a second confirmation wins between the read and batch, the losing batch can still insert another device and falsely report confirmation.
+- **Negative test:** use real SQLite schema 001/015/018; inject another successful confirmation between the parent's SELECT and its batch, then verify no orphan registration is created by the losing attempt.
+- **Production impact:** not measured; controlled concurrency only.
