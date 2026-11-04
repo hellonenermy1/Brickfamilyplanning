@@ -115,7 +115,10 @@ jobs:
           [[ "$package_line" == *"versionCode='10'"* ]]
           [[ "$package_line" == *"versionName='1.0.0-rc.1'"* ]]
           ! grep -q '^application-debuggable' "$badging"
-          grep -Eq '^[[:space:]]*A: android:allowBackup.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree"
+          # Debug logging here is restricted to public manifest attribute lines, never signing secrets.
+          echo "Android AAPT2 packaged security-attribute evidence:"
+          grep -E 'android:(allowBackup|usesCleartextTraffic|debuggable|testOnly)' "$manifest_tree" || true
+          grep -Eq '^[[:space:]]*A: android:allowBackup.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree" || { echo "::error::Packaged allowBackup not proven false"; exit 1; }
           grep -Eq '^[[:space:]]*A: android:usesCleartextTraffic.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree"
           ! grep -Eq '^[[:space:]]*A: android:debuggable.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
           ! grep -Eq '^[[:space:]]*A: android:testOnly.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
@@ -137,6 +140,17 @@ jobs:
         if: always()
         shell: bash
         run: rm -f "$BRICK_KEYSTORE_PATH"
+
+      - name: Upload public APK manifest diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-p8c-public-manifest-diagnostics-${{ github.run_id }}
+          path: |
+            p8c-signed-rc/badging.txt
+            p8c-signed-rc/merged-manifest-tree.txt
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload signed RC and non-secret evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
