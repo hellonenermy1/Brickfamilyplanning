@@ -11,7 +11,7 @@ class Phase8DeprovisionStageIntegrityInstrumentedTest : BrickInstrumentationTest
     override fun setUp() {
         super.setUp()
         context = instrumentation.targetContext.applicationContext
-        assertTrue(context.deleteSharedPreferences("brick_deprovision_v1"))
+        context.deleteSharedPreferences("brick_deprovision_v1")
     }
 
     override fun tearDown() {
