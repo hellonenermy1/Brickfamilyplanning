@@ -9,6 +9,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
+import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.brick.safety.activity.ActivityState
 import com.brick.safety.data.Journal
@@ -27,6 +29,8 @@ object DiagnosticMonitor {
     }
     @Volatile private var future: ScheduledFuture<*>? = null
     private val last = LinkedHashMap<String, String>()
+    private val drainMonitor = Object()
+    private var activeSamples = 0
 
     @Synchronized
     fun start(context: Context) {
@@ -42,14 +46,40 @@ object DiagnosticMonitor {
     /** Deep Off must stop process-local sampling immediately, not only future WorkManager jobs. */
     @Synchronized
     fun stop() {
-        if (!started.getAndSet(false)) return
-        future?.cancel(false)
-        future = null
+        synchronized(drainMonitor) {
+            if (!started.getAndSet(false)) return
+            future?.cancel(false)
+            future = null
+        }
         synchronized(last) { last.clear() }
     }
 
+    /** A cancelled scheduled future may still be writing. PURGE must await its actual exit. */
+    fun awaitQuiescent(timeoutMs: Long): Boolean {
+        require(timeoutMs in 1L..30_000L)
+        synchronized(drainMonitor) {
+            if (activeSamples == 0 && !started.get()) return true
+            if (Looper.myLooper() == Looper.getMainLooper()) return false
+            val deadline = SystemClock.elapsedRealtime() + timeoutMs
+            while (activeSamples > 0 || started.get()) {
+                val remaining = deadline - SystemClock.elapsedRealtime()
+                if (remaining <= 0L) return false
+                try { drainMonitor.wait(remaining) }
+                catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return false
+                }
+            }
+            return true
+        }
+    }
+
     private fun sample(context: Context) {
-        if (!started.get()) return
+        synchronized(drainMonitor) {
+            if (!started.get()) return
+            activeSamples++
+        }
+        try {
         runCatching {
             val brick = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
             val position = context.getSharedPreferences("brick_position", Context.MODE_PRIVATE)
@@ -157,6 +187,12 @@ object DiagnosticMonitor {
                 .apply()
         }.onFailure {
             DiagnosticStore.log(DiagnosticStore.Severity.ERROR, "monitor", "sample_failed", it.javaClass.simpleName, it)
+        }
+        } finally {
+            synchronized(drainMonitor) {
+                activeSamples--
+                drainMonitor.notifyAll()
+            }
         }
     }
 
