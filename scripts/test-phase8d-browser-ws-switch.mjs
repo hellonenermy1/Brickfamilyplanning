@@ -27,7 +27,7 @@ async function run(kind,html){
  }
  let timerId=0;
  const context={WebSocket:FakeSocket,location:{protocol:"https:",host:"brick.invalid"},navigator:{onLine:true},currentDevice:"",ws:null,phase5StateTimer:null,
-  portalReconnectAttempt:0,portalLastMessageAt:0,
+  phase5WsRetry:0,portalReconnectAttempt:0,portalLastMessageAt:0,
   clearInterval(id){intervals.delete(id)},
   setInterval(fn,delay){const id=++timerId;intervals.add(id);return id;},
   setTimeout(fn,delay){timeouts.push({fn,delay});return ++timerId;},
