@@ -38,7 +38,8 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
         "brick_wifi_schedule_v1",
         "brick_canary_v1",
         "brick_device_role_v1",
-        "brick_capability_profile_v1"
+        "brick_capability_profile_v1",
+        "brick_ble_anchors"
     )
     private val files = listOf(
         "brick_phase3_state.bin",
@@ -91,7 +92,10 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
             assertTrue("preference data survived purge: $name", context.getSharedPreferences(name, Context.MODE_PRIVATE).all.isEmpty())
         }
         files.forEach { name ->
-            assertFalse("internal file survived purge: $name", File(context.filesDir, name).exists())
+            listOf("", ".new", ".bak").forEach { suffix ->
+                val persisted = File(context.filesDir, name + suffix)
+                assertFalse("internal atomic file survived purge: ${name + suffix}", persisted.exists())
+            }
         }
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         aliases.forEach { alias ->
@@ -113,7 +117,9 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
             )
         }
         files.forEach { name ->
-            File(context.filesDir, name).writeBytes(byteArrayOf(0x42, 0x52, 0x49, 0x43, 0x4b))
+            listOf("", ".new", ".bak").forEach { suffix ->
+                File(context.filesDir, name + suffix).writeBytes(byteArrayOf(0x42, 0x52, 0x49, 0x43, 0x4b))
+            }
         }
 
         // Production helper creates the signing identity under the exact real alias.
@@ -127,7 +133,11 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
     private fun assertInventoryPresent() {
         databases.forEach { assertTrue("database fixture missing: $it", context.getDatabasePath(it).exists()) }
         preferences.forEach { assertEquals("present", context.getSharedPreferences(it, Context.MODE_PRIVATE).getString("p8cProbe", null)) }
-        files.forEach { assertTrue("file fixture missing: $it", File(context.filesDir, it).exists()) }
+        files.forEach { name ->
+            listOf("", ".new", ".bak").forEach { suffix ->
+                assertTrue("atomic file fixture missing: ${name + suffix}", File(context.filesDir, name + suffix).exists())
+            }
+        }
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         aliases.forEach { assertTrue("Keystore fixture missing: $it", ks.containsAlias(it)) }
     }
