@@ -127,7 +127,7 @@ export async function devParentSessionValid(req: Request, env: DevParentAuthEnv,
   if (!value || value.length > MAX_SESSION_CHARS || !/^[A-Za-z0-9_-]+$/.test(value)) return false;
   const hash = await sha256Hex(value);
   const row = await env.DB.prepare(
-    "SELECT 1 AS ok FROM dev_parent_sessions WHERE session_hash=?1 AND revoked_at IS NULL AND expires_at>=?2 LIMIT 1"
+    "SELECT 1 AS ok FROM dev_parent_sessions WHERE session_hash=?1 AND revoked_at IS NULL AND expires_at>?2 LIMIT 1"
   ).bind(hash, now).first<SessionRow>();
   return row?.ok === 1;
 }
@@ -191,7 +191,7 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
 export async function cleanupDevParentAuth(env: DevParentAuthEnv, now = Date.now()) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM dev_parent_login_tokens"),
-    env.DB.prepare("DELETE FROM dev_parent_sessions WHERE expires_at<?1 OR (revoked_at IS NOT NULL AND revoked_at<?2)").bind(now, now - 7 * 86_400_000)
+    env.DB.prepare("DELETE FROM dev_parent_sessions WHERE expires_at<=?1 OR (revoked_at IS NOT NULL AND revoked_at<?2)").bind(now, now - 7 * 86_400_000)
   ]);
 }
 
