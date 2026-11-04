@@ -22,4 +22,10 @@ assert(setup.includes("devAccessToken")&&setup.includes("secret', 'put', 'DEV_PA
 assert(prod.includes('test "$GITHUB_REF_NAME" = "v1-p8d-accepted-backend"'),"production accepted-branch gate removed");
 assert(prod.includes("PHASE8D_FINAL_ACCEPTANCE.md")&&prod.includes("FINAL STATUS: PASS"),"prod deploy lacks final audit signoff");
 assert(!prod.includes("BRICK_DEV_PARENT_ACCESS_TOKEN"),"prod mistakenly exposed dev credential");
+const verifier=fs.readFileSync("scripts/verify-cloudflare-deployment.mjs","utf8");
+assert(verifier.includes("requireAccessChallenge(parent,"),"production must require actual Access challenge, not generic redirect");
+assert(verifier.includes("requireNoPublicLocalLogin(localLogin,"),"production local login path must not be public");
+assert(verifier.includes("requireProtectedDenial(forged,"),"production must reject dev-forged header");
+assert(!verifier.includes("requireAccessDenial("),"unsafe legacy 303 allowlist still present");
+
 console.log("PASS P8D-042: manual-only dev and prod Workflows, current dev audited branch, high-entropy secret, new quotas, isolated D1, accepted production final-PASS gate retained");
