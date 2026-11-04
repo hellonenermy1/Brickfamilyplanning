@@ -1,5 +1,8 @@
 # Brick V1 Phase 8C — PDF-aligned execution and evidence matrix
 
+**Latest state (2026-11-04):** This matrix preserves the original early-session PDF coverage. Its older claims that the signing secrets are missing, no signed APK exists, or resource CI is unmeasured are **superseded** by [PHASE8C_CURRENT_ACCEPTANCE_GATE_2026-11-04.md](PHASE8C_CURRENT_ACCEPTANCE_GATE_2026-11-04.md), [PHASE8C_MANIFEST_REPORT.md](PHASE8C_MANIFEST_REPORT.md), and [PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md](PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md). Original findings remain historical; no Phase 8C unconditional PASS until final-source CI and concurrent purge-drain retest are verified. Latest PDF 8C.1–8C.20 section numbering remains authoritative.
+
+
 **Audit session:** 2026-11-04 (Singapore)
 **Contract:** user-approved 76-page `Brick V1 — Phase 8A–8F Ruthless Full Audit Execution Plan`, Phase 8C.1–8C.20, pages 31–43.
 **Repository / branch:** `hellonenermy1/Brickfamilyplanning` / `v1-p8c-android-deep-audit`.
