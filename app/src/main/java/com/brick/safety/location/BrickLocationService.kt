@@ -178,7 +178,7 @@ class BrickLocationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (DeepOffManager.isActive(this) || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
+        if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -565,17 +565,17 @@ class BrickLocationService : Service() {
                 uploadPumpRunning.set(false)
                 if (!mustQuiesceAsync()) {
                     val pendingSafety = SafetyDispatcher.pendingCount(this) > 0
-                val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true)
-                val pendingCore = runCatching { journal.stats().pendingCount > 0 }.getOrDefault(true)
-                val hasPending = pendingSafety || pendingCrash || pendingCore
-                if (!hasPending) {
-                    nextUploadAttemptElapsed = 0L
-                    resetCoreUploadFailureStreak()
-                } else if (networkAvailable() && !supervisor.isShutdown) {
-                    val delayMs = if (failed) nextCoreUploadFailureDelayMs() else 2_000L
-                    nextUploadAttemptElapsed = SystemClock.elapsedRealtime() + delayMs
-                    supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)
-                }
+                    val pendingCrash = runCatching { crashOutbox.pendingCount() > 0 }.getOrDefault(true)
+                    val pendingCore = runCatching { journal.stats().pendingCount > 0 }.getOrDefault(true)
+                    val hasPending = pendingSafety || pendingCrash || pendingCore
+                    if (!hasPending) {
+                        nextUploadAttemptElapsed = 0L
+                        resetCoreUploadFailureStreak()
+                    } else if (networkAvailable() && !supervisor.isShutdown) {
+                        val delayMs = if (failed) nextCoreUploadFailureDelayMs() else 2_000L
+                        nextUploadAttemptElapsed = SystemClock.elapsedRealtime() + delayMs
+                        supervisor.schedule({ kickUploadPump() }, delayMs, TimeUnit.MILLISECONDS)
+                    }
                 }
             }
         }
@@ -899,7 +899,7 @@ class BrickLocationService : Service() {
         if (::bleAnchorEngine.isInitialized) runCatching { bleAnchorEngine.stop() }
         runCatching { Phase4AtlasRuntime.stop() }
         locationSubscribed = false
-        if (!DeepOffManager.isActive(this) && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
+        if (!mustQuiesceAsync() && DeviceRoleStore.role(this) == DeviceRoleStore.Role.CHILD) {
             runCatching { RecoveryScheduler.ensureScheduled(this) }
             runCatching { RecoveryScheduler.scheduleSoon(this, 15) }
         }
