@@ -3,6 +3,13 @@ name: Brick V1 Phase 8C — Android Deep Audit CI
 on:
   push:
     branches: [v1-p8c-android-deep-audit]
+    paths:
+      - '.github/workflows/v1-phase8c-android-deep-audit-ci.yml'
+      - 'app/**'
+      - 'tools/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
   workflow_dispatch:
 
 permissions:
