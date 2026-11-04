@@ -26,7 +26,7 @@ function data(){
 async function run(d=data(),hasToken=true){
  const calls=[];
  const request=async(url,opts)=>{
-  const p=new URL(url).pathname;calls.push(opts.method);
+  const parsed=new URL(url),p=parsed.pathname+parsed.search;calls.push(opts.method);
   assert.equal(opts.method,"GET");
   assert.equal(new URL(url).origin,"https://api.cloudflare.com");
   assert(p.startsWith(prefix));
