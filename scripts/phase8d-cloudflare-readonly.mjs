@@ -38,7 +38,8 @@ export async function attest({token,accountId,request=fetch}={}) {
     /^\/accounts\/[a-f0-9]{32}\/queues(?:\?per_page=100&page=(?:[1-9]|1[0-9]|20))?$/i,
     /^\/accounts\/[a-f0-9]{32}\/workers\/scripts\/(?:brick-family-v1|brick-family-v1-dev)\/versions\/[0-9a-f-]{36}$/i,
     /^\/accounts\/[a-f0-9]{32}\/r2\/buckets\/(?:brick-family-v1-history|brick-family-v1-maps)(?:\/lifecycle)?$/i,
-    /^\/accounts\/[a-f0-9]{32}\/access\/apps$/i
+    /^\/accounts\/[a-f0-9]{32}\/access\/apps$/i,
+    /^\/accounts\/[a-f0-9]{32}\/access\/apps\/[a-f0-9-]{32,36}(?:\/policies)?$/i
   ];
   if(!permitted.some(rx=>rx.test(path)))throw Error("GET path refused");
   const res=await request(API+path,{method:"GET",headers:{Authorization:"Bearer "+token,Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(15000)});
@@ -158,13 +159,28 @@ export async function attest({token,accountId,request=fetch}={}) {
   const r=await get("/accounts/"+accountId+"/access/apps");
   const apps=Array.isArray(r)?r:Array.isArray(r?.apps)?r.apps:null;
   if(!apps)return {blocked:true,detail:"Cloudflare Access app listing not available"};
-  const match=apps.filter(x=>(Array.isArray(x.destinations)?x.destinations.map(d=>d.uri):[x.domain]).some(s=>typeof s==="string"&&/^brick-family-v1\.[a-z0-9.-]+\.workers\.dev\/parent\*$/i.test(s)));
-  if(match.length!==1)return {ok:false,detail:"Exactly one production Access parent* app not attested"};
-  const app=match[0];
-  // A matching route proves only application presence; include/exclude policies,
-  // Access issuer/audience and actual user ownership remain a separate live gate.
-  return {ok:true,detail:"Production parent* Access application route found (policy, RS256 JWT and family ownership still require separate tests)",
-    evidence:{appCount:1,appId:app.id??null,policyVerified:false}};
+  const destinations=a=>Array.isArray(a?.destinations)?a.destinations.map(d=>d?.uri).filter(Boolean):a?.domain?[a.domain]:[];
+  const match=apps.filter(x=>destinations(x).some(s=>typeof s==="string"&&/^brick-family-v1\\.[a-z0-9.-]+\\.workers\\.dev\\/parent\\*$/i.test(s)));
+  if(match.length!==1)return {ok:false,detail:"Exactly one production Access parent* app not attested",evidence:{matchedAppCount:match.length}};
+  const listed=match[0],appId=listed.id;
+  if(typeof appId!=="string"||!/^[a-f0-9-]{32,36}$/i.test(appId))return {blocked:true,detail:"Access app identifier not readable"};
+  const app=await get("/accounts/"+accountId+"/access/apps/"+appId);
+  const policies=await get("/accounts/"+accountId+"/access/apps/"+appId+"/policies");
+  if(!Array.isArray(policies))return {blocked:true,detail:"Access app policies not readable, cannot certify parent access"};
+  const fields=["type","aud","session_duration","enable_binding_cookie","http_only_cookie_attribute","same_site_cookie_attribute",
+    "path_cookie_attribute","allow_iframe","app_launcher_visible"];
+  const valid=app?.type==="self_hosted"&&typeof app?.aud==="string"&&app.aud.length>12&&app.session_duration==="24h"&&
+    app.enable_binding_cookie===true&&app.http_only_cookie_attribute===true&&
+    String(app.same_site_cookie_attribute??"").toLowerCase()==="lax"&&app.path_cookie_attribute===true&&
+    app.allow_iframe===false&&app.app_launcher_visible===false&&destinations(app).length===1&&
+    destinations(app)[0]===destinations(listed)[0];
+  const p=policies.length===1?policies[0]:null;
+  const allow=!!p&&p.decision==="allow"&&Number(p.precedence??1)===1&&
+    Array.isArray(p.include)&&p.include.length===1&&p.include[0]?.cloudflare_account_member?.account_id===accountId&&
+    (!Array.isArray(p.exclude)||p.exclude.length===0)&&(!Array.isArray(p.require)||p.require.length===0);
+  const evidence={appCount:1,appId,appFieldsVerified:valid,policyCount:policies.length,accountMemberAllowOnly:allow};
+  if(!valid||!allow)return {ok:false,detail:"Access application flags or exact account-member allow policy differ from Phase 8 release contract",evidence};
+  return {ok:true,detail:"Access app exact /parent* destination and single account-member allow policy verified (JWT/user isolation still separate live gate)",evidence};
  });
  return result();
 }
