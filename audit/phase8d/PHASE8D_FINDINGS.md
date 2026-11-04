@@ -201,3 +201,14 @@
 - **GREEN tested source:** `1af0ebb8497d4f2ce38eb342645292f00368c623`, [Phase 8D CI 41798531256](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41798531256): all three workflow jobs passed including TypeScript, parent build, existing R2/D1/auth/backup regressions and the adversarial bundled DO runtime simulation for missing, invalid and inflated leases; snapshot, hibernation, idle expiry, device revocation, logout and pre-lease socket closure.
 - **Limits / open work:** simulated DO/alarms, not real Cloudflare Durable Object/Access; no real browser long-session renewal/connection-gap or cross-family test; no active development beta credential/session rotation. Cloudflare alarms can be delayed, so the Phase 8E parent client should proactively renew before lease expiry rather than assume the alarm always fires exactly at 30 seconds. Verify public route/method access and actual socket invalidation in isolated Cloudflare deployment.
 - **Disposition:** P8D-011 **FIXED → SOURCE/CI RETESTED, P1 provisional remains OPEN pending live isolated DO/WS + client renewal/revocation verification**. No production change or Android edit.
+
+---
+
+## P8D-012 — Endpoint audit matrix CSV header/row width discrepancy (8D.2)
+
+- **Requirement ID:** COV-006. **Severity:** P2 audit-evidence integrity (not a proven runtime vulnerability).
+- **Expected:** each 8D.2 endpoint field has exactly one named header; no shifted or unlabeled evidence fields.
+- **Observed 2026-11-04:** `audit/phase8d/PHASE8D_ENDPOINT_MATRIX_V2.csv` contains 49 candidate route rows with **12 quoted fields** each while its header names **11 fields**. The unlabeled 6th value is uniformly `SOURCE ONLY`, shifting input/output/rate/logging/evidence/status interpretation for CSV consumers.
+- **Reproduction:** count RFC-style quoted fields across 49 rows and compare to the header; create a fail-before-fix CI gate.
+- **Correction:** add a `source_evidence_level` header in the 6th position; preserve all 49 rows verbatim except evidence revisions grounded in executed tests; CI-enforce consistent schema, unique routes, nonempty fields and declared verification states.
+- **Status:** OPEN — finding recorded before remediation. Live endpoint reachability and complete route inventory remain separate 8D.2 tasks.
