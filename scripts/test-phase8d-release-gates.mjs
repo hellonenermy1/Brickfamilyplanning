@@ -9,7 +9,7 @@ const dev=JSON.parse(readFileSync("wrangler.development.template.jsonc","utf8"))
 const setup=readFileSync("scripts/setup-v1-phase6.mjs","utf8");
 const entries=[["deploy-brick",deploy],["phase8d-ci",audit]];
 for(const [name,text] of entries){
- const uses=[...text.matchAll(/^\s+-\s+uses:\s*(\S+)/gm)].map(x=>x[1]);
+ const uses=[...text.matchAll(/^\s+(?:-\s+)?uses:\s*(\S+)/gm)].map(x=>x[1]);
  assert(uses.length>=2,name+" unexpectedly empty checkout/action set");
  for(const action of uses){
   if(action.startsWith("./"))continue;
