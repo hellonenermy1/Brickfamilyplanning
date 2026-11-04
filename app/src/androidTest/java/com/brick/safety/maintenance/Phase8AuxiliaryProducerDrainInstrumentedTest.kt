@@ -23,7 +23,6 @@ class Phase8AuxiliaryProducerDrainInstrumentedTest : BrickInstrumentationTestCas
         val lastField = type.getDeclaredField("last").apply { isAccessible = true }
         val last = lastField.get(DiagnosticMonitor)
         val activeField = type.getDeclaredField("activeSamples").apply { isAccessible = true }
-        val startedField = type.getDeclaredField("started").apply { isAccessible = true }
         DiagnosticMonitor.stop()
         assertEquals(0, activeField.getInt(DiagnosticMonitor))
         val ready = CountDownLatch(1)
@@ -45,11 +44,20 @@ class Phase8AuxiliaryProducerDrainInstrumentedTest : BrickInstrumentationTestCas
                 android.os.SystemClock.elapsedRealtime() < until) Thread.sleep(25L)
             assertTrue("real diagnostics sample did not enter the held in-flight state",
                 activeField.getInt(DiagnosticMonitor) > 0)
-            DiagnosticMonitor.stop()
-            assertFalse("cancel(false) incorrectly treated active sampler as already stopped",
+            // stop() also clears a map guarded by last, so it can legitimately block until a
+            // sample exits that lock. Invoke it separately to avoid blocking the test controller.
+            val stopped = CountDownLatch(1)
+            val stopper = Thread({
+                try { DiagnosticMonitor.stop() } finally { stopped.countDown() }
+            }, "p8c-stop-diagnostics")
+            stopper.start()
+            Thread.sleep(80L)
+            assertFalse("a still-running sample must not be reported as drained",
                 DiagnosticMonitor.awaitQuiescent(80L))
             release.set(true)
             holder.join(2_000L)
+            assertTrue("diagnostic stop must finish once current work exits",
+                stopped.await(4, TimeUnit.SECONDS))
             assertTrue("actual sampling should finish after contention is removed",
                 DiagnosticMonitor.awaitQuiescent(8_000L))
         } finally {
