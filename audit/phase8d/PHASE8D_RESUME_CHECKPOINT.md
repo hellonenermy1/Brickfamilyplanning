@@ -103,3 +103,18 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 - **P8D-012:** observed 49 data rows with 12 fields vs 11-column header. RED [41799035064](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799035064), fixed missing `source_evidence_level` header, GREEN [41799170739](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41799170739). P2 audit evidence integrity finding **VERIFIED CLOSED**. The 49 entries are SOURCE CANDIDATES, not exhaustive/verified deployed routes.
 - **Next substantive 8D work:** enumerate ALL layered Worker methods/routes against 49 candidates, prove every public endpoint's auth/validation and mutation policy (8D.2/3/4/12/14), test parent WebSockets in isolated Cloudflare (8D.10), D1/R2/DO coherent backup restore (8D.16), observe actual live deployments securely (8D.1). **No Cloudflare account access or production deployment was performed.**
 - **Verdict unchanged:** 8D NOT PASS, no 8E/8F authorization, Phase 9 still later.
+
+  
+---
+
+## 2026-11-04 continuation — six audit streams + one negative backup reproduction
+
+**Latest fully tested source SHA:** `711bc3c1e54fe63659ddab629d05ff89bfdb65ae`, all 3 Phase 8D CI jobs SUCCESS [41804788810](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41804788810). Subsequent changes to `audit/phase8d/` documentation/endpoint evidence do **not** alter executable backend code. Previous frozen Android source `2c492efff01095e17f96af3c24ac07ac0b5c3739` remains untouched.
+
+**New test coverage:** 8D.2 49 source routes + 3 dev login/logout method records; 8D.12 48 invalid-Origin production mutation cases; 8D.8 18-table SQLite FK/constraints/indexes; 8D.9 six DLQ poison/outage/SOS cases; 8D.17 real D1 per-device cleanup/isolation; 8D.18 D1 audit path privacy (P8D-013 RED→GREEN). Each has exact CI logs, not live Cloudflare proof.
+
+**New confirmed source concern:** P8D-013 raw device/session IDs leaked to D1 audit paths before `44e259c5`, now fixed and retested at source/CI only. **Reproduced OPEN backup defect:** P8D-002 can mix generation 0 `devices` with generation 1 `device_capability_profile` when table queries straddle one synthetic atomic DB write; this is evidence of absent coherent-snapshot guarding in source, NOT proof of live data loss.
+
+**New open findings:** P8D-014 provisional P1 for production R2 raw/trusted 30/90-day retention unverified, pending actual lifecycle policies and end-to-end safe cleanup proof. P8D-015 provisional P2 for dedicated history/WS rate-limit source gaps, subject to edge-rule attestation. No speculative fixes or production mutation performed.
+
+**Next required:** verify production+development Cloudflare deployment identity/bindings/rules READ ONLY; restore D1/R2/DO into truly isolated Cloudflare resources and solve backup snapshot coherence; live DO/WS/Access/revocation; full nested public route method/auth/storage probes; per-class R2 retention; resource-safe history, WS and geocode quotas; remaining 8D.1–8D.19 acceptance work. No Phase 8E/8F, no live production deploy, no Android audit reopening unless code changes.
