@@ -9,14 +9,14 @@ const [prodFile,devFile]=process.argv.slice(2);
 assert(prodFile&&devFile,"pass compiled parent-v8 and parent-v7-live modules");
 const {parentV8Html}=await import(pathToFileURL(prodFile).href);
 const {parentV7LiveHtml}=await import(pathToFileURL(devFile).href);
-function connectSource(html){
+function browserFunctionSource(html,name){
  const script=html.match(/<script\s+type=["']module["'](?:\s+nonce=["'][^"']+["'])?>([\s\S]*?)<\/script>/);
  assert(script,"cannot locate actual browser module");
  const parsed=ts.createSourceFile("brick-parent.js",script[1],ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
  const found=[];
- const visit=n=>{if(ts.isFunctionDeclaration(n)&&n.name?.text==="connect")found.push(n);ts.forEachChild(n,visit);};
+ const visit=n=>{if(ts.isFunctionDeclaration(n)&&n.name?.text===name)found.push(n);ts.forEachChild(n,visit);};
  visit(parsed);
- assert.equal(found.length,1,"parent must define one connect() function");
+ assert.equal(found.length,1,"parent must define one "+name+"() function");
  return found[0].getText(parsed);
 }
 async function run(kind,html){
@@ -38,7 +38,7 @@ async function run(kind,html){
   JSON,Date,Promise,Math,console
  };
  vm.createContext(context);
- vm.runInContext(connectSource(html),context);
+ vm.runInContext(browserFunctionSource(html,"connect"),context);
  assert.equal(typeof context.connect,"function");
  context.connect("child-a");
  assert.equal(sockets.length,1,kind+" initial socket");
@@ -73,6 +73,16 @@ async function run(kind,html){
  assert.equal(sockets.length,5,kind+" proactive renewal did not open a new authenticated connection");
  assert.equal(fourth.readyState,3,kind+" proactive renewal did not retire previous socket");
  
+ const oldResponses=[];
+ let completeOldResponse;
+ const asyncContext={currentDevice:"child-a",api(){return new Promise(resolve=>{completeOldResponse=resolve})},renderSnapshot(response){oldResponses.push(response)}};
+ vm.createContext(asyncContext);
+ vm.runInContext(browserFunctionSource(html,"refreshPhase5State"),asyncContext);
+ const oldPromise=vm.runInContext("refreshPhase5State('child-a')",asyncContext);
+ asyncContext.currentDevice="child-b";
+ completeOldResponse({childId:"child-a",state:{lat:1.43}});
+ await oldPromise;
+ assert.equal(oldResponses.length,0,kind+" stale child A async HTTP state repainted child B");
  console.log("PASS "+kind+" browser generated WS: obsolete events ignored, fallback refresh isolated, terminal revocation stops retry, 30s lease reconnect bounded");
 }
 await run("production",parentV8Html());
