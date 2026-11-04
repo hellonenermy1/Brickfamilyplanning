@@ -109,19 +109,18 @@ jobs:
           printf '%s\n' "$status" | tee resource-evidence/seed-status.txt
           [[ "$status" == seeded=1000* ]]
 
-          # If the receiver's normal ServiceControl start was rejected by an OEM/API policy, ADB shell
-          # is allowed to issue the same explicit FGS start for this emulator-only measurement. The
-          # production code path remains unchanged; CI only requires the real service to be running.
-          if ! "$ADB" shell dumpsys activity services com.brick.safety | grep -F 'BrickLocationService' >/dev/null; then
-            "$ADB" shell am start-foreground-service \
-              -a com.brick.safety.action.ENSURE_RUNNING \
-              -n com.brick.safety/.location.BrickLocationService | tee resource-evidence/explicit-fgs-start.txt
-          fi
+          # The tracking service is intentionally not exported. ADB/shell cannot start it
+          # directly (SecurityException: not exported), and we must NOT export it to satisfy CI.
+          # Enter the actual exported Activity, whose normal child-role path starts the private FGS
+          # under a valid visible-app Android 15 location permission context.
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity \
+            | tee resource-evidence/foreground-activity-start.txt
           for i in $(seq 1 30); do
             if "$ADB" shell dumpsys activity services com.brick.safety | grep -F 'BrickLocationService' >/dev/null; then break; fi
             sleep 1
           done
           "$ADB" shell dumpsys activity services com.brick.safety | grep -F 'BrickLocationService' >/dev/null
+          "$ADB" shell input keyevent KEYCODE_HOME >/dev/null
 
           pid="$("$ADB" shell pidof com.brick.safety | tr -d '\r')"
           test -n "$pid"
