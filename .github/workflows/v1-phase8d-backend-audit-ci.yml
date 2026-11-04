@@ -60,6 +60,10 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: P8D-006 deny mutations for revoked child identity
+        run: |
+          npx --no-install esbuild src/p8b-controls.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-controls.mjs
+          node scripts/test-phase8d-revoked-control.mjs /tmp/brick-p8d-controls.mjs
       - name: P8D-003 development credential and session security regression
         run: |
           node scripts/test-phase8d-development-login-source.mjs
