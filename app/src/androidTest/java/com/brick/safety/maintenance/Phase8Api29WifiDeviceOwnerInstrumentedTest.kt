@@ -19,7 +19,7 @@ class Phase8Api29WifiDeviceOwnerInstrumentedTest : BrickInstrumentationTestCase(
         assertTrue("This test requires real Device Owner provisioning", dpm.isDeviceOwnerApp(app.packageName))
         val initiallyEnabled = wifi.isWifiEnabled
 
-        fun verifyTransition(target: Boolean, id: String) {
+        fun verifyTransition(target: Boolean, id: String): Boolean {
             assertTrue(WifiScheduleManager.updateSchedules(app, listOf(
                 WifiScheduleManager.Schedule(
                     id = id,
