@@ -60,6 +60,8 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: 8D.15 check built public assets for server-only credentials
+        run: node scripts/test-phase8d-public-secret-surface.mjs
       - name: P8D-007 concurrent R2 segment durability regression
         run: |
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
