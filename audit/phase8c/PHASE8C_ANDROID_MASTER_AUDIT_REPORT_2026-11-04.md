@@ -1,5 +1,9 @@
 # Brick V1 — Phase 8C Android deep audit (master acceptance report)
 
+
+**FINAL ACCEPTANCE ADDENDUM — 2026-11-04: PASS / DONE for Phase 8C scoped Android source, emulator, security, durability, race and resource audit.** Final Android production SHA `2c492efff01095e17f96af3c24ac07ac0b5c3739`; signed release, deep audit, 120-test emulator, actual Android 10 Device Owner and 186-second sustained resource workflows all PASS. All 13 original P8C-001…013 findings plus the Live retry hot loop are closed in [final finding disposition](PHASE8C_FINDING_CLOSURE_MATRIX_2026-11-04.md). The authoritative decision, full exact-run references and Phase9 hardware limitations are in [final Phase 8C acceptance](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md). **Previous `IN PROGRESS`, `pending`, and `not a pass` sections below are preserved as historical intermediate audit snapshots**; they do not supersede this final evidence-backed verdict.
+
+
 **Audit branch:** `v1-p8c-android-deep-audit` in `hellonenermy1/Brickfamilyplanning`. **Date:** 2026-11-04. **Status:** **IN PROGRESS — NOT A FINAL PASS** until the final-source checks and all P1 original reproductions have evidence. This follows the user-approved `Brick V1 Phase 8 Full Audit Execution Plan` 8C.1–8C.20, with its global fail-closed rule: code inspection, unchecked source, or missing test evidence cannot count as PASS.
 
 ## Final-source evidence reconciliation — 2026-11-04
