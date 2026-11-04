@@ -41,9 +41,11 @@ const env={PAIR_RATE:{async limit(){return {success:true};}},DB:{
  };}};},
  async batch(stmts){
   // D1.batch wraps statements transactionally. Unique-key violation aborts the batch.
-  const sql="BEGIN IMMEDIATE;\n"+stmts.map(s=>sub(s.sql,s.args)+";").join("\n")+"\nCOMMIT;";
-  dbRaw(sql);
-  return stmts.map(()=>({success:true,meta:{changes:1}}));
+  const sql="BEGIN IMMEDIATE;\n"+stmts.map(s=>sub(s.sql,s.args)+";\nSELECT changes() AS change_count;").join("\n")+"\nCOMMIT;";
+  const output=dbRaw(sql);
+  const changes=[...output.matchAll(/"change_count"\s*:\s*(\d+)/g)].map(m=>Number(m[1]));
+  assert.equal(changes.length,stmts.length,"read real SQLite changes for each atomic statement");
+  return changes.map(n=>({success:true,meta:{changes:n}}));
  }
 }};
 const request=()=>new Request(origin+"/parent/api/pair/pin/"+id,{method:"POST",headers:{Origin:origin}});
