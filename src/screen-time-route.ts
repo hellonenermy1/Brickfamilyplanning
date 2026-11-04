@@ -46,7 +46,8 @@ export async function ingestScreenTime(req: Request, env: ScreenTimeEnv, deviceI
 }
 
 export async function parentScreenTime(env: ScreenTimeEnv, deviceId: string, days = 14) {
-  const limit = Math.max(1, Math.min(90, Math.trunc(days)));
+  if (!Number.isFinite(days) || !Number.isInteger(days) || days < 1) return json({ error: "invalid screen-time days" }, 400);
+  const limit = Math.min(90, days);
   const r = await env.DB.prepare("SELECT local_day,total_foreground_ms,session_count,summary_json,received_at FROM screen_time_daily WHERE device_id=?1 ORDER BY local_day DESC LIMIT ?2")
     .bind(deviceId, limit).all();
   return json({ days: r.results });
