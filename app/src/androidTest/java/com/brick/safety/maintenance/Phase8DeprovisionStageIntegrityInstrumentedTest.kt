@@ -49,6 +49,13 @@ class Phase8DeprovisionStageIntegrityInstrumentedTest : BrickInstrumentationTest
         assertTrue(DeprovisionManager.isPostPurge(context))
     }
 
+    fun testNoninitialStageWithoutOriginMarkerFailsClosed() {
+        assertTrue(prefs.edit().putString("stage", DeprovisionManager.Stage.PURGE_BRICK.name).commit())
+        assertEquals(DeprovisionManager.Stage.INVALID, DeprovisionManager.stage(context))
+        assertTrue(DeprovisionManager.isPostPurge(context))
+        assertFalse(DeprovisionManager.uninstall(context).ok)
+    }
+
     fun testStartingDeprovisionWritesMonotonicOriginMarker() {
         val result = DeprovisionManager.authoriseFreeze(context)
         assertTrue(result.detail, result.ok)
