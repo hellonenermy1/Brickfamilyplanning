@@ -88,7 +88,7 @@ object DeprovisionManager {
             } else {
                 val raw = prefs.getString(KEY_STAGE, null)
                 val parsed = raw?.let { Stage.valueOf(it) } ?: Stage.INVALID
-                if (parsed == Stage.INVALID || (parsed == Stage.NONE && everStarted)) Stage.INVALID else parsed
+                if (parsed == Stage.INVALID || (parsed == Stage.NONE && everStarted) || (parsed != Stage.NONE && !everStarted)) Stage.INVALID else parsed
             }
         }.getOrDefault(Stage.INVALID)
     }
