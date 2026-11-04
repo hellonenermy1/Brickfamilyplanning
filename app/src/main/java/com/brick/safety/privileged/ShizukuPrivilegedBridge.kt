@@ -12,6 +12,7 @@ import android.os.Looper
 import android.os.RemoteException
 import android.os.SystemClock
 import com.brick.safety.atlas.AtlasPrivacyId
+import com.brick.safety.maintenance.DeprovisionManager
 import rikka.shizuku.Shizuku
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -29,6 +30,8 @@ object ShizukuBridgeController {
     private const val CAPABILITY_POLL_MS = 100L
 
     @Volatile private var initialized = false
+    @Volatile private var deprovisionShutdown = false
+    private val deprovisionFence = Any()
     @Volatile private var foreground = false
     @Volatile private var binding = false
     @Volatile private var service: IBrickPrivilegedService? = null
@@ -41,6 +44,11 @@ object ShizukuBridgeController {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            if (deprovisionShutdown) {
+                binding = false
+                runCatching { Shizuku.unbindUserService(args(), connection, true) }
+                return
+            }
             binding = false
             service = binder?.let { IBrickPrivilegedService.Stub.asInterface(it) }
             serviceGeneration += 1L
@@ -49,6 +57,7 @@ object ShizukuBridgeController {
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            if (deprovisionShutdown) return
             binding = false
             service = null
             serviceGeneration += 1L
@@ -62,6 +71,7 @@ object ShizukuBridgeController {
         }
 
         override fun onNullBinding(name: ComponentName?) {
+            if (deprovisionShutdown) return
             binding = false
             service = null
             serviceGeneration += 1L
@@ -72,6 +82,7 @@ object ShizukuBridgeController {
 
     private val binderReceived = object : Shizuku.OnBinderReceivedListener {
         override fun onBinderReceived() {
+            if (deprovisionShutdown) return
             lastError = null
             if (hasPermission()) bindNow() else maybeRequestPermission()
         }
@@ -79,6 +90,7 @@ object ShizukuBridgeController {
 
     private val binderDead = object : Shizuku.OnBinderDeadListener {
         override fun onBinderDead() {
+            if (deprovisionShutdown) return
             binding = false
             service = null
             serviceGeneration += 1L
@@ -90,7 +102,7 @@ object ShizukuBridgeController {
 
     private val permissionResult = object : Shizuku.OnRequestPermissionResultListener {
         override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
-            if (requestCode != REQUEST_CODE) return
+            if (deprovisionShutdown || requestCode != REQUEST_CODE) return
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
                 lastError = null
                 bindNow()
@@ -101,9 +113,10 @@ object ShizukuBridgeController {
     }
 
     fun initialize(context: Context) {
+        if (deprovisionShutdown || DeprovisionManager.isPostPurge(context)) return
         if (initialized) return
         synchronized(this) {
-            if (initialized) return
+            if (initialized || deprovisionShutdown || DeprovisionManager.isPostPurge(context)) return
             appContext = context.applicationContext
             PrivilegedBridgeRuntime.install(ShizukuPrivilegedBridge)
             Shizuku.addBinderReceivedListenerSticky(binderReceived)
@@ -114,6 +127,7 @@ object ShizukuBridgeController {
     }
 
     fun onAppForegroundChanged(isForeground: Boolean) {
+        if (deprovisionShutdown || !initialized) return
         foreground = isForeground
         if (isForeground) {
             if (hasPermission()) bindNow() else maybeRequestPermission()
@@ -125,6 +139,19 @@ object ShizukuBridgeController {
      * may also be called defensively after a provider fault. The user-service implements destroy(),
      * so remove=true asks Shizuku to terminate the remote process rather than leaving it orphaned.
      */
+    /**
+     * Final privacy fence, distinct from recoverable provider shutdown. Once this begins, late
+     * Shizuku binder/permission callbacks must never reopen the purged brick preference store.
+     * The lock serializes the only Shizuku callback preference write with the purge boundary.
+     */
+    fun shutdownForDeprovision() {
+        synchronized(deprovisionFence) {
+            deprovisionShutdown = true
+            foreground = false
+        }
+        shutdown()
+    }
+
     fun shutdown() {
         if (!initialized) return
         main.removeCallbacks(rebindRunnable)
@@ -136,19 +163,28 @@ object ShizukuBridgeController {
         runCatching { Shizuku.unbindUserService(args(), connection, true) }
     }
 
-    private fun binderAlive(): Boolean = initialized && runCatching { Shizuku.pingBinder() }.getOrDefault(false)
+    private fun binderAlive(): Boolean = initialized && !deprovisionShutdown &&
+        runCatching { Shizuku.pingBinder() }.getOrDefault(false)
 
     private fun hasPermission(): Boolean = binderAlive() && runCatching {
         !Shizuku.isPreV11() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }.getOrDefault(false)
 
     private fun maybeRequestPermission() {
-        if (!foreground || !binderAlive() || hasPermission()) return
-        val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
-        if (prefs.getBoolean("shizukuPermissionPrompted", false)) return
+        if (deprovisionShutdown || !foreground || !binderAlive() || hasPermission()) return
         val rationale = runCatching { Shizuku.shouldShowRequestPermissionRationale() }.getOrDefault(true)
         if (rationale) return
-        if (!prefs.edit().putBoolean("shizukuPermissionPrompted", true).commit()) return
+        // Deprovision sets its in-process fence under the same lock before deleting preferences.
+        // A late permission callback therefore cannot commit after this fence becomes active.
+        val recorded = synchronized(deprovisionFence) {
+            if (deprovisionShutdown) false
+            else {
+                val prefs = appContext.getSharedPreferences("brick", Context.MODE_PRIVATE)
+                if (prefs.getBoolean("shizukuPermissionPrompted", false)) false
+                else prefs.edit().putBoolean("shizukuPermissionPrompted", true).commit()
+            }
+        }
+        if (!recorded || deprovisionShutdown) return
         runCatching { Shizuku.requestPermission(REQUEST_CODE) }
             .onFailure { noteError("Shizuku permission request failed") }
     }
@@ -162,7 +198,7 @@ object ShizukuBridgeController {
         .version(1)
 
     private fun bindNow() {
-        if (!initialized || service != null || binding || !hasPermission()) return
+        if (deprovisionShutdown || !initialized || service != null || binding || !hasPermission()) return
         binding = true
         runCatching { Shizuku.bindUserService(args(), connection) }
             .onFailure {
@@ -172,7 +208,7 @@ object ShizukuBridgeController {
     }
 
     private fun scheduleRebind() {
-        if (!initialized || !binderAlive() || !hasPermission()) return
+        if (deprovisionShutdown || !initialized || !binderAlive() || !hasPermission()) return
         main.removeCallbacks(rebindRunnable)
         main.postDelayed(rebindRunnable, REBIND_DELAY_MS)
     }
@@ -180,6 +216,7 @@ object ShizukuBridgeController {
     private val rebindRunnable = Runnable { bindNow() }
 
     private fun refreshCapabilities() {
+        if (deprovisionShutdown) return
         val current = service ?: return
         val generation = serviceGeneration
         val future = runCatching { remoteLane.submit { current.capabilities() } }.getOrElse {
@@ -190,7 +227,7 @@ object ShizukuBridgeController {
 
         val poll = object : Runnable {
             override fun run() {
-                if (generation != serviceGeneration || service !== current) {
+                if (deprovisionShutdown || generation != serviceGeneration || service !== current) {
                     future.cancel(true)
                     return
                 }
@@ -257,6 +294,7 @@ object ShizukuBridgeController {
     }
 
     private fun <T> remote(timeoutMs: Long = CALL_TIMEOUT_MS, action: (IBrickPrivilegedService) -> T): Result<T> {
+        if (deprovisionShutdown) return Result.failure(IllegalStateException("Shizuku deprovisioned"))
         val current = service ?: return Result.failure(IllegalStateException("Shizuku user service unavailable"))
         val generation = serviceGeneration
         val result = remoteLane.call(timeoutMs) { action(current) }
