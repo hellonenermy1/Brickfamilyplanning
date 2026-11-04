@@ -31,3 +31,12 @@
 - Do not overclaim physical OPPO GNSS/RF/battery/ColorOS: explicitly `IMPLEMENTED — DEVICE VERIFICATION PENDING` for Phase 9.
 
 **Do not mark done merely because 103 prior tests passed.** This checkpoint intentionally distinguishes historical green runs from the newest code and test cases.
+
+
+## Addendum after checkpoint B
+
+- **Signed RC historical snapshot VERIFIED at `abf47133`:** [Actions run 41756635965](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41756635965) has all four key signing/build/verify/upload steps PASS. Downloaded artifact `13289287846`; independently rehashed the APK bytes (SHA-256 `b0e7caf9220cc4121c33491f9de4175e08ddf913451b787552b9ee72b459db0e`); verified recorded APK v3 RSA-4096 signer certificate digest equals permanent pin and compiled backup/cleartext flags are false. **This is not the final source build** because production source later changed at `0bd66ae`.
+- **Real resource test fixture failure observed:** [41756635835](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41756635835) inserted 1,000 fixture records, but two real runtime records also appeared. The original exact global count (1000) assertion failed with `expected 1000, was 1002`. Corrected in `7b6cdb615` to verify exactly 1,000 fixture `epoch=808`/sequence rows and to permit extra authentic app records; full resource measurements pending.
+- **Cold-start corruption fixture outcome:** [41758326659](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41758326659) compiled and passed its 28 suite tests plus corruption seeding; actually restarted the app and routed to `DiagnosticsActivity`. The ADB shell's relative `run-as sh -c` file check exited before conclusively examining file recreation. Fixed with absolute app path and direct `run-as ls` existence queries (`3ebec1b3`, `033b8150`). No P8C-013 cold-start closure claimed pending rerun.
+- Added exact-commit API29 status publication in `7106e8c9` so the actual Device Owner Wi-Fi ON/OFF original-reproducer test can be inspected. Outcome pending.
+- **Latest Android source correction remains `0bd66aea...`**. Test/workflow/audit commits after it have not changed `app/src/main`. Ensure **all four gates** (deep-audit; emulator+cold start; API29 Wi-Fi; three-minute resource) and a *current-source* signed APK are verified before any PASS verdict.
