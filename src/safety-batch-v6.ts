@@ -21,7 +21,7 @@ type Trip = {
   arrival_candidate_count: number; last_alert_at: number | null; stationary_since: number | null; last_stop_alert_at: number | null;
   last_eval_epoch: number; last_eval_sequence: number; last_distance_to_destination_m: number | null; last_location_at: number | null;
 };
-type PendingEvent = { event: RealtimeSafetyEvent; statement: D1PreparedStatement };
+type PendingEvent = { event: RealtimeSafetyEvent };
 
 function radians(v: number) { return v * Math.PI / 180; }
 function distanceM(aLat: number, aLon: number, bLat: number, bLon: number) {
@@ -52,12 +52,7 @@ async function eventRecord(env: SafetyBatchEnv, deviceId: string, kind: string, 
     accuracyM,
     detail
   };
-  return {
-    event,
-    statement: env.DB.prepare(
-      "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)"
-    ).bind(id, deviceId, kind, event.deviceCreatedAt, event.serverCreatedAt, lat, lon, accuracyM, JSON.stringify(detail))
-  };
+  return { event };
 }
 
 /**
@@ -90,7 +85,9 @@ export function coordinateDwellStateV6(
     : { arrivalCandidateSince: null, arrivalCandidateCount: 0, stationarySince: null };
 }
 
-export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: string, packets: LivePacket[]) {
+export class SafetyEvaluationContentionError extends Error {}
+
+export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: string, packets: LivePacket[], attempt = 0): Promise<RealtimeSafetyEvent[]> {
   if (!packets.length) return [] as RealtimeSafetyEvent[];
   // Ingest already requires strict ordering, but sort defensively so this evaluator is safe if it is
   // called directly by another bounded path in the future.
@@ -271,28 +268,67 @@ export async function evaluateSafetyBatchV6(env: SafetyBatchEnv, deviceId: strin
   }
 
   const writes: D1PreparedStatement[] = [];
+  // Compare against the snapshot used to derive dwell/transition decisions. All
+  // event inserts run BEFORE state updates in ONE D1 transaction, so a loser
+  // cannot emit an alert for a state transition another evaluator already owns.
+  const active = "EXISTS (SELECT 1 FROM devices WHERE id=?2 AND revoked_at IS NULL)";
+  function fenceGuard(id: string, device: string, epoch: string, sequence: string, absent: string) {
+    return `EXISTS (SELECT 1 FROM geofences g WHERE g.id=${id} AND g.device_id=${device} AND g.enabled=1 AND (
+      (${absent}=1 AND NOT EXISTS (SELECT 1 FROM geofence_state s WHERE s.geofence_id=${id})) OR
+      (${absent}=0 AND EXISTS (SELECT 1 FROM geofence_state s WHERE s.geofence_id=${id} AND s.device_id=${device} AND s.last_epoch=${epoch} AND s.last_sequence=${sequence}))
+    ))`;
+  }
+  const eventWrites = events.map(({ event }) => {
+    let guard: string, id: string, epoch: number, sequence: number, absent = 0;
+    if (typeof event.detail.geofenceId === "string") {
+      const original = fences.find(f => f.row.id === event.detail.geofenceId)?.row;
+      if (!original) throw new Error("missing safety fence snapshot");
+      id = original.id; epoch = original.last_epoch ?? 0; sequence = original.last_sequence ?? 0;
+      absent = original.stable_state === null ? 1 : 0;
+      guard = fenceGuard("?10", "?2", "?11", "?12", "?13");
+    } else {
+      if (!tripRow || event.detail.tripId !== tripRow.id) throw new Error("missing safety trip snapshot");
+      id = tripRow.id; epoch = tripRow.last_eval_epoch; sequence = tripRow.last_eval_sequence;
+      guard = "EXISTS (SELECT 1 FROM trips t WHERE t.id=?10 AND t.device_id=?2 AND t.state='active' AND t.last_eval_epoch=?11 AND t.last_eval_sequence=?12) AND ?13=0";
+    }
+    return env.DB.prepare(
+      "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) " +
+      `SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9 WHERE ${active} AND ${guard}`
+    ).bind(event.id, deviceId, event.kind, event.deviceCreatedAt, event.serverCreatedAt, event.latitude, event.longitude,
+      event.accuracyM, JSON.stringify(event.detail), id, epoch, sequence, absent);
+  });
   const serverNow = Date.now();
   for (const f of fences) if (f.dirty) {
     writes.push(env.DB.prepare(
       `INSERT INTO geofence_state(geofence_id,device_id,stable_state,candidate_state,candidate_since,candidate_count,last_distance_m,updated_at,last_epoch,last_sequence)
-       VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)
+       SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10 WHERE ${active} AND ${fenceGuard("?1", "?2", "?11", "?12", "?13")}
        ON CONFLICT(geofence_id) DO UPDATE SET stable_state=excluded.stable_state,candidate_state=excluded.candidate_state,candidate_since=excluded.candidate_since,candidate_count=excluded.candidate_count,last_distance_m=excluded.last_distance_m,updated_at=excluded.updated_at,last_epoch=excluded.last_epoch,last_sequence=excluded.last_sequence
        WHERE excluded.last_epoch>geofence_state.last_epoch OR (excluded.last_epoch=geofence_state.last_epoch AND excluded.last_sequence>geofence_state.last_sequence)`
-    ).bind(f.row.id, deviceId, f.stable, f.candidate, f.candidateSince, f.candidateCount, f.lastDistanceM, serverNow, f.lastEpoch, f.lastSequence));
+    ).bind(f.row.id, deviceId, f.stable, f.candidate, f.candidateSince, f.candidateCount, f.lastDistanceM, serverNow, f.lastEpoch, f.lastSequence, f.row.last_epoch ?? 0, f.row.last_sequence ?? 0, f.row.stable_state === null ? 1 : 0));
   }
   if (trip && tripDirty) {
     writes.push(env.DB.prepare(
-      "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9))"
+      "UPDATE trips SET state=?1,ended_at=COALESCE(?2,ended_at),arrival_candidate_since=?3,arrival_candidate_count=?4,last_alert_at=?5,stationary_since=?6,last_stop_alert_at=?7,last_eval_epoch=?8,last_eval_sequence=?9,last_distance_to_destination_m=?10,last_location_at=?11 WHERE id=?12 AND state='active' AND (last_eval_epoch<?8 OR (last_eval_epoch=?8 AND last_eval_sequence<?9)) AND last_eval_epoch=?13 AND last_eval_sequence=?14 AND EXISTS (SELECT 1 FROM devices WHERE id=trips.device_id AND revoked_at IS NULL)"
     ).bind(tripState, tripEndedAt, trip.arrival_candidate_since, trip.arrival_candidate_count, trip.last_alert_at,
       trip.stationary_since, trip.last_stop_alert_at, trip.last_eval_epoch, trip.last_eval_sequence,
-      trip.last_distance_to_destination_m, trip.last_location_at, trip.id));
+      trip.last_distance_to_destination_m, trip.last_location_at, trip.id, tripRow!.last_eval_epoch, tripRow!.last_eval_sequence));
   }
-  writes.push(...events.map(e => e.statement));
-  if (writes.length) await env.DB.batch(writes);
+  const statements = [...eventWrites, ...writes];
+  const results = statements.length ? await env.DB.batch(statements) : [];
+  const committed = events.filter((_, i) => (results[i]?.meta?.changes ?? 0) === 1);
 
+  // Publish only rows this transaction inserted, even if another entity needs a
+  // bounded retry. Their durable state/event pair already committed together.
+  await Promise.allSettled(committed.map(({ event }) => stub.pushSafetyEvent(event)));
+  const lostSnapshot = writes.some((_, i) => results[eventWrites.length + i]?.meta?.changes === 0);
+  if (lostSnapshot) {
+    const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1").bind(deviceId).first<{ revoked_at: number | null }>();
+    if (!life || life.revoked_at !== null) return committed.map(e => e.event);
+    // Re-read after losing CAS: a different NEWER input must not be silently
+    // marked evaluated while its dwell/candidate state was never applied.
+    if (attempt >= 2) throw new SafetyEvaluationContentionError("safety evaluation contention; retry");
+    return [...committed.map(e => e.event), ...await evaluateSafetyBatchV6(env, deviceId, packets, attempt + 1)];
+  }
   await stub.commitSafetyEvaluation(highest.epoch, highest.sequence);
-  // D1 is the durable source of truth. A transient realtime/WebSocket broadcast failure must not
-  // turn a successfully persisted safety transition into a failed ingest/duplicate reconstruction.
-  await Promise.allSettled(events.map(({ event }) => stub.pushSafetyEvent(event)));
-  return events.map(e => e.event);
+  return committed.map(e => e.event);
 }

@@ -1,3 +1,4 @@
+import { persistActiveSafetyEvent } from "./safety-event-write";
 import { BrickDevice, type DeviceHealth, type RealtimeSafetyEvent } from "./device-do";
 import { decodeLivePacket, V1_BYTES, V2_BYTES, type LivePacket } from "./protocol";
 import { randomToken, sha256Hex, verifyDeviceSignature } from "./crypto";
@@ -229,10 +230,13 @@ async function ingestSafetyEvent(req: Request, env: Env, id: string) {
   const now = Date.now();
   if (e.createdAtMs > now + 600_000 || e.createdAtMs < now - 30 * 86_400_000) return json({ error: "event timestamp outside allowed window" }, 400);
   const detail = JSON.stringify(e.detail ?? {}); if (detail.length > 4096) return json({ error: "event detail too large" }, 400);
-  const r = await env.DB.prepare(
-    "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)"
-  ).bind(e.eventId, id, e.kind, e.createdAtMs, now, e.latitude ?? null, e.longitude ?? null, e.accuracyM ?? null, detail).run();
-  const duplicate = (r.meta.changes ?? 0) === 0;
+  const outcome = await persistActiveSafetyEvent(env.DB, {
+    id: e.eventId, deviceId: id, kind: e.kind, deviceCreatedAt: e.createdAtMs, serverCreatedAt: now,
+    latitude: e.latitude ?? null, longitude: e.longitude ?? null, accuracyM: e.accuracyM ?? null, detailJson: detail
+  });
+  if (outcome === "revoked") return json({ error: "device unauthorized" }, 401);
+  if (outcome === "conflict") return json({ error: "safety event identity conflict" }, 409);
+  const duplicate = outcome === "duplicate";
   if (!duplicate) {
     const event: RealtimeSafetyEvent = {
       id: e.eventId, kind: e.kind, deviceCreatedAt: e.createdAtMs, serverCreatedAt: now,

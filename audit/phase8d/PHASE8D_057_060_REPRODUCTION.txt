@@ -1,0 +1,23 @@
+Baseline807025e341df327bcac9385180602f76b570ef7c; actual production Worker/evaluator bundles, synthetic P256 and native SQLite. Source corrections not included in RED bundle.
+
+Signed routes:
+FAIL P8D-057 fall revoked during Queue send returns401 without D1/DO event: Expected values to be strictly equal:
+FAIL P8D-057 ordinary safety event revoked after final auth read returns401: Expected values to be strictly equal:
+FAIL P8D-058 global event-ID collision never falsely ACKs another device: fall_detected: Expected values to be strictly equal:
+FAIL P8D-058 global event-ID collision never falsely ACKs another device: sos_started: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall unpaired latitude rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall unpaired longitude rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall invalid latitude rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall invalid longitude rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall string coordinate rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall negative accuracy rejected before Queue/D1/DO: Expected values to be strictly equal:
+FAIL P8D-059 malformed fall scalar accuracy rejected before Queue/D1/DO: Expected values to be strictly equal:
+PASS P8D-057/059 active valid0,0 fall persists and exact retry is duplicate
+
+Safety evaluator baseline:
+FAIL P8D-060 newer state wins before batch; no stale alert stored/returned/broadcast: Expected values to be strictly equal:
+FAIL P8D-060 revoked state wins before batch; no stale alert stored/returned/broadcast: Expected values to be strictly equal:
+FAIL P8D-060 two simultaneous identical snapshots produce one committed alert and one publication: Expected values to be strictly equal:
+PASS P8D-060 ordinary qualified transition persists state+event together
+
+After correction24 focused checks pass locally; exact hosted CI pending.

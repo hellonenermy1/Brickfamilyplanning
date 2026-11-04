@@ -3,7 +3,7 @@ import { verifyDeviceSignature } from "./crypto";
 import type { BrickDevice } from "./device-do";
 import { decodeLivePacket, V1_BYTES, V2_BYTES, type LivePacket } from "./protocol";
 import { constrainFallbackToRoute } from "./route-constraint";
-import { evaluateSafetyBatchV6 } from "./safety-batch-v6";
+import { evaluateSafetyBatchV6, SafetyEvaluationContentionError } from "./safety-batch-v6";
 import { preciseEndpointStatements, processRefinementsForDevice } from "./phase5-refined-history";
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -171,7 +171,11 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   catch { return json({ error: "location queue unavailable; retry" }, 503); }
   const published = await publishAfterQueue(env, deviceId, [packet]);
   if (published.revoked) return json({ error: "device unauthorized" }, 401);
-  await evaluateSafetyBatchV6(env, deviceId, [packet]);
+  try { await evaluateSafetyBatchV6(env, deviceId, [packet]); }
+  catch (error) {
+    if (error instanceof SafetyEvaluationContentionError) return json({ error: "safety evaluation busy; retry" }, 503);
+    throw error;
+  }
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: published.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
@@ -206,7 +210,11 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
   catch { return json({ error: "location queue unavailable; retry" }, 503); }
   const published = await publishAfterQueue(env, deviceId, packets);
   if (published.revoked) return json({ error: "device unauthorized" }, 401);
-  await evaluateSafetyBatchV6(env, deviceId, packets);
+  try { await evaluateSafetyBatchV6(env, deviceId, packets); }
+  catch (error) {
+    if (error instanceof SafetyEvaluationContentionError) return json({ error: "safety evaluation busy; retry" }, 503);
+    throw error;
+  }
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: published.liveAdvanced, routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length });
 }

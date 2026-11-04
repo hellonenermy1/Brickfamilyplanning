@@ -71,6 +71,21 @@ try {
   assert.equal(state.status, 200); assert.equal((await state.json()).state.sequence, 1);
   console.log("PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT");
 
+  const safetyId = "33333333-3333-4333-8333-333333333333";
+  async function signedSafety(extra = {}) {
+    const body = JSON.stringify({ protocol:1, kind:"fall_detected", eventId:safetyId, eventSequence:1, createdAtMs:Date.now(), detail:{confidence:"high"}, ...extra });
+    const bytes = new TextEncoder().encode(body);
+    const signature = Buffer.from(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},key.pair.privateKey,bytes)).toString("base64");
+    return mf.dispatchFetch("http://localhost/api/device/"+DEVICE_A+"/event",{method:"POST",headers:{"X-Brick-Signature":signature,"Content-Type":"application/json"},body});
+  }
+  assert.equal((await signedSafety({latitude:1.35})).status,400);
+  assert.equal((await db.prepare("SELECT COUNT(*) n FROM safety_events").first()).n,0);
+  assert.equal((await signedSafety({latitude:0,longitude:0,accuracyM:0})).status,200);
+  assert.equal((await (await signedSafety({latitude:0,longitude:0,accuracyM:0})).json()).duplicate,true);
+  const savedSafety = await db.prepare("SELECT latitude,longitude,accuracy_m FROM safety_events WHERE id=?1").bind(safetyId).first();
+  assert.deepEqual(savedSafety,{latitude:0,longitude:0,accuracy_m:0});
+  console.log("PASS native workerd signed safety route rejects asymmetric coordinates, retains valid0,0 and acknowledges actual own duplicate");
+
   const ns = await mf.getDurableObjectNamespace("BRICK_DEVICE"), stub = ns.get(ns.idFromName(DEVICE_A));
   // Native internal RPCs on a separate synthetic object, not public HTTP endpoints.
   // Keep returned RPC references separate from the socket hibernation target.
@@ -100,6 +115,7 @@ try {
   const revoked = await parent("/parent/api/device/" + DEVICE_A + "/revoke", { method: "POST" });
   assert.equal(revoked.status, 200);
   assert.equal((await signed(2, "/location/live")).status, 401);
+  assert.equal((await signedSafety({eventId:"44444444-4444-4444-8444-444444444444",eventSequence:2})).status,401);
   const before = (await (await parent("/parent/api/device/" + DEVICE_A + "/state")).json()).state;
   await mf.unsafeEvictDurableObject("brick-local", "BrickDevice", { name: DEVICE_A });
   const fenced = await (await mf.getDurableObjectNamespace("BRICK_DEVICE")).get(ns.idFromName(DEVICE_A)).fetch("https://do/ws", {

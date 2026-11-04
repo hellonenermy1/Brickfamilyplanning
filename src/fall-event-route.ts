@@ -1,3 +1,4 @@
+import { persistActiveSafetyEvent, validSafetyCoordinates } from "./safety-event-write";
 import { readBoundedBody } from "./bounded-body";
 import { validateSafetyReplayWindow } from "./device-json-security";
 import type { BrickDevice, RealtimeSafetyEvent } from "./device-do";
@@ -34,11 +35,17 @@ export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, devi
   const d = detail as Record<string, unknown>;
   const confidence = d.confidence;
   if (confidence !== "low" && confidence !== "medium" && confidence !== "high") return json({ error: "invalid fall confidence" }, 400);
+  if (!validSafetyCoordinates(value)) return json({ error: "invalid fall coordinates" }, 400);
   const detailJson = JSON.stringify(d);
   if (detailJson.length > 4096) return json({ error: "fall evidence bundle too large" }, 400);
 
-  const existing = await env.DB.prepare("SELECT id FROM safety_events WHERE id=?1 AND device_id=?2").bind(eventId, deviceId).first();
-  if (existing) return json({ ok: true, eventId, duplicate: true });
+  const existing = await env.DB.prepare("SELECT id,kind FROM safety_events WHERE id=?1 AND device_id=?2").bind(eventId, deviceId).first<{ id: string; kind: string }>();
+  if (existing) {
+    const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1").bind(deviceId).first<{ revoked_at: number | null }>();
+    if (!life || life.revoked_at !== null) return json({ error: "device unauthorized" }, 401);
+    if (existing.kind !== "fall_detected") return json({ error: "safety event identity conflict" }, 409);
+    return json({ ok: true, eventId, duplicate: true });
+  }
 
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
   const highWater = await stub.readSafetyHighWater();
@@ -53,10 +60,13 @@ export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, devi
   const lon = typeof value.longitude === "number" && Number.isFinite(value.longitude) && value.longitude >= -180 && value.longitude <= 180 ? value.longitude : null;
   const accuracy = typeof value.accuracyM === "number" && Number.isFinite(value.accuracyM) && value.accuracyM >= 0 && value.accuracyM <= 100_000 ? value.accuracyM : null;
   const now = Date.now();
-  const inserted = await env.DB.prepare(
-    "INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,'fall_detected',?3,?4,?5,?6,?7,?8)"
-  ).bind(eventId, deviceId, createdAt, now, lat, lon, accuracy, detailJson).run();
-  if ((inserted.meta.changes ?? 0) !== 1) return json({ ok: true, eventId, duplicate: true });
+  const outcome = await persistActiveSafetyEvent(env.DB, {
+    id: eventId, deviceId, kind: "fall_detected", deviceCreatedAt: createdAt, serverCreatedAt: now,
+    latitude: lat, longitude: lon, accuracyM: accuracy, detailJson
+  });
+  if (outcome === "revoked") return json({ error: "device unauthorized" }, 401);
+  if (outcome === "conflict") return json({ error: "safety event identity conflict" }, 409);
+  if (outcome === "duplicate") return json({ ok: true, eventId, duplicate: true });
 
   const realtime: RealtimeSafetyEvent = { id: eventId, kind: "fall_detected", deviceCreatedAt: createdAt, serverCreatedAt: now, latitude: lat, longitude: lon, accuracyM: accuracy, detail: d };
   await stub.pushSafetyEvent(realtime);

@@ -144,3 +144,10 @@ Read-only Git history scan:2234 reachable local commits,2382 unique blobs,19,215
 P8D-054/055/056 **SOURCE/CI VERIFIED** to the exact scopes in `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Latest local full reachable-history scan at executable HEAD0a7e6eb:2235 commits/2394 unique blobs/19,483,355 bytes;11 known weak-verifier-marker matches only among checked categories, including scanner's own legacy reference. `PHASE8D_LOCAL_GIT_HISTORY_0a7e6eb.json` is sanitized evidence, not rotation or all-secret absence proof.
 
 Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live source/config/Access, full Cloudflare D1+R2+DO disaster recovery, retention/rollback, repository protection and remaining endpoint coverage stay OPEN. Live attempt3 of41839919454 is still the latest inspected live evidence; no claim that this code is deployed. No Android edits, deployment, Cloudflare writes, user family data or repository settings changed. Follow-up commit contains documentation/evidence only. **Phase8D NOT PASS; no Phase 8E/8F.**
+
+
+## Continuation — P8D-057/058/059/060 safety acceptance
+
+Continued807025e. Actual signed Worker/native SQLite RED reproduced11 negative route failures (one positive control passed), and actual safety evaluator RED reproduced3 ownership/publication failures (one positive control passed). Source fixes now pass24 focused tests: conditional active-device safety insertion, actual duplicate ownership/kind, fall coordinate validation, atomic guarded event/state transaction and newly-inserted-only publication, bounded re-read/retry on lost newer snapshot. Prior Phase7 safety-quality fixture passes. Native Workers safety route coverage extended; full hosted exact-SHA CI pending.
+
+Scope/remaining replay and cross-store gaps explicit in `PHASE8D_SAFETY_ACCEPTANCE_2026-11-04.md`; no global eventSequence ledger or live acceptance inferred. No schema/Android/deploy/settings/Cloudflare writes or family-data access. Existing live blockers unchanged. **8D NOT PASS.**

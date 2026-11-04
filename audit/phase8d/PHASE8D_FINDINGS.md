@@ -491,3 +491,18 @@ Read-only Git history scan:2234 reachable local commits,2382 unique blobs,19,215
 P8D-054/055/056 **SOURCE/CI VERIFIED** to the exact scopes in `PHASE8D_DO_ORDERING_HISTORY_2026-11-04.md`. Latest local full reachable-history scan at executable HEAD0a7e6eb:2235 commits/2394 unique blobs/19,483,355 bytes;11 known weak-verifier-marker matches only among checked categories, including scanner's own legacy reference. `PHASE8D_LOCAL_GIT_HISTORY_0a7e6eb.json` is sanitized evidence, not rotation or all-secret absence proof.
 
 Cross-store revocation and crash/ACK, exclusive safety evaluation, exact live source/config/Access, full Cloudflare D1+R2+DO disaster recovery, retention/rollback, repository protection and remaining endpoint coverage stay OPEN. Live attempt3 of41839919454 is still the latest inspected live evidence; no claim that this code is deployed. No Android edits, deployment, Cloudflare writes, user family data or repository settings changed. Follow-up commit contains documentation/evidence only. **Phase8D NOT PASS; no Phase 8E/8F.**
+
+## P8D-057/058/059 — Actual signed safety-route revoke, collision and coordinate cases
+
+Recorded before correction at807025e. 8D.3/.4/.5/.6/.7, proposed P2 until reproduction. Fall handler authorizes before Queue await but unconditionally inserts afterward; ordinary event handler also inserts after asynchronous auth. Both infer duplicate success from ignored global-primary-key insertion without verifying same-device row, so a collision can falsely ACK another device's event. Fall coordinate schema silently converts invalid/asymmetric values to nullable data and does not reject invalid accuracy before Queue work. Test actual outer production Worker with real P256 signatures/native SQLite, revoke at Queue/final auth boundary, cross-device collision, malformed signed coordinates and valid0,0 retry control.
+
+## P8D-060 — Safety batch event side effects are detached from conditional state ownership
+
+Recorded before correction at807025e, proposed P2, 8D.5/.6/.7/.9. Batch evaluator loads a state snapshot then conditionally advances geofence/trip state, but event inserts are unconditional; return/publication includes ignored duplicate inserts. A stale evaluator can lose its state write yet persist/report a transition, and two accepted evaluations can publish the same durable event twice. Reproduce actual evaluator with native SQLite, later/newer-state or revocation injected before its batch, and two identical concurrent snapshots; preserve an ordinary successful transition as control. Scope is current batch evaluator used by location ingestion, not dormant legacy evaluator or all cross-store exclusivity.
+
+
+## Continuation — P8D-057/058/059/060 safety acceptance
+
+Continued807025e. Actual signed Worker/native SQLite RED reproduced11 negative route failures (one positive control passed), and actual safety evaluator RED reproduced3 ownership/publication failures (one positive control passed). Source fixes now pass24 focused tests: conditional active-device safety insertion, actual duplicate ownership/kind, fall coordinate validation, atomic guarded event/state transaction and newly-inserted-only publication, bounded re-read/retry on lost newer snapshot. Prior Phase7 safety-quality fixture passes. Native Workers safety route coverage extended; full hosted exact-SHA CI pending.
+
+Scope/remaining replay and cross-store gaps explicit in `PHASE8D_SAFETY_ACCEPTANCE_2026-11-04.md`; no global eventSequence ledger or live acceptance inferred. No schema/Android/deploy/settings/Cloudflare writes or family-data access. Existing live blockers unchanged. **8D NOT PASS.**
