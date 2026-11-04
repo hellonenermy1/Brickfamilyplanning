@@ -151,7 +151,12 @@ jobs:
           grep -F 'for (suffix in listOf("", ".new", ".bak"))' "$deprov" >/dev/null
           grep -F 'listOf("", ".new", ".bak")' app/src/androidTest/java/com/brick/safety/maintenance/Phase8PurgeInventoryInstrumentedTest.kt >/dev/null
           grep -F '"brick_ble_anchors"' app/src/main/java/com/brick/safety/location/BleAnchorEngine.kt >/dev/null
-          grep -F 'ShizukuBridgeController.shutdown()' "$deprov" >/dev/null
+          grep -F 'ShizukuBridgeController.shutdownForDeprovision()' "$deprov" >/dev/null
+          grep -F 'deprovisionShutdown = true' "$shizuku_bridge" >/dev/null
+          grep -F 'synchronized(deprovisionFence)' "$shizuku_bridge" >/dev/null
+          grep -F 'if (deprovisionShutdown) return' "$shizuku_bridge" >/dev/null
+          test -f app/src/androidTest/java/com/brick/safety/privileged/Phase8ShizukuDeprovisionFenceInstrumentedTest.kt
+          grep -F 'testLateShizukuCallbacksCannotRecreatePrefsAfterPermanentShutdown' app/src/androidTest/java/com/brick/safety/privileged/Phase8ShizukuDeprovisionFenceInstrumentedTest.kt >/dev/null
           grep -F 'RecoveryScheduler.cancelAllAndAwaitForDeprovision(app)' "$deprov" >/dev/null
           grep -F 'fun cancelAllAndAwaitForDeprovision' "$recovery" >/dev/null
           grep -F 'WifiScheduleManager.workNamesForDeprovision(app)' "$recovery" >/dev/null
