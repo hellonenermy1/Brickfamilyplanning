@@ -38,7 +38,16 @@ try{
  assert.equal(db.prepare("SELECT COUNT(*) n FROM device_events WHERE device_id=?1").get(DEVICE_A).n,1);
  db.prepare("UPDATE devices SET revoked_at=NULL WHERE id=?1").run(DEVICE_A);
  triggered=false;
- const preview=await previewLatestLocationV6(request("/location/live"),raced,DEVICE_A);
+ const p2=new ArrayBuffer(90),q=new DataView(p2),absent=-2147483648;
+ q.setUint8(0,2);q.setUint32(1,2);q.setBigUint64(5,4n);q.setBigUint64(13,1000n);q.setBigUint64(21,BigInt(now));
+ q.setInt32(29,13500000);q.setInt32(33,1038000000);q.setInt32(37,15000);
+ q.setInt32(41,13500000);q.setInt32(45,1038000000);q.setInt32(49,15000);
+ for(const pos of [53,57,61,65,69,73])q.setInt32(pos,absent);
+ q.setUint8(77,80);q.setUint16(78,2);q.setUint8(80,2);q.setUint8(81,75);
+ q.setUint8(82,1);q.setUint8(83,1);q.setUint8(84,3);q.setUint8(85,6);q.setUint16(86,450);q.setUint16(88,0);
+ const signature2=Buffer.from(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},key.pair.privateKey,p2)).toString("base64");
+ const previewRequest=new Request("https://brick.invalid/api/device/"+DEVICE_A+"/location/live",{method:"POST",headers:{"X-Brick-Signature":signature2},body:p2});
+ const preview=await previewLatestLocationV6(previewRequest,raced,DEVICE_A);
  assert.equal(preview.status,401,"live preview after revocation may not update parent DO");
  assert.equal(doCalls,1,"revoked live preview changed parent state");
  console.log("PASS P8D-021 revoked D1 atomic ingest and Queue/DO fences, active replay; live Cloudflare race still pending");
