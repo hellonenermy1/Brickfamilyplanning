@@ -180,6 +180,14 @@ export default {
           env.DB.prepare("UPDATE devices SET revoked_at=COALESCE(revoked_at,?1) WHERE id=?2").bind(now, deviceId),
           env.DB.prepare("UPDATE trips SET state='cancelled',ended_at=COALESCE(ended_at,?1),stationary_since=NULL WHERE device_id=?2 AND state='active'").bind(now, deviceId)
         ]);
+        // D1 revocation prevents new sessions; explicitly fence and close existing DO WebSockets.
+        // If the DO is unavailable, return a truthful retryable status, never a false full success.
+        try {
+          await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).revokeParentSockets();
+        } catch {
+          ctx.waitUntil(recordAudit(env, "device_revocation_stream_close_pending", req, 503, { deviceId }));
+          return json({ error: "device revoked; live subscription invalidation pending retry", deviceId, revoked: true }, 503);
+        }
         ctx.waitUntil(recordAudit(env, "device_revoked", req, 200, { deviceId }));
         return json({ ok: true, deviceId, revokedAt: life.revoked_at ?? now });
       }
