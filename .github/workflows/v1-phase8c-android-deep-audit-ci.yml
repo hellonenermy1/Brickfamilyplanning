@@ -170,6 +170,12 @@ jobs:
           grep -F 'testLateShizukuCallbacksCannotRecreatePrefsAfterPermanentShutdown' app/src/androidTest/java/com/brick/safety/privileged/Phase8ShizukuDeprovisionFenceInstrumentedTest.kt >/dev/null
           # P8C-008: stopService does not guarantee in-flight writers have terminated.
           grep -F 'BrickServiceQuiescenceGate.awaitQuiescent(25_000L)' "$deprov" >/dev/null
+          grep -F 'DiagnosticMonitor.awaitQuiescent(5_000L)' "$deprov" >/dev/null
+          grep -F 'FallDetectorRuntime.awaitQuiescent(5_000L)' "$deprov" >/dev/null
+          grep -F 'fun awaitQuiescent(timeoutMs: Long)' app/src/main/java/com/brick/safety/diagnostics/DiagnosticMonitor.kt >/dev/null
+          grep -F 'fun awaitQuiescent(timeoutMs: Long)' app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt >/dev/null
+          grep -F 'DiagnosticMonitor.start(context)' app/src/androidTest/java/com/brick/safety/maintenance/Phase8PostPurgeIsolationInstrumentedTest.kt >/dev/null
+          grep -F 'FallDetectorRuntime.refreshHighAlert(context)' app/src/androidTest/java/com/brick/safety/maintenance/Phase8PostPurgeIsolationInstrumentedTest.kt >/dev/null
           grep -F 'BrickServiceQuiescenceGate.serviceStarted()' "$service" >/dev/null
           grep -F 'BrickServiceQuiescenceGate.serviceShutdownRequested(' "$service" >/dev/null
           test -f app/src/main/java/com/brick/safety/location/BrickServiceQuiescenceGate.kt
