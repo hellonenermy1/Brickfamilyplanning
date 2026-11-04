@@ -76,6 +76,7 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
         assertTrue(
             context.getSharedPreferences("brick_deprovision_v1", Context.MODE_PRIVATE).edit()
                 .putString("stage", DeprovisionManager.Stage.UNDO_DEVICE_MANAGEMENT.name)
+                .putBoolean("deprovisionEverStarted", true)
                 .putLong("updatedAtMs", System.currentTimeMillis())
                 .commit()
         )
