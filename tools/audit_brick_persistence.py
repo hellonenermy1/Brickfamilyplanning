@@ -99,7 +99,7 @@ def main() -> int:
     # AtomicFile may leave .new or .bak. Prevent reverting to base-file-only purge.
     if 'for (suffix in listOf("", ".new", ".bak"))' not in deprov:
         missing.append("AtomicFile purge no longer covers base/.new/.bak paths")
-    if '"brick_ble_anchors"' not in prefs_expected:
+    if "brick_ble_anchors" not in prefs_expected:
         missing.append("BLE anchor configuration omitted from purge")
 
     print(f"Files inspected: {len(paths)}")
