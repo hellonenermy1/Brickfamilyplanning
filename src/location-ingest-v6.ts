@@ -95,10 +95,12 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   const values = packets.map((packet, index) => {
     const base = index * 4;
     bindings.push(deviceId, packet.epoch, packet.sequence, now);
-    return `(?${base + 1},?${base + 2},?${base + 3},'location',?${base + 4})`;
-  }).join(",");
+    // SELECT/WHERE EXISTS runs inside one atomic D1 transaction with the active-device
+    // liveness test. A stale prior auth SELECT must never insert revoked-device history.
+    return `SELECT ?${base + 1},?${base + 2},?${base + 3},'location',?${base + 4} WHERE EXISTS (SELECT 1 FROM devices WHERE id=?${base + 1} AND revoked_at IS NULL)`;
+  }).join(" UNION ALL ");
   const insert = env.DB.prepare(
-    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) VALUES ${values}`
+    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) ${values}`
   ).bind(...bindings);
   // Any authenticated location upload proves recent device contact, even when it is delayed backlog
   // whose logical epoch/sequence is older than the current watermark. Keep last_seen_at independent
@@ -112,7 +114,12 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   const endpointStatements = preciseEndpointStatements(env.DB, deviceId, packets, now);
   // Endpoint indexing is part of the durable DB write before ACK. The heavier R2 smoothing pass is
   // intentionally not: a temporary refinement failure must never hold up live safety/location ACKs.
-  const [insertResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
+  const [insertResult, activeResult] = await env.DB.batch([insert, advance, ...endpointStatements]);
+  // A matched UPDATE is the transaction's durable liveness proof even if the logical
+  // watermark is unchanged. Never queue or broadcast if the device was already revoked.
+  if ((activeResult?.meta.changes ?? 0) !== 1) {
+    return { liveAdvanced: false, insertedCount: 0, preciseEndpointCount: 0, accepted: [], revoked: true };
+  }
   const insertedCount = insertResult?.meta.changes ?? 0;
   let liveAdvanced = false;
   if (insertedCount > 0) {
@@ -125,7 +132,8 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
     liveAdvanced,
     insertedCount,
     preciseEndpointCount: endpointStatements.length,
-    accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence }))
+    accepted: packets.map(packet => ({ epoch: packet.epoch, sequence: packet.sequence })),
+    revoked: false
   };
 }
 
@@ -147,8 +155,13 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   if (!timeValid(rawPacket, Date.now())) return json({ error: "location timestamp outside allowed history window" }, 400);
 
   const packet = await trustedPacket(rawPacket, env);
-  await queueLocations(env, deviceId, [{ packet, rawPacket }]);
+  // Persist/verify current D1 device identity before sending any Queue message. On
+  // Queue failure return 503; the child retries and the immutable D1 idempotency
+  // index accepts the duplicate retry while Queue durability is recovered.
   const persisted = await persistAccepted(env, deviceId, [packet]);
+  if (persisted.revoked) return json({ error: "device unauthorized" }, 401);
+  try { await queueLocations(env, deviceId, [{ packet, rawPacket }]); }
+  catch { return json({ error: "location queue unavailable; retry" }, 503); }
   await evaluateSafetyBatchV6(env, deviceId, [packet]);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: persisted.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
@@ -178,8 +191,10 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
   for (let i = 1; i < rawPackets.length; i++) if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
 
   const packets = await Promise.all(rawPackets.map(packet => trustedPacket(packet, env)));
-  await queueLocations(env, deviceId, packets.map((packet, i) => ({ packet, rawPacket: rawPackets[i] })));
   const persisted = await persistAccepted(env, deviceId, packets);
+  if (persisted.revoked) return json({ error: "device unauthorized" }, 401);
+  try { await queueLocations(env, deviceId, packets.map((packet, i) => ({ packet, rawPacket: rawPackets[i] }))); }
+  catch { return json({ error: "location queue unavailable; retry" }, 503); }
   await evaluateSafetyBatchV6(env, deviceId, packets);
   await tryRefineAfterPreciseEndpoint(env, deviceId, persisted.preciseEndpointCount);
   return json({ acked: persisted.accepted, count: persisted.accepted.length, liveAdvanced: persisted.liveAdvanced, routeConstrainedCount: packets.filter(packet => packet.source === ROUTE_CONSTRAINED_SOURCE).length });
@@ -195,6 +210,9 @@ export async function previewLatestLocationV6(req: Request, env: LocationIngestE
   const now = Date.now();
   if (rawPacket.wallTimeMs < now - LIVE_PREVIEW_MAX_AGE_MS || rawPacket.wallTimeMs > now + MAX_FUTURE_MS) return json({ previewed: false, reason: "not_recent" });
   const packet = await trustedPacket(rawPacket, env);
+  // A revoked child must never issue a live-only preview after the slow map/refinement stage.
+  // This is a second D1 guard; exact concurrent revoke/DO write requires live isolation tests.
+  if (!(await device(env, deviceId))) return json({ error: "device unauthorized" }, 401);
   const advanced = await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId)).setLatest(packet);
   return json({ previewed: advanced, epoch: packet.epoch, sequence: packet.sequence, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
