@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { requireAccessChallenge,requireProtectedDenial,requireNoPublicLocalLogin } from './phase8d-access-denial-policy.mjs';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const EXPECTED_WORKER = 'brick-family-v1';
@@ -98,10 +99,6 @@ async function manualFetch(url, init = {}) {
   return fetch(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(15_000) });
 }
 
-function requireAccessDenial(response, label) {
-  const allowed = new Set([302, 303, 307, 401, 403]);
-  assert(allowed.has(response.status), `${label} did not return an Access/auth denial (HTTP ${response.status})`);
-}
 
 const state = JSON.parse(await fs.readFile('setup-state.json', 'utf8'));
 const sourceGitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -211,11 +208,15 @@ try { healthBody = await health.json(); } catch { fail('public Worker health che
 assert(healthBody?.ok === true && healthBody?.env === 'production', 'public Worker health check does not identify the production Brick runtime');
 
 const parent = await manualFetch(`${origin}/parent`);
-requireAccessDenial(parent, 'unauthenticated /parent');
+requireAccessChallenge(parent, 'unauthenticated production /parent', origin);
+const localLogin = await manualFetch(`${origin}/parent/login`);
+requireNoPublicLocalLogin(localLogin, 'unauthenticated production /parent/login', origin);
 const mapStatus = await manualFetch(`${origin}/parent/map/status`);
-requireAccessDenial(mapStatus, 'unauthenticated map status');
+requireProtectedDenial(mapStatus, 'unauthenticated map status', origin);
 const parentRelease = await manualFetch(`${origin}/parent/api/release`);
-requireAccessDenial(parentRelease, 'unauthenticated parent API');
+requireProtectedDenial(parentRelease, 'unauthenticated parent API', origin);
+const forged = await manualFetch(`${origin}/parent/api/devices`, {headers:{'X-Brick-Dev-Parent-Verified':'session-v1'}});
+requireProtectedDenial(forged, 'forged development header on production parent API', origin);
 
 const invalidPair = await manualFetch(`${origin}/api/pair/complete`, {
   method: 'POST',
