@@ -30,6 +30,7 @@ class Phase8PostPurgeIsolationInstrumentedTest : BrickInstrumentationTestCase() 
         context = instrumentation.targetContext.applicationContext
         context.getSharedPreferences("brick_deprovision_v1", Context.MODE_PRIVATE).edit()
             .putString("stage", DeprovisionManager.Stage.PURGE_BRICK.name)
+                .putBoolean("deprovisionEverStarted", true)
             .putLong("updatedAtMs", System.currentTimeMillis())
             .commit()
         forbiddenPrefs.forEach(context::deleteSharedPreferences)
