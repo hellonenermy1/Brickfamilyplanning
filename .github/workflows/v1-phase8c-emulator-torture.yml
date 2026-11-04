@@ -147,6 +147,46 @@ jobs:
             grep -E 'OK \([0-9]+ test|OK \([0-9]+ tests' <<<"$output" >/dev/null
           done
 
+      - name: Prove corrupted deprovision stage stays fail-closed across independent cold start
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p8c-emulator-evidence
+          "$ADB" shell am force-stop com.brick.safety || true
+          "$ADB" shell pm clear com.brick.safety >/dev/null
+          "$ADB" shell am instrument -w \
+            -e class com.brick.safety.maintenance.Phase8CorruptStageColdStartSeedInstrumentedTest \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner \
+            | tee p8c-emulator-evidence/corrupt-stage-fixture.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)' p8c-emulator-evidence/corrupt-stage-fixture.txt >/dev/null
+          "$ADB" shell am force-stop com.brick.safety
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity \
+            | tee p8c-emulator-evidence/corrupt-stage-cold-start.txt
+          sleep 2
+          # A successful Activity start is not enough: verify the failed-closed app restart did NOT
+          # recreate the pre-purge diagnostics DB, pairing prefs or any sensor learning state.
+          "$ADB" shell run-as com.brick.safety sh -c 'test -f shared_prefs/brick_deprovision_v1.xml'
+          for path in \
+            shared_prefs/brick.xml \
+            shared_prefs/brick_position.xml \
+            shared_prefs/brick_activity.xml \
+            shared_prefs/brick_companion_presence.xml \
+            shared_prefs/brick_diagnostics.xml \
+            shared_prefs/brick_ble_anchors.xml \
+            databases/brick_diagnostics.db \
+            databases/brick_journal.db \
+            databases/brick_evidence.db \
+            files/brick_phase3_state.bin \
+            files/brick_atlas_v1.bin \
+            files/brick_learned_places_v1.bin; do
+            if "$ADB" shell run-as com.brick.safety sh -c "test -e '$path'"; then
+              echo "::error::Corrupt-stage cold startup recreated forbidden store: $path"
+              exit 1
+            fi
+          done
+          echo 'PASS: cold restart with malformed deprovision stage did not recreate monitored stores' \
+            | tee -a p8c-emulator-evidence/corrupt-stage-cold-start.txt
+
       - name: Capture package and database state
         if: always()
         shell: bash
