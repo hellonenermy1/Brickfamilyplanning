@@ -10,6 +10,12 @@ object WifiOneShotControl {
     @Suppress("DEPRECATION")
     fun apply(context: Context, enabled: Boolean): Result {
         val app = context.applicationContext
+        // An already-authorised deprovision or Deep Off must block even delayed maintenance
+        // executor requests; avoid changing the user's radio after quiescence has begun.
+        if (DeprovisionManager.stage(app) != DeprovisionManager.Stage.NONE ||
+            DeepOffManager.isActive(app)) {
+            return Result(enabled, current(app), false, "deprovision_or_deep_off_quiesced")
+        }
         if (!enabled) {
             val p = app.getSharedPreferences("brick", Context.MODE_PRIVATE)
             if (p.getBoolean("sosActive", false) || p.getBoolean("fallHighActive", false)) {
@@ -23,8 +29,22 @@ object WifiOneShotControl {
         val before = runCatching { wifi.isWifiEnabled }.getOrNull()
         if (before == enabled) return Result(enabled, before, true, "already_current")
         val requested = runCatching { wifi.setWifiEnabled(enabled) }.getOrDefault(false)
-        val actual = runCatching { wifi.isWifiEnabled }.getOrNull()
-        return Result(enabled, actual, actual == enabled, if (actual == enabled) "device_owner_one_shot" else if (!requested) "platform_rejected_request" else "actual_state_not_confirmed")
+        // Wi-Fi hardware state changes asynchronously. A request being accepted is not completion,
+        // and an immediate read can falsely report failure on a healthy slow adapter. Wait for
+        // the *observed* target and never turn an explicitly rejected request into "completed".
+        val actual = if (requested) WifiScheduleManager.awaitWifiState(wifi, enabled)
+            else runCatching { wifi.isWifiEnabled }.getOrNull()
+        val confirmed = requested && actual == enabled
+        return Result(
+            enabled,
+            actual,
+            confirmed,
+            when {
+                confirmed -> "device_owner_one_shot_confirmed"
+                !requested -> "platform_rejected_request"
+                else -> "actual_state_confirmation_timeout"
+            }
+        )
     }
 
     @Suppress("DEPRECATION")
