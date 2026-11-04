@@ -141,3 +141,31 @@ A clean Android 10 AOSP emulator was built and booted, Brick was installed and p
 Run `41665283987` completed **SUCCESS**. Its job `126018817998` passed Android 10 image/build, clean emulator boot/install, real Device Owner provisioning, the P8C-009 instrumentation test, post-test policy verification, evidence capture, and artifact upload.
 
 **Retest status:** VERIFIED CLOSED — P8C-009 original failure mode was exercised on the required API level and passed.
+
+---
+
+## 2026-11-04 final-source Phase 8C.19 / 8C.16 retrospective retest addendum
+
+This addendum **supersedes historical test blockers for the specifically proven races only**. Older failed-reproducer observations above remain immutable audit history.
+
+**Frozen Android production code:** `2c492efff01095e17f96af3c24ac07ac0b5c3739`. **Instrumented test/workflow identity:** `51b8e990f323c71b4ad472fa4436fd604f0a5205`, subsequent documentation commits only. Confirm with GitHub compare that `app/src/main` is unchanged.
+
+- [Android 15 emulator run 41769491366](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769491366), job `126375586464`: **SUCCESS, 120 test methods** across **35 main named instrumentation classes** plus **two additional independent cold-start test invocations** (37 success markers).
+- `Phase8ServiceWriterDrainInstrumentedTest` **PASS**: a deliberately interruption-ignoring executor causes production `purgeBrick()` to wait and preserves the sensitive marker until that writer actually terminates.
+- `Phase8AuxiliaryProducerDrainInstrumentedTest` and `Phase8AuxiliaryWriterDrainInstrumentedTest` **PASS**: DiagnosticMonitor active sample and FallDetector HandlerThread completion barrier tested; `cancel(false)` and `quitSafely()` alone are not considered completion.
+- `Phase8CryptoPurgeWriterRaceInstrumentedTest` **PASS**: an actual old signing lock prevents production private preferences/Keystore deletion, later release enables successful and complete purge.
+- `Phase8OriginGuardLockOrderInstrumentedTest` **PASS**: a deliberately reversed DeviceKeys-vs-DeprovisionManager lock-order scenario with older stage XML lacking the separate marker completes; the origin guard uses a separate monitor instead of recreating ABBA deadlock.
+- `Phase8CryptoPostPurgeIsolationInstrumentedTest`, `Phase8ShizukuStaleReplyAfterPurgeInstrumentedTest`, `Phase8ShizukuDeprovisionFenceInstrumentedTest`, `Phase8WorkManagerDrainInstrumentedTest`, `Phase8PurgeInventoryInstrumentedTest` and original deprovision stage integrity tests **PASS** in the same run.
+- Both cold-start tests **PASS**: intentionally corrupted stage and fully missing stage XML with retained independent no-backup origin marker both open only recovery-only UI, with monitored private stores absent.
+- `Phase8FusedFreshnessInstrumentedTest` **PASS**: repeated rejected callbacks do not update measured freshness, genuinely newer accepted callback does.
+- `Phase8DurabilityTortureInstrumentedTest`, `Phase8BacklogScaleInstrumentedTest` and `Phase8PolicyLedgerIntegrityInstrumentedTest` **PASS**, including 100/10,000/100,000 synthetic encrypted durable rows, SOS and high-fall transactions, corruption and compaction cases.
+
+**Independent exact-source build/security gates:**
+
+- [Android deep audit run 41769474692](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769474692), job `126375533578`, **SUCCESS** for Gradle unit/lint, AndroidTest compile, release/R8, strict manifest, whole-source persistence scanner and source contracts.
+- [Signed APK run 41769396317](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396317) **SUCCESS**. Independently SHA-256-hashed artifact: `2d1fb331a8a1f6c5efb805ed93c0adfd68e205d5435416a51e772b593336a28c`; signer pin `bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790`.
+- [API29 Device Owner run 41769396337](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396337) **SUCCESS**. The AOSP emulator rejects one-shot Wi-Fi OFF; Brick truthfully reports `failed` with the observed ON state rather than inventing success.
+
+**Resource evidence:** [41764035200](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41764035200), 183 seconds, mean process CPU 1.693%, peak 9.818%, memory and storage below guards, on source `74e6e6d1`. Its successful result is real but predates the above final source; the **latest-source 183-second resource rerun is still pending/unchecked** and must be independently retrieved before global 8C acceptance.
+
+**Closing decision:** The explicit P8C-008 in-process post-purge race reproductions are now exercised successfully at the final production source. This is stronger than source-only closure. Scope does not include physical OPPO RF/ColorOS behavior. Other original findings must retain their matching correction and test evidence in `PHASE8C_FINDING_CLOSURE_MATRIX_2026-11-04.md`; no blanket final Phase 8C PASS until the outstanding resource/ledger gate is reconciled.
