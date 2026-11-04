@@ -38,7 +38,7 @@ function found(path){return exact.some(x=>x.path===path||(x.path==="/parent/"&&p
 const missing=registry.filter(x=>!found(sample(x.path)));
 assert.equal(missing.length,0,"Matrix paths lacking source match: "+JSON.stringify(missing));
 const unmapped=[
- ...exact.filter(x=>x.path.startsWith("/api/")||x.path.startsWith("/parent/")).filter(x=>!registry.some(r=>sample(r.path)===x.path)),
+ ...exact.filter(x=>x.path.startsWith("/api/")||x.path.startsWith("/parent/")).filter(x=>!registry.some(r=>sample(r.path)===x.path||(x.path==="/parent/"&&r.path==="/parent"))),
  ...patterns.filter(x=>!registry.some(r=>x.regex.test(sample(r.path))))
 ];
 assert.equal(unmapped.length,0,"SOURCE ROUTES NOT IN 49-ROW MATRIX: "+JSON.stringify(unmapped.map(x=>({file:x.filename,path:x.path??x.literal}))));
