@@ -115,3 +115,11 @@
 - **Source evidence:** `src/history-store.ts` reads each segment once with `existingSegment(HISTORY, rawKey)`, merges with the current Queue delivery, then writes `raw` and `trusted` objects with unconditional `HISTORY.put` in `Promise.all`. Two concurrent queue consumers targeting the same device/epoch/15-minute segment can both read the same previous generation and each overwrite the other's packet after an ACK.
 - **Negative test:** `scripts/test-phase8d-history-concurrent-r2.mjs` uses an artificial barrier forcing two valid synthetic messages through the same segment with both initial raw reads completed before either put. It then requires *both acknowledged* packets in the raw segment and trusted receipt. This is source/behavior evidence, not a claim about observed production user data loss.
 - **Status:** OPEN — FAILING REPRO PENDING.
+
+
+## P8D-008 — Same (device, epoch, sequence) re-delivery can rewrite historical coordinates (8D.5)
+- **Severity:** P1 provisional pending negative CI.
+- **Source:** `src/history-store.ts` `mergePackets` first inserts the previous persisted rows into a Map and then overwrites identical logical sequence keys with the incoming queue rows. The database `INSERT OR IGNORE device_events` protects its index but `queueLocations` sends even duplicate signed uploads to R2, which can mutate a previously accepted history point.
+- **Expected:** immutable first-accepted packet at the same device/epoch/sequence and earliest server receipt; duplicate delivery must be idempotently acknowledged without rewriting original raw or trusted history.
+- **Reproduction:** `scripts/test-phase8d-history-idempotence.mjs` stores a synthetic packet, then re-delivers same epoch/sequence with altered latitude; independently checks raw and trusted R2 objects, sequence count and receipt. Run before fix.
+- **Status:** OPEN — negative regression pending.
