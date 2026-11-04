@@ -310,7 +310,12 @@ object ShizukuBridgeController {
         val generation = serviceGeneration
         val result = remoteLane.call(timeoutMs) { action(current) }
         if (result.isSuccess) {
-            if (generation == serviceGeneration && service === current) lastError = null
+            // A late result from a retired binder must never enter wifi/ble/cell privacy handlers
+            // after shutdown() or permanent deprovision invalidated its service generation.
+            if (deprovisionShutdown || generation != serviceGeneration || service !== current) {
+                return Result.failure(IllegalStateException("stale Shizuku service generation"))
+            }
+            lastError = null
             return result
         }
 
@@ -342,7 +347,14 @@ object ShizukuBridgeController {
 
     fun setLocation(enabled: Boolean): Result<Boolean> = remote { it.setLocationEnabled(enabled) }
 
+    private fun <T> guardPrivacyReduction(action: () -> T): T =
+        synchronized(deprovisionFence) {
+            check(!deprovisionShutdown) { "Shizuku is permanently quiesced" }
+            action()
+        }
+
     fun wifi(): Result<List<PrivilegedWifiEvidence>> = remote { it.wifiEvidence() }.mapCatching { bundle ->
+        guardPrivacyReduction {
         requireSupported(bundle, "wifi")
         rows(bundle).mapNotNull { row ->
             val rawSsid = row.getString("ssid")?.takeIf { it.isNotBlank() }
@@ -355,18 +367,22 @@ object ShizukuBridgeController {
                 frequencyMhz = row.getInt("frequency").takeIf { it in 1..100_000 }
             )
         }.take(32)
+        }
     }
 
     fun ble(): Result<List<PrivilegedBleEvidence>> = remote(BLE_CALL_TIMEOUT_MS) { it.bleEvidence() }.mapCatching { bundle ->
+        guardPrivacyReduction {
         requireSupported(bundle, "ble")
         rows(bundle).mapNotNull { row ->
             val raw = row.getString("id")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val rssi = row.getInt("rssi").takeIf { it in -127..20 } ?: return@mapNotNull null
             PrivilegedBleEvidence(AtlasPrivacyId.reduce("p6ble", raw), rssi)
         }.take(32)
+        }
     }
 
     fun cell(): Result<List<PrivilegedCellEvidence>> = remote { it.cellEvidence() }.mapCatching { bundle ->
+        guardPrivacyReduction {
         requireSupported(bundle, "cell")
         rows(bundle).mapNotNull { row ->
             val radio = row.getString("radio")?.lowercase()?.takeIf { it in setOf("nr", "lte", "wcdma", "gsm", "cdma") }
@@ -378,6 +394,7 @@ object ShizukuBridgeController {
                 signalDbm = row.getInt("dbm").takeIf { it in -160..0 }
             )
         }.take(32)
+        }
     }
 
     fun powerDiagnostics(): Result<PrivilegedPowerDiagnostics> = remote { it.powerDiagnostics() }.mapCatching { bundle ->
