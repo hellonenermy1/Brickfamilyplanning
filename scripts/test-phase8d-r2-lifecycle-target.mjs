@@ -13,7 +13,7 @@ for(const rule of body.rules){
  assert.equal(seen.has(prefix),false,"duplicate policy prefix");
  seen.add(prefix);
  assert.equal(rule.enabled,true);
- assert.match(rule.id,/^brick-v1-[a-z0-9-]+$/);
+ assert.match(rule.id,/^brick-(raw|trusted)-history-(30|90)d$/);
  assert.deepEqual(Object.keys(rule).sort(),["conditions","deleteObjectsTransition","enabled","id"]);
  assert.deepEqual(rule.deleteObjectsTransition.condition,{type:"Age",maxAge:expected.get(prefix)});
 }
