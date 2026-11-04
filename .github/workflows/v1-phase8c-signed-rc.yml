@@ -115,13 +115,37 @@ jobs:
           [[ "$package_line" == *"versionCode='10'"* ]]
           [[ "$package_line" == *"versionName='1.0.0-rc.1'"* ]]
           ! grep -q '^application-debuggable' "$badging"
-          # Debug logging here is restricted to public manifest attribute lines, never signing secrets.
-          echo "Android AAPT2 packaged security-attribute evidence:"
-          grep -E 'android:(allowBackup|usesCleartextTraffic|debuggable|testOnly)' "$manifest_tree" || true
-          grep -Eq '^[[:space:]]*A: android:allowBackup.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree" || { echo "::error::Packaged allowBackup not proven false"; exit 1; }
-          grep -Eq '^[[:space:]]*A: android:usesCleartextTraffic.*\(type 0x12\)0x0([[:space:]]|$)' "$manifest_tree"
-          ! grep -Eq '^[[:space:]]*A: android:debuggable.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
-          ! grep -Eq '^[[:space:]]*A: android:testOnly.*\(type 0x12\)0xffffffff([[:space:]]|$)' "$manifest_tree"
+          # AAPT2 v35 prints android attributes as e.g.:
+          # A: http://schemas.android.com/apk/res/android:allowBackup(0x01010280)=false
+          # Parse the exact compiled value, independent of spacing/namespace formatting. Reject
+          # missing/duplicate required attributes, any true value and unknown representations.
+          python3 - "$manifest_tree" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+          tree = Path(sys.argv[1]).read_text(encoding="utf-8")
+          attributes = {}
+          for line in tree.splitlines():
+              found = re.search(
+                  r'\bA:\s+\S*/apk/res/android:(allowBackup|usesCleartextTraffic|debuggable|testOnly)'
+                  r'\([^)]*\)\s*=\s*(.+?)\s*$',
+                  line
+              )
+              if found:
+                  attributes.setdefault(found.group(1), []).append(found.group(2).strip())
+          false_values = {"false", "(type 0x12)0x0", "(type 0x12)0x00000000"}
+          for key in ("allowBackup", "usesCleartextTraffic"):
+              values = attributes.get(key, [])
+              assert len(values) == 1 and values[0] in false_values, (
+                  f"packaged {key} is not verifiably false: {values}"
+              )
+          for key in ("debuggable", "testOnly"):
+              values = attributes.get(key, [])
+              assert not values or len(values) == 1 and values[0] in false_values, (
+                  f"packaged {key} must be absent or false: {values}"
+              )
+          print("Binary APK manifest explicitly forbids backups and cleartext; no debug/test-only mode")
+          PY
           ! grep -F 'Phase8ResourceHarnessReceiver' "$manifest_tree"
           ! grep -F 'Phase8RetirementHarnessReceiver' "$manifest_tree"
 
