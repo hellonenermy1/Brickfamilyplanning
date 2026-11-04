@@ -161,10 +161,10 @@
 - **Negative test:** synthetic fallback PIN, invalid-length-but-not-P-256 SPKI, exercise actual public handler and ensure no claim/mutation; include true P-256 unpadded canonicalization and oversized body.
 - **Production impact:** unproven without deployed endpoint confirmation; no live family data tested.
 
-## P8D-010 — Racing parent confirmations may create an unpaired ghost device (8D.8/.13)
-- **Status:** OPEN — source-confirmed, real SQLite adversarial regression pending.
-- **Severity:** P1 provisional (enrollment state correctness).
-- **Expected:** only one device is created per confirmed claimed session; simultaneous/replayed confirmations must return the same winning identity or a non-success without creating a second device row.
-- **Actual source:** `parentConfirmPin` reads `confirmed_at IS NULL`, generates a UUID, then unconditionally inserts the device and retention record in a D1 batch. Only the final `UPDATE pairing_pin_sessions` has `confirmed_at IS NULL`, and its changes count is ignored. If a second confirmation wins between the read and batch, the losing batch can still insert another device and falsely report confirmation.
-- **Negative test:** use real SQLite schema 001/015/018; inject another successful confirmation between the parent's SELECT and its batch, then verify no orphan registration is created by the losing attempt.
-- **Production impact:** not measured; controlled concurrency only.
+## P8D-010 — Competing parent confirmations: idempotency and error-contract audit (8D.8/.13)
+- **Status:** AUDIT TARGET — exact SQLite concurrency experiment pending, not a confirmed orphan-device defect.
+- **Severity:** P2 provisional (misleading 500 / recoverability under race), pending reproduction.
+- **Expected:** at most one registration per claimed session and consistent idempotent confirmation result, including concurrent requests.
+- **Source observation:** `parentConfirmPin` inserts unconditionally before the session's conditional `UPDATE`, but schema 015 has a **unique index on device public key**, and `DB.batch` is atomic. Thus a competing confirmation using the same claimed key is expected to hit uniqueness and roll back, **not create a ghost device**. A concurrent loser may receive a generic 500 rather than the existing confirmed device; test before classifying as a bug.
+- **Negative test:** use real SQLite schema 001/015/018; inject a winning confirmation between another request's SELECT and batch, verify unique constraint/rollback and check the losing response.
+- **Production impact:** unknown; do not claim orphan creation without evidence.
