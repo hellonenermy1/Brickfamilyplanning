@@ -166,7 +166,16 @@ jobs:
           sleep 2
           # A successful Activity start is not enough: verify the failed-closed app restart did NOT
           # recreate the pre-purge diagnostics DB, pairing prefs or any sensor learning state.
-          "$ADB" shell run-as com.brick.safety sh -c 'test -f shared_prefs/brick_deprovision_v1.xml'
+          # run-as may start with a working directory outside the app package on some images.
+          # Inspect a concrete absolute app-private directory; never weaken the no-recreation gate.
+          app_data=/data/user/0/com.brick.safety
+          "$ADB" shell run-as com.brick.safety pwd | tee p8c-emulator-evidence/run-as-working-directory.txt
+          "$ADB" shell run-as com.brick.safety ls -l "$app_data/shared_prefs" \
+            | tee p8c-emulator-evidence/cold-start-shared-prefs.txt
+          if ! "$ADB" shell run-as com.brick.safety sh -c "test -f '$app_data/shared_prefs/brick_deprovision_v1.xml'"; then
+            echo "::error::Corrupted stage record missing after cold-start; cannot assert fail-closed provenance"
+            exit 1
+          fi
           for path in \
             shared_prefs/brick.xml \
             shared_prefs/brick_position.xml \
@@ -180,7 +189,7 @@ jobs:
             files/brick_phase3_state.bin \
             files/brick_atlas_v1.bin \
             files/brick_learned_places_v1.bin; do
-            if "$ADB" shell run-as com.brick.safety sh -c "test -e '$path'"; then
+            if "$ADB" shell run-as com.brick.safety sh -c "test -e '$app_data/$path'"; then
               echo "::error::Corrupt-stage cold startup recreated forbidden store: $path"
               exit 1
             fi
