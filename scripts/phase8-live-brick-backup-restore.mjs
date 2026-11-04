@@ -27,7 +27,10 @@ const SCHEMAS = [
   'schema/009_v1_phase5_fusion.sql',
   'schema/010_phase5b_closure.sql',
   'schema/011_v1_phase6_location_control.sql',
-  'schema/015_phase8_device_identity.sql'
+  'schema/015_phase8_device_identity.sql',
+  'schema/016_p8b_remediation.sql',
+  'schema/017_p8b_provider_rate.sql',
+  'schema/018_p8b_pin_pairing.sql'
 ];
 const BACKUP_TABLES = [
   'devices',
@@ -41,7 +44,13 @@ const BACKUP_TABLES = [
   'health_incidents',
   'crash_reports',
   'audit_log',
-  'device_replay_state'
+  'device_replay_state',
+  'device_live_track_control',
+  'device_wifi_schedules',
+  'device_wifi_schedule_result',
+  'device_capability_profile',
+  'screen_time_daily',
+  'commute_summaries'
 ];
 
 function assert(condition, message) {
@@ -160,6 +169,7 @@ VALUES('audit-device-1','Audit Child','${spki}',1700000000000,1700000009000,1700
 
 INSERT INTO device_location_control(device_id,desired_enabled,command_id,issued_at,updated_at,last_actual_enabled,last_actual_at,last_acked_command_id)
 VALUES('audit-device-1',0,'cmd-audit-0001',1700000001000,1700000002000,0,1700000002500,'cmd-audit-0001');
+UPDATE device_location_control SET command_status='completed',completed_at=1700000002600,result_actual_enabled=0,result_success=1,result_reason='signed_phone_confirmed' WHERE device_id='audit-device-1';
 
 INSERT INTO geofences(id,device_id,name,latitude,longitude,radius_m,enabled,created_at)
 VALUES('audit-geofence-1','audit-device-1','Audit Place',1.3521,103.8198,120,1,1700000003000);
@@ -190,6 +200,21 @@ VALUES(1,'phase8_restore_seed','POST','/audit/fixture',200,1700000013000,'{"fixt
 
 INSERT INTO device_replay_state(device_id,last_health_sequence,updated_at)
 VALUES('audit-device-1',487,1700000014000);
+INSERT INTO device_live_track_control(device_id,command_id,requested_active,issued_at,expires_at,command_status,last_actual_active,completed_at,result_reason)
+VALUES('audit-device-1','live-audit-001',1,1700000015000,1700000095000,'completed',1,1700000016000,'signed_phone_confirmed');
+INSERT INTO device_wifi_schedules(id,device_id,enabled,target_enabled,local_minute_of_day,days_mask,grace_minutes,updated_at)
+VALUES('night','audit-device-1',1,0,1290,127,15,1700000017000);
+INSERT INTO device_wifi_schedule_result(device_id,schedule_id,target_enabled,actual_enabled,status,attempted_at,detail,received_at)
+VALUES('audit-device-1','night',0,0,'completed',1700000018000,NULL,1700000019000);
+INSERT INTO device_capability_profile(device_id,profile_version,profile_json,device_updated_at,received_at)
+VALUES('audit-device-1',1,'{"deviceOwner":true}',1700000020000,1700000021000);
+INSERT INTO screen_time_daily(device_id,local_day,total_foreground_ms,session_count,summary_json,received_at)
+VALUES('audit-device-1','2026-11-04',72000,2,'{"privacy":"aggregate_only_no_package_names"}',1700000022000);
+INSERT INTO commute_summaries(id,device_id,started_at,ended_at,distance_m,duration_ms,transport_mode,mode_confidence,provenance,created_at)
+VALUES('audit-commute-1','audit-device-1',1700000000000,1700000030000,1200,30000,'walking',0.9,'trusted_history_v1',1700000023000);
+INSERT INTO pairing_pin_sessions(id,pin_hash,device_name,created_at,expires_at) VALUES('audit-pin-1','synthetic-no-secret','Test child',1700000000000,1700000008000);
+INSERT INTO provider_rate_window(provider,window_start,request_count,updated_at) VALUES('onemap',1700000000000,3,1700000005000);
+INSERT INTO provider_cache(provider,cache_key,value_json,expires_at,updated_at) VALUES('onemap','audit','{}',1700000007000,1700000005000);
 `;
   await query(databaseId, sql);
 }
@@ -266,12 +291,15 @@ const originalTables = await readBackupTables(source.id);
 for (const table of BACKUP_TABLES) assert(originalTables[table].length === 1, `fixture must seed exactly one row in ${table}`);
 
 const snapshot = {
-  format: 'brick-d1-snapshot-v1',
+  format: 'brick-d1-snapshot-v2',
   createdAt: Date.now(),
   excludes: [
     'device_events: derivable packet-delivery evidence; detailed routes are already in R2 history',
     'device_health_samples: high-volume operational telemetry retained separately in D1',
-    'pairing_tokens: short-lived credentials are intentionally not backed up'
+    'pairing_tokens: short-lived credentials are intentionally not backed up',
+    'pairing_pin_sessions: short-lived pairing credentials are not restored',
+    'provider_rate_window: transient counters are not restored',
+    'provider_cache: reconstructible responses are not restored'
   ],
   tables: originalTables
 };
@@ -300,6 +328,10 @@ const restoreResult = await restoreModule.restoreBackupToFreshD1(
 );
 
 const restoredTables = await readBackupTables(target.id);
+for (const ephemeral of ['pairing_pin_sessions','provider_rate_window','provider_cache']) {
+  const count = rows(await query(target.id, `SELECT COUNT(*) AS n FROM ${ephemeral}`));
+  assert(Number(count[0]?.n) === 0, `transient state incorrectly revived: ${ephemeral}`);
+}
 assert(canonicalTables(restoredTables) === canonicalTables(originalTables), 'restored real D1 tables differ from the backed-up source');
 for (const table of BACKUP_TABLES) {
   assert(Number(restoreResult?.restoredRows?.[table]) === originalTables[table].length, `restore result count mismatch for ${table}`);
@@ -309,7 +341,7 @@ assert(index.length === 1 && /CREATE\s+UNIQUE\s+INDEX/i.test(String(index[0]?.sq
 const info = await cf(`/accounts/${accountId}/d1/database/${target.id}`);
 
 const evidence = {
-  version: 2,
+  version: 3,
   sourceGitSha: sourceSha,
   runId,
   runAttempt: attempt,
@@ -338,8 +370,15 @@ const evidence = {
     'health_incidents',
     'crash_reports',
     'audit_log',
-    'replay_high_water'
+    'replay_high_water',
+    'live_track_last_command',
+    'wifi_schedules_and_results',
+    'capability_profile',
+    'screen_time_daily',
+    'commute_summaries'
   ],
+  excludedTransientTablesVerified: ['pairing_pin_sessions','provider_rate_window','provider_cache'],
+  r2HistoryAndDurableObjectRecovery: 'NOT TESTED BY THIS D1-ONLY DRILL',
   cleanupRequired: true
 };
 await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2));

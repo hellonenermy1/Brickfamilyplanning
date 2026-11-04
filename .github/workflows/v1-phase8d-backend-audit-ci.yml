@@ -60,6 +60,10 @@ jobs:
         run: npm run typecheck
       - name: Build parent/browser assets
         run: npm run build:parent-assets
+      - name: P8D-002 versioned backup restore regression
+        run: |
+          npx --no-install esbuild src/backup-restore-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-restore.mjs
+          node scripts/test-backup-restore.mjs /tmp/brick-p8d-restore.mjs
       - name: Verify strict schema 016 transform and repeatable migration on SQLite
         shell: bash
         run: |

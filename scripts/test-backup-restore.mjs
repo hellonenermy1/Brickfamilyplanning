@@ -20,12 +20,15 @@ assert.notEqual(unpaddedPublicKey, canonicalPublicKey, 'test key must exercise a
 
 const TABLES = [
   'devices', 'device_location_control', 'geofences', 'geofence_state', 'ble_anchors', 'trips', 'retention_settings',
-  'safety_events', 'health_incidents', 'crash_reports', 'audit_log', 'device_replay_state'
+  'safety_events', 'health_incidents', 'crash_reports', 'audit_log', 'device_replay_state',
+  'device_live_track_control', 'device_wifi_schedules', 'device_wifi_schedule_result',
+  'device_capability_profile', 'screen_time_daily', 'commute_summaries'
 ];
-const LEGACY_TABLES = TABLES.filter(t => t !== 'device_location_control');
+const PRE_P8B_TABLES = TABLES.slice(0, 12);
+const LEGACY_TABLES = PRE_P8B_TABLES.filter(t => t !== 'device_location_control');
 
-function snapshot(extraDevice = {}, { legacy = false } = {}) {
-  const tableNames = legacy ? LEGACY_TABLES : TABLES;
+function snapshot(extraDevice = {}, { legacy = false, preP8B = false } = {}) {
+  const tableNames = legacy ? LEGACY_TABLES : preP8B ? PRE_P8B_TABLES : TABLES;
   const tables = Object.fromEntries(tableNames.map(t => [t, []]));
   tables.devices.push({
     id: 'child-1',
@@ -44,7 +47,7 @@ function snapshot(extraDevice = {}, { legacy = false } = {}) {
     ...extraDevice
   });
   return {
-    format: 'brick-d1-snapshot-v1',
+    format: legacy || preP8B ? 'brick-d1-snapshot-v1' : 'brick-d1-snapshot-v2',
     createdAt: 1793435000000,
     excludes: ['pairing_tokens: intentionally excluded'],
     tables
@@ -107,24 +110,39 @@ goodSnapshot.tables.device_location_control.push({
   updated_at: 1793434200000,
   last_actual_enabled: 0,
   last_actual_at: 1793434300000,
-  last_acked_command_id: '11111111-1111-4111-8111-111111111111'
+  last_acked_command_id: '11111111-1111-4111-8111-111111111111',
+  command_status: 'completed',
+  completed_at: 1793434400000,
+  result_actual_enabled: 0,
+  result_success: 1,
+  result_reason: 'signed_phone_confirmed'
 });
 goodSnapshot.tables.device_replay_state.push({
   device_id: 'child-1',
   last_health_sequence: 487,
   updated_at: 1793434500000
 });
+goodSnapshot.tables.device_live_track_control.push({ device_id: 'child-1', command_id: 'live-1', requested_active: 1, issued_at: 1793434100000, expires_at: 1793435000000, command_status: 'completed', last_actual_active: 1, completed_at: 1793434200000, result_reason: 'signed_phone_confirmed' });
+goodSnapshot.tables.device_wifi_schedules.push({ device_id: 'child-1', id: 'bedtime', enabled: 1, target_enabled: 0, local_minute_of_day: 1290, days_mask: 127, grace_minutes: 15, updated_at: 1793434300000 });
+goodSnapshot.tables.device_wifi_schedule_result.push({ device_id: 'child-1', schedule_id: 'bedtime', target_enabled: 0, actual_enabled: 0, status: 'completed', attempted_at: 1793434400000, detail: null, received_at: 1793434450000 });
+goodSnapshot.tables.device_capability_profile.push({ device_id: 'child-1', profile_version: 1, profile_json: '{"deviceOwner":true}', device_updated_at: 1793434250000, received_at: 1793434260000 });
+goodSnapshot.tables.screen_time_daily.push({ device_id: 'child-1', local_day: '2026-11-04', total_foreground_ms: 64000, session_count: 4, summary_json: '{"privacy":"aggregate_only_no_package_names"}', received_at: 1793434500000 });
+goodSnapshot.tables.commute_summaries.push({ id: 'commute-1', device_id: 'child-1', started_at: 1793430000000, ended_at: 1793430300000, distance_m: 1250, duration_ms: 300000, transport_mode: 'walking', mode_confidence: 0.8, start_label: null, end_label: null, provenance: 'trusted_history_v1', created_at: 1793434600000 });
 const good = encode(goodSnapshot);
 const db = fakeDb();
 const result = await restore.restoreBackupToFreshD1({ DB: db }, good.bytes, good.sha);
-assert.equal(result.format, 'brick-d1-snapshot-v1');
+assert.equal(result.format, 'brick-d1-snapshot-v2');
 assert.equal(result.restoredRows.devices, 1);
 assert.equal(result.restoredRows.device_location_control, 1);
 assert.equal(result.restoredRows.device_replay_state, 1);
+for (const table of TABLES.slice(12)) {
+  assert.equal(result.restoredRows[table], 1, 'P8B table omitted: ' + table);
+  assert.deepEqual(db.rows.get(table)[0], goodSnapshot.tables[table][0], 'P8B row changed: ' + table);
+}
 assert.equal(db.counts.get('devices'), 1);
 assert.equal(db.counts.get('device_location_control'), 1);
 assert.equal(db.counts.get('device_replay_state'), 1);
-for (const table of TABLES.filter(t => !['devices', 'device_location_control', 'device_replay_state'].includes(t))) assert.equal(db.counts.get(table), 0);
+for (const table of TABLES.slice(2, 12).filter(t => t !== 'device_replay_state')) assert.equal(db.counts.get(table), 0);
 
 // Security state must survive recovery exactly. A restored revoked identity must remain revoked,
 // replay high-water state must not reset, and persistent parent control state/ACK must not silently
@@ -163,6 +181,26 @@ await assert.rejects(
   /backup integrity hash mismatch/
 );
 
+const pendingSnapshot = snapshot();
+pendingSnapshot.tables.device_location_control.push({ device_id: 'child-1', desired_enabled: 1, command_id: 'pending-loc', issued_at: 1793434100000, updated_at: 1793434100000, command_status: 'pending' });
+pendingSnapshot.tables.device_live_track_control.push({ device_id: 'child-1', command_id: 'pending-live', requested_active: 1, issued_at: 1793434100000, expires_at: 1993435000000, command_status: 'pending' });
+const pending = encode(pendingSnapshot);
+const pendingDb = fakeDb();
+await restore.restoreBackupToFreshD1({ DB: pendingDb }, pending.bytes, pending.sha);
+assert.equal(pendingDb.rows.get('device_location_control')[0].command_status, 'expired');
+assert.equal(pendingDb.rows.get('device_location_control')[0].result_success, 0);
+assert.equal(pendingDb.rows.get('device_live_track_control')[0].command_status, 'expired');
+assert.equal(pendingDb.rows.get('device_live_track_control')[0].result_reason, 'cancelled_on_disaster_restore');
+const missingTable = snapshot();
+delete missingTable.tables.device_wifi_schedules;
+const missing = encode(missingTable);
+await assert.rejects(() => restore.restoreBackupToFreshD1({ DB: fakeDb() }, missing.bytes, missing.sha), /v2 backup must contain all Phase 8B durable tables/);
+const old12 = encode(snapshot({}, { preP8B: true }));
+const old12Db = fakeDb();
+const old12Result = await restore.restoreBackupToFreshD1({ DB: old12Db }, old12.bytes, old12.sha);
+assert.equal(old12Result.format, 'brick-d1-snapshot-v1');
+assert.equal(old12Result.restoredRows.device_live_track_control, 0);
+
 // A legacy backup may contain an unpadded spelling of a valid key. Restore must normalize it to the
 // same canonical text used by new pairings so schema 015's text UNIQUE index retains identity meaning.
 const legacy = encode(snapshot({
@@ -199,4 +237,4 @@ await assert.rejects(
 );
 
 assert.deepEqual([...restore.RESTORE_TABLE_ORDER], TABLES);
-console.log('Phase 8 fresh-D1 recovery preserves revocation/control/replay state, canonicalizes legacy keys, rejects semantic duplicate identities, and remains backward-compatible.');
+console.log('P8D backup v2: six nonempty P8B tables preserved; pending commands retired; v1 11/12 table compatibility and corrupt snapshot rejection PASS.');
