@@ -26,6 +26,8 @@ type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv
   PAIR_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   PARENT_HISTORY_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   PARENT_WS_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
+  PARENT_GEOCODE_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
+  PARENT_COMMUTE_RATE: { limit(input: { key: string }): Promise<{ success: boolean }> };
   APP_ENV: string;
   CURRENT_APP_VERSION: string;
   CF_ACCESS_TEAM_DOMAIN: string;
@@ -73,6 +75,24 @@ export default {
       try { allowed = (await rate.limit({ key: `parent-${kind}:${edgeIp}` })).success; }
       catch { return json({ error: "parent rate guard unavailable" }, 503); }
       if (!allowed) return json({ error: "parent request rate limited" }, 429);
+    }
+
+    // Rate-limit expensive authenticated OneMap and commute routes independently.
+    // Cloudflare binding counters are approximate and per colo; provider D1 limits
+    // remain authoritative for OneMap upstream traffic, not per-parent request cost.
+    const expensiveRead = req.method === "GET"
+      ? (u.pathname === "/parent/api/onemap/reverse" ? "geocode"
+        : /^\/parent\/api\/device\/[^/]+\/commutes$/.test(u.pathname) ? "commute" : null)
+      : null;
+    if (expensiveRead) {
+      const denied = await parentGuard(req, env); if (denied) return denied;
+      const rate = expensiveRead === "geocode" ? env.PARENT_GEOCODE_RATE : env.PARENT_COMMUTE_RATE;
+      if (!rate || typeof rate.limit !== "function") return json({ error: "parent expensive-read limiter unavailable" }, 503);
+      const ip = (req.headers.get("CF-Connecting-IP") ?? "unknown").slice(0, 96);
+      let allowed = false;
+      try { allowed = (await rate.limit({ key: `parent-${expensiveRead}:${ip}` })).success; }
+      catch { return json({ error: "parent expensive-read limiter unavailable" }, 503); }
+      if (!allowed) return json({ error: "parent expensive-read rate limited" }, 429);
     }
 
     // Fallback PIN pairing never binds on the public child claim. The code is consumed into a
