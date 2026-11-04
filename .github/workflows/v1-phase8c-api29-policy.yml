@@ -9,6 +9,7 @@ on:
       - 'app/src/main/java/com/brick/safety/maintenance/**'
       - 'app/src/main/java/com/brick/safety/beta/**'
       - 'app/src/androidTest/java/com/brick/safety/managed/Phase8Api29AutoTimePolicyInstrumentedTest.kt'
+      - 'app/src/androidTest/java/com/brick/safety/maintenance/Phase8Api29WifiDeviceOwnerInstrumentedTest.kt'
       - 'app/build.gradle.kts'
   workflow_dispatch:
 
@@ -93,6 +94,15 @@ jobs:
           "$ADB" shell dumpsys device_policy | tee /tmp/p8c-api29-policy-before.txt
           grep -F 'com.brick.safety' /tmp/p8c-api29-policy-before.txt >/dev/null
 
+      - name: Execute P8C-003 real Device Owner Wi-Fi state-transition regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell am instrument -w \
+            -e class 'com.brick.safety.maintenance.Phase8Api29WifiDeviceOwnerInstrumentedTest' \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8c-api29-wifi-test.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)' /tmp/p8c-api29-wifi-test.txt >/dev/null
+
       - name: Execute P8C-009 provenance and reversal regression
         shell: bash
         run: |
@@ -117,6 +127,7 @@ jobs:
           cp /tmp/p8c-api29-set-owner.txt p8c-api29-evidence/set-owner.txt 2>/dev/null || true
           cp /tmp/p8c-api29-policy-before.txt p8c-api29-evidence/device-policy-before.txt 2>/dev/null || true
           cp /tmp/p8c-api29-test.txt p8c-api29-evidence/instrumentation.txt 2>/dev/null || true
+          cp /tmp/p8c-api29-wifi-test.txt p8c-api29-evidence/wifi-transition-instrumentation.txt 2>/dev/null || true
           cp /tmp/p8c-api29-policy-after.txt p8c-api29-evidence/device-policy-after.txt 2>/dev/null || true
           timeout 15s "$ADB" logcat -d > p8c-api29-evidence/logcat.txt 2>&1 || true
 
