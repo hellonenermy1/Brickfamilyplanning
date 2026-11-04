@@ -45,7 +45,7 @@ for(const [label,mutation,section] of [
  ["missing Queue",d=>{d["/workers/scripts/"+host+"/settings"].bindings=d["/workers/scripts/"+host+"/settings"].bindings.filter(x=>x.name!=="EVENTS");},"production_bindings"],
  ["same DB",d=>{d["/workers/scripts/"+host+"-dev/settings"].bindings[0].id="prod-db";},"development_isolation"],
  ["wrong DLQ",d=>{d["/queues?per_page=100&page=1"][0].consumers[0].dead_letter_queue="missing";},"queue_dlq"],
- ["queue paused",d=>{d["/queues"][0].settings.delivery_paused=true;},"queue_dlq"],
+ ["queue paused",d=>{d["/queues?per_page=100&page=1"][0].settings.delivery_paused=true;},"queue_dlq"],
  ["no retention",d=>{d["/r2/buckets/"+host+"-history/lifecycle"].rules[1].enabled=false;},"history_lifecycle"],
  ["no Access",d=>{d["/access/apps"]=[];},"parent_access"]
 ]){
