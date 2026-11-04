@@ -34,6 +34,9 @@ export type HistoryBatchResult = {
 
 const SEGMENT_MS = 15 * 60 * 1000;
 const MAX_PACKETS_PER_SEGMENT = 40_000;
+// Two consumers can process one 15-minute object concurrently. Never ACK a stale
+// read-modify-write; force re-read/merge after an R2 conditional-write conflict.
+const MAX_R2_MERGE_ATTEMPTS = 8;
 
 function safeDeviceId(id: string) { return id.replace(/[^a-zA-Z0-9_-]/g, "_"); }
 function segmentStart(ms: number) { return Math.floor(ms / SEGMENT_MS) * SEGMENT_MS; }
@@ -61,14 +64,18 @@ function validReceipt(value: unknown): value is ReceiptRow {
     Number.isSafeInteger(value[1]) && value[1] > 0;
 }
 
-async function existingSegment(env: Env, key: string): Promise<{ raw: LivePacket[]; trusted: LivePacket[]; receipts: ReceiptRow[] }> {
+async function existingSegment(env: Env, key: string): Promise<{ etag: string | null; raw: LivePacket[]; trusted: LivePacket[]; receipts: ReceiptRow[] }> {
   const obj = await env.HISTORY.get(key);
-  if (!obj) return { raw: [], trusted: [], receipts: [] };
+  if (!obj) return { etag: null, raw: [], trusted: [], receipts: [] };
   const parsed = await readJsonObject<StoredRawSegment>(obj);
   const raw = Array.isArray(parsed.packets) ? parsed.packets.filter(validPacket) : [];
   const trusted = Array.isArray(parsed.trustedPackets) ? parsed.trustedPackets.filter(validPacket) : raw;
   const receipts = Array.isArray(parsed.receipts) ? parsed.receipts.filter(validReceipt) : [];
-  return { raw, trusted, receipts };
+  return { etag: obj.etag, raw, trusted, receipts };
+}
+/** If-None-Match is required for the first write; an empty R2Conditional is NOT a create-only guard. */
+function onlyIfUnchanged(etag: string | null): R2Conditional | Headers {
+  return etag === null ? new Headers({ "If-None-Match": "*" }) : { etagMatches: etag };
 }
 
 function mergePackets(existing: LivePacket[], incoming: LivePacket[], epoch: number): LivePacket[] {
@@ -151,35 +158,57 @@ export async function processHistoryBatch(batch: QueueMessageView, env: Env): Pr
     try {
       group.entries.sort((a, b) => a.packet.sequence - b.packet.sequence);
       const keys = segmentKeys(group);
-      const old = await existingSegment(env, keys.raw);
-      const rawPackets = mergePackets(old.raw, group.entries.map(x => x.rawPacket), group.epoch);
-      const trustedPackets = mergePackets(old.trusted, group.entries.map(x => x.packet), group.epoch);
-      const receipts = mergeReceipts(old.receipts, group.entries, trustedPackets);
-      const storedAt = Date.now();
-      const points = trustedPackets.map(trustedPoint);
-      const [rawBody, trustedBody] = await Promise.all([
-        gzipJson({
-          v: 5,
-          deviceId: group.deviceId,
-          segmentStartMs: group.segmentStartMs,
-          storedAt,
-          packets: rawPackets,
-          trustedPackets,
-          receipts
-        }),
-        gzipJson({ v: 5, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, receipts, delta: encodeTrustedDelta(points) })
-      ]);
+      let persisted = false;
+      for (let attempt = 0; attempt < MAX_R2_MERGE_ATTEMPTS; attempt++) {
+        // R2 is strongly consistent, but an ordinary unconditional put would still
+        // erase the other writer's additions after both read the same generation.
+        const [old, trustedHead] = await Promise.all([
+          existingSegment(env, keys.raw),
+          env.HISTORY.head(keys.trusted)
+        ]);
+        const rawPackets = mergePackets(old.raw, group.entries.map(x => x.rawPacket), group.epoch);
+        const trustedPackets = mergePackets(old.trusted, group.entries.map(x => x.packet), group.epoch);
+        const receipts = mergeReceipts(old.receipts, group.entries, trustedPackets);
+        const storedAt = Date.now();
+        const points = trustedPackets.map(trustedPoint);
+        const [rawBody, trustedBody] = await Promise.all([
+          gzipJson({
+            v: 5,
+            deviceId: group.deviceId,
+            segmentStartMs: group.segmentStartMs,
+            storedAt,
+            packets: rawPackets,
+            trustedPackets,
+            receipts
+          }),
+          gzipJson({ v: 5, deviceId: group.deviceId, segmentStartMs: group.segmentStartMs, storedAt, receipts, delta: encodeTrustedDelta(points) })
+        ]);
 
-      await Promise.all([
-        env.HISTORY.put(keys.raw, rawBody, {
-          httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
-        }),
-        env.HISTORY.put(keys.trusted, trustedBody, {
-          httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
-          customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
-        })
-      ]);
+        // These are TWO separate objects, not an atomic two-object transaction.
+        // Wait for BOTH writes before deciding whether to retry, even if one failed.
+        // A partial write is reconciled from the raw source of truth on the next try.
+        const writes = await Promise.allSettled([
+          env.HISTORY.put(keys.raw, rawBody, {
+            onlyIf: onlyIfUnchanged(old.etag),
+            httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
+            customMetadata: { deviceId: group.deviceId, day: group.day, kind: "raw", codec: "json-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
+          }),
+          env.HISTORY.put(keys.trusted, trustedBody, {
+            onlyIf: onlyIfUnchanged(trustedHead?.etag ?? null),
+            httpMetadata: { contentType: "application/json", contentEncoding: "gzip" },
+            customMetadata: { deviceId: group.deviceId, day: group.day, kind: "trusted", codec: "delta-gzip-v5", segmentMinutes: "15", epoch: String(group.epoch) }
+          })
+        ]);
+        const failed = writes.find((write): write is PromiseRejectedResult => write.status === "rejected");
+        if (failed) throw failed.reason;
+        if (writes.every(write => write.status === "fulfilled" && write.value !== null)) {
+          persisted = true;
+          break;
+        }
+        // Conditional write lost to a competing consumer. Re-read the committed
+        // generation instead of accepting an ACK or overwriting without checking.
+      }
+      if (!persisted) throw new Error("R2 history conditional-merge retry exhausted");
 
       for (const entry of group.entries) {
         entry.message.ack();
