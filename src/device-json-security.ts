@@ -65,11 +65,17 @@ export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityE
   if (sentAt < now - 10 * 60_000) return jsonError("stale health heartbeat", 409);
 
   const result = await env.DB.prepare(
-    "INSERT INTO device_replay_state(device_id,last_health_sequence,updated_at) VALUES(?1,?2,?3) " +
+    "INSERT INTO device_replay_state(device_id,last_health_sequence,updated_at) " +
+    "SELECT ?1,?2,?3 WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL) " +
     "ON CONFLICT(device_id) DO UPDATE SET last_health_sequence=excluded.last_health_sequence,updated_at=excluded.updated_at " +
-    "WHERE device_replay_state.last_health_sequence<excluded.last_health_sequence"
+    "WHERE device_replay_state.last_health_sequence<excluded.last_health_sequence " +
+    "AND EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL)"
   ).bind(deviceId, sequence, now).run();
-  if ((result.meta.changes ?? 0) !== 1) return jsonError("replayed or out-of-order health heartbeat", 409);
+  if ((result.meta.changes ?? 0) !== 1) {
+    const life = await env.DB.prepare("SELECT revoked_at FROM devices WHERE id=?1").bind(deviceId).first<{ revoked_at: number | null }>();
+    if (!life || life.revoked_at !== null) return jsonError("device unauthorized", 401);
+    return jsonError("replayed or out-of-order health heartbeat", 409);
+  }
   return null;
 }
 
