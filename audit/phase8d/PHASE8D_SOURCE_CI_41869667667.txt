@@ -1,0 +1,170 @@
+Executable SHA: cd5e50ca050a8afa8932434c590d923e3ade62a4
+Run: https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667
+All3 jobs completed SUCCESS. Source job126712978517:66/66 steps; deployment126712978076:7/7; backup126712978558:7/7.
+Actual completed source job log read; no error/FAIL lines.
+163 extracted PASS summary lines below are not an independent-test count.
+No live Cloudflare acceptance is implied.
+
+2026-11-04T16:40:32.1135441Z PASS P8D-050 actual outer production route permits active signed Fast Live
+2026-11-04T16:40:32.1276345Z PASS P8D-050 actual outer route rechecks D1 after stale authorization
+2026-11-04T16:40:32.1424513Z PASS P8D-050 persistent DO fence denies an otherwise active D1 route
+2026-11-04T16:40:32.1551653Z PASS P8D-050 both latest RPC methods preserve archived state after revoke/reload
+2026-11-04T16:40:32.1714736Z PASS P8D-050 DO outage returns retryable HTTP, no false preview
+2026-11-04T16:40:32.2467583Z PASS P8D-054 revoked resident DO preserves all six archived state keys
+2026-11-04T16:40:32.2472653Z PASS P8D-054 revoked reloaded DO preserves all six archived state keys
+2026-11-04T16:40:32.2479839Z PASS P8D-054 persisted revoke observed after stale constructor memory
+2026-11-04T16:40:32.2482980Z PASS P8D-055 concurrent sequence marker never regresses
+2026-11-04T16:40:32.2495695Z PASS P8D-055 concurrent safety evaluation marker never regresses
+2026-11-04T16:40:32.2497226Z PASS P8D-055 concurrent safety event marker never regresses
+2026-11-04T16:40:32.2505190Z PASS P8D-056 delayed duplicate/legacy health cannot replace newer signed sequence
+2026-11-04T16:40:32.2507714Z PASS P8D-056 legacy health accepted before sequence-aware telemetry, active newer update retained
+2026-11-04T16:40:32.3564882Z PASS P8D-057 fall revoked during Queue send returns401 without D1/DO event
+2026-11-04T16:40:32.3764526Z PASS P8D-057 ordinary safety event revoked after final auth read returns401
+2026-11-04T16:40:32.3993641Z PASS P8D-058 global event-ID collision never falsely ACKs another device: fall_detected
+2026-11-04T16:40:32.4209526Z PASS P8D-058 global event-ID collision never falsely ACKs another device: sos_started
+2026-11-04T16:40:32.4384656Z PASS P8D-059 malformed fall unpaired latitude rejected before Queue/D1/DO
+2026-11-04T16:40:32.4564236Z PASS P8D-059 malformed fall unpaired longitude rejected before Queue/D1/DO
+2026-11-04T16:40:32.4686852Z PASS P8D-059 malformed fall invalid latitude rejected before Queue/D1/DO
+2026-11-04T16:40:32.4844423Z PASS P8D-059 malformed fall invalid longitude rejected before Queue/D1/DO
+2026-11-04T16:40:32.4974547Z PASS P8D-059 malformed fall string coordinate rejected before Queue/D1/DO
+2026-11-04T16:40:32.5094100Z PASS P8D-059 malformed fall negative accuracy rejected before Queue/D1/DO
+2026-11-04T16:40:32.5195451Z PASS P8D-059 malformed fall scalar accuracy rejected before Queue/D1/DO
+2026-11-04T16:40:32.5321148Z PASS P8D-057/059 active valid0,0 fall persists and exact retry is duplicate
+2026-11-04T16:40:32.6703704Z PASS P8D-061 same UUID changed timestamp conflicts: fall_detected
+2026-11-04T16:40:32.7024083Z PASS P8D-061 same UUID changed coordinates conflicts: fall_detected
+2026-11-04T16:40:32.7200414Z PASS P8D-061 same UUID changed accuracy conflicts: fall_detected
+2026-11-04T16:40:32.7423822Z PASS P8D-061 same UUID changed detail conflicts: fall_detected
+2026-11-04T16:40:32.7700987Z PASS P8D-061 same UUID changed timestamp conflicts: sos_started
+2026-11-04T16:40:32.7946413Z PASS P8D-061 same UUID changed coordinates conflicts: sos_started
+2026-11-04T16:40:32.8134996Z PASS P8D-061 same UUID changed accuracy conflicts: sos_started
+2026-11-04T16:40:32.8270311Z PASS P8D-061 same UUID changed detail conflicts: sos_started
+2026-11-04T16:40:32.8368277Z PASS P8D-061 semantically identical detail with different object key order remains duplicate
+2026-11-04T16:40:32.8473514Z PASS P8D-061 array order/type remain immutable: fall_detected
+2026-11-04T16:40:32.8620940Z PASS P8D-061 array order/type remain immutable: sos_started
+2026-11-04T16:40:32.8729910Z PASS P8D-062 older queued fall survives a higher delivered fall sequence
+2026-11-04T16:40:32.8813656Z PASS P8D-062 reconstructed DO diagnostic high-water does not discard valid UUID
+2026-11-04T16:40:32.8885950Z PASS P8D-062 stale timestamp still refused despite distinct valid UUID
+2026-11-04T16:40:33.0115886Z PASS P8D-066 fall deny quota refuses before state side effects
+2026-11-04T16:40:33.0226967Z PASS P8D-066 fall missing quota refuses before state side effects
+2026-11-04T16:40:33.0362178Z PASS P8D-066 fall throw quota refuses before state side effects
+2026-11-04T16:40:33.0494917Z PASS P8D-066 fall invalid quota refuses before state side effects
+2026-11-04T16:40:33.0663857Z PASS P8D-066 screen-time deny quota refuses before state side effects
+2026-11-04T16:40:33.0813954Z PASS P8D-066 screen-time missing quota refuses before state side effects
+2026-11-04T16:40:33.0920780Z PASS P8D-066 screen-time throw quota refuses before state side effects
+2026-11-04T16:40:33.1055197Z PASS P8D-066 screen-time invalid quota refuses before state side effects
+2026-11-04T16:40:33.1173888Z PASS P8D-066 fall unsigned request denied before authenticated quota
+2026-11-04T16:40:33.1280495Z PASS P8D-066 screen-time unsigned request denied before authenticated quota
+2026-11-04T16:40:33.1414170Z PASS P8D-066 fall revocation during limiter await still cannot write
+2026-11-04T16:40:33.1533620Z PASS P8D-066 screen-time revocation during limiter await still cannot write
+2026-11-04T16:40:33.1670116Z PASS P8D-066 active handlers use distinct keys and preserve normal success
+2026-11-04T16:40:33.6564543Z PASS P8D-051 fresh configured dev migration path contains production control/summary/PIN schema
+2026-11-04T16:40:33.7072768Z PASS P8D-051 actual dev entry reaches signed screen-time overlay route
+2026-11-04T16:40:33.7114036Z PASS P8D-051 authenticated dev parent can read screen-time overlay
+2026-11-04T16:40:33.7404536Z PASS P8D-051 dev page renders current overlay and preserves development auth
+2026-11-04T16:40:33.8120148Z PASS P8D-051 interrupted/repeated schema16, drift-before-write rejection and old-session revocation on native SQLite
+2026-11-04T16:40:34.5604784Z PASS P8D-002 all 48 source tables classified, actual v3 snapshot/restore preserves witness/receiver config, generic pending command retired, FK intact; live R2/DO recovery OPEN
+2026-11-04T16:40:34.6195870Z PASS legacy live restore drill rejects incomplete inventory before any Cloudflare fetch/resource creation
+2026-11-04T16:40:34.7004352Z PASS P8D-052 late invalid table row leaves earlier devices untouched
+2026-11-04T16:40:34.7089275Z PASS P8D-052 late invalid table row leaves earlier devices untouched
+2026-11-04T16:40:34.7167113Z PASS P8D-052 occupied transient target refused: pairing_tokens
+2026-11-04T16:40:34.7240468Z PASS P8D-052 occupied transient target refused: pairing_pin_sessions
+2026-11-04T16:40:34.7321500Z PASS P8D-052 occupied transient target refused: provider_rate_window
+2026-11-04T16:40:34.7397923Z PASS P8D-052 occupied transient target refused: provider_cache
+2026-11-04T16:40:34.7484547Z PASS P8D-052 second committed-batch service failure rejects and blocks same-target retry
+2026-11-04T16:40:34.7875879Z PASS P8D-053 compressed input rejected before decompression at max+1
+2026-11-04T16:40:35.1356917Z PASS P8D-053 high-ratio valid gzip rejected while decoding at max+1
+2026-11-04T16:40:35.4755936Z PASS P8D-053 exact decoded byte boundary accepts a structurally valid snapshot
+2026-11-04T16:40:35.5605477Z PASS P8D-053 oversized generated snapshot never publishes or deletes recovery objects
+2026-11-04T16:40:35.9422866Z PASS P8D-060 newer state wins before batch; no stale alert stored/returned/broadcast
+2026-11-04T16:40:35.9518346Z PASS P8D-060 revoked state wins before batch; no stale alert stored/returned/broadcast
+2026-11-04T16:40:35.9596501Z PASS P8D-060 two simultaneous identical snapshots produce one committed alert and one publication
+2026-11-04T16:40:35.9661782Z PASS P8D-060 ordinary qualified transition persists state+event together
+2026-11-04T16:40:35.9739743Z PASS P8D-060 trip-newer cannot persist stale overdue alert or change trip state
+2026-11-04T16:40:35.9805356Z PASS P8D-060 trip-revoked cannot persist stale overdue alert or change trip state
+2026-11-04T16:40:35.9874500Z PASS P8D-060 concurrent identical overdue evaluations publish once
+2026-11-04T16:40:35.9938121Z PASS P8D-060 initial geofence state without prior row persists without phantom alert
+2026-11-04T16:40:36.0017012Z PASS P8D-060 multiple transitions in one owned batch retain every legitimate event
+2026-11-04T16:40:36.0088098Z PASS P8D-060 state write failure rolls back earlier event inserts and emits nothing
+2026-11-04T16:40:36.0160786Z PASS P8D-060 different concurrent snapshots re-read losing newer work instead of silently skipping it
+2026-11-04T16:40:36.0263938Z PASS P8D-060 sustained CAS contention fails after bounded retries without alert or false marker advancement
+2026-11-04T16:40:36.1179332Z Phase 7 actual V6 safety runtime fixtures: PASS
+2026-11-04T16:40:39.2046342Z PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT
+2026-11-04T16:40:39.2505319Z PASS native workerd signed safety route rejects asymmetric coordinates, retains valid0,0 and acknowledges actual own duplicate
+2026-11-04T16:40:39.3088610Z PASS native workerd internal RPC health ordering and three concurrent monotonic markers
+2026-11-04T16:40:52.3409043Z PASS native workerd DO WebSocket survives hibernation/reconstruction and expires through idle storage alarm
+2026-11-04T16:40:52.4128735Z PASS native workerd revoked/reconstructed DO rejects all six telemetry/marker writes and safety evaluation
+2026-11-04T16:40:52.4200977Z PASS native workerd revoked D1 identity, DO fence reconstruction, archived current state and denied subscription
+2026-11-04T16:40:53.2484912Z PASS native workerd D1/R2 actual v3 snapshot and fresh 38-table restore with retained revocation and accepted sequence index; full live DO disaster recovery remains OPEN
+2026-11-04T16:40:53.3472736Z PASS 8D.15 local Git scanner positive/negative controls; matching secret values are never emitted
+2026-11-04T16:40:53.3863935Z PASS P8D-065 seven material/escaped/indented/encrypted/marker/public/size cases; no private values emitted
+2026-11-04T16:40:53.4721625Z PASS tracked private-key material scan: 578 files; marker-only source controls are not key material. Other credential classes/history/rotation require separate audit.
+2026-11-04T16:40:53.5297818Z PASS 8D.15: scanned 4 actual built public browser assets; no high-risk server credential markers or PEM private keys found. This is NOT a Git history or deployed CDN scan.
+2026-11-04T16:40:53.9295996Z PASS P8D-007 concurrent same-segment R2 history: two ACKed deliveries retained both raw and trusted packets; conditional conflicts=2; puts=4
+2026-11-04T16:40:54.0432992Z PASS P8D-008: duplicate delivery with conflicting payload retains first accepted raw/trusted packet and earliest receipt.
+2026-11-04T16:40:54.5185659Z PASS P8D-024 real signed V1+SQLite: no early DO visibility before Queue success; D1→Queue 503 replays and repairs live exactly once
+2026-11-04T16:40:55.0078037Z PASS P8D-021 revoked D1 atomic ingest and Queue/DO fences, active replay; live Cloudflare race still pending
+2026-11-04T16:40:55.8496596Z PASS 8D.5/.7: SQLite 100→101→102, replays 100/102/101/102/102, old/new epochs, stale vs fresh capture, huge sequence jump and preserved D1 watermark; huge jump policy review remains open.
+2026-11-04T16:40:56.2926191Z PASS P8D-018 bounded fall JSON, invalid scalars, signed boundary and no side effects
+2026-11-04T16:40:56.7051543Z PASS P8D-019 screen-time: current > stale signed capture, JSON scalars rejected, post-auth revocation cannot insert
+2026-11-04T16:40:57.1447083Z PASS P8D-020: strict revoked-device atomic health replay watermark and no unauthorized updates
+2026-11-04T16:40:57.5694971Z PASS 8D.3/.4/.5 device signed health: valid, wrong key/device, unknown/revoked, tampered/missing signature, malformed, oversized, stale/future, 100->100/102/101 replay.
+2026-11-04T16:40:57.9285237Z PASS 8D.9: six actual DLQ scenarios cover malformed/unknown, D1 outage, missing and durable SOS receipt, poison with unrecovered incident; real Cloudflare retry exhaustion remains pending
+2026-11-04T16:40:58.6854525Z PASS P8D.6/.9: R2 partial write -> queue retry, retry idempotent, conditional exhaustion -> retry, D1 missing/outage -> safety retry, durable matching safety row -> ACK.
+2026-11-04T16:40:59.1328750Z PASS invalid SPKI claim
+2026-11-04T16:40:59.1380017Z PASS canonical valid SPKI claim
+2026-11-04T16:40:59.1403473Z PASS oversized claim
+2026-11-04T16:40:59.1413341Z PASS invalid historical key parent confirm
+2026-11-04T16:40:59.1443418Z PASS same-origin and bounded pairing requests
+2026-11-04T16:40:59.1454554Z PASS pairing rate limits
+2026-11-04T16:40:59.1473946Z PASS P8D-009 / 8D.12/.14: P-256 PIN identity, bounded bodies, Origin/CSRF and rate-limit guards verified.
+2026-11-04T16:40:59.4370357Z PASS P8D-010: real SQLite competing confirmation returns winner, one unique device, repeated confirmation idempotent.
+2026-11-04T16:40:59.5400766Z PASS P8D-047: strict Cloudflare Access challenge rejects arbitrary 303 local login, lookalike domain, HTTP downgrade and exposed production login; 401/403 alone never certify Access
+2026-11-04T16:40:59.6445753Z PASS 8D.2/.10/.11: 12 exact parent GET/forged/login/map probes, only API-grounded hostname, no secret/response body, negative cases fail closed
+2026-11-04T16:40:59.7156958Z PASS P8D-045: Cloudflare D1 GET-only catalog, prod/dev UUID isolation, missing/duplicate permission denial and malformed account fail-closed; no SQL/user data
+2026-11-04T16:40:59.7814754Z PASS 8D: 7 Cloudflare read-only account gates, 13 positive GETs, active version binding/DB isolation negatives, 7 drift cases, paginated Queue and version metadata permission and absent-account-credential fail-closed
+2026-11-04T16:40:59.8317089Z PASS P8D-042: manual-only dev and prod Workflows, current dev audited branch, high-entropy secret, new quotas, isolated D1, accepted production final-PASS gate retained
+2026-11-04T16:40:59.8830214Z PASS P8D-041: seven audited remediation paths, no unsafe automatic mutation, strict partial/duplicate/UNKNOWN rejection and live metadata not release approval
+2026-11-04T16:40:59.9352274Z PASS P8D-040: production vs development config bindings, 7 distinct prod newer quota/storage names, isolated D1/rates, Queue/DLQ retry, Access secrets and schedules are source-parity consistent. Cloudflare live drift remains OPEN.
+2026-11-04T16:41:00.6929056Z PASS 8D.13 location-control terminal command statuses immutable; wrong command ignored; expired cannot revive (SQLite source only)
+2026-11-04T16:41:00.7919297Z PASS 8D.13 live-track command terminal state immutable under signed replay, wrong ID and expiry
+2026-11-04T16:41:00.8886359Z PASS 8D.13 Wi-Fi schedule results monotonic, current schedule bound, revoked-device fenced
+2026-11-04T16:41:00.9843840Z PASS 8D.3/.13 capability profile version/time monotonic and revoked-device write blocked
+2026-11-04T16:41:01.3691440Z PASS 8D.9: null/undefined/scalar/truncated/out-of-bounds/unknown Queue messages quarantined without crashing batch or touching R2
+2026-11-04T16:41:02.4220500Z PASS 8D.16: actual snapshotD1ToR2 -> isolated 38-table D1 restore, command expiry, FK and byte-identical raw/trusted R2 inventory; D1-only restore detected INCOMPLETE; live DO state/Cloudflare restore OPEN
+2026-11-04T16:41:03.0115058Z PASS 8D.2/.3/.11: 41 actual full Worker parent method probes denied without production Access; no D1/DO/R2/Queue or expensive-rate side effects (source simulation)
+2026-11-04T16:41:03.7216316Z PASS 8D.15: 6 rendered parent/public assets scanned for high-confidence private credentials; synthetic positive controls detected; historic commits/live CDN/Cloudflare logs still UNKNOWN
+2026-11-04T16:41:04.1095111Z PASS P8D-016: actual SQLite old row/new row TOCTOU revocation race refused, prior command retained
+2026-11-04T16:41:04.5038851Z P8D-006 PASS: revoked identity cannot queue Live Track or Wi-Fi control writes.
+2026-11-04T16:41:04.8230877Z P8D-006 PASS: real SQLite schema active/UPSERT writes, revoked writes refused, TOCTOU guarded, old rows preserved.
+2026-11-04T16:41:05.4512722Z PASS 8D.2: 49 production candidate paths matched AST layered routes; 3 separate dev login/logout method records; untested deployed methods/auth remain explicitly OPEN
+2026-11-04T16:41:05.5371468Z PASS P8D-012: 49 candidate routes, 12 named CSV fields, unique route keys, explicit unverified statuses
+2026-11-04T16:41:05.8979260Z PASS P8D-027: real SQLite 10-minute per-child refresh claim; concurrency, shared parent, revoked device and cron coexist
+2026-11-04T16:41:06.6308589Z PASS P8D-028 native SQLite: bounded positive integer query args, NaN/Infinity/negative/fraction reject 400 for commute and screen time
+2026-11-04T16:41:07.0317377Z PASS P8D-023 104 eligible scheduled devices covered by bounded 20-per-tick rotating cursor; revoked excluded
+2026-11-04T16:41:07.0805707Z PASS 8D.19: commit-pinned actions, separate accepted branch/final PASS gate, source SHA, locked deps, migration/deploy checks, R2 merge and key regressions; live rollback and branch protections still OPEN
+2026-11-04T16:41:07.1601293Z PASS P8D-063 38 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)
+2026-11-04T16:41:07.6293818Z PASS P8D-029: full Worker geocode/commute quotas fail closed, deny unauthenticated calls first, separate config namespaces, no costly D1/ctx on reject
+2026-11-04T16:41:08.0381255Z PASS P8D-022 10 invalid OneMap query cases and valid 0,0 without provider calls
+2026-11-04T16:41:08.5212003Z PASS P8D-015: real Worker history/WS read quotas, forbidden Origin exclusion, missing binding fails closed, production+dev distinct namespace configs (live edge enforcement pending)
+2026-11-04T16:41:09.0007005Z PASS 8D.12: 16 distinct production parent mutation routes × missing/foreign/lookalike Origin = 48 denied, zero DB/DO writes (local simulated auth, not live Cloudflare)
+2026-11-04T16:41:10.2823056Z PASS production browser generated WS: obsolete events ignored, fallback refresh isolated, terminal revocation stops retry, 30s lease reconnect bounded
+2026-11-04T16:41:10.4243592Z PASS development browser generated WS: obsolete events ignored, fallback refresh isolated, terminal revocation stops retry, 30s lease reconnect bounded
+2026-11-04T16:41:10.8988795Z PASS 8D.10 Worker: 5 bad upgrades refused, JWT + cookie scrubbed, forged lease replaced with <=30s grant, two-device routing, unknown device and missing quota fail closed; local simulation ONLY
+2026-11-04T16:41:11.3441204Z PASS P8D-011 short-lease auth, hibernation, idle expiry, revocation, legacy cleanup and route wiring
+2026-11-04T16:41:11.8324770Z PASS 8D.11 production Access RS256 JWT: valid team key, audience, issuer, times, alg, signature, wrong/missing credentials, dev marker rejected.
+2026-11-04T16:41:11.8998803Z P8D-003 PASS: development credential verifier not in Wrangler public vars, configured by secret binding.
+2026-11-04T16:41:12.2865156Z P8D-003 PASS: six-digit PIN rejected, private high-entropy token accepted, missing secret fail-closed, Origin/rate/session/cookie/forged-header/logout verified.
+2026-11-04T16:41:12.3945051Z PASS 8D.11: two independent sessions, fixation resistance, exact expiry, Origin, selective logout
+2026-11-04T16:41:12.4792333Z PASS 8D.8: production 001–018 source migration chain, 18 durable tables, SQLite integrity/FK/unique/check/revocation-retention/index tests; Cloudflare D1 concurrency and rollback still pending
+2026-11-04T16:41:12.8510591Z PASS P8D-025 real SQLite: bounded incident sweep <=100 and exactly-once alerts under two concurrent cron snapshots
+2026-11-04T16:41:13.2493787Z PASS P8D-026 real SQLite: ordinary 75% delivery signal preserved, huge epoch jump marked unmeasurable without fabricated loss
+2026-11-04T16:41:13.3172153Z PASS 8D.17: lifecycle merge preserves unrelated rules, repairs Brick target, rejects conflicting expiration and malformed response; deployed policy still UNKNOWN
+2026-11-04T16:41:13.3693325Z PASS 8D.17: R2 history 30/90-day prefix lifecycle target is syntactically bounded with no bucket-wide delete; live rule application/legacy retention remain unverified
+2026-11-04T16:41:14.3910412Z PASS 8D.17: real SQLite per-device safety policies, crash/audit/health/command cleanup and cross-device isolation; R2 history/log policy NOT VERIFIED
+2026-11-04T16:41:14.4985079Z PASS P8D-064 native SQLite retention: future-skew replay validity, inclusive30-day boundary, expired deletion, per-device365-day policy and signed retry remains duplicate without new Queue/DO publication
+2026-11-04T16:41:14.9303685Z PASS P8D-013: audited D1 paths and details redact device/session/resource identifiers, unexpected paths and query secrets
+2026-11-04T16:41:15.3894245Z PASS P8D-002: all 38 D1 tables captured in one transaction under synthetic concurrent mutation, no torn backup; Cloudflare isolation and R2/DO full restore still OPEN
+2026-11-04T16:41:15.8871207Z P8D backup v2: six nonempty P8B tables preserved; pending commands retired; v1 11/12 table compatibility and corrupt snapshot rejection PASS.
+2026-11-04T16:41:17.0883113Z P8D-002 PASS disposable SQLite: real schema, destroyed source, 38-table restore, no command replay or transient secret revival.
+2026-11-04T16:41:17.1445592Z PASS phase8d 016 migration transform: five exact ALTERs handled by introspection; no skipped CREATE TABLE/INDEX or unreviewed ALTER
+2026-11-04T16:41:17.3136864Z PASS schema 001-018 additive migration + repeated 016 CREATE/index statements

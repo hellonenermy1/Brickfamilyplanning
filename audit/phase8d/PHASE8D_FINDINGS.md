@@ -510,7 +510,7 @@ Scope/remaining replay and cross-store gaps explicit in `PHASE8D_SAFETY_ACCEPTAN
 
 ## Exact source commit and queued hosted verification
 
-Executable `9b2601d9742c02bf55e45f5a2ddaf40e2661a916` pushed on the same audit branch. [Hosted CI41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) currently **QUEUED**, all3 jobs unstarted on repeated API checks. No runner-failure/billing/permission cause established; no hosted PASS inferred. Prior green executable remains0a7e6eb for CI claims.
+Executable `9b2601d9742c02bf55e45f5a2ddaf40e2661a916` pushed on the same audit branch. [Hosted CI41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) currently **QUEUED**, all 3 jobs unstarted on repeated API checks. No runner-failure/billing/permission cause established; no hosted PASS inferred. Prior green executable remains0a7e6eb for CI claims.
 
 Current source local evidence:24 focused signed-route/evaluator checks PASS, Phase7 safety-quality fixture PASS, typecheck PASS, native actual Workers D1/Queue/R2/DO/Access/WS/recovery plus signed fall route PASS. Broader source-build command run:55 groups attempted,54 exited0 within explicit command omissions,1 stopped at missing sqlite3 executable in test-phase8d-controls-sqlite.mjs. Other CLI-dependent commands/schema replay were omitted; this is not a full local CI pass. Exact grouping/omissions: `PHASE8D_LOCAL_REGRESSION_9b2601d.json`.
 
@@ -563,3 +563,16 @@ Confirmed P2. Eleven baseline negative/key-contract failures and two unsigned-au
 This is authenticated state-ingress quota coverage, not a pre-auth IP/WAF defence, hard global provider budget, or proof of live namespace/colo/NAT fairness. Source config retains120 requests/60seconds per key. No configuration/deployment mutation occurred. Exact new hosted CI pending.
 
 Frozen Android check: no app/ diff from run baseline28d8a73 to current changes. Comparing the whole branch against historical runtime freeze2c492eff finds one pre-existing68-line Android instrumentation test added by28ca478b5fd4259c745c30ff4cce146369da8432 (P8C-008 reproduction). It predates this run and was not edited; do not claim whole app/ tree is byte-identical to2c492eff. Runtime/source APK freeze remains preserved within this run; no APK rebuilt.
+
+
+## Final source verification for this continuation — cd5e50ca050a8afa8932434c590d923e3ade62a4
+
+[Hosted source CI 41869667667](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667) **3/3 jobs completed SUCCESS**. Source126712978517:66/66 steps; deployment126712978076:7/7; backup126712978558:7/7. Actual completed log fetched: no error/FAIL lines. All P8D-057–066 current checks and prior regressions, native workerd, public asset/key scans, schema replay and actual SQLite source-destruction/38-table restore pass. Evidence `PHASE8D_SOURCE_CI_41869667667.txt`;163 PASS log summaries are not 163 independent tests.
+
+P8D-061/062/063/064/065/066 are **SOURCE/CI VERIFIED**, with producer-order, semantic retry, structural release-proof and limiter scopes exactly as documented above. Earlier queued P8D-057–060 fixes are also covered by this full current run. Latest changes after executable SHA are documentation/evidence only. Real release preflight still refuses: final structured acceptance record absent. No final-PASS artifact was generated.
+
+Fresh [live41839919454 attempt4](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/4) completed FAILURE. Its actual metadata/parent/D1 logs were inspected and summarized in `PHASE8D_LIVE_ATTEMPT4_2026-11-05.txt`. Binding/Queue/provenance/Access/read-scope blockers remain; no live repair or deployment claimed. Current GitHub metadata also confirms main and audit branch protected=false; repository rulesets returned[]. No policies changed.
+
+Android scope: app/src/main matches recorded runtime freeze2c492eff; whole app/ includes one pre-existing instrumentation-only test from28ca478, unchanged by this continuation. No app/ edits compared to run baseline28d8a73; no APK build/deployment. No new schema or Cloudflare/family-data mutation.
+
+**Phase8D IN PROGRESS / NOT PASS.** Remaining full live recovery/cutover/rollback, deployed source/config/Access, service fault/ACK/DLQ, ownership/rates/WS, retention/log/rotation, repository policy and 19-section/525-requirement evidence reconciliation cannot be inferred from these source tests. No Phase 8E/8F started. Next continuation must preserve bb0877bc→cd5e50ca plus documentation lineage, obtain scoped Cloudflare reads and qualify an isolated production-equivalent Cloudflare environment before final acceptance.

@@ -4,7 +4,7 @@
 
 ## Previous queued source CI resolved
 
-[Run41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) now reports overall completed SUCCESS for executable9b2601d9742c02bf55e45f5a2ddaf40e2661a916. Source job126687499457 has66/66 completed-success steps; actual source log fetched and all24 P8D-057–060 checks, native safety route, existing regressions and SQLite schema/destructive38-table restore passed. Deployment contract job126687500018 completed successfully. Backup job126687499802 list metadata briefly still reported in_progress/null although all7 steps, including Complete job, were completed-success; retain that metadata caveat rather than invent a per-job conclusion. Current new code still needs its own exact hosted CI.
+[Run41862396858](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41862396858) now reports overall completed SUCCESS for executable9b2601d9742c02bf55e45f5a2ddaf40e2661a916. Source job126687499457 has66/66 completed-success steps; actual source log fetched and all24 P8D-057–060 checks, native safety route, existing regressions and SQLite schema/destructive38-table restore passed. Deployment contract job126687500018 completed successfully. Backup job126687499802 list metadata briefly still reported in_progress/null although all7 steps, including Complete job, were completed-success; retain that metadata caveat rather than invent a per-job conclusion. Current new code is now covered by the final hosted proof below.
 
 ## P8D-061 — duplicate identity includes immutable persisted incident content
 
@@ -53,7 +53,7 @@ Cleanup now requires both the configured server-time retention period and30-day 
 
 14 new actual signed Worker/DO/native SQLite retry checks pass (eight content changes, semantic-key equivalence, two array order/type cases, two reordered fall cases and stale-window denial).38 release-verifier cases pass. Retention boundary suite and prior retention regression pass. TypeScript, source release/config contracts and native workerd integration pass. A broad source-build run executed55 command groups successfully with explicit CLI/install/build/native-step omissions recorded in `PHASE8D_LOCAL_REGRESSION_2026-11-05.json`; this is not a full local hosted-CI replacement. Earlier24 safety/evaluator cases remain passing.
 
-Exact new hosted CI and fresh read-only Cloudflare outcome must be attached after commit. Real full Cloudflare D1+R2+DO recovery/cutover, live ACK/Queue/DLQ, deployed provenance/bindings/Access, ownership/rates/WS, retention/log/rotation, rollback and repository policy remain open. The prior inspected live run41839919454 attempt3 failed; do not relabel it from source tests. **No final Phase8D PASS; no8E/8F.**
+Exact current hosted CI and refreshed live results are attached below. Real full Cloudflare D1+R2+DO recovery/cutover, live ACK/Queue/DLQ, deployed provenance/bindings/Access, ownership/rates/WS, retention/log/rotation, rollback and repository policy remain open. The prior inspected live run41839919454 attempt3 failed; do not relabel it from source tests. **No final Phase8D PASS; no8E/8F.**
 
 
 ## P8D-065 local retest and expanded history detector
@@ -75,3 +75,16 @@ Confirmed P2. Eleven baseline negative/key-contract failures and two unsigned-au
 This is authenticated state-ingress quota coverage, not a pre-auth IP/WAF defence, hard global provider budget, or proof of live namespace/colo/NAT fairness. Source config retains120 requests/60seconds per key. No configuration/deployment mutation occurred. Exact new hosted CI pending.
 
 Frozen Android check: no app/ diff from run baseline28d8a73 to current changes. Comparing the whole branch against historical runtime freeze2c492eff finds one pre-existing68-line Android instrumentation test added by28ca478b5fd4259c745c30ff4cce146369da8432 (P8C-008 reproduction). It predates this run and was not edited; do not claim whole app/ tree is byte-identical to2c492eff. Runtime/source APK freeze remains preserved within this run; no APK rebuilt.
+
+
+## Final source verification for this continuation — cd5e50ca050a8afa8932434c590d923e3ade62a4
+
+[Hosted source CI 41869667667](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667) **3/3 jobs completed SUCCESS**. Source126712978517:66/66 steps; deployment126712978076:7/7; backup126712978558:7/7. Actual completed log fetched: no error/FAIL lines. All P8D-057–066 current checks and prior regressions, native workerd, public asset/key scans, schema replay and actual SQLite source-destruction/38-table restore pass. Evidence `PHASE8D_SOURCE_CI_41869667667.txt`;163 PASS log summaries are not 163 independent tests.
+
+P8D-061/062/063/064/065/066 are **SOURCE/CI VERIFIED**, with producer-order, semantic retry, structural release-proof and limiter scopes exactly as documented above. Earlier queued P8D-057–060 fixes are also covered by this full current run. Latest changes after executable SHA are documentation/evidence only. Real release preflight still refuses: final structured acceptance record absent. No final-PASS artifact was generated.
+
+Fresh [live41839919454 attempt4](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/4) completed FAILURE. Its actual metadata/parent/D1 logs were inspected and summarized in `PHASE8D_LIVE_ATTEMPT4_2026-11-05.txt`. Binding/Queue/provenance/Access/read-scope blockers remain; no live repair or deployment claimed. Current GitHub metadata also confirms main and audit branch protected=false; repository rulesets returned[]. No policies changed.
+
+Android scope: app/src/main matches recorded runtime freeze2c492eff; whole app/ includes one pre-existing instrumentation-only test from28ca478, unchanged by this continuation. No app/ edits compared to run baseline28d8a73; no APK build/deployment. No new schema or Cloudflare/family-data mutation.
+
+**Phase8D IN PROGRESS / NOT PASS.** Remaining full live recovery/cutover/rollback, deployed source/config/Access, service fault/ACK/DLQ, ownership/rates/WS, retention/log/rotation, repository policy and 19-section/525-requirement evidence reconciliation cannot be inferred from these source tests. No Phase 8E/8F started. Next continuation must preserve bb0877bc→cd5e50ca plus documentation lineage, obtain scoped Cloudflare reads and qualify an isolated production-equivalent Cloudflare environment before final acceptance.
