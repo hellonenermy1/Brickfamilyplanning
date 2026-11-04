@@ -64,7 +64,8 @@ export async function refreshCommutes(env:CommuteEnv,deviceId:string,fromMs:numb
 async function deterministicId(text:string){const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text)));return "comm_"+Array.from(digest.slice(0,16),b=>b.toString(16).padStart(2,"0")).join("")}
 
 export async function parentCommutes(env:CommuteEnv,deviceId:string,limit=50){
-  const n=Math.max(1,Math.min(100,Math.trunc(limit)));
+  if(!Number.isFinite(limit)||!Number.isInteger(limit)||limit<1)return json({error:"invalid commute limit"},400);
+  const n=Math.min(100,limit);
   const r=await env.DB.prepare("SELECT id,started_at,ended_at,distance_m,duration_ms,transport_mode,mode_confidence,start_label,end_label,provenance FROM commute_summaries WHERE device_id=?1 ORDER BY started_at DESC LIMIT ?2").bind(deviceId,n).all();
   return json({commutes:r.results});
 }
