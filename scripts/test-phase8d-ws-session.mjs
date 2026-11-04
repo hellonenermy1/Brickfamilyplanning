@@ -85,7 +85,9 @@ try {
   await ctx.drain();
   const live = ctx.getWebSockets()[0];
   await resumed.revokeParentSockets();
-  assert.equal(live.closed, true, "revoked account/device socket still open");
+  assert.equal(live.closed, true, "revoked device socket still open");
+  assert.equal((await resumed.fetch(wsReq({ "X-Brick-Internal-Ws-Lease-Until": String(now + 15_000) }))).status, 410,
+    "revoked DO accepted a new client");
   await resumed.setNetworkEvidence({ country: "SG", city: null, region: null, colo: null, receivedAt: now });
   assert.equal(live.closed, true);
 
@@ -95,6 +97,18 @@ try {
   assert.equal(oldSocket.closed, true, "legacy unleased subscription not retired");
   assert.equal(oldSocket.sent.length, 0);
 
+  // Development logout closes existing streams without permanently revoking the child device.
+  const logoutState = new State(), logoutDevice = new BrickDevice(logoutState, {});
+  const first = await logoutDevice.fetch(wsReq({ "X-Brick-Internal-Ws-Lease-Until": String(now + 12_000) }));
+  assert.equal(first.status, 101);
+  await logoutState.drain();
+  const firstSocket = logoutState.getWebSockets()[0];
+  await logoutDevice.closeParentSockets();
+  assert.equal(firstSocket.closed, true);
+  const second = await logoutDevice.fetch(wsReq({ "X-Brick-Internal-Ws-Lease-Until": String(now + 12_000) }));
+  assert.equal(second.status, 101, "development logout permanently revoked device");
+  await logoutState.drain();
+
   const wrapper = readFileSync("src/worker-v5b.ts", "utf8");
   const proxy = readFileSync("src/index.ts", "utf8");
   const revocation = readFileSync("src/worker-v6.ts", "utf8");
@@ -103,7 +117,7 @@ try {
   assert.match(wrapper, /X-Brick-Internal-Ws-Lease-Until/, "wrapper must issue bounded authenticated WS grant");
   assert.match(proxy, /X-Brick-Internal-Ws-Lease-Until/, "core proxy must forward only sanitized WS grant");
   assert.match(revocation, /revokeParentSockets\(/, "device revocation must close existing DO sockets");
-  assert.match(dev, /revokeParentSockets\(/, "dev logout must close existing DO sockets");
+  assert.match(dev, /closeParentSockets\(/, "dev logout must close existing DO sockets");
   console.log("PASS P8D-011 short-lease auth, hibernation, idle expiry, revocation, legacy cleanup and route wiring");
 } finally {
   Date.now = oldNow;
