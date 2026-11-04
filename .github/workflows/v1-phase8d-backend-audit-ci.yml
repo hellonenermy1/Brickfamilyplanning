@@ -72,11 +72,27 @@ jobs:
           npx --no-install esbuild src/history-store.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-concurrent-r2.mjs /tmp/brick-p8d-history.mjs
           node scripts/test-phase8d-history-idempotence.mjs /tmp/brick-p8d-history.mjs
+      - name: P8D-021 prevent revoked device location D1, Queue, and DO writes
+        run: |
+          npx --no-install esbuild src/location-ingest-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-location-revoke-ingest.mjs /tmp/brick-p8d-location.mjs
       - name: 8D.5-7 actual SQLite epoch sequence and current-state ordering matrix
         run: |
           npx --no-install esbuild src/location-ingest-v6.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-location.mjs
           npx --no-install esbuild src/live-state-order.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-live-order.mjs
           node scripts/test-phase8d-location-epoch-sqlite.mjs /tmp/brick-p8d-location.mjs /tmp/brick-p8d-live-order.mjs
+      - name: P8D-018 reject oversized or invalid pre-auth fall event JSON
+        run: |
+          npx --no-install esbuild src/fall-event-route.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-fall.mjs
+          node scripts/test-phase8d-fall-bounds.mjs /tmp/brick-p8d-fall.mjs
+      - name: P8D-019 validate signed screen time monotonicity and revoke race on real SQLite
+        run: |
+          npx --no-install esbuild src/screen-time-route.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-screen.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-screen-time-replay-sqlite.mjs /tmp/brick-p8d-screen.mjs
+      - name: P8D-020 reject signed health replay updates after revocation interleaving
+        run: |
+          npx --no-install esbuild src/device-json-security.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-device-auth.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-health-revoke-race.mjs /tmp/brick-p8d-device-auth.mjs
       - name: P8D.3-5 device ECDSA P-256 signed replay, revocation and invalid input
         run: |
           npx --no-install esbuild src/device-json-security.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-device-auth.mjs
@@ -108,8 +124,16 @@ jobs:
         run: node scripts/test-phase8d-layered-route-coverage.mjs
       - name: P8D-012 require 49 source endpoint rows have unambiguous named CSV schema
         run: node scripts/test-phase8d-endpoint-matrix.mjs
+      - name: P8D-023 prove bounded commute scheduler rotates across 100+ devices
+        run: |
+          npx --no-install esbuild src/commute-scheduler.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-commute-scheduler.mjs
+          node --disable-warning=ExperimentalWarning scripts/test-phase8d-commute-scheduler-sqlite.mjs /tmp/brick-p8d-commute-scheduler.mjs
       - name: 8D.19 enforce immutable CI actions, accepted-branch deployment gate and source SHA
         run: node scripts/test-phase8d-release-gates.mjs
+      - name: P8D-022 verify OneMap missing and malformed reverse coordinates fail closed
+        run: |
+          npx --no-install esbuild src/onemap-client.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-onemap.mjs
+          node scripts/test-phase8d-onemap-params.mjs /tmp/brick-p8d-onemap.mjs
       - name: 8D.14 require isolated fail-closed history and WebSocket rate guards
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
