@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { P8B_LOCATION_CONTROL_COLUMNS, stripHandledLocationControlAlters } from './phase8d-schema-compat.mjs';
+import { mergeR2LifecycleRules } from './phase8d-r2-lifecycle-merge.mjs';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-v1';
@@ -93,15 +94,21 @@ async function ensureR2Bucket(name) {
 
 async function ensureR2Lifecycle() {
   const day = 86_400;
-  await cf(`/accounts/${accountId}/r2/buckets/${HISTORY_BUCKET}/lifecycle`, {
-    method: 'PUT',
-    body: JSON.stringify({ rules: [
-      { id: 'brick-raw-history-30d', enabled: true, conditions: { prefix: 'history/raw/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 30 * day } } },
-      { id: 'brick-trusted-history-90d', enabled: true, conditions: { prefix: 'history/trusted/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 90 * day } } },
-      { id: 'brick-raw-evidence-30d', enabled: true, conditions: { prefix: 'evidence/raw/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 30 * day } } },
-      { id: 'brick-abort-multipart-7d', enabled: true, conditions: { prefix: '' }, abortMultipartUploadsTransition: { condition: { type: 'Age', maxAge: 7 * day } } }
-    ] })
-  });
+  const endpoint = `/accounts/${accountId}/r2/buckets/${HISTORY_BUCKET}/lifecycle`;
+  const current = await cf(endpoint);
+  // Never overwrite an existing history bucket's unrelated lifecycle rules.
+  // Refuse malformed/unreadable policies; a blind PUT can silently delete others' rules.
+  if (!current || !Array.isArray(current.rules)) throw new Error('Cannot verify existing R2 lifecycle rules');
+  const desiredRules = [
+    { id: 'brick-raw-history-30d', enabled: true, conditions: { prefix: 'history/raw/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 30 * day } } },
+    { id: 'brick-trusted-history-90d', enabled: true, conditions: { prefix: 'history/trusted/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 90 * day } } },
+    { id: 'brick-raw-evidence-30d', enabled: true, conditions: { prefix: 'evidence/raw/' }, deleteObjectsTransition: { condition: { type: 'Age', maxAge: 30 * day } } },
+    { id: 'brick-abort-multipart-7d', enabled: true, conditions: { prefix: '' }, abortMultipartUploadsTransition: { condition: { type: 'Age', maxAge: 7 * day } } }
+  ];
+  const rules = mergeR2LifecycleRules(current.rules, desiredRules);
+  if (JSON.stringify(rules) !== JSON.stringify(current.rules)) {
+    await cf(endpoint, { method: 'PUT', body: JSON.stringify({ rules }) });
+  }
 }
 
 async function ensureQueue(name) {
