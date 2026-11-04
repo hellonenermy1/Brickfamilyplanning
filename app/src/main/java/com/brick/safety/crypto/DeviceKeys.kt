@@ -19,6 +19,7 @@ object DeviceKeys {
     @Volatile private var appContext: Context? = null
 
     /** Must be called from Application startup before normal signed traffic begins. */
+    @Synchronized
     fun initialize(context: Context) {
         appContext = context.applicationContext
         runCatching { validateExistingPairedIdentity() }
@@ -71,6 +72,7 @@ object DeviceKeys {
         ?.takeIf { it.isNotBlank() }
 
     /** Used only by an explicit authorised re-provision/deprovision flow. */
+    @Synchronized
     fun clearIdentityBinding(context: Context): Boolean = context.applicationContext
         .getSharedPreferences("brick", Context.MODE_PRIVATE)
         .edit()
