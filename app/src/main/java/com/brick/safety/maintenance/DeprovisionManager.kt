@@ -52,7 +52,8 @@ object DeprovisionManager {
         "brick_wifi_schedule_v1",
         "brick_canary_v1",
         "brick_device_role_v1",
-        "brick_capability_profile_v1"
+        "brick_capability_profile_v1",
+        "brick_ble_anchors"
     )
 
     /** Encrypted files directly owned by Brick. */
@@ -164,12 +165,18 @@ object DeprovisionManager {
             if (!committed || prefs.all.isNotEmpty()) return Result(stage(app), false, "preference purge failed: $name")
         }
 
+        // AtomicFile uses a base file plus a possible pending ".new" write and legacy ".bak"
+        // backup. Deleting only the base is insufficient for privacy-safe purge: a crash before
+        // finishWrite() may leave private learning/location data in a sidecar.
         for (name in brickFiles) {
-            val file = File(app.filesDir, name)
-            if (file.exists() && !runCatching { file.delete() }.getOrDefault(false)) {
-                return Result(stage(app), false, "file purge failed: $name")
+            for (suffix in listOf("", ".new", ".bak")) {
+                val fileName = name + suffix
+                val file = File(app.filesDir, fileName)
+                if (file.exists() && !runCatching { file.delete() }.getOrDefault(false)) {
+                    return Result(stage(app), false, "file purge failed: $fileName")
+                }
+                if (file.exists()) return Result(stage(app), false, "file remains after purge: $fileName")
             }
-            if (file.exists()) return Result(stage(app), false, "file remains after purge: $name")
         }
 
         val keyStorePurged = runCatching {
