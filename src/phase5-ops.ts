@@ -168,11 +168,20 @@ export async function reliability(env: OpsEnv, deviceId: string, days = 30) {
   const epochs = await env.DB.prepare(
     "SELECT epoch,MIN(sequence) AS min_seq,MAX(sequence) AS max_seq,COUNT(*) AS received FROM device_events WHERE device_id=?1 AND kind='location' AND created_at>=?2 AND created_at<=?3 GROUP BY epoch"
   ).bind(deviceId, start, now).all<{ epoch: number; min_seq: number; max_seq: number; received: number }>();
-  let expectedPackets = 0, receivedPackets = 0;
+  let expectedPackets = 0, receivedPackets = 0, sequenceDiscontinuity = false;
+  // Signed epoch/sequence counters can jump after reboot or damaged local state. A jump
+  // of billions is not evidence billions of packets were ever generated. Cap the
+  // inferable denominator at a deliberately generous 3 packets/sec for this window,
+  // with a 1m floor for short windows, and report the metric as unknown if exceeded.
+  const maxEvidenceSpan = Math.max(1_000_000, Math.ceil(totalMs / 1000) * 3);
   for (const row of epochs.results) {
-    const expected = Math.max(0, row.max_seq - row.min_seq + 1);
-    expectedPackets += expected;
     receivedPackets += row.received;
+    const expected = row.max_seq - row.min_seq + 1;
+    if (!Number.isSafeInteger(expected) || expected < 0 || expected > maxEvidenceSpan) {
+      sequenceDiscontinuity = true;
+      continue;
+    }
+    expectedPackets += expected;
   }
 
   const recovery = await env.DB.prepare(
@@ -184,7 +193,7 @@ export async function reliability(env: OpsEnv, deviceId: string, days = 30) {
 
   const heartbeatMs = Math.min(totalMs, Number(coverage?.heartbeat_ms ?? 0));
   const positionMs = Math.min(totalMs, Number(coverage?.position_ms ?? 0));
-  const packetDeliveryPct = expectedPackets > 0 ? Math.min(100, receivedPackets / expectedPackets * 100) : null;
+  const packetDeliveryPct = !sequenceDiscontinuity && expectedPackets > 0 ? Math.min(100, receivedPackets / expectedPackets * 100) : null;
   const selfRecoveries = recovery?.first_count == null || recovery?.last_count == null ? null : Math.max(0, recovery.last_count - recovery.first_count);
 
   return json({
@@ -192,14 +201,14 @@ export async function reliability(env: OpsEnv, deviceId: string, days = 30) {
     trackingAvailabilityPct: heartbeatMs / totalMs * 100,
     positionAvailabilityPct: positionMs / totalMs * 100,
     packetDeliveryPct,
-    packetEvidence: { expectedPackets, receivedPackets },
+    packetEvidence: sequenceDiscontinuity ? { expectedPackets: null, receivedPackets, sequenceDiscontinuity: true } : { expectedPackets, receivedPackets },
     selfRecoveries,
     healthIncidents: incidentCount?.n ?? 0,
     manualInterventions: null,
     definitions: {
       trackingAvailability: "Time covered by a Brick health heartbeat no more than 75 seconds old.",
       positionAvailability: "Time covered by a heartbeat reporting a usable recent position.",
-      packetDelivery: "Unique received location sequences divided by the observed sequence range per epoch.",
+      packetDelivery: "Unique received location sequences divided by an inferable observed sequence range per epoch; extreme discontinuities yield unknown rather than invented packet loss.",
       manualInterventions: "Not measured yet; Brick does not invent this value."
     }
   });
@@ -227,12 +236,14 @@ export async function openOfflineIncident(env: OpsEnv, deviceId: string, started
 
 export async function alertPersistentIncidents(env: OpsEnv, now = Date.now()): Promise<Array<{ deviceId: string; event: RealtimeSafetyEvent }>> {
   const r = await env.DB.prepare(
-    "SELECT id,device_id,kind,severity,started_at,detail_json FROM health_incidents WHERE ended_at IS NULL AND alerted_at IS NULL AND started_at<=?1"
+    "SELECT id,device_id,kind,severity,started_at,detail_json FROM health_incidents WHERE ended_at IS NULL AND alerted_at IS NULL AND started_at<=?1 ORDER BY started_at,id LIMIT 100"
   ).bind(now - 60_000).all<{ id: string; device_id: string; kind: string; severity: string; started_at: number; detail_json: string }>();
   const out: Array<{ deviceId: string; event: RealtimeSafetyEvent }> = [];
   for (const row of r.results) {
     const event: RealtimeSafetyEvent = {
-      id: crypto.randomUUID(),
+      // Each backend incident has one stable alert identity even when cron invocations
+      // take the same unalerted D1 snapshot concurrently or retry after timeout.
+      id: "inc_" + row.id,
       kind: row.kind === "device_offline" ? "device_offline" : "service_unhealthy",
       deviceCreatedAt: now,
       serverCreatedAt: now,
@@ -243,7 +254,7 @@ export async function alertPersistentIncidents(env: OpsEnv, now = Date.now()): P
     };
     const detail = JSON.stringify(event.detail);
     const [inserted] = await env.DB.batch([
-      env.DB.prepare("INSERT INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?4,NULL,NULL,NULL,?5)")
+      env.DB.prepare("INSERT OR IGNORE INTO safety_events(id,device_id,kind,device_created_at,server_created_at,latitude,longitude,accuracy_m,detail_json) VALUES(?1,?2,?3,?4,?4,NULL,NULL,NULL,?5)")
         .bind(event.id, row.device_id, event.kind, now, detail),
       env.DB.prepare("UPDATE health_incidents SET alerted_at=?1 WHERE id=?2 AND alerted_at IS NULL").bind(now, row.id)
     ]);
