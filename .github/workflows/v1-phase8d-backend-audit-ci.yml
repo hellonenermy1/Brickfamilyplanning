@@ -118,6 +118,15 @@ jobs:
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
           node scripts/test-phase8d-global-csrf.mjs /tmp/brick-p8d-prod-worker.mjs
+      - name: 8D.10 browser production and dev WebSocket device-switch, terminal revoke and reconnect
+        run: |
+          npx --no-install esbuild src/parent-v8.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-prod-parent.mjs
+          npx --no-install esbuild src/parent-v7-live.ts --bundle --format=esm --platform=node --target=node22 --outfile=/tmp/brick-p8d-dev-parent.mjs
+          node scripts/test-phase8d-browser-ws-switch.mjs /tmp/brick-p8d-prod-parent.mjs /tmp/brick-p8d-dev-parent.mjs
+      - name: 8D.10 full Worker websocket auth, Origin, internal lease and device scope
+        run: |
+          npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs
+          node scripts/test-phase8d-ws-worker-boundary.mjs /tmp/brick-p8d-prod-worker.mjs
       - name: P8D-011 existing WebSocket expiry, hibernation and revocation negative regression
         run: |
           npx --no-install esbuild src/device-do.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-do.mjs
