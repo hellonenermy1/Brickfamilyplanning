@@ -1,5 +1,9 @@
 # Brick V1 — Phase 8C Resource Audit Report (PDF 8C.18)
 
+
+**FINAL SOURCE RECHECK — 2026-11-04: PASS.** [Run 41769396389](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41769396389) completed SUCCESS on frozen production source `2c492efff01095e17f96af3c24ac07ac0b5c3739` (GitHub artifact `13294871128`). 186 seconds, 1000 durable queued location rows, refused API endpoint: mean process CPU **3.177%** (<=20%), sampled max **14.307%** (<=80%), peak RSS **169,948 KiB** (<=262,144 KiB), peak local storage **1,508 KiB** (<=32,768 KiB), uninterrupted process and foreground service, uploader failure streak 6 and zero package alarm lines. Raw JSON/CSV verified; this **supersedes** the earlier pre-freeze resource addendum below. The test does not claim real-device mAh or OPPO RF power. [Final acceptance](PHASE8C_FINAL_ACCEPTANCE_2026-11-04.md).
+
+
 **Current addendum (2026-11-04):** CI resource guardrails **PASSED** in [run 41764035200](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41764035200), source `74e6e6d1`, 183 seconds, mean CPU 1.693%, peak CPU 9.818%, peak RSS 172,140 KiB, peak storage 1,560 KiB, failure streak 6, uninterrupted process/service. The original 58.426% CPU busy-loop was fixed, not excused. Raw 18 samples, incident root cause and remaining scope are in [PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md](PHASE8C_RESOURCE_RETEST_PASS_2026-11-04.md). **This is a PASS for the measured emulator/resource gate at that source, NOT physical OPPO battery evidence, nor an automatic PASS for later code.** The sections below document the *historical pre-retest state* and are not current claims.
 
 **Audit session:** 2026-11-04 (Asia/Singapore)
