@@ -69,6 +69,25 @@ class Phase8DeviceKeyContinuityInstrumentedTest : BrickInstrumentationTestCase()
         assertEquals("paired_signing_key_mismatch", DeviceKeys.identityFault(context))
     }
 
+    fun testRepeatedMissingKeyPreservesFirstFaultTimestampWithoutWriteStorm() {
+        val initial = DeviceKeys.publicSpkiBase64()
+        assertTrue(prefs.edit().putString("deviceId", DEVICE_ID).commit())
+        assertEquals(initial, DeviceKeys.publicSpkiBase64())
+        deleteAlias()
+        assertTrue(runCatching { DeviceKeys.sign(byteArrayOf(1)) }.isFailure)
+        val first = prefs.getLong("signingIdentityFaultWallMs", -1L)
+        assertTrue("first fault timestamp must be retained", first > 0L)
+        Thread.sleep(15L)
+        repeat(40) {
+            assertTrue("paired missing signing key must keep failing closed",
+                runCatching { DeviceKeys.sign(byteArrayOf(2)) }.isFailure)
+        }
+        assertEquals("fault must not rewrite prefs on every failed API retry",
+            first, prefs.getLong("signingIdentityFaultWallMs", -1L))
+        assertEquals("paired_signing_key_missing", DeviceKeys.identityFault(context))
+        assertFalse(aliasExists())
+    }
+
     private fun resetIdentityState() {
         prefs.edit()
             .remove("deviceId")
