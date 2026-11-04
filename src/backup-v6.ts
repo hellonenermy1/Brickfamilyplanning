@@ -2,7 +2,9 @@ export type BackupEnv = { DB: D1Database; HISTORY: R2Bucket };
 
 const BACKUP_PREFIX = "backups/d1/";
 const BACKUP_RETENTION_MS = 30 * 86_400_000;
-const PAGE = 1000;
+// Cloudflare D1 batch() is one transaction. One atomic SELECT per table avoids torn
+// snapshots when a multi-table update commits during the scheduled backup.
+const MAX_TABLE_ROWS = 500_000;
 export const BACKUP_TABLES = [
   "devices",
   "device_location_control",
@@ -33,15 +35,24 @@ type BackupSnapshot = {
   tables: Record<string, Record<string, unknown>[]>;
 };
 
-async function readTable(db: D1Database, table: string): Promise<Record<string, unknown>[]> {
-  const out: Record<string, unknown>[] = [];
-  for (let offset = 0; ; offset += PAGE) {
-    // Table names are from the fixed constant allow-list above, never request input.
-    const page = await db.prepare(`SELECT * FROM ${table} LIMIT ?1 OFFSET ?2`).bind(PAGE, offset).all<Record<string, unknown>>();
-    out.push(...page.results);
-    if (page.results.length < PAGE) return out;
-    if (out.length > 500_000) throw new Error(`backup row safety limit exceeded for ${table}`);
+async function readAtomicTables(db: D1Database): Promise<Record<string, Record<string, unknown>[]>> {
+  // All 18 read statements are executed within ONE transaction on the D1 primary.
+  // Paging independently is unsafe: a concurrent transaction can update different
+  // tables between reads and create a backup that never existed as one coherent state.
+  // The extra row fails closed instead of silently truncating large tables.
+  const queries = BACKUP_TABLES.map(table =>
+    db.prepare(`SELECT * FROM ${table} LIMIT ?1`).bind(MAX_TABLE_ROWS + 1)
+  );
+  const pages = await db.batch<Record<string, unknown>>(queries);
+  if (pages.length !== BACKUP_TABLES.length) throw new Error("atomic D1 backup did not return every table");
+  const tables: Record<string, Record<string, unknown>[]> = {};
+  for (let i = 0; i < BACKUP_TABLES.length; i++) {
+    const rows = pages[i]?.results;
+    if (!Array.isArray(rows) || rows.length > MAX_TABLE_ROWS)
+      throw new Error(`atomic D1 backup table missing or exceeds row safety limit: ${BACKUP_TABLES[i]}`);
+    tables[BACKUP_TABLES[i]] = rows;
   }
+  return tables;
 }
 
 async function gzipJson(value: unknown): Promise<ArrayBuffer> {
@@ -116,8 +127,7 @@ async function cleanupOldBackups(bucket: R2Bucket, now: number) {
 }
 
 export async function snapshotD1ToR2(env: BackupEnv, now = Date.now()) {
-  const tables: Record<string, Record<string, unknown>[]> = {};
-  for (const table of BACKUP_TABLES) tables[table] = await readTable(env.DB, table);
+  const tables = await readAtomicTables(env.DB);
   const snapshot: BackupSnapshot = {
     format: "brick-d1-snapshot-v2",
     createdAt: now,
