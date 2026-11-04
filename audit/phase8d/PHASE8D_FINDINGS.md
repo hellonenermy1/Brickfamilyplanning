@@ -168,3 +168,24 @@
 - **Source observation:** `parentConfirmPin` inserts unconditionally before the session's conditional `UPDATE`, but schema 015 has a **unique index on device public key**, and `DB.batch` is atomic. Thus a competing confirmation using the same claimed key is expected to hit uniqueness and roll back, **not create a ghost device**. A concurrent loser may receive a generic 500 rather than the existing confirmed device; test before classifying as a bug.
 - **Negative test:** use real SQLite schema 001/015/018; inject a winning confirmation between another request's SELECT and batch, verify unique constraint/rollback and check the losing response.
 - **Production impact:** unknown; do not claim orphan creation without evidence.
+
+---
+
+## 2026-11-04 exact-source continuation: P8D-009, P8D-010, Access JWT, epoch and secrets
+
+**P8D-009 (P1 source defect — fixed, Cloudflare not attested):** Four negative cases reproduced [RED CI 41793189600](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793189600): invalid length-valid SPKI accepted, missing canonical padded SPKI, >100KB public JSON accepted, invalid historical claim confirmed. Commit `a117776bd0756da20fd5cb8af9fdb3a1f803652d` enforces canonical genuine P-256 SPKI on child claim AND parent confirmation; caps parent/child PIN bodies at 4096 bytes. [GREEN 41793357237](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793357237). Further Origin/CSRF + PIN rate-limit checks [GREEN 41794792235](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794792235). **SOURCE/CI VERIFIED ONLY.**
+
+**P8D-010 (P2 concurrent response defect — fixed):** Full current SQLite schema 001→018 confirms UNIQUE index prevents an orphan/ghost device despite competing parent confirmations. The losing confirmation returned a false 500: [RED 41794274779](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794274779), `8bbb4a47`. Fix `7c9b0bc42a6def8bd2f38a2ce9c139e1bc7f9531` atomically conditions new-device INSERT and session UPDATE, checks actual D1 changes, resolves a previously confirmed winner and preserves its ID. Repeated confirm idempotent with one device: [GREEN 41794488568](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794488568). Cloudflare D1 concurrency still unverified.
+
+**8D.11 production Access JWT:** Actual RSA-2048 synthetic RS256 JWT verification with fake JWKS [GREEN 41793555257](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793555257) covers proper signature, issuer, audience, expiry, future times, kid, algorithm substitution, tampering, missing token and production dev-marker denial. Not a live Cloudflare Access app configuration check.
+
+**8D.5/.7:** Actual SQLite D1 event ordering with latest-state policy [GREEN 41793816979](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793816979) covers 100/101/102 → 100/102/101/102/102, old/new epoch, fresh/stale capture, huge signed sequence jump. Huge jumps currently advance the logical watermark; risk classification/real DO interactions not fully tested.
+
+**8D.15:** Built public parent assets scanned against server private credential markers [GREEN 41794954253](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794954253), source `d52fff68ffb29b4d99a35cc34f03ec78f4dc8e91`. This is neither full Git history nor live CDN proof.
+
+## P8D-011 — Existing authenticated WebSocket has no demonstrated session expiry/revocation
+- **Severity:** P1 provisional; actual deployed exploit/user data impact NOT VERIFIED.
+- **Sections:** 8D.10, 8D.11, 8D.13.
+- **Source evidence:** `worker-v5b.ts` authenticates and verifies Origin at upgrade; `index.ts` proxies to per-device DO. `device-do.ts` accepts sockets and broadcasts to `ctx.getWebSockets()` without recorded per-socket expiry/authorization refresh. `worker-v6.ts` revokes device in D1 but does not explicitly close DO sockets. Development logout revokes D1 cookie session but does not notify existing DO subscription.
+- **Required proof:** negative hibernation/socket test demonstrating current behavior, bounded reconnection/reauth implementation, close live subscriptions on revocation, real isolated DO test and browser reconnect verification. `parent-v6c.ts` has reconnect/backoff but production behavior still needs verification.
+- **Status:** OPEN — SOURCE GAP / RUNTIME RETEST PENDING. Do not mark 8D.10 PASS.

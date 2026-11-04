@@ -69,3 +69,17 @@ Current verdict **8D IN PROGRESS / NOT PASS; P8D-002 P1 remains OPEN**.
 - 8D.3–5: real P-256 signed-health wrong key/device/revoked/tamper/replay/timestamp/size matrix GREEN [41791527844](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41791527844); other API handlers and 100–101–102/epoch matrix not yet tested.
 
 **Mandatory remaining:** all 19 PDF sections 8D.1–8D.19 still require completion/mapping at appropriate scope. In particular 8D.1 actual deployed Cloudflare Worker SHA/bindings and dev secret rotation; 8D.2 full route probes/coverage; 8D.3–8D.5 all device and epoch paths; 8D.6/8D.9 live queue/DLQ; 8D.7 DO + history/fallback ordering; 8D.8 D1 concurrency; 8D.10 parent WebSockets; 8D.11–8D.15 session, CSRF, limits and secrets; 8D.16 D1+R2+DO isolated full-stack restore plus coherent snapshot under writes; 8D.17–8D.19 retention, observability, deployment and rollback. Do not advance to 8E or declare 8D PASS.
+
+---
+
+## 2026-11-04 subsequent Phase 8D durable handoff
+
+**Last tested code SHA:** `d52fff68ffb29b4d99a35cc34f03ec78f4dc8e91`, ALL CI 3/3 GREEN [41794954253](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794954253). Audit-document-only commits after this are not retested code. This branch is NOT deployed. Phase 8C Android code untouched.
+- P8D-009 PIN cryptographic identity/body limit: [RED 41793189600](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793189600) → [GREEN 41793357237](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793357237); Origin/rate [GREEN 41794792235](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794792235).
+- P8D-010 duplicate confirmation false 500 (no ghost thanks to UNIQUE): [RED 41794274779](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794274779) → [GREEN 41794488568](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794488568) with true SQLite D1 schema.
+- 8D.11 synthetic real RSA JWT Access [GREEN 41793555257](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793555257).
+- 8D.5/7 exact SQLite epoch/sequence/current order [GREEN 41793816979](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41793816979).
+- 8D.15 built public asset secrets marker scan [GREEN 41794954253](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41794954253).
+- **New P8D-011 P1 provisional**: WS active subscription expiry and session/device revocation enforcement not demonstrated. Requires negative test+design+live isolated Cloudflare DO/WS proof.
+- **Still open:** 8D.1 actual Cloudflare deployment identity, P8D-002 full D1/R2/DO recovery, P8D-003 dev credential rotation and D1 session revocation, 8D.2 full route/method/authz inventory, 8D.9 real DLQ, 8D.10 WS, 8D.12 global CSRF, 8D.16 coherence and restore, 8D.17 retention, 8D.18 observability, 8D.19 live rollback.
+- **Verdict:** Phase 8D NOT PASS, Phase 8E/8F NOT AUTHORIZED, no production deploys.
