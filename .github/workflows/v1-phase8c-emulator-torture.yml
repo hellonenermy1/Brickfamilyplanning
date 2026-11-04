@@ -131,6 +131,7 @@ jobs:
             'com.brick.safety.maintenance.Phase8WorkManagerDrainInstrumentedTest'
             'com.brick.safety.privileged.Phase8ShizukuDeprovisionFenceInstrumentedTest'
             'com.brick.safety.privileged.Phase8ShizukuHungCapabilityInstrumentedTest'
+            'com.brick.safety.privileged.Phase8ShizukuStaleReplyAfterPurgeInstrumentedTest'
           )
           : > /tmp/p8c-instrumentation.txt
           for class in "${classes[@]}"; do
