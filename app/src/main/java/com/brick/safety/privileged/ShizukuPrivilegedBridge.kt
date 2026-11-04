@@ -42,7 +42,7 @@ object ShizukuBridgeController {
     private val main = Handler(Looper.getMainLooper())
     private val remoteLane = RecoverableExecutorLane("brick-shizuku-call")
 
-    private val connection = object : ServiceConnection {
+    private val connection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             // Serialize the callback's service adoption with the permanent purge fence.
             // Without this lock, a callback can pass an early flag check and then publish a
