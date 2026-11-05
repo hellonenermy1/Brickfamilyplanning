@@ -36,9 +36,9 @@ async function serveBetaOneMapTile(url:URL):Promise<Response|null>{
   if(!response.ok||!String(response.headers.get('Content-Type')||'').toLowerCase().startsWith('image/png'))return betaJson({error:'map_provider_unavailable'},502);
   const length=Number(response.headers.get('Content-Length')||0);
   if(length>1500000)return betaJson({error:'map_tile_oversized'},502);
-  const bytes=new Uint8Array(await response.arrayBuffer());
+  const raw=await response.arrayBuffer(),bytes=new Uint8Array(raw);
   if(bytes.byteLength<8||bytes.byteLength>1500000||![137,80,78,71,13,10,26,10].every((value,i)=>bytes[i]===value))return betaJson({error:'map_provider_invalid_png'},502);
-  return new Response(bytes,{headers:{'Content-Type':'image/png','Content-Length':String(bytes.byteLength),'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'}});
+  return new Response(raw,{headers:{'Content-Type':'image/png','Content-Length':String(bytes.byteLength),'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'}});
  }catch{return betaJson({error:'map_provider_unavailable'},502);}
 }
 async function closeSockets(env:Env){let after='';for(let page=0;page<100;page++){const rows=await env.DB.prepare('SELECT id FROM devices WHERE id>?1 ORDER BY id LIMIT 100').bind(after).all<{id:string}>();for(const r of rows.results)await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(r.id)).closeParentSockets();if(rows.results.length<100)return;after=rows.results[rows.results.length-1].id;}throw Error('socket_invalidation_limit');}
