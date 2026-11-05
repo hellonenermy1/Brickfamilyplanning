@@ -9,7 +9,7 @@ const REVERSE_MIN_INTERVAL_MS = 15_000;
 const REVERSE_NEARBY_REUSE_MS = 60_000;
 const REVERSE_NEARBY_REUSE_M = 120;
 let privateProtocolInstalled = false;
-const providerState = new WeakMap<maplibregl.Map, "onemap" | "private">();
+const providerState = new WeakMap<maplibregl.Map, "onemap" | "onemap-standard" | "private">();
 const modeState = new WeakMap<maplibregl.Map, "detailed" | "clean">();
 
 type ReverseState = { lon: number; lat: number; label: string; at: number };
@@ -33,8 +33,8 @@ function ensurePrivateProtocol() {
   privateProtocolInstalled = true;
 }
 
-function oneMapStyle(mode: "detailed" | "clean"): maplibregl.StyleSpecification {
-  const style = mode === "clean" ? "Grey" : "Default_HD";
+function oneMapStyle(mode: "detailed" | "clean", standard = false): maplibregl.StyleSpecification {
+  const style = mode === "clean" ? "Grey" : (standard ? "Default" : "Default_HD");
   return {
     version: 8,
     sources: {
@@ -86,13 +86,24 @@ export function createBrickMap(container: string | HTMLElement) {
   // window trigger the provider-independent private PMTiles fallback.
   const errors: number[] = [];
   map.on("error", () => {
-    if (providerState.get(map) !== "onemap") return;
+    const provider = providerState.get(map);
+    if (provider !== "onemap" && provider !== "onemap-standard") return;
     const now = Date.now();
     errors.push(now);
     while (errors.length && now - errors[0] > 15_000) errors.shift();
-    if (errors.length >= 3) switchToPrivateFallback(map);
+    if (errors.length >= 3) {
+      errors.length = 0;
+      if (provider === "onemap" && modeState.get(map) === "detailed") switchToStandardOneMap(map);
+      else switchToPrivateFallback(map);
+    }
   });
   return map;
+}
+
+export function switchToStandardOneMap(map: maplibregl.Map) {
+  if (providerState.get(map) === "onemap-standard") return;
+  providerState.set(map, "onemap-standard");
+  map.setStyle(oneMapStyle(modeState.get(map) ?? "detailed", true));
 }
 
 export function switchToPrivateFallback(map: maplibregl.Map) {
@@ -103,7 +114,7 @@ export function switchToPrivateFallback(map: maplibregl.Map) {
 
 export function setBrickMapMode(map: maplibregl.Map, mode: "detailed" | "clean") {
   modeState.set(map, mode);
-  if (providerState.get(map) === "onemap") map.setStyle(oneMapStyle(mode));
+  if (providerState.get(map) !== "private") map.setStyle(oneMapStyle(mode, providerState.get(map) === "onemap-standard"));
 }
 
 export function brickMapProvider(map: maplibregl.Map) {
