@@ -1,0 +1,52 @@
+{
+  "sourceGitSha": "20b68c693cb949771db81121fdfdbe5fb3293ade",
+  "environment": "beta-cardfree",
+  "releaseState": "development-beta-cardfree",
+  "workerEntry": "src/worker-beta-cardfree.ts",
+  "workerName": "brick-family-beta",
+  "workerHost": "brick-family-beta.lumjayvian.workers.dev",
+  "currentAppVersion": "1.0.0-beta.1",
+  "schemaVersion": 18,
+  "appliedSchemas": [
+    "schema/001_init.sql",
+    "schema/002_phase2_health.sql",
+    "schema/003_phase4_safety.sql",
+    "schema/004_phase5_operations.sql",
+    "schema/007_phase5c_hardening.sql",
+    "schema/008_v1_phase2_evidence.sql",
+    "schema/009_v1_phase5_fusion.sql",
+    "schema/010_phase5b_closure.sql",
+    "schema/011_v1_phase6_location_control.sql",
+    "schema/012_phase6c_free_runtime.sql",
+    "schema/013_phase6c_request_maintenance.sql",
+    "schema/014_phase6c_virtual_history.sql",
+    "schema/015_phase8_device_identity.sql",
+    "schema/016_p8b_remediation.sql",
+    "schema/017_p8b_provider_rate.sql",
+    "schema/018_p8b_pin_pairing.sql"
+  ],
+  "storageMode": "d1-chunked-no-r2",
+  "queueMode": "direct-synchronous-no-cloudflare-queue",
+  "parentAuthMode": "d1-session-v1-no-zero-trust",
+  "parentLoginMode": "private-high-entropy-token-v2",
+  "parentCredential": "PRESERVED_WORKER_SECRET",
+  "priorSessionsRevoked": true,
+  "schedulerMode": "sqlite-do-alarm-with-d1-lease-and-request-fallback",
+  "mapMode": "same-origin-worker-range-proxy",
+  "mapSource": "https://build.protomaps.com/20261104.pmtiles",
+  "accountId": "43fd863702fe37609e629c450c5d596e",
+  "d1Id": "2d149970-35c9-4893-8f42-292da6433ced",
+  "betaD1Id": "1f24f9ee-a67b-4d49-8c9f-4aa784a9bfd4",
+  "betaReleaseId": "brick-beta-20261105-01",
+  "diagnosticRetentionDays": 35,
+  "resources": {
+    "DB": "brick-family-beta",
+    "objectStore": "dev_object_store + dev_object_chunks",
+    "map": "remote PMTiles proxy"
+  },
+  "recovery": {
+    "d1TimeTravelDays": 7,
+    "inDatabaseSnapshots": true
+  },
+  "configuredAt": "2026-11-05T05:50:25.680Z"
+}

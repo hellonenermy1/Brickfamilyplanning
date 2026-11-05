@@ -1,106 +1,66 @@
 {
-  "format": "brick-beta-backend-phase2-checkpoint-v1",
-  "testedSourceSha": "1b8be5a4afb491a31c13fe9f6140d6003cc29bfe",
-  "phase8dBaseSha": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
-  "apkSourceSha": "0b9f6facdd0f037c924f21d410e0a32d4f1dae89",
-  "releaseId": "brick-beta-20261105-01",
-  "branch": "beta/backend-portal",
-  "runId": 41971379090,
-  "runUrl": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41971379090",
-  "testJob": {
-    "id": 127060198018,
-    "conclusion": "success"
+  "format": "brick-beta-d1-final-delivery-v1",
+  "backendSourceSha": "20b68c693cb949771db81121fdfdbe5fb3293ade",
+  "backendBranch": "beta/backend-portal",
+  "backendRun": 41976357223,
+  "backendJobs": {
+    "preflight": 127076016830,
+    "test": 127076017111,
+    "apkCurrency": 127076017171,
+    "deploy": 127076320754
   },
-  "preflightJob": {
-    "id": 127060197717,
-    "conclusion": "failure"
+  "allBackendJobs": "SUCCESS",
+  "activeVersionId": "a14c66c6-9626-4fd5-a2ad-615913aaa7a1",
+  "portalUrl": "https://brick-family-beta.lumjayvian.workers.dev/parent/login",
+  "storage": "D1 history/objects + separate D1 diagnostics",
+  "liveState": "SQLite BrickDevice DO",
+  "scheduler": "Separate SQLite BetaScheduler alarm + D1 leases; no Cron slots required",
+  "parentAuth": "Private D1 sessions; Worker-secret hash; generated credential encrypted for private user delivery",
+  "r2Bindings": 0,
+  "cloudflareQueueBindings": 0,
+  "zeroTrustRequired": false,
+  "paidPlanActivated": false,
+  "apkSourceSha": "fa52547d89929e2032fc8ced4511b79e9bf8a23c",
+  "apkSha256": "0ab070bea12ca607b0a38ee863087aadddb44c9f2a8c60ac496b914d1166a6fc",
+  "apkTestOnly": true,
+  "apkPackage": "com.brick.safety",
+  "apkVersionCode": 11,
+  "apkSignerSha256": "bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790",
+  "apkRuns": {
+    "sign": 41973723331,
+    "emulator": 41973723402,
+    "realOwnerEscapeAndReboot": 41973723575
   },
-  "deployJob": {
-    "id": 127060470494,
-    "conclusion": "skipped"
-  },
-  "phase2Status": "D1_REDESIGN_REQUIRED_OLD_R2_PLAN_SUPERSEDED",
-  "livePortalUrl": null,
-  "cloudWrites": "NONE",
+  "allApkJobs": "SUCCESS",
+  "apkArtifactId": 13391590323,
+  "apkArchiveSha256": "9e80c2b7efdaf1b682dc3165d998d6cf9b676a57ec0cb7ab6fe78b41ed95ab8b",
+  "apkLibraryFileId": "libfile_910d7cd9d4cc8191acf41992e04e0fad",
+  "privateAccessGuideLibraryFileId": "libfile_d2705f08423881919b63ae9fc56a4d7b",
+  "deployedEvidenceArtifactId": 13391563556,
+  "phase8dShaUnchanged": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
+  "liveChecked": [
+    "private route denial with forged header",
+    "authenticated parent HTML/devices/release manifest/APK",
+    "actual same-origin map range206",
+    "exact approved signed APK D1 readback",
+    "unsigned device denial"
+  ],
+  "nativeChecked": [
+    "auth/CSRF/logout/session revocation",
+    "D1 BLOB array decoding and multi-chunk/range readback",
+    "missing APK chunk refusal and transactional replacement",
+    "actual D1 event persistence and ordinary accepted location history",
+    "real per-device DO and selected-device WebSocket ACK",
+    "separate scheduler alarm/heartbeat",
+    "record ACK/replay/source/identity/privacy/conflict checks"
+  ],
+  "notClaimed": [
+    "actual OPPO/ColorOS phone qualification",
+    "actual parent browser signed-in screen; browser shows verified login page",
+    "physical phone removal/provisioning in this session",
+    "72-hour endurance completion",
+    "Phase8D final acceptance"
+  ],
   "endurance72h": "NOT_STARTED",
-  "readableCloudServices": [
-    "Workers",
-    "D1",
-    "Queues"
-  ],
-  "blockedCloudServices": [
-    {
-      "service": "R2",
-      "httpStatus": 403,
-      "errorCode": 10042,
-      "meaning": "NotEntitled; ensure R2 subscription/activation in intended account",
-      "reference": "https://developers.cloudflare.com/r2/api/error-codes/"
-    },
-    {
-      "service": "Access organization and apps",
-      "httpStatus": 403,
-      "errorCode": 9999,
-      "meaning": "API unavailable; actual entitlement/setup/permissions must be checked, no inferred specific cause"
-    }
-  ],
-  "passed": [
-    "Worker and browser TypeScript",
-    "current unchanged Phase8D deployment/schema/38-table backup contracts",
-    "beta resource isolation negative controls",
-    "native real D1/R2/Queue/DO/history/WebSocket beta protocol",
-    "nonce/signature/source/time/privacy/identity/conflict/revocation negative controls",
-    "native inherited Worker state, safety, hibernation/revocation/recovery",
-    "native synthetic full-store D1/R2/DO destruction and restore",
-    "actual built public assets secret-surface scan",
-    "tracked private-key scan",
-    "npm audit:0 advisories",
-    "Wrangler beta dry-run bundle",
-    "exact signed APK staging hash verification"
-  ],
-  "notVerified": [
-    "live Cloudflare provisioning",
-    "Cloudflare Access login in actual browser",
-    "live protected portal and maps",
-    "OneMap credential availability/configuration on the new Worker",
-    "real phone pairing and readiness",
-    "physical OPPO removal and smoke test",
-    "72-hour endurance qualification",
-    "concurrent latest APK approval and exact replacement artifact pin"
-  ],
-  "preservedRefs": [
-    {
-      "branch": "v1-p8d-backend-deep-audit",
-      "sha": "71f5460fa6dfb47e276121e6c69db98cdae4485a"
-    },
-    {
-      "branch": "beta/apk",
-      "sha": "f7c07b328c99c90cd687fdf770b0c4ef3c9ab608"
-    },
-    {
-      "branch": "beta/backend-portal",
-      "sha": "f8c46cdd14290e04df44ffd518de9c518b634b7b"
-    }
-  ],
-  "previousTestedSourceSha": "f8c46cdd14290e04df44ffd518de9c518b634b7b",
-  "apkCurrencyJob": {
-    "id": 127060198186,
-    "conclusion": "failure",
-    "reason": "Concurrent APK runtime changed; latest validated safety APK pin not yet supplied"
-  },
-  "apkDownloadAvailable": false,
-  "observedConcurrentApkHead": "f7c07b328c99c90cd687fdf770b0c4ef3c9ab608",
-  "nextActions": [
-    "Read root AGENTS.md and PROJECT_MEMORY.md; never ask for R2 activation",
-    "Adapt and qualify existing D1-backed history/object/event/parent-session components while retaining current features",
-    "Choose and test card-free map and APK delivery within real limits",
-    "Coordinate truthful D1 readiness contract with APK; preserve concurrent escape/reboot safety work",
-    "Replace obsolete R2 launch workflow, test actual D1 paths, then deploy and verify the no-card beta"
-  ],
-  "userConstraint": {
-    "creditCardAvailable": false,
-    "r2Allowed": false,
-    "paidSubscriptionRequired": false,
-    "storageDirection": "D1-first, card-free",
-    "oldR2ActivationAdvice": "SUPERSEDED_ASSISTANT_ERROR"
-  }
+  "artifactSidecarNote": "The inherited beta-contract-v1.json inside the immutable original signed artifact ZIP still uses historical R2/Queue labels. The signed APK runtime uses the updated D1 check IDs; corrected source contract and metadata-only APK handoff supersede that sidecar. Do not interpret the old sidecar as a real R2/Queue dependency."
 }

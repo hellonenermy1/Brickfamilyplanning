@@ -1,0 +1,61 @@
+{
+  "sourceSha": "20b68c693cb949771db81121fdfdbe5fb3293ade",
+  "origin": "https://brick-family-beta.lumjayvian.workers.dev",
+  "storage": "D1",
+  "queues": "NONE",
+  "access": "D1_PARENT_SESSION",
+  "checks": [
+    {
+      "route": "/parent",
+      "status": 302,
+      "forgedHeaderDenied": true
+    },
+    {
+      "route": "/parent/beta/download/apk",
+      "status": 401,
+      "forgedHeaderDenied": true
+    },
+    {
+      "route": "/parent/beta/download/manifest",
+      "status": 401,
+      "forgedHeaderDenied": true
+    },
+    {
+      "route": "/parent/api/devices",
+      "status": 401,
+      "forgedHeaderDenied": true
+    },
+    {
+      "route": "/parent",
+      "status": 200,
+      "authenticated": true
+    },
+    {
+      "route": "/parent/api/devices",
+      "status": 200,
+      "authenticated": true
+    },
+    {
+      "route": "/parent/beta/download/manifest",
+      "status": 200,
+      "authenticated": true
+    },
+    {
+      "route": "/parent/beta/download/apk",
+      "status": 200,
+      "authenticated": true
+    },
+    {
+      "route": "/parent/map/status",
+      "status": 200,
+      "authenticated": true
+    },
+    {
+      "route": "map_range",
+      "status": 206
+    }
+  ],
+  "actualParentBrowser": "PENDING",
+  "realPhoneReadiness": "PENDING",
+  "endurance72h": "NOT_STARTED"
+}
