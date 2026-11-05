@@ -29,3 +29,62 @@ jobs:
           name: beta-cloud-preflight-${{ github.sha }}
           path: beta-cloud-preflight.json
           if-no-files-found: ignore
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Current Phase8D and beta trust-boundary qualification
+        run: bash scripts/beta-cloud-regression.sh
+      - name: Refuse high-severity dependency advisories
+        run: npm audit --audit-level=high
+      - name: Bundle the exact beta Worker without cloud writes
+        run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
+  deploy:
+    needs: [cloud-preflight, test]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Provision only beta resources and deploy with Access enforcement
+        run: node scripts/setup-beta-cloud.mjs
+      - name: Install verified private Singapore map into beta bucket only
+        run: node scripts/install-beta-map.mjs
+      - name: Download and verify the exact already-signed Phase1 APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/artifacts/13388980912/zip > /tmp/brick-beta-signed-artifact.zip
+          python scripts/stage-beta-apk.py /tmp/brick-beta-signed-artifact.zip
+      - name: Publish APK through authenticated beta download route
+        run: npx --no-install wrangler r2 object put brick-family-beta-history/beta/releases/brick-beta-20261105-01/Brick.apk --remote --file beta-artifact/Brick.apk --content-type application/vnd.android.package-archive --config wrangler.beta.jsonc --force
+      - name: Deploy exact source annotation
+        run: npx --no-install wrangler deploy --strict --config wrangler.beta.jsonc --tag "brick-git-${GITHUB_SHA:0:12}" --message "Brick beta source $GITHUB_SHA APK 0b9f6fac"
+      - name: Verify private attack surface and actual deployment address
+        run: node scripts/verify-beta-live.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: beta-deployment-${{ github.sha }}
+          path: |
+            beta-setup-state.json
+            beta-live-verification.json
+          if-no-files-found: ignore

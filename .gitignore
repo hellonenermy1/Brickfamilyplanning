@@ -17,3 +17,12 @@ wrangler.jsonc
 *.pem
 *.key
 *.jks.b64
+
+# Local beta deployment state
+wrangler.beta.jsonc
+beta-setup-state.json
+beta-cloud-preflight.json
+.brick-beta-workerd-*/
+beta-artifact/
+
+.brick-p8d-full-recovery-*/
