@@ -253,7 +253,7 @@ const state = {
   schedulerMode: 'sqlite-do-alarm-with-d1-lease-and-request-fallback',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
-  d1Id, betaD1Id, betaReleaseId:'brick-beta-20261105-01', diagnosticRetentionDays:35,
+  accountId, d1Id, betaD1Id, betaReleaseId:'brick-beta-20261105-01', diagnosticRetentionDays:35,
   resources: { DB: D1_NAME, objectStore: 'dev_object_store + dev_object_chunks', map: 'remote PMTiles proxy' },
   recovery: { d1TimeTravelDays: 7, inDatabaseSnapshots: true },
   configuredAt: new Date().toISOString()
