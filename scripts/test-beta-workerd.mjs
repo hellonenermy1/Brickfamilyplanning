@@ -49,6 +49,7 @@ try{
  assert.equal(tile.status,200,'same-origin OneMap tile proxy must respond');
  assert.equal(tile.headers.get('Content-Type'),'image/png');
  assert.deepEqual(new Uint8Array(await tile.arrayBuffer()).slice(0,8),new Uint8Array([137,80,78,71,13,10,26,10]));
+ const regularTile=await parent('/parent/map/onemap/Default/11/1614/1016.png');assert.equal(regularTile.status,200);
  const onemapLogo=await parent('/parent/map/onemap/logo.png');assert.equal(onemapLogo.status,200,'OneMap attribution logo must be available under strict CSP');assert.equal(onemapLogo.headers.get('Content-Type'),'image/png');
  assert.equal((await parent('/parent/map/onemap/Default_HD/20/1614/1016.png')).status,404,'invalid zoom not proxied');
  assert.equal((await parent('/parent/map/onemap/Invalid/11/1614/1016.png')).status,404,'arbitrary upstream paths prohibited');
