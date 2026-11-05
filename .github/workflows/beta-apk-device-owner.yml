@@ -280,11 +280,20 @@ jobs:
           "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-real-owner-created.txt
           "$ADB" shell dpm list-owners > /tmp/p8-real-owner-before.txt
           grep -Fq 'com.brick.safety' /tmp/p8-real-owner-before.txt
+          # Device Owner provisioning may put the package back in Android's stopped state.
+          # BOOT_COMPLETED is not delivered to stopped packages. Explicitly launch only
+          # BEFORE the durable removal boundary, then prove the package is eligible for boot.
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity | tee /tmp/p8-real-unstop-before-freeze.txt
+          "$ADB" shell input keyevent KEYCODE_HOME || true
+          "$ADB" shell dumpsys package com.brick.safety > /tmp/p8-real-package-before-freeze.txt
+          grep -Fq 'stopped=false' /tmp/p8-real-package-before-freeze.txt
           "$ADB" shell am broadcast --receiver-foreground \
             -a com.brick.safety.testing.PHASE8_AUTHORISE_REMOVAL \
             -n com.brick.safety/.testing.Phase8RetirementHarnessReceiver | tee /tmp/p8-real-authorised.txt
           "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_deprovision_v1.xml | tee /tmp/p8-real-stage1.txt
           grep -Fq '<string name="stage">AUTHORISE_FREEZE</string>' /tmp/p8-real-stage1.txt
+          "$ADB" shell dumpsys package com.brick.safety > /tmp/p8-real-package-after-freeze.txt
+          grep -Fq 'stopped=false' /tmp/p8-real-package-after-freeze.txt
           "$ADB" reboot
           "$ADB" wait-for-device
           for i in $(seq 1 120); do
