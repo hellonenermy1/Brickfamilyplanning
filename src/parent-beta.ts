@@ -33,6 +33,39 @@ async function betaLoad(){if(betaLoading||!currentDevice)return;const id=current
  document.getElementById('betaRun').textContent=e?'Run '+e.run.runId+' · '+(e.counts?.n||0)+' uploaded observations · last upload '+new Date(e.receivedAt).toLocaleString()+' · '+e.dropped+' phone records dropped · '+gap+' gap/reboot/clock flags in latest '+records.length+' records. REVIEW REQUIRED. Last phone report is not proof of continued activity.':'No endurance observations uploaded. The phone starts the run after all readiness checks and your removal-test confirmation.';
  document.getElementById('betaEvidence').textContent=JSON.stringify(r,null,2);
  }catch(e){if(currentDevice===id)document.getElementById('betaHeadline').textContent='Beta evidence unavailable: '+e.message;}finally{betaLoading=false;}}
+
+/* Read-only map diagnostics: use a fixed public Singapore tile, NEVER a phone location. */
+const brickMapStatus=document.createElement('div');
+brickMapStatus.id='brickMapDeliveryStatus';brickMapStatus.setAttribute('role','status');
+brickMapStatus.style.cssText='position:absolute;left:12px;bottom:16px;z-index:11;max-width:min(480px,calc(100% - 100px));font:12px system-ui,sans-serif;background:#fffefa;color:#2b3946;border:1px solid #cbd2da;border-radius:10px;padding:8px 11px;box-shadow:0 3px 12px #0002';
+brickMapStatus.textContent='Map tiles · checking…';
+const brickMapWrap=document.querySelector('.mapWrap');if(brickMapWrap)brickMapWrap.append(brickMapStatus);
+let brickMapErrorSeen=false;
+map.on('error',e=>{
+ brickMapErrorSeen=true;
+ const msg=String(e?.error?.message||'');
+ const category=/401|403/.test(msg)?'map access denied':/404/.test(msg)?'map tile missing':/502|503|504/.test(msg)?'map provider unavailable':'tile or renderer error';
+ brickMapStatus.textContent='MapLibre '+category+' · checking tile sources';
+});
+async function brickProbeMapSources(){
+ const checks=await Promise.all([
+  fetch('/parent/map/onemap/Default_HD/11/1614/1016.png',{credentials:'same-origin',cache:'no-store'}).then(async r=>({status:r.status,contentType:r.headers.get('Content-Type')||'',png:r.ok&&new Uint8Array(await r.arrayBuffer()).slice(0,8).every((b,i)=>b===[137,80,78,71,13,10,26,10][i])})).catch(()=>({status:0,contentType:'',png:false})),
+  fetch('/parent/map/basemap.pmtiles',{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-15'}}).then(r=>({status:r.status,range:r.headers.get('Content-Range')||''})).catch(()=>({status:0,range:''}))
+ ]);
+ const [one,privateMap]=checks;
+ const oneOk=one.status===200&&one.png;
+ const privateOk=privateMap.status===206&&privateMap.range.startsWith('bytes 0-15/');
+ if(!oneOk&&privateOk){
+   brickMapStatus.textContent='OneMap '+(one.status||'network error')+' · trying private OSM fallback';
+   try{switchToPrivateFallback(map)}catch{brickMapStatus.textContent='MapLibre fallback unavailable · tiles OneMap '+(one.status||0);}
+ }else if(!oneOk&&!privateOk){
+   brickMapStatus.textContent='Map unavailable · OneMap HTTP '+(one.status||0)+' · private HTTP '+(privateMap.status||0);
+ }else if(oneOk){
+   brickMapStatus.textContent=brickMapErrorSeen?'OneMap tile reachable · MapLibre render issue':'OneMap tile endpoint reachable · checking rendering';
+ }else brickMapStatus.textContent='Map tiles unavailable · check connection';
+ return {oneMapHttp:one.status,oneMapPng:one.png,privateHttp:privateMap.status,privateRangeOk:privateOk};
+}
+setTimeout(()=>{try{map.resize()}catch{}brickProbeMapSources().catch(()=>{brickMapStatus.textContent='Map diagnostic unavailable'})},250);
 const betaOldSelect=selectDevice;selectDevice=async function(id){document.getElementById('betaChecks').replaceChildren();document.getElementById('betaRun').textContent='';document.getElementById('betaEvidence').textContent='';document.getElementById('betaHeadline').textContent='Loading selected phone…';await betaOldSelect(id);if(document.getElementById('brickBeta').open)await betaLoad();};
 const betaOldMessage=wsMessage;wsMessage=function(m){betaOldMessage(m);if(m?.type==='beta_challenge'&&m.deviceId===currentDevice&&typeof m.token==='string'&&m.expiresAt>Date.now()){const id=currentDevice;api('/parent/api/device/'+encodeURIComponent(id)+'/beta/ack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:m.token})}).then(()=>{if(currentDevice===id&&document.getElementById('brickBeta').open)betaLoad();}).catch(()=>{});}};
 document.getElementById('betaRefresh').onclick=betaLoad;
