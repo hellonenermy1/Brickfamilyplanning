@@ -1,5 +1,8 @@
 # Phase 8D fixed acceptance queue — current operational checklist
 
+> **Superseding D1 continuation (5 November2026):** Source candidate a51d4d96a2888004025e7b0ffb7df4f6d31e9f06 on audit/phase8d-d1-qualification is SOURCE/CI VERIFIED, not deployed or accepted. P8D-068–072 were reproduced and corrected; hosted audit42008010567/42008019532 and portal regression42008019430 completed-success, actual logs/steps inspected. Read [the hosted D1 checkpoint](https://github.com/hellonenermy1/Brickfamilyplanning/blob/bd039bc62ebead0cf10bb611e18565a900d7bd9a/audit/phase8d/PHASE8D_D1_HOSTED_CHECKPOINT.md), [the all19-section D1 reconciliation](https://github.com/hellonenermy1/Brickfamilyplanning/blob/bd039bc62ebead0cf10bb611e18565a900d7bd9a/audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md), and [PR32](https://github.com/hellonenermy1/Brickfamilyplanning/pull/32) before the historical queue below. No R2/card requirement is authorized. The new41+4-table internal recovery primitive is bounded/local-qualified, not scheduled/off-platform cloud recovery. P8D-002 operational/cloud P1, retention/failed-work/live gates and525 final acceptance reviews remain OPEN. Phase8D NOT PASS. Formal Android/audit runtime and deployed beta remain unchanged by this documentation.
+
+
 Updated 2026-11-05. **8D IN PROGRESS / NOT PASS.** Authority: Phase 8 PDF pp.44–54, sections 8D.1–19, plus the recovered 525-requirement baseline. This file supersedes its earlier 18-table/live-access packet; the execution matrix and findings ledger retain historical evidence. Do not restart completed source work or treat this checklist as a final acceptance record.
 
 ## Evidence checkpoints and reuse
