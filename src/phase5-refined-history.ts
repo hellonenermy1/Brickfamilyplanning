@@ -1,6 +1,6 @@
 import type { EvidenceRecord } from "./evidence-protocol";
 import type { LivePacket } from "./protocol";
-import { refineHypothesisInterval, type SmoothingEndpoint, type SmoothingFrame, type StoredHypothesis } from "./phase5-smoothing";
+import { refineHypothesisInterval, validateSmoothingFrame, type SmoothingEndpoint, type SmoothingFrame, type StoredHypothesis } from "./phase5-smoothing";
 
 const FUSION_HYPOTHESES_PROVIDER = 22;
 const POSITION_FAMILY = 1;
@@ -158,20 +158,22 @@ export function preciseEndpointStatements(db: D1Database, deviceId: string, pack
   return out;
 }
 
-async function readFrame(env: RefinementEnv, row: FrameRow): Promise<SmoothingFrame | null> {
+async function readFrame(env: RefinementEnv, row: FrameRow): Promise<SmoothingFrame> {
   const object = await env.HISTORY.get(row.r2_key);
-  if (!object) return null;
+  if (!object) throw Error('refinement object missing');
   let parsed: StoredFrameObject;
-  try { parsed = JSON.parse(await object.text()) as StoredFrameObject; } catch { return null; }
-  if (parsed.v !== 1 || parsed.recordId !== row.record_id || parsed.wallTimeMs !== row.wall_time_ms ||
+  try { parsed = JSON.parse(await object.text()) as StoredFrameObject; } catch { throw Error('invalid refinement object'); }
+  if (!parsed || parsed.v !== 1 || parsed.recordId !== row.record_id || parsed.wallTimeMs !== row.wall_time_ms ||
       !ID_RE.test(parsed.originalRealtimeHypothesisId) || !Number.isFinite(parsed.maxSpeedMps) ||
-      parsed.maxSpeedMps <= 0 || parsed.maxSpeedMps > 120 || !Array.isArray(parsed.hypotheses)) return null;
-  return {
+      parsed.maxSpeedMps <= 0 || parsed.maxSpeedMps > 120 || !Array.isArray(parsed.hypotheses)) throw Error('invalid refinement object');
+  const frame = {
     wallTimeMs: parsed.wallTimeMs,
     originalRealtimeHypothesisId: parsed.originalRealtimeHypothesisId,
     maxSpeedMps: parsed.maxSpeedMps,
     hypotheses: parsed.hypotheses
   };
+  validateSmoothingFrame(frame);
+  return frame;
 }
 
 function endpoint(row: EndpointRow): SmoothingEndpoint {
@@ -229,15 +231,16 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
     groups.set(key, group);
   }
 
-  let completed = 0;
+  let completed = 0, failed = false;
   for (const group of [...groups.values()].slice(0, 8)) {
     const smoothingFrames: SmoothingFrame[] = [];
     const usableRows: FrameRow[] = [];
     for (const row of group.frames) {
-      const frame = await readFrame(env, row);
-      if (!frame) continue;
-      smoothingFrames.push(frame);
-      usableRows.push(row);
+      try {
+        const frame = await readFrame(env, row);
+        smoothingFrames.push(frame);
+        usableRows.push(row);
+      } catch { failed = true; }
     }
     smoothingFrames.sort((a, b) => a.wallTimeMs - b.wallTimeMs);
     usableRows.sort((a, b) => a.wall_time_ms - b.wall_time_ms);
@@ -245,7 +248,7 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
 
     let refined;
     try { refined = refineHypothesisInterval(endpoint(group.start), endpoint(group.end), smoothingFrames); }
-    catch { continue; }
+    catch { failed = true; continue; }
     const runId = await deterministicRunId(deviceId, group.start, group.end, usableRows);
     const key = `history/refined/${safeDevice(deviceId)}/${day(group.start.wall_time_ms)}/${runId}.json`;
     const run: RefinedRunObject = {
@@ -277,6 +280,7 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
     await env.DB.batch(statements);
     completed += usableRows.length;
   }
+  if (failed) throw Error('refinement inputs unavailable');
   return completed;
 }
 

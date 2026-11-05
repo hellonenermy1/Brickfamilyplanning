@@ -1,4 +1,5 @@
 import { readBoundedBody } from './bounded-body';
+import { backgroundWorkStatus } from './background-work';
 import { verifyDeviceSignature } from './crypto';
 import { history } from './phase4';
 import { BETA_RELEASE } from './beta-release';
@@ -109,7 +110,8 @@ export async function betaParent(req:Request,env:BetaEnv,id:string,action:string
   const run=runs.results?.[0];let evidence:unknown=null;
   if(run){const records=await env.BETA_DB.prepare('SELECT record_id,payload FROM beta_records WHERE device_id=?1 AND run_id=?2 ORDER BY record_id DESC LIMIT 100').bind(id,run.run_id).all<{record_id:number;payload:string}>();const counts=await env.BETA_DB.prepare('SELECT COUNT(*) n,MIN(received_at) first_at,MAX(received_at) last_at FROM beta_records WHERE device_id=?1 AND run_id=?2').bind(id,run.run_id).first();const review=await env.BETA_DB.prepare('SELECT payload FROM beta_reviews WHERE device_id=?1 AND run_id=?2').bind(id,run.run_id).first<{payload:string}>();evidence={run:JSON.parse(run.metadata),readiness:JSON.parse(run.readiness),dropped:run.dropped,receivedAt:run.updated_at,records:records.results.map(x=>({id:x.record_id,observation:JSON.parse(x.payload)})),counts,review:review?JSON.parse(review.payload):null,assessment:'REVIEW_REQUIRED',phoneStopState:'NOT_UPLOADED_USE_PRIVATE_EXPORT'};}
   const scheduler=env.BETA_SCHEDULER?await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).status():null;
-  return betaJson({scheduler,release:BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,deviceId:id,latest:latest?{...JSON.parse(latest.payload),receivedAt:latest.updated_at,stale:Date.now()-latest.updated_at>300000}:null,evidence});
+  const backgroundWork=await backgroundWorkStatus(env.DB,id);
+  return betaJson({scheduler,backgroundWork,release:BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,deviceId:id,latest:latest?{...JSON.parse(latest.payload),receivedAt:latest.updated_at,stale:Date.now()-latest.updated_at>300000}:null,evidence});
  }
  if(req.method==='POST'&&action==='ack'){
   const read=await readBoundedBody(req,1024);if(!read.ok)return betaJson({error:'invalid_body'},400);

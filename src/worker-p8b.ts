@@ -4,6 +4,7 @@ import { ingestScreenTime, parentScreenTime, type ScreenTimeEnv } from "./screen
 import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summary";
 import { nextCommuteRefreshCandidates } from "./commute-scheduler";
 import { claimCommuteRefresh } from "./commute-refresh-claim";
+import { runBackgroundWork } from './background-work';
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
 import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -138,7 +139,9 @@ export default {
       // Cached response is immediate. Recompute from R2 only after an atomic,
       // per-device 10-minute refresh claim (also checked for active device).
       if (await claimCommuteRefresh(env.DB, deviceId, now)) {
-        ctx.waitUntil(refreshCommutes(env, deviceId, now - 2 * 86_400_000, now).catch(() => undefined));
+        // The cached response stays independent; this catch follows a durable
+        // failure receipt. Scheduled rotation retries according to its backoff.
+        ctx.waitUntil(runBackgroundWork(env.DB, 'commute', deviceId, () => refreshCommutes(env, deviceId, now - 2 * 86_400_000, now)).catch(() => undefined));
       }
       return parentCommutes(env, deviceId, Number(u.searchParams.get("limit") ?? "50"));
     }
@@ -154,7 +157,8 @@ export default {
     if (base.queue) return base.queue(batch, env, ctx);
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    if (base.scheduled) await base.scheduled(controller, env, ctx);
+    let failed = false;
+    try { if (base.scheduled) await base.scheduled(controller, env, ctx); } catch { failed = true; }
 
     // Commute derivation is automatic and uses trusted durable history only. Bound every cron run so
     // it cannot crowd out safety/current-state work.
@@ -162,10 +166,11 @@ export default {
     try {
       // Fixed first-100 selection starves higher sorted IDs forever. Maintain a durable
       // cursor and cover a bounded rotating set each cron without crowding safety ACK work.
-      const candidates = await nextCommuteRefreshCandidates(env.DB, 20, now);
-      for (const id of candidates) {
-        ctx.waitUntil(refreshCommutes(env, id, now - 2 * 86_400_000, now).catch(() => undefined));
-      }
-    } catch { /* base worker health/alerts remain independent */ }
+      await runBackgroundWork(env.DB, 'commute-scan', 'global', async () => {
+        const candidates = await nextCommuteRefreshCandidates(env.DB, 4, now);
+        for (const id of candidates) ctx.waitUntil(runBackgroundWork(env.DB, 'commute', id, () => refreshCommutes(env, id, now - 2 * 86_400_000, now)));
+      });
+    } catch { failed = true; }
+    if (failed) throw Error('derived maintenance failed');
   }
 } satisfies ExportedHandler<Env>;

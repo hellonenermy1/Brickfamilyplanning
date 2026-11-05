@@ -1,0 +1,6 @@
+PASS no endpoints remains intentional pending rather than failed or fabricated completion
+{"suite":"refinement-corruption","passed":1,"failed":4,"scope":"actual local D1/object adapter; synthetic frames only"}
+FAIL missing is failed work while healthy peer still refines: Missing expected rejection.
+FAIL malformed-json is failed work while healthy peer still refines: Missing expected rejection.
+FAIL wrong-envelope is failed work while healthy peer still refines: Missing expected rejection.
+FAIL invalid-hypotheses is failed work while healthy peer still refines: Missing expected rejection.

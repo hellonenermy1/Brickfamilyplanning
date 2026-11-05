@@ -44,6 +44,12 @@ jobs:
         run: node scripts/test-phase8d-maintenance-failure.mjs
       - name: Versioned leases nested work and release-outage recovery
         run: node scripts/test-phase8d-maintenance-leases.mjs
+      - name: Durable derived-work leases backoff privacy and fair device rotation
+        run: node scripts/test-phase8d-background-receipts.mjs
+      - name: Real scheduler enrichment failure isolation and durable evidence ACK
+        run: node scripts/test-phase8d-enrichment-failure.mjs
+      - name: Corrupt refinement input and healthy peer isolation
+        run: node scripts/test-phase8d-refinement-corruption.mjs
       - name: Existing beta auth history map and WebSocket regressions
         run: node scripts/test-beta-workerd.mjs
       - name: Original production DO and multi-store recovery regressions

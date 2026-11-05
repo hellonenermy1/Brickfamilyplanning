@@ -1,4 +1,7 @@
-# Protected archive continuation — current work
+# Failed enrichment continuation — current work
+**Phase8D IN PROGRESS / NOT PASS.** Candidate prepared from e829900424523d6510b26371bdf45035dff27b6a. P8D-077–079 locally verified:12 actual D1 receipt/backoff/concurrency/privacy/rotation tests +7 scheduler/ACK/cached-parent/status tests +5 corruption/healthy-peer cases. Typecheck and existing refined/smoothing/signed-evidence tests pass. Hosted CI is PENDING at this commit; this is not deployment or final8D acceptance. Exact implementation/RED/GREEN evidence: PHASE8D_ENRICHMENT_FINDINGS.md.
+
+# Protected archive continuation — preceding qualified work
 **Phase8D IN PROGRESS / NOT PASS.** Current tested source **c3033e9e75b4c7b1eafa48a2fd51775f7f8a06eb**. Push42015518633/job127204970634 and PR42015527164/job127204996362 completed-success, all20 steps each. Portal/map42015527240/job127204996851 completed-success, all10 steps. Actual logs/metadata inspected, zero error markers; PR checkout was synthetic mergeac2f4798039ad5cedbc9fe66047cbd66486dceaa into488b34f2f2f807c107b4c1e9eee9dccff717011f.
 Protected-package13-group suite and encrypted41+4/DO destruction/restore passed locally and hosted. Exact receipts: PHASE8D_PROTECTED_BACKUP_HOSTED_EVIDENCE.json. Operator contract: PROTECTED_BACKUP_OPERATIONS.md. Prior regression suites pass. P8D-002 remains P1 OPEN; no deployment/production backup/PITR/RTO/RPO acceptance. Documentation successors do not change the tested scripts/runtime.
 
@@ -6,19 +9,14 @@ Protected-package13-group suite and encrypted41+4/DO destruction/restore passed 
 | Group | Implemented source evidence | Still required to close |
 | --- | --- | --- |
 | Backup and restore | Atomic D1/object validation,41+4/DO restore, authenticated encrypted off-platform package | Bounded actual capture with proven quiescence, private independent destination/key custody, scoped PITR and isolated cloud recovery/interrupt/rollback/RTO/RPO |
-| Failed background work | Scheduler child-work/lease/failure/retry verified atf332ed06 | Durable failure/retry/visibility for Atlas/evidence/refinement/commute paths; exact ACK independent of optional enrichment |
+| Failed background work | Scheduler073 prior proof; current077–079 local24-case task receipt/error/ACK/corruption batch (hosted pending) | Atlas/provider receipts; poison-window fairness/repair; actual cloud quotas/fleet latency and qualified replay/visibility |
 | Cloud candidate | Draft PR32 source/CI receipts; existing deployed beta identity recorded | One approved exact deployed source/config/schema with migrations, budgets and rollback proof |
 | Requirement verdict | Original525 IDs/classes/dispositions preserved | Per-ID evidence reconciliation, owners and independent review; no fabricated final acceptance |
 
 The next backup dependency is specific: live capture/transport and independent destination/key custody are not qualified. Packaging alone does not close that group. Configuration is unverified, not proven absent. Source work may continue on failed-work isolation without accessing live family data. Generic continuation does not merge/deploy this draft PR or authorize cloud/family mutation.
 
-## Next independent source batch — failed-work isolation
-The backup package is source-qualified; do not repeat packaging/restore tests without a change or new evidence need. Operational capture/destination/key custody needs a concrete scoped integration, not another same-D1 snapshot.
-- src/worker-v9.ts scheduled lines180–185: semantic cleanup, per-device refinement and refined cleanup failures are caught/hidden. Pending frame rows can retry but scheduler can report success. Prove a per-device throw does not starve peers, a cleanup throw is recorded, and next tick retries.
-- src/worker-p8b.ts scheduled and cached parent commute paths: refreshCommutes promises catch undefined; cursor advances before child completion. Scheduled failures must reach durable scheduler receipts without stopping unrelated/safety work. Parent cached response stays immediate; failed refresh needs bounded retry/visibility without leaking provider data.
-- src/evidence-route.ts lines100–104: hypothesis upload awaits processRefinementsForDevice before exact ACK. Audit optional-enrichment outage separately from required durable raw/semantic ingest.
-- src/phase5-refined-history.ts: missing/malformed readFrame and refinement exceptions continue silently; distinguish intentional no-endpoint pending from failed/corrupt work and bound poison-item retries. Atlas provider work remains independently open.
-These are inspected unresolved source paths, not fresh reproduced/qualified findings or a claim that existing scheduler073 fixes them. Record fault evidence before changing them. Preserve the525 ledger and phase boundaries.
+## Next independent source work
+Current077–079 replaces the previously listed swallowed scheduled exceptions/ACK coupling/corrupt-frame paths. Do not rediscover them as new findings. Atlas/provider work still needs inventory, fault reproduction and durable retry/visibility qualification. The100-frame window can be monopolised by persistent corrupt inputs; source now reports/backoffs corruption and processes healthy selected peers, but has no per-frame repair/quarantine/fair cursor. Live D1/CPU/statement budgets and latency under the4-device rotations need cloud evidence. Backup operational capture/destination/key integration is separate from the already tested protected package. Preserve playback36 and true-removal37 reports; no generic audit continuation deletes phone/family data.
 
 ---
 

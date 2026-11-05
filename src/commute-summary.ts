@@ -25,7 +25,7 @@ function mode(activity:number){return activity===2?"walking":activity===3?"runni
 function moving(p:Point){return p.activity!==1 && (p.speedCms==null || p.speedCms>=80)}
 
 export async function refreshCommutes(env:CommuteEnv,deviceId:string,fromMs:number,toMs:number){
-  const response=await history(env,deviceId,fromMs,toMs); if(!response.ok)return {created:0};
+  const response=await history(env,deviceId,fromMs,toMs); if(!response.ok)throw Error('commute history unavailable');
   const body=await response.json<{points?:Point[]}>(); const points=(body.points??[]).filter(p=>Number.isSafeInteger(p.wallTimeMs)).sort((a,b)=>a.wallTimeMs-b.wallTimeMs);
   const segments:Point[][]=[]; let current:Point[]=[]; let stationarySince:number|null=null;
   for(const p of points){
