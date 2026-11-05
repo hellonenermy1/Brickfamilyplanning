@@ -43,6 +43,7 @@ try{
  assert.equal((await signed('/beta/readiness',{...ready(),apkSourceSha:'b'.repeat(40)})).status,400);
  assert.equal((await signed('/beta/readiness',ready(),await ecdsa())).status,401);
  assert.equal((await signed('/beta/readiness',{...ready(),sentAtMs:Date.now()-130000})).status,400);
+ assert.equal((await signed('/beta/readiness',{...ready(),localChecks:[{...localChecks[0],latitude:1.3}]})).status,400);
  const ws=await parent('/parent/api/device/'+DEVICE_A+'/ws',{headers:{Upgrade:'websocket'}});assert.equal(ws.status,101);socket=ws.webSocket;socket.accept();
  let token;socket.addEventListener('message',e=>{const b=JSON.parse(e.data);if(b.type==='beta_challenge'){assert.equal(b.deviceId,DEVICE_A);token=b.token;}});
  const body=ready();let response=await signed('/beta/readiness',body);assert.equal(response.status,200);let proof=await response.json();assert.equal(proof.nonce,body.nonce);assert.equal(proof.environment,'beta');assert.equal(proof.backendSourceSha,'a'.repeat(40));
