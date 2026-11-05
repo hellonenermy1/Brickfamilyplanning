@@ -34,7 +34,14 @@ class BrickApplication : Application() {
         // non-sensitive no-backup origin guard may remain until Android uninstall. Do not initialize
         // diagnostics, keys, tracking, evidence, learned state, recovery work or any other store that
         // could recreate Brick-owned persistence while the user is between PURGE and UNINSTALL.
-        if (DeprovisionManager.isPostPurge(this)) return
+        // A previously authorised removal is irreversible. Resume its durable stages before
+        // initializing any tracking, diagnostics, keys, or scheduling state after process restart.
+        // The uninstall prompt remains an Android-owned, user-confirmed final step.
+        val removalStage = DeprovisionManager.stage(this)
+        if (removalStage != DeprovisionManager.Stage.NONE) {
+            DeprovisionManager.resumeAuthorisedRemovalAsync(this)
+            return
+        }
 
         DiagnosticStore.init(this)
         DeviceKeys.initialize(this)
