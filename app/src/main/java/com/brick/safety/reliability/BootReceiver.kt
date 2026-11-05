@@ -21,7 +21,12 @@ class BootReceiver : BroadcastReceiver() {
         val app = context.applicationContext
         // PURGE_BRICK is an uninstall-only state. Do not even initialize diagnostics/Deep Off/
         // scheduling state from a system broadcast while the package is waiting to be removed.
-        if (DeprovisionManager.isPostPurge(app)) return
+        // Deep Off becomes active during removal. Check the durable removal state FIRST,
+        // otherwise a reboot can strand an authorised teardown at QUIESCE.
+        if (DeprovisionManager.stage(app) != DeprovisionManager.Stage.NONE) {
+            DeprovisionManager.resumeAuthorisedRemovalAsync(app)
+            return
+        }
 
         if (DeepOffManager.isActive(app)) {
             DeepOffManager.quiesce(app)
