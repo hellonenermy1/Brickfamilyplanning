@@ -5,7 +5,7 @@ export const BACKGROUND_PROVIDER = 'brick_background_v1';
 import {RefinementInputsUnavailable,refinementFrameStatus} from './refinement-work-state';
 export const BACKGROUND_TASKS = ['semantic-indexes', 'refinement-scan', 'refinement', 'refined-retention', 'commute-scan', 'commute'] as const;
 type Task = typeof BACKGROUND_TASKS[number];
-type Receipt = { v: 1; status: 'RUNNING' | 'FAILED' | 'DEGRADED' | 'COMPLETED' | 'WAITING'; attempts: number; failures: number;
+type Receipt = { v: 1; status: 'RUNNING' | 'FAILED' | 'DEGRADED' | 'PENDING' | 'COMPLETED' | 'WAITING'; attempts: number; failures: number;
   lastAttemptAt: number; lastSuccessAt: number | null; nextAttemptAt: number; lease: string | null; errorCode: string | null };
 const LEASE_MS = 300_000;
 function key(task: Task, subject: string) {
@@ -15,7 +15,7 @@ function key(task: Task, subject: string) {
 function decode(value: string): Receipt {
   let r: Receipt; try { r = JSON.parse(value); } catch { throw Error('invalid background receipt'); }
   if (!r || Object.keys(r).sort().join(',') !== 'attempts,errorCode,failures,lastAttemptAt,lastSuccessAt,lease,nextAttemptAt,status,v' || r.v !== 1 ||
-      !['RUNNING','FAILED','DEGRADED','COMPLETED','WAITING'].includes(r.status) || !Number.isSafeInteger(r.attempts) || r.attempts < 1 ||
+      !['RUNNING','FAILED','DEGRADED','PENDING','COMPLETED','WAITING'].includes(r.status) || !Number.isSafeInteger(r.attempts) || r.attempts < 1 ||
       !Number.isSafeInteger(r.failures) || r.failures < 0 || !Number.isSafeInteger(r.lastAttemptAt) || r.lastAttemptAt <= 0 ||
       !Number.isSafeInteger(r.nextAttemptAt) || r.nextAttemptAt <= 0 ||
       (r.lastSuccessAt !== null && (!Number.isSafeInteger(r.lastSuccessAt) || r.lastSuccessAt <= 0)) ||
@@ -49,8 +49,9 @@ export async function runBackgroundWork(db: D1Database, task: Task, subject: str
   }
   try {
     const result = await work(), waiting = task === 'refinement' && result === 0;
-    await finish({...receipt, status: waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + successIntervalMs, lease: null});
-    return 'COMPLETED' as const;
+    const pending=task==='commute'&&result!==null&&typeof result==='object'&&'complete' in result&&(result as {complete:unknown}).complete===false;
+    await finish({...receipt, status: pending?'PENDING':waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting||pending ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + successIntervalMs, lease: null});
+    return pending?'PENDING' as const:'COMPLETED' as const;
   } catch(error) {
     const failures = Math.min(1_000_000, receipt.failures + 1), retryMs = Math.min(900_000, 60_000 * 2 ** Math.min(4, failures - 1));
     // Frame-level retries/quarantine own poison-input delay. Continue rotating

@@ -34,7 +34,9 @@ export class BetaScheduler extends DurableObject<CardfreeEnv>{
  async status(){return {nextAlarmAt:await this.ctx.storage.getAlarm(),lastTick:await this.ctx.storage.get<{atMs:number;status:string}>('lastTick')??null};}
  async runTick(){
   const previous=await this.ctx.storage.get<{lastSuccessAtMs?:number;atMs:number;status:string}>('lastTick');
-  try{const status=await runCardfreeMaintenance(this.env,this.ctx as unknown as ExecutionContext);await this.ctx.storage.put('lastTick',{atMs:Date.now(),status,lastSuccessAtMs:status==='COMPLETED'?Date.now():previous?.lastSuccessAtMs??null});}
+  try{let status=await runCardfreeMaintenance(this.env,this.ctx as unknown as ExecutionContext);
+   if(status==='COMPLETED'){const pending=await this.env.DB.prepare("SELECT COUNT(*) n FROM provider_cache p JOIN devices d ON p.cache_key='commute/'||d.id WHERE p.provider='brick_background_v1' AND d.revoked_at IS NULL AND p.expires_at>?1 AND json_valid(p.value_json) AND json_extract(p.value_json,'$.status')='PENDING'").bind(Date.now()).first<{n:number}>();if(Number(pending?.n)>0)status='PENDING';}
+   await this.ctx.storage.put('lastTick',{atMs:Date.now(),status,lastSuccessAtMs:status==='COMPLETED'?Date.now():previous?.lastSuccessAtMs??null});}
   catch{await this.ctx.storage.put('lastTick',{atMs:Date.now(),status:'FAILED',errorCode:'maintenance_failed',lastSuccessAtMs:previous?.lastSuccessAtMs??(previous?.status==='COMPLETED'?previous.atMs:null)});throw Error('beta_maintenance_failed');}
   finally{await this.ctx.storage.setAlarm(Date.now()+60000);}
  }

@@ -216,7 +216,7 @@ function packPacket(p: LivePacket): PackedPacket {
   ];
 }
 
-function unpackPacket(text: string): LivePacket {
+export function unpackPacket(text: string): LivePacket {
   const p = JSON.parse(text) as PackedPacket;
   if (!Array.isArray(p) || p.length !== 28) throw new Error("invalid compact history packet");
   const flags = Number(p[18]);
