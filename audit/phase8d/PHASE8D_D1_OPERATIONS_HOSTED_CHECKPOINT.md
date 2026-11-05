@@ -1,5 +1,7 @@
 # Failed enrichment continuation — current work
-**Phase8D IN PROGRESS / NOT PASS.** Candidate prepared from e829900424523d6510b26371bdf45035dff27b6a. P8D-077–079 locally verified:12 actual D1 receipt/backoff/concurrency/privacy/rotation tests +7 scheduler/ACK/cached-parent/status tests +5 corruption/healthy-peer cases. Typecheck and existing refined/smoothing/signed-evidence tests pass. Hosted CI is PENDING at this commit; this is not deployment or final8D acceptance. Exact implementation/RED/GREEN evidence: PHASE8D_ENRICHMENT_FINDINGS.md.
+**Phase8D IN PROGRESS / NOT PASS.** Current exact tested source **7b19ddbc54b13cdc74945acadd20e25b42a0cc4e**. Push audit42041136851/job127291931788 completed-success, all23 steps success. Actual log inspected: exact source confirmed, zero error markers. New12+7+5=24 cases pass; existing object/protected backup/encrypted41+4/DO restore/ACK/retention/maintenance/beta/native/legacy suites pass. Locally, existing refined/smoothing/signed-evidence tests also pass. Receipts: PHASE8D_ENRICHMENT_HOSTED_EVIDENCE.json; implementation/RED/GREEN scope: PHASE8D_ENRICHMENT_FINDINGS.md. No deployment/final8D acceptance.
+
+GitHub mergeability discrepancy at this capture: PR32 GET says dirty/mergeable=false, merge commit null; both compare endpoints show target488b34f2 is already the merge base, source ahead13/behind0. No code conflict is confirmed and no PR merge-result/regression run is claimed. Re-read metadata before interpreting mergeability; do not manufacture a merge/fix or infer a deploy. The exact source push suite is independently green.
 
 # Protected archive continuation — preceding qualified work
 **Phase8D IN PROGRESS / NOT PASS.** Current tested source **c3033e9e75b4c7b1eafa48a2fd51775f7f8a06eb**. Push42015518633/job127204970634 and PR42015527164/job127204996362 completed-success, all20 steps each. Portal/map42015527240/job127204996851 completed-success, all10 steps. Actual logs/metadata inspected, zero error markers; PR checkout was synthetic mergeac2f4798039ad5cedbc9fe66047cbd66486dceaa into488b34f2f2f807c107b4c1e9eee9dccff717011f.
@@ -9,7 +11,7 @@ Protected-package13-group suite and encrypted41+4/DO destruction/restore passed 
 | Group | Implemented source evidence | Still required to close |
 | --- | --- | --- |
 | Backup and restore | Atomic D1/object validation,41+4/DO restore, authenticated encrypted off-platform package | Bounded actual capture with proven quiescence, private independent destination/key custody, scoped PITR and isolated cloud recovery/interrupt/rollback/RTO/RPO |
-| Failed background work | Scheduler073 prior proof; current077–079 local24-case task receipt/error/ACK/corruption batch (hosted pending) | Atlas/provider receipts; poison-window fairness/repair; actual cloud quotas/fleet latency and qualified replay/visibility |
+| Failed background work | Scheduler073 prior proof; 077–079 task receipt/error/ACK/corruption batch,24 cases hosted-green at7b19ddbc | Atlas/provider receipts; poison-window fairness/repair; actual cloud quotas/fleet latency and qualified replay/visibility |
 | Cloud candidate | Draft PR32 source/CI receipts; existing deployed beta identity recorded | One approved exact deployed source/config/schema with migrations, budgets and rollback proof |
 | Requirement verdict | Original525 IDs/classes/dispositions preserved | Per-ID evidence reconciliation, owners and independent review; no fabricated final acceptance |
 

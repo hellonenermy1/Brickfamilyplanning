@@ -1,0 +1,300 @@
+{
+  "format": "brick-phase8d-enrichment-hosted-v1",
+  "source": "7b19ddbc54b13cdc74945acadd20e25b42a0cc4e",
+  "previousQualifiedSource": "c3033e9e75b4c7b1eafa48a2fd51775f7f8a06eb",
+  "pr": 32,
+  "verdict": "SOURCE_CI_VERIFIED_ONLY_PHASE8D_NOT_PASS",
+  "hosted": {
+    "runId": 42041136851,
+    "event": "push",
+    "headSha": "7b19ddbc54b13cdc74945acadd20e25b42a0cc4e",
+    "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+    "jobs": [
+      {
+        "id": 127291931788,
+        "name": "d1-storage-and-recovery",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 42041136851,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run npm ci --no-audit --no-fund",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run npm run typecheck",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Beta provisioner and shared compatibility schema syntax",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Run npm run build:parent-assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "D1 object read integrity and atomic conditional-write regressions",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Protected off-platform archive authentication identity and CLI",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Destroy source and recover both D1 stores and beta DO from encrypted package",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Receipt-age retention cleanup race and bounded statement envelope",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12
+          },
+          {
+            "name": "Scheduler delayed failure and automatic retry",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13
+          },
+          {
+            "name": "Versioned leases nested work and release-outage recovery",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14
+          },
+          {
+            "name": "Durable derived-work leases backoff privacy and fair device rotation",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Real scheduler enrichment failure isolation and durable evidence ACK",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16
+          },
+          {
+            "name": "Corrupt refinement input and healthy peer isolation",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17
+          },
+          {
+            "name": "Existing beta auth history map and WebSocket regressions",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 18
+          },
+          {
+            "name": "Original production DO and multi-store recovery regressions",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 19
+          },
+          {
+            "name": "Existing native production trust-boundary regressions",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 20
+          },
+          {
+            "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 39
+          },
+          {
+            "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 40
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 41
+          }
+        ]
+      }
+    ],
+    "logInspected": true,
+    "errorMarkers": 0,
+    "sourceConfirmedInLog": true,
+    "logExtract": [
+      "2026-11-05T14:02:21.1315012Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7b19ddbc54b13cdc74945acadd20e25b42a0cc4e:refs/remotes/origin/audit/phase8d-d1-qualification",
+      "2026-11-05T14:02:21.8321288Z  * [new ref]         7b19ddbc54b13cdc74945acadd20e25b42a0cc4e -> origin/audit/phase8d-d1-qualification",
+      "2026-11-05T14:02:21.8949309Z 7b19ddbc54b13cdc74945acadd20e25b42a0cc4e",
+      "2026-11-05T14:02:32.7621411Z PASS same-length stored chunk corruption is refused",
+      "2026-11-05T14:02:37.7753162Z {\"suite\":\"phase8d-d1-object-integrity\",\"passed\":12,\"failed\":0,\"scope\":\"actual local Miniflare D1; synthetic objects only\"}",
+      "2026-11-05T14:02:38.0367625Z Protected backup suite: 13 passed, 0 failed (synthetic/off-platform; no live capture or cloud qualification)",
+      "2026-11-05T14:02:55.7628168Z PASS corrupt/missing stores, malformed late rows/BLOBs, hash and bounds fail before writes; interrupted target is explicitly partial and rejects in-place retry",
+      "2026-11-05T14:02:55.7629079Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed",
+      "2026-11-05T14:02:59.7635790Z {\"suite\":\"d1-retention\",\"passed\":10,\"failed\":0,\"scope\":\"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim\"}",
+      "2026-11-05T14:03:01.4248830Z {\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+      "2026-11-05T14:03:02.2953535Z {\"suite\":\"maintenance-leases\",\"passed\":7,\"failed\":0,\"scope\":\"actual local D1; synthetic tasks and controlled clock only\"}",
+      "2026-11-05T14:03:04.5557635Z {\"suite\":\"background-receipts\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1, synthetic tasks and controlled clock; no cloud data\"}",
+      "2026-11-05T14:03:06.9482641Z PASS signed durable hypothesis ACK survives optional refinement outage",
+      "2026-11-05T14:03:07.0204110Z PASS cached parent commute response survives refresh failure with durable retry receipt",
+      "2026-11-05T14:03:07.0329455Z PASS background task status is authenticated per-device and redacts lease/provider details",
+      "2026-11-05T14:03:07.0330353Z {\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}",
+      "2026-11-05T14:03:07.0858743Z ##[group]Run node scripts/test-phase8d-refinement-corruption.mjs",
+      "2026-11-05T14:03:07.0859224Z \u001b[36;1mnode scripts/test-phase8d-refinement-corruption.mjs\u001b[0m",
+      "2026-11-05T14:03:08.4605242Z PASS missing is failed work while healthy peer still refines",
+      "2026-11-05T14:03:08.6189028Z PASS malformed-json is failed work while healthy peer still refines",
+      "2026-11-05T14:03:08.7845972Z PASS wrong-envelope is failed work while healthy peer still refines",
+      "2026-11-05T14:03:08.9324732Z PASS invalid-hypotheses is failed work while healthy peer still refines",
+      "2026-11-05T14:03:09.0066977Z {\"suite\":\"refinement-corruption\",\"passed\":5,\"failed\":0,\"scope\":\"actual local D1/object adapter; synthetic frames only\"}",
+      "2026-11-05T14:03:13.2062609Z PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation",
+      "2026-11-05T14:03:16.7751682Z PASS fresh local D1 38-table row/FK reconciliation, pending command expiry, R2 HISTORY/MAPS exact bytes and metadata; missing/corrupt R2 fail before writes"
+    ]
+  },
+  "newSuites": {
+    "backgroundReceipts": {
+      "passed": 12,
+      "failed": 0
+    },
+    "schedulerAckAndStatus": {
+      "passed": 7,
+      "failed": 0
+    },
+    "corruptRefinementIsolation": {
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "localExistingRegressions": [
+    "PHASE5_REFINED_HISTORY_PASS",
+    "PHASE5_BACKWARD_SMOOTHING_PASS",
+    "Signed evidence route Android DER/bounded stream/409"
+  ],
+  "findings": [
+    {
+      "id": "P8D-077",
+      "status": "SOURCE_CI_CORRECTION_VERIFIED",
+      "scope": "scheduled semantic/refinement/refined retention/commute failure receipts/retry and peer independence"
+    },
+    {
+      "id": "P8D-078",
+      "status": "SOURCE_CI_CORRECTION_VERIFIED",
+      "scope": "required durable ingest exact ACK independent of optional refinement; replay exact"
+    },
+    {
+      "id": "P8D-079",
+      "status": "SOURCE_CI_CORRECTION_VERIFIED_WITH_LIMITS",
+      "scope": "selected corrupt frame detection and healthy-peer progress; no-endpoint WAITING; poison-window fairness/repair still open"
+    }
+  ],
+  "requirementEvidence": [
+    {
+      "id": "BE-006",
+      "verifiedSubclaims": [
+        "Optional derived smoothing excluded from required evidence ACK",
+        "Independent scheduled/peer work after faults"
+      ],
+      "notProven": [
+        "All live delivery/cloud/Atlas integration criteria"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED"
+    },
+    {
+      "id": "BE-008",
+      "verifiedSubclaims": [
+        "D1 derived-task failure records are private/redacted and retry-visible"
+      ],
+      "notProven": [
+        "A D1 task receipt is not Cloudflare Queue/DLQ proof",
+        "Persistent poison repair/quarantine and full queue exhaustion workflow"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED"
+    },
+    {
+      "id": "BE-019",
+      "verifiedSubclaims": [
+        "Selected smoothing/aggregation tasks run asynchronously with durable pending inputs and D1 receipts"
+      ],
+      "notProven": [
+        "Heavy Atlas learning/trust/decay/relearning complete pipeline",
+        "Cloud budgets/fleet latency"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED"
+    }
+  ],
+  "mergeabilityObservation": {
+    "prGet": {
+      "mergeable": false,
+      "mergeable_state": "dirty",
+      "mergeCommit": null,
+      "head": "7b19ddbc54b13cdc74945acadd20e25b42a0cc4e",
+      "base": "488b34f2f2f807c107b4c1e9eee9dccff717011f"
+    },
+    "independentCompare": {
+      "status": "ahead",
+      "ahead": 13,
+      "behind": 0,
+      "mergeBase": "488b34f2f2f807c107b4c1e9eee9dccff717011f"
+    },
+    "interpretation": "Inconsistent GitHub metadata: base already ancestor according to both compare APIs. No code conflict confirmed/resolved; no merge-result PR run is claimed.",
+    "prRegression": "UNVERIFIED_AT_THIS_CHECKPOINT"
+  },
+  "scope": {
+    "newTables": 0,
+    "newSecrets": 0,
+    "newServices": 0,
+    "publicRoutesAdded": 0,
+    "deployed": false,
+    "merged": false,
+    "androidChanged": false,
+    "portalLayoutChanged": false,
+    "requirementsLedgerChanged": false,
+    "cloudFamilyMutation": false
+  },
+  "remaining": [
+    "Operational private independent backup capture/key/destination/PITR/cloud drill",
+    "Atlas/provider pipeline requirement reconciliation and failure qualification",
+    "Poison100-frame-window fairness/repair/quarantine",
+    "Exact deployed config/schema/rollback and cloud query/CPU/fleet latency",
+    "All525 final per-ID owners/evidence/independent acceptance"
+  ]
+}
