@@ -29,7 +29,8 @@ const SCHEMAS = [
   'schema/015_phase8_device_identity.sql',
   'schema/016_p8b_remediation.sql',
   'schema/017_p8b_provider_rate.sql',
-  'schema/018_p8b_pin_pairing.sql'
+  'schema/018_p8b_pin_pairing.sql',
+  'schema/019_cardfree_retention.sql'
 ];
 
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||!/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA??''))throw Error('Exact beta branch/source required');

@@ -1,0 +1,8 @@
+PASS nested waitUntil work drains before completion and rejection is propagated
+PASS failed work releases its own claim for immediate automatic retry
+PASS concurrent claimant is BUSY and does not duplicate active work
+PASS failed old owner cannot delete a newer task owner
+PASS failed release-write does not suppress daily retry until tomorrow
+PASS interval starts at confirmed completion, not initial claim
+PASS unversioned task names cannot mix old lease protocols
+{"suite":"maintenance-leases","passed":7,"failed":0,"scope":"actual local D1; synthetic tasks and controlled clock only"}

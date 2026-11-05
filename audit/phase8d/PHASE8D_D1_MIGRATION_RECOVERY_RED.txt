@@ -1,0 +1,14 @@
+An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.
+PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge
+file:///workspace/scratch/e1379dfe94d5/brick/.brick-cardfree-recovery-B6fvgU/recovery.mjs:889
+  if (JSON.stringify(actual) !== JSON.stringify([...durable, ...excluded].sort())) throw Error("unclassified recovery schema");
+                                                                                         ^
+
+Error: unclassified recovery schema
+    at inventory (file:///workspace/scratch/e1379dfe94d5/brick/.brick-cardfree-recovery-B6fvgU/recovery.mjs:889:90)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async capture (file:///workspace/scratch/e1379dfe94d5/brick/.brick-cardfree-recovery-B6fvgU/recovery.mjs:892:3)
+    at async Module.exportCardfreeD1 (file:///workspace/scratch/e1379dfe94d5/brick/.brick-cardfree-recovery-B6fvgU/recovery.mjs:912:14)
+    at async file:///workspace/scratch/e1379dfe94d5/brick/scripts/test-phase8d-cardfree-recovery.mjs:64:15
+
+Node.js v24.22.1

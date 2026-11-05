@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {build} from 'esbuild';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
-import {newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
+import {newCardfreeDatabase as newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
 import {livePacketBytes} from './phase8d-do-state-fixture.mjs';
 const dir=fs.mkdtempSync(path.resolve('.brick-d1-ack-'));
 const config=JSON.parse(fs.readFileSync('wrangler.beta.template.jsonc','utf8'));

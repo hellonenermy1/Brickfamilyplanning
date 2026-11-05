@@ -615,3 +615,12 @@ No525-ID acceptance state is changed; no production/phone/endurance PASS.
 
 ## D1 exact-source hosted retest — a51d4d96a2888004025e7b0ffb7df4f6d31e9f06
 P8D-068/069/070/071/072 SOURCE/CI VERIFIED; runs42008010567/42008019532 and existing portal42008019430 completed-success; actual15/15,15/15 and10/10 step metadata verified, push/PR audit logs inspected. See PHASE8D_D1_HOSTED_CHECKPOINT.md and PHASE8D_D1_HOSTED_SOURCE_EVIDENCE.json. No live closure, P8D-002 operational/cloud P1 still OPEN, Phase8D NOT PASS. Later documentation commits do not change tested code.
+
+
+## D1 operations continuation — P8D-073–076 (2026-11-05)
+Recorded before correction on audit/phase8d-d1-qualification from bd039bc6 / prior tested a51d4d96. See PHASE8D_MAINTENANCE_FINDING_073.md and PHASE8D_D1_OPERATIONS_FINDINGS_074_076.md for original reproductions.
+P8D-073 (P1): deferred scheduled backup failure falsely completed and daily claim suppressed retry. Corrected promise draining, versioned success/in-flight leases, five-minute abandoned-lease recovery, conditional release, PENDING status and scheduler-owned request kick. Local native scheduler/lease tests pass; cloud budgets/operational backup remain open.
+P8D-074 (P1): D1 retention disagreed with raw30/trusted90, smoothing30/90 and backup30 policies. Corrected first-receipt/upload age, independent raw expiry/scrub and trusted retention, read/list gates and fixed-class durations. Logical deletion only; physical/PITR/off-platform erasure is not proven.
+P8D-075 (P1): stale eligible-object list deleted a fresh replacement; cleanup issued per-object statements. One atomic age-qualified DELETE per class with FK cascade, indexed bounded row cleanup and literal/index-ranged listing now pass actual D1 race/bounds tests. Revised counter avoids double counting preparation plus execution: observed baseline127 executions, corrected8 in60-object fixture; initial247 instrumentation was not a true query count.
+P8D-076 (P1): actual setup brick_dev_migrations table blocked recovery inventory. Exact bookkeeping schema is validated/classified, target ledger retained, unknown/malformed schema still rejected in native destructive recovery.
+Current status LOCAL RUNTIME VERIFIED; hosted exact-source CI pending. No final8D acceptance, live repair or P8D-002 operational/cloud closure inferred. All525 final acceptance rows remain unchanged.

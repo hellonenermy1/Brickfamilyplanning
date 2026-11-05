@@ -4,7 +4,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {build,transform} from 'esbuild';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
-import {newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
+import {newCardfreeDatabase as newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
 import {livePacketBytes} from './phase8d-do-state-fixture.mjs';
 const dir=fs.mkdtempSync(path.resolve('.brick-beta-workerd-'));
 const runtime=path.join(dir,'worker.mjs');
@@ -79,7 +79,7 @@ try{
  assert.equal((await mf.dispatchFetch('http://localhost/api/device/'+DEVICE_A+'/location',{method:'POST',headers:{'X-Brick-Signature':signature},body:bytes})).status,200);
  await until(async()=> (await db.prepare('SELECT COUNT(*) n FROM dev_location_history').first()).n>0,'normal accepted location to D1 history');
  proof=await (await signed('/beta/readiness',ready())).json();assert.equal(proof.checks.length,6);assert.ok(proof.checks.every(x=>x.status==='PASS'),JSON.stringify(proof.checks));
- assert.equal((await db.prepare('SELECT COUNT(*) n FROM dev_object_store').first()).n,0);
+ assert.equal((await db.prepare('SELECT COUNT(*) n FROM dev_object_store WHERE key LIKE \'beta/probes/%\'').first()).n,0);
  console.log('PASS native signed D1 primary/chunked-object readback, D1 direct event persistence, real device DO/current state, normal location history and selected-device WebSocket ACK; no canned PASS');
  const run={runId:crypto.randomUUID(),startedAtMs:Date.now(),releaseId,apkSourceSha,bindingHash:'c'.repeat(64),version:'1.0.0-beta.1',model:'synthetic',android:'15',osBuild:'AOSP',escapeVerifiedByUser:true};
  const observation={wallMs:Date.now(),elapsedMs:2000,boot:1,health:{recordedAtMs:Date.now(),network:'wifi',locationSubscribed:true,bleAnchorProviderHealth:'HEALTHY'},sameBootGapMs:null,bootChanged:false};

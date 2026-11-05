@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
-import {newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
+import {newCardfreeDatabase as newDatabase,ecdsa,DEVICE_A,DEVICE_B} from './phase8d-native-fixture.mjs';
 import {livePacketBytes} from './phase8d-do-state-fixture.mjs';
 const dir=fs.mkdtempSync(path.resolve('.brick-cardfree-recovery-'));
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -22,6 +22,7 @@ async function start(name,restore=false,initialize=true){
  }));live.add(mf);
  const db=await mf.getD1Database('DB'),beta=await mf.getD1Database('BETA_DB');
  if(initialize){const n=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql'])n.exec(fs.readFileSync('schema/'+f,'utf8'));for(const row of n.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();n.close();for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();}
+ if(initialize){await db.prepare('CREATE TABLE IF NOT EXISTS brick_dev_migrations(name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)').run();await db.prepare('INSERT INTO brick_dev_migrations VALUES(?1,?2)').bind('synthetic-current-schema',123).run();}
  const ns=await mf.getDurableObjectNamespace('BRICK_DEVICE');
  return {mf,db,beta,ns,persist,env:{DB:db,BETA_DB:beta,...(restore?{BRICK_RECOVERY_MODE:'isolated-restore'}:{})},stub:id=>ns.get(ns.idFromName(id))};
 }
@@ -29,7 +30,7 @@ async function close(store){await store.mf.dispose();live.delete(store.mf);}
 async function rpc(store,id,method,args){return(await store.mf.dispatchFetch('http://localhost/__synthetic_rpc',{method:'POST',body:JSON.stringify({id,method,args})})).json();}
 async function counts(db,tables){const result={};for(const table of tables)result[table]=(await db.prepare('SELECT COUNT(*) n FROM '+table).first()).n;return result;}
 try{
- const harness=`import worker from './src/worker-beta-cardfree.ts';import {BrickDevice as BetaDevice} from './src/worker-beta-cardfree.ts';export {BetaScheduler} from './src/worker-beta-cardfree.ts';export class BrickDevice extends BetaDevice{async seedSyntheticState(key,value){if(value===null)await this.ctx.storage.delete(key);else await this.ctx.storage.put(key,value);}async readSyntheticState(key){return await this.ctx.storage.get(key);}}export default {...worker,async fetch(req,env,ctx){if(new URL(req.url).pathname!=='/__synthetic_rpc')return worker.fetch(req,env,ctx);const {id,method,args}=await req.json();try{return Response.json({ok:true,value:await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id))[method](...args)});}catch(e){return Response.json({ok:false,error:e.message});}}};`;
+ const harness=`import worker from './src/worker-beta-cardfree.ts';import {BrickDevice as BetaDevice,BetaScheduler as ActualScheduler} from './src/worker-beta-cardfree.ts';export class BetaScheduler extends ActualScheduler{async settleSynthetic(){await this.running;}}export class BrickDevice extends BetaDevice{async seedSyntheticState(key,value){if(value===null)await this.ctx.storage.delete(key);else await this.ctx.storage.put(key,value);}async readSyntheticState(key){return await this.ctx.storage.get(key);}}export default {...worker,async fetch(req,env,ctx){if(new URL(req.url).pathname!=='/__synthetic_rpc')return worker.fetch(req,env,ctx);const {id,method,args}=await req.json();try{return Response.json({ok:true,value:await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id))[method](...args)});}catch(e){return Response.json({ok:false,error:e.message});}}};`;
  await build({stdin:{contents:harness,resolveDir:process.cwd()},outfile:path.join(dir,'worker.mjs'),bundle:true,format:'esm',platform:'browser',target:'es2022',external:['cloudflare:workers']});
  for(const [name,file] of [['recovery','src/cardfree-recovery.ts'],['storage','src/dev-free-runtime.ts']])await build({entryPoints:[file],outfile:path.join(dir,name+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24'});
  const recovery=await import(pathToFileURL(path.join(dir,'recovery.mjs')).href),{D1ObjectBucket}=await import(pathToFileURL(path.join(dir,'storage.mjs')).href);
@@ -58,6 +59,7 @@ try{
  for(const id of [DEVICE_A,DEVICE_B]){const result=await rpc(source,id,'exportRecoveryState',[id]);assert.equal(result.ok,true,'beta DO snapshot must handle its own diagnostic key: '+result.error);const serialized=result.value;assert.equal(JSON.parse(serialized).state.betaDiagnostic,undefined);doSnapshots.push({id,serialized,sha256:sha(serialized)});}
  assert.equal((await rpc(source,DEVICE_A,'readSyntheticState',['betaDiagnostic'])).value.token,token,'snapshot must not delete a live readiness challenge');
  console.log('PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge');
+ const sourceSchedulerNs=await source.mf.getDurableObjectNamespace('BETA_SCHEDULER'),sourceScheduler=sourceSchedulerNs.get(sourceSchedulerNs.idFromName('beta-maintenance'));await sourceScheduler.settleSynthetic();assert.equal((await sourceScheduler.status()).lastTick.status,'COMPLETED');
  // No further traffic/writes/maintenance after this synthetic quiescence point.
  await assert.rejects(()=>recovery.exportCardfreeD1(source.env,false),/quiesced/);
  const backup=await recovery.exportCardfreeD1(source.env,true);
@@ -76,7 +78,9 @@ try{
  await rejectChanged(x=>{delete x.diagnostics.tables.beta_reviews;},/inventory mismatch/);
  await rejectChanged(x=>{x.primary.tables.dev_object_store[0].etag='0'.repeat(64);},/hash mismatch/);
  await rejectChanged(x=>{x.diagnostics.tables.beta_reviews[0].payload={bad:'cell'};},/recovery cell/);
- const result=await recovery.restoreCardfreeD1(target.env,backup.body,backup.sha256);assert.equal(result.primaryTables,41);assert.equal(result.diagnosticTables,4);
+ await target.db.prepare('CREATE TABLE unexpected_recovery_state(id TEXT)').run();await assert.rejects(()=>recovery.restoreCardfreeD1(target.env,backup.body,backup.sha256),/unclassified/);await target.db.prepare('DROP TABLE unexpected_recovery_state').run();
+ await target.db.prepare('DROP TABLE brick_dev_migrations').run();await target.db.prepare('CREATE TABLE brick_dev_migrations(name TEXT,hidden_data TEXT)').run();await assert.rejects(()=>recovery.restoreCardfreeD1(target.env,backup.body,backup.sha256),/bookkeeping schema/);await target.db.prepare('DROP TABLE brick_dev_migrations').run();await target.db.prepare('CREATE TABLE brick_dev_migrations(name TEXT PRIMARY KEY,applied_at INTEGER NOT NULL)').run();await target.db.prepare("INSERT INTO brick_dev_migrations VALUES('target-schema',456)").run();
+ const result=await recovery.restoreCardfreeD1(target.env,backup.body,backup.sha256);assert.equal(result.primaryTables,41);assert.equal(result.diagnosticTables,4);assert.equal((await target.db.prepare('SELECT applied_at FROM brick_dev_migrations').first()).applied_at,456,'target migration ledger must remain its own');
  assert.deepEqual(await counts(target.db,recovery.CARDFREE_PRIMARY_TABLES),Object.fromEntries(Object.entries(expected.primary.tables).map(([k,v])=>[k,v.length])));
  assert.deepEqual(await counts(target.beta,recovery.CARDFREE_DIAGNOSTIC_TABLES),Object.fromEntries(Object.entries(expected.diagnostics.tables).map(([k,v])=>[k,v.length])));
  assert.equal((await target.db.prepare('SELECT status FROM device_commands').first()).status,'expired');

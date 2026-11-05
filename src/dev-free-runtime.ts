@@ -6,6 +6,17 @@ export const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
 const HISTORY_SEGMENT_MS = 15 * 60 * 1000;
 const MAP_KEY = "basemap/singapore.pmtiles";
 const META_KEY = "basemap/singapore.meta.json";
+const DAY_MS = 86_400_000;
+// Match the retained raw/trusted API contract, smoothing policies and backup metadata.
+export const D1_OBJECT_RETENTION = [
+  ["history/raw/", 30], ["history/trusted/", 90],
+  ["history/hypotheses/", 30], ["history/refined/", 90],
+  ["evidence/raw/", 14], ["backups/d1/", 30]
+] as const;
+function expiredObject(meta: StoredMeta, now = Date.now()) {
+  const rule = D1_OBJECT_RETENTION.find(([prefix]) => meta.key.startsWith(prefix));
+  return !!rule && meta.uploaded_at < now - rule[1] * DAY_MS;
+}
 
 type StoredMeta = {
   key: string;
@@ -227,11 +238,12 @@ async function virtualHistoryObject(db: D1Database, key: string) {
   if (!parsed) return null;
   const rows = await db.prepare(
     "SELECT device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at " +
-    "FROM dev_location_history WHERE safe_device_id=?1 AND segment_start_ms=?2 AND epoch=?3 ORDER BY sequence"
-  ).bind(parsed.safeDevice, parsed.start, parsed.epoch).all<HistoryRow>();
+    "FROM dev_location_history WHERE safe_device_id=?1 AND segment_start_ms=?2 AND epoch=?3 AND created_at>=?4 " +
+    (parsed.kind === "raw" ? "AND raw_packet_json<>'null' " : "") + "ORDER BY sequence"
+  ).bind(parsed.safeDevice, parsed.start, parsed.epoch, Date.now() - (parsed.kind === "raw" ? 30 : 90) * DAY_MS).all<HistoryRow>();
   if (!rows.results.length) return null;
   const trustedPackets = rows.results.map(row => unpackPacket(row.trusted_packet_json));
-  const rawPackets = rows.results.map(row => unpackPacket(row.raw_packet_json));
+  const rawPackets = parsed.kind === "raw" ? rows.results.map(row => unpackPacket(row.raw_packet_json)) : [];
   const deviceId = rows.results[0].device_id;
   const storedAt = Math.max(...rows.results.map(row => row.created_at));
   const body = parsed.kind === "raw"
@@ -262,9 +274,10 @@ async function virtualHistoryList(db: D1Database, prefix: string, offset: number
   if (!parsed) return null;
   const rows = await db.prepare(
     "SELECT segment_start_ms,epoch,MAX(created_at) AS max_created_at FROM dev_location_history " +
-    "WHERE safe_device_id=?1 AND segment_start_ms>=?2 AND segment_start_ms<?3 " +
+    "WHERE safe_device_id=?1 AND segment_start_ms>=?2 AND segment_start_ms<?3 AND created_at>=?6 " +
+    (parsed.kind === "raw" ? "AND raw_packet_json<>'null' " : "") +
     "GROUP BY segment_start_ms,epoch ORDER BY segment_start_ms,epoch LIMIT ?4 OFFSET ?5"
-  ).bind(parsed.safeDevice, parsed.dayStart, parsed.dayEnd, limit + 1, offset).all<HistorySegmentRow>();
+  ).bind(parsed.safeDevice, parsed.dayStart, parsed.dayEnd, limit + 1, offset, Date.now() - (parsed.kind === "raw" ? 30 : 90) * DAY_MS).all<HistorySegmentRow>();
   const truncated = rows.results.length > limit;
   const page = rows.results.slice(0, limit);
   return {
@@ -357,9 +370,10 @@ export class D1ObjectBucket {
   }
 
   private async meta(key: string) {
-    return this.db.prepare(
+    const meta = await this.db.prepare(
       "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key=?1"
     ).bind(key).first<StoredMeta>();
+    return meta && !expiredObject(meta) ? meta : null;
   }
 
   async head(key: string) {
@@ -380,7 +394,7 @@ export class D1ObjectBucket {
     ]);
     if (result.length !== 2 || !Array.isArray(result[0]?.results) || !Array.isArray(result[1]?.results)) throw new Error("incomplete D1 object read");
     const meta = result[0].results[0] as StoredMeta | undefined;
-    if (!meta) return null;
+    if (!meta || expiredObject(meta)) return null;
     if (!Number.isSafeInteger(meta.size) || meta.size < 0 || meta.size > MAX_OBJECT_BYTES || !/^[a-f0-9]{64}$/.test(meta.etag)) throw new Error("invalid D1 object metadata");
     const rows = result[1].results as ChunkRow[];
     if (rows.length !== Math.ceil(meta.size / CHUNK_BYTES)) throw new Error("development object is incomplete");
@@ -420,9 +434,11 @@ export class D1ObjectBucket {
     const limit = Math.max(1, Math.min(1000, Number(options.limit ?? 1000)));
     const virtual = await virtualHistoryList(this.db, prefix, offset, limit);
     if (virtual) return virtual;
+    const upper = /^[\x20-\x7e]+$/.test(prefix) ? prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1) : null;
+    const available = D1_OBJECT_RETENTION.map(([keyPrefix, days]) => "(substr(key,1," + keyPrefix.length + ")<>'" + keyPrefix + "' OR uploaded_at>=?4-" + days * DAY_MS + ")").join(" AND ");
     const rows = await this.db.prepare(
-      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key LIKE ?1 ESCAPE '\\' ORDER BY key LIMIT ?2 OFFSET ?3"
-    ).bind(`${prefix.replace(/[\\%_]/g, "\\$&")}%`, limit + 1, offset).all<StoredMeta>();
+      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key>=?1 AND " + (upper ? "key<?5 AND " : "") + "substr(key,1,length(?1))=?1 AND " + available + " ORDER BY key LIMIT ?2 OFFSET ?3"
+    ).bind(prefix, limit + 1, offset, Date.now(), ...(upper ? [upper] : [])).all<StoredMeta>();
     const truncated = rows.results.length > limit;
     const page = rows.results.slice(0, limit);
     return {
@@ -603,27 +619,25 @@ export function developmentRuntimeEnv<T extends Record<string, unknown>>(env: T)
 }
 
 export async function cleanupDevelopmentObjectStore(db: D1Database, now = Date.now()) {
-  const rules = [
-    ["history/raw/%", 14],
-    ["history/trusted/%", 30],
-    ["history/hypotheses/%", 14],
-    ["history/refined/%", 30],
-    ["evidence/raw/%", 14],
-    ["backups/d1/%", 7]
-  ] as const;
-  for (const [pattern, days] of rules) {
-    const cutoff = now - days * 86_400_000;
-    const rows = await db.prepare("SELECT key FROM dev_object_store WHERE key LIKE ?1 AND uploaded_at<?2 ORDER BY uploaded_at LIMIT 200").bind(pattern, cutoff).all<{ key: string }>();
-    if (!rows.results.length) continue;
-    const bucket = new D1ObjectBucket(db);
-    await bucket.delete(rows.results.map(row => row.key));
+  if (!Number.isSafeInteger(now) || now <= 0) throw new Error("invalid cleanup timestamp");
+  for (const [prefix, days] of D1_OBJECT_RETENTION) {
+    // Eligibility and deletion share one statement. FK CASCADE deletes only this
+    // version's chunks; a newly refreshed key cannot be deleted from a stale list.
+    await db.prepare("DELETE FROM dev_object_store WHERE key IN (SELECT key FROM dev_object_store WHERE key LIKE ?1 AND uploaded_at<?2 ORDER BY uploaded_at,key LIMIT 200)").bind(prefix + "%", now - days * DAY_MS).run();
   }
 
   // History rows are already compact (one append per accepted fix). Cap cleanup work so a busy day
   // cannot itself consume the Free-plan write budget. Normal adaptive tracking remains bounded; an
   // extreme 24/7 high-frequency test degrades by retaining extra old rows rather than dropping new data.
-  const historyCutoff = now - 35 * 86_400_000;
+  const historyCutoff = now - 90 * DAY_MS;
   await db.prepare(
-    "DELETE FROM dev_location_history WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE wall_time_ms<?1 ORDER BY wall_time_ms LIMIT 5000)"
+    "DELETE FROM dev_location_history WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE created_at<?1 ORDER BY created_at LIMIT 5000)"
   ).bind(historyCutoff).run();
+  // The trusted packed packet also held raw-only fields. Remove those copies,
+  // preserving every field emitted by trustedPoint()/the trusted delta codec.
+  await db.prepare(
+    "UPDATE dev_location_history SET raw_packet_json='null',trusted_packet_json=json_set(trusted_packet_json," +
+    "'$[5]',NULL,'$[6]',NULL,'$[7]',NULL,'$[14]',NULL,'$[15]',NULL,'$[16]',NULL,'$[23]',0,'$[24]',0,'$[25]',0,'$[26]',0,'$[27]',NULL) " +
+    "WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE created_at<?1 AND raw_packet_json<>'null' ORDER BY created_at LIMIT 5000)"
+  ).bind(now - 30 * DAY_MS).run();
 }

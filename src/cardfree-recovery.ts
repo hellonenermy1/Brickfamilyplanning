@@ -47,7 +47,9 @@ async function columns(db: D1Database, table: string): Promise<Column[]> {
   return result.results.map(({ name, type, notnull, pk, dflt_value }) => ({ name, type, notnull, pk, dflt_value }));
 }
 async function inventory(db: D1Database, durable: readonly string[], excluded: readonly string[]) {
-  const actual = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('_cf_METADATA','d1_migrations')").all<{ name: string }>()).results.map(x => x.name).sort();
+  const actual = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations')").all<{ name: string }>()).results.map(x => x.name).sort();
+  const metadata = (await db.prepare('PRAGMA table_info(brick_dev_migrations)').all<Column>()).results;
+  if (metadata.length && (metadata.length !== 2 || metadata[0].name !== 'name' || metadata[0].type !== 'TEXT' || metadata[0].pk !== 1 || metadata[1].name !== 'applied_at' || metadata[1].type !== 'INTEGER' || metadata[1].notnull !== 1)) throw Error('invalid migration bookkeeping schema');
   if (JSON.stringify(actual) !== JSON.stringify([...durable, ...excluded].sort())) throw Error('unclassified recovery schema');
 }
 async function capture(db: D1Database, durable: readonly string[], excluded: readonly string[]): Promise<Store> {

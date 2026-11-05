@@ -24,6 +24,11 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
+      - name: Beta provisioner and shared compatibility schema syntax
+        run: |
+          node --check scripts/setup-beta-d1.mjs
+          node --check scripts/ensure-beta-d1-columns.mjs
+          node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
       - name: D1 object read integrity and atomic conditional-write regressions
         run: node scripts/test-phase8d-d1-object-integrity.mjs
@@ -31,6 +36,12 @@ jobs:
         run: node scripts/test-phase8d-cardfree-recovery.mjs
       - name: Signed D1 history ACK partial-batch retry and exact revoke race
         run: node scripts/test-phase8d-d1-ack-faults.mjs
+      - name: Receipt-age retention cleanup race and bounded statement envelope
+        run: node scripts/test-phase8d-d1-retention.mjs
+      - name: Scheduler delayed failure and automatic retry
+        run: node scripts/test-phase8d-maintenance-failure.mjs
+      - name: Versioned leases nested work and release-outage recovery
+        run: node scripts/test-phase8d-maintenance-leases.mjs
       - name: Existing beta auth history map and WebSocket regressions
         run: node scripts/test-beta-workerd.mjs
       - name: Original production DO and multi-store recovery regressions

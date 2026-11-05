@@ -1,3 +1,4 @@
+import {BETA_COMPAT_COLUMNS} from './beta-compat-columns.mjs';
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-beta';
 
@@ -63,31 +64,8 @@ async function ensureColumns(table, columns) {
   return added;
 }
 
-const added = [
-  ...await ensureColumns('devices', [
-    ['last_health_at', 'INTEGER'],
-    ['health_status', "TEXT NOT NULL DEFAULT 'unknown'"],
-    ['recovery_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['pending_records', 'INTEGER NOT NULL DEFAULT 0'],
-    ['app_version', 'TEXT']
-  ]),
-  ...await ensureColumns('geofence_state', [
-    ['last_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_sequence', 'INTEGER NOT NULL DEFAULT 0']
-  ]),
-  ...await ensureColumns('trips', [
-    ['destination_radius_m', 'REAL NOT NULL DEFAULT 120'],
-    ['arrival_candidate_since', 'INTEGER'],
-    ['arrival_candidate_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_alert_at', 'INTEGER'],
-    ['stationary_since', 'INTEGER'],
-    ['last_stop_alert_at', 'INTEGER'],
-    ['last_eval_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_eval_sequence', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_distance_to_destination_m', 'REAL'],
-    ['last_location_at', 'INTEGER']
-  ])
-];
+const added = [];
+for(const [table, columns] of Object.entries(BETA_COMPAT_COLUMNS)) added.push(...await ensureColumns(table, columns));
 
 const verify = await d1Query('PRAGMA table_info(devices)');
 const deviceColumns = new Set((verify?.[0]?.results || []).map(row => row.name));
