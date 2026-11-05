@@ -31,3 +31,14 @@ User additionally requested the beta MapLibre map be shorter, roughly half viewp
 
 ### 2026-11-05 — urgent parent dashboard blank regression
 After PRs #28 and #29, user screenshot showed authenticated `brick-family-beta` portal with **empty phone selector and no MapLibre initialization**, not proof of any D1 device deletion. The browser may have reused the old `/brick-map.mjs` for up to one year under the original `immutable` asset headers, while the new HTML asked for newly exported names. This is a strong source-level hypothesis **not yet proved by Chrome console/network evidence**. Hotfix #30 merged at `63075728e51d62d83641a0883deeb5e585fdf116` after successful tests: restored original four-function module import, versioned module URL, changed static asset caching to revalidation, and removed optional map diagnostics from critical dashboard startup. Maintains 92vh desktop/70vh mobile map, Phase 8D APK and D1. Do not represent browser fix as verified before screenshot/observability confirms devices + map controls return. Track in GitHub issue #26.
+
+## Verified cross-chat checkpoint — 5 November 2026
+A fresh GitHub inspection supersedes older “deployment pending” statements above: beta source63075728e51d62d83641a0883deeb5e585fdf116 deployed successfully in run41996937662. All four jobs completed-success; actual deploy log names the source, beta host, final printed Worker version596a193d-d05c-46be-9885-835e7d168b62 and successful private card-free verifier. Deployment evidence artifact13400592823. This is inspected CI evidence, not independent proof that no later deployment exists. Actual signed-in browser map/device-picker rendering remains unverified. Keep issue26 open.
+
+Issue26 latest comment6654137276 also records Wi-Fi schedule “unsupported” after reported Device Owner enablement; stored last-result age/detail/current observed Wi-Fi state need truthful presentation and controlled verification. Repeated location-backlog degradation is separate from map tiles. No phone action, reset or72h pass is inferred.
+
+Formal Phase8D remained NOT PASS at pre-checkpoint71f5460. Documentation-only continuation rules/checkpoint now live at:
+https://github.com/hellonenermy1/Brickfamilyplanning/blob/9f28f7c4ea2155d99a7754ae50cd8ff24dabed2c/audit/phase8d/PHASE8D_CHAT_HANDOFF_2026-11-05.md
+Read that handoff for exact branch/runtime/CI identities, all525 unresolved acceptance dispositions and the superseding D1 qualification queue. Do not execute historical R2 provisioning/token instructions. Documentation commits do not requalify runtime or deploy automatically.
+
+User direction: “continue” means the largest practical batch of substantive authorized work, including fixes, relevant verification and durable evidence updates; keep going through independent work if a dependency is blocked. No unnecessary stop/reconfirmation, audit restart, speculative success, feature removal or unscoped deletion.
