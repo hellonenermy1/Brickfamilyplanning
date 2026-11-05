@@ -32,6 +32,11 @@ class BetaReadinessActivity : AppCompatActivity() {
         }
         button("Run readiness checks") { task { BetaDiagnostics.runChecks(this).toString(2) } }
         button("Refresh recorded results") { refresh() }
+        button("App permissions / background Location") {
+            startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName")))
+        }
+        button("Screen-time Usage access") { startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+        button("Battery optimisation settings") { startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         button("Start controlled 72-hour run") {
             AlertDialog.Builder(this).setTitle("Start recorded beta run?")
                 .setMessage("Only continue after all core checks pass and you have externally verified Device Owner release and uninstall on this device/build using a disposable installation. Pressing CONFIRM records YOUR escape-verification attestation, not an automated proof. Phase2 backend and portal must be ready. No destructive test runs during endurance.")

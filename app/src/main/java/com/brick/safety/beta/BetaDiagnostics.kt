@@ -39,7 +39,7 @@ object BetaDiagnostics {
     private val storage = Any()
     @Volatile private var recorderHealthy = true
     private fun active(c: Context) = BuildConfig.BRICK_BETA_DIAGNOSTICS && !stopped.get() &&
-        DeprovisionManager.stage(c) == DeprovisionManager.Stage.NONE && !DeepOffManager.isActive(c)
+        DeprovisionManager.stage(c) == DeprovisionManager.Stage.NONE && !DeepOffManager.isActive(c) && BetaSafety.isOperational(c)
     private fun <T> admitted(context: Context, action: () -> T): T {
         check(active(context)) { "beta_runtime_quiesced" }
         check(fence.readLock().tryLock(100, TimeUnit.MILLISECONDS)) { "beta_runtime_busy" }
@@ -78,6 +78,20 @@ object BetaDiagnostics {
             if (Build.VERSION.SDK_INT >= 33) listOf(Manifest.permission.POST_NOTIFICATIONS) else emptyList()
         val missing = permissions.filter { ContextCompat.checkSelfPermission(c, it) != PackageManager.PERMISSION_GRANTED }
         add("permissions", if (missing.isEmpty()) Status.PASS else Status.FAIL, if (missing.isEmpty()) "Required permissions granted" else "Required: ${missing.joinToString { it.substringAfterLast('.') }}")
+        val nearby = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 31 && c.packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            nearby += Manifest.permission.BLUETOOTH_SCAN; nearby += Manifest.permission.BLUETOOTH_ADVERTISE
+        }
+        if (Build.VERSION.SDK_INT >= 33 && c.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI)) nearby += Manifest.permission.NEARBY_WIFI_DEVICES
+        val missingNearby = nearby.filter { ContextCompat.checkSelfPermission(c, it) != PackageManager.PERMISSION_GRANTED }
+        add("feature_permissions", if (missingNearby.isEmpty()) Status.PASS else Status.PENDING,
+            if (missingNearby.isEmpty()) "Required nearby-device permissions granted for exposed hardware" else "Grant in app permissions: ${missingNearby.joinToString { it.substringAfterLast('.') }}")
+        val usage = c.getSystemService(android.app.AppOpsManager::class.java).unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), c.packageName)
+        add("usage_access", if (usage == android.app.AppOpsManager.MODE_ALLOWED) Status.PASS else Status.PENDING,
+            "Screen-time feature requires explicit Android Usage access; use the settings button")
+        val power = c.getSystemService(android.os.PowerManager::class.java)
+        add("power_policy", if (power.isIgnoringBatteryOptimizations(c.packageName)) Status.PASS else Status.PENDING,
+            "Battery policy/device-specific background survival still needs real-device evidence", false)
         val dpm = c.getSystemService(DevicePolicyManager::class.java)
         val admin = ComponentName(c, BrickDeviceAdminReceiver::class.java)
         val managed = dpm.isDeviceOwnerApp(c.packageName) && dpm.isAdminActive(admin)
@@ -89,6 +103,17 @@ object BetaDiagnostics {
         val tracking = age != null && age in 0..180_000 && locationAge != null && locationAge in 0..(interval * 3 + 60_000) &&
             (health?.optBoolean("locationSubscribed") == true) && c.getSystemService(LocationManager::class.java).isLocationEnabled
         add("tracking", if (tracking) Status.PASS else Status.PENDING, "Fresh subscribed tracking evidence required; age=${locationAge ?: "unavailable"}ms, expected cadence=${interval}ms")
+        health?.let { snapshot ->
+          snapshot.keys().asSequence().filter { it.endsWith("ProviderCapability") }.forEach { key ->
+            val capability = snapshot.optString(key).uppercase(java.util.Locale.ROOT)
+            val providerHealth = snapshot.optString(key.removeSuffix("Capability") + "Health").uppercase(java.util.Locale.ROOT)
+            val knownCapability = capability.takeIf { it.matches(Regex("[A-Z_]{1,40}")) } ?: "NOT_REPORTED"
+            val knownHealth = providerHealth.takeIf { it.matches(Regex("[A-Z_]{1,40}")) } ?: "NOT_REPORTED"
+            val status = when { knownCapability == "UNSUPPORTED" -> Status.UNSUPPORTED; knownHealth == "FAILED" -> Status.FAIL
+                knownCapability == "SUPPORTED" && knownHealth == "HEALTHY" -> Status.PASS; else -> Status.PENDING }
+            add("provider_" + key.removeSuffix("ProviderCapability"), status, "Reported capability=$knownCapability health=$knownHealth; live hardware qualification remains separate", knownCapability == "SUPPORTED" && knownHealth == "FAILED")
+          }
+        }
         try { journalProbe(c); add("journal", Status.PASS, "Encrypted isolated probe committed in actual journal, closed/reopened/read back; quick_check ok") }
         catch (_: Exception) { add("journal", Status.FAIL, "Actual journal persistence/readback failed") }
         val cm = c.getSystemService(ConnectivityManager::class.java)
@@ -102,7 +127,8 @@ object BetaDiagnostics {
             BetaReadinessModel.backendChecks.forEach { add(it, Status.PENDING, "Phase2 end-to-end proof pending") }
         } else {
             try {
-                val result = BetaApi.request(base, device, "readiness")
+                val local = JSONArray(checks.map { JSONObject().put("id", it.id).put("status", it.status.name).put("required", it.required).put("detail", it.detail) })
+                val result = BetaApi.request(base, device, "readiness", JSONObject().put("localChecks", local).put("localCheckedAtMs", System.currentTimeMillis()).put("appVersion", BuildConfig.VERSION_NAME))
                 add("backend_identity", Status.PASS, "Matching beta release and fresh nonce; backend source ${result.getString("backendSourceSha")}")
                 val server = result.optJSONArray("checks") ?: JSONArray()
                 BetaReadinessModel.backendChecks.forEach { id ->
@@ -177,6 +203,10 @@ object BetaDiagnostics {
             val fields = listOf("serviceUptimeMs", "locationAgeMs", "locationCallbackAgeMs", "ackAgeMs", "pendingRecords", "pendingSafetyEvents", "oldestPendingAgeMs", "network", "locationEnabled", "locationSubscribed", "batteryPct", "charging", "activityMode", "trackingIntervalMs", "recoveryCount", "healthSequence", "networkValidated", "journalWriteHealthy")
             val safe = JSONObject().put("recordedAtMs", System.currentTimeMillis())
             fields.forEach { if (source.has(it)) safe.put(it, source.get(it)) }
+            source.keys().asSequence().filter { it.endsWith("ProviderCapability") || it.endsWith("ProviderHealth") }.forEach { key ->
+                val value = source.optString(key)
+                if (value.matches(Regex("[A-Za-z_]{1,40}"))) safe.put(key, value)
+            }
             val battery = c.getSystemService(android.os.BatteryManager::class.java)
             if (!safe.has("batteryPct")) {
                 val pct = battery.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
@@ -204,7 +234,7 @@ object BetaDiagnostics {
                 if (s.get("active") != "true" || (lastBoot == boot && now >= last && now - last < delay)) return@store null
                 s.put("lastUploadElapsed", now.toString()); s.put("uploadBoot", boot.toString()); s.put("uploadDelayMs", "60000")
                 val records = s.batch(); if (records.length() == 0) return@store null
-                JSONObject().put("run", JSONObject(s.get("run") ?: error("missing_run"))).put("records", records).put("droppedRecords", s.get("dropped")?.toLongOrNull() ?: 0)
+                JSONObject().put("run", JSONObject(s.get("run") ?: error("missing_run"))).put("readiness", s.get("readiness")?.let(::JSONObject) ?: JSONObject.NULL).put("records", records).put("droppedRecords", s.get("dropped")?.toLongOrNull() ?: 0)
             } ?: return@admitted
             val p = c.getSharedPreferences("brick", Context.MODE_PRIVATE)
             val result = BetaApi.request(p.getString("apiBase", null) ?: return@admitted, p.getString("deviceId", null) ?: return@admitted, "observations", batch)
