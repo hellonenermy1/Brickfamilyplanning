@@ -19,7 +19,7 @@
     "id": 127060470494,
     "conclusion": "skipped"
   },
-  "phase2Status": "IMPLEMENTED_TESTED_CLOUD_AND_APK_RELEASE_BLOCKED",
+  "phase2Status": "D1_REDESIGN_REQUIRED_OLD_R2_PLAN_SUPERSEDED",
   "livePortalUrl": null,
   "cloudWrites": "NONE",
   "endurance72h": "NOT_STARTED",
@@ -90,10 +90,17 @@
   "apkDownloadAvailable": false,
   "observedConcurrentApkHead": "f7c07b328c99c90cd687fdf770b0c4ef3c9ab608",
   "nextActions": [
-    "Enable/restore intended account R2 entitlement (403 code10042)",
-    "Check/init Zero Trust Access and necessary API scopes (403 code9999)",
-    "Coordinate the concurrent APK safety work; verify exact signing, escape/reboot and durable tests, then update all artifact/source/hash/install pins and availability",
-    "Run the prepared guarded launch workflow and use its actual deployment URL",
-    "Verify live authenticated parent/browser/maps/phone and independent physical removal; start controlled72h only after complete readiness"
-  ]
+    "Read root AGENTS.md and PROJECT_MEMORY.md; never ask for R2 activation",
+    "Adapt and qualify existing D1-backed history/object/event/parent-session components while retaining current features",
+    "Choose and test card-free map and APK delivery within real limits",
+    "Coordinate truthful D1 readiness contract with APK; preserve concurrent escape/reboot safety work",
+    "Replace obsolete R2 launch workflow, test actual D1 paths, then deploy and verify the no-card beta"
+  ],
+  "userConstraint": {
+    "creditCardAvailable": false,
+    "r2Allowed": false,
+    "paidSubscriptionRequired": false,
+    "storageDirection": "D1-first, card-free",
+    "oldR2ActivationAdvice": "SUPERSEDED_ASSISTANT_ERROR"
+  }
 }

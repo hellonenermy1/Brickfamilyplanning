@@ -1,5 +1,7 @@
 # Phase2 handoff — implement against the delivered APK, not a guessed diagnostic API
 
+SUPERSEDED STORAGE REQUIREMENT: The user reconfirmed NO R2 / NO CREDIT CARD on2026-11-05 and explicitly requests D1 substitution. Read root AGENTS.md and PROJECT_MEMORY.md. R2/Queue-equivalence requirements below describe the old design and must not override this rule. Implement and test an honestly labelled D1-backed persistence/delivery contract, coordinating APK diagnostics as needed. Do not ask the user to activate R2 or enable paid services.
+
 Phase1 base71f5460fa6dfb47e276121e6c69db98cdae4485a. APK branch beta/apk; shared release brick-beta-20261105-01; intended backend/portal branch beta/backend-portal from the SAME base. Import beta/contract-v1.json and the delivered APK manifest/checksum from the successful APK source build; do not silently choose a new Phase8D base or APK. Preserve all existing Worker/portal functionality. Phase1 does not deploy these endpoints.
 
 ## Exact client protocol

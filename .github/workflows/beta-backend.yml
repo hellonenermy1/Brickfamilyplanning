@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   cloud-preflight:
+    # Historical R2/Access capability probe; not a requirement for the D1 redesign.
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -48,6 +50,9 @@ jobs:
       - name: Bundle the exact beta Worker without cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
   deploy:
+    # User requires D1/card-free: obsolete R2 provisioner must never launch.
+    # Re-enable only after the D1 replacement and matching APK contract pass qualification.
+    if: ${{ false }}
     needs: [cloud-preflight, test, apk-currency]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
