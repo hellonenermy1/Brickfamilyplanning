@@ -25,11 +25,12 @@ export function cardfreeRuntime(env:Env):Env{
 // URL. Never widen the parent's CSP to allow arbitrary external requests or leak child map
 // viewport requests from the browser directly to a tile provider.
 async function serveBetaOneMapTile(url:URL):Promise<Response|null>{
+ const logo=url.pathname==='/parent/map/onemap/logo.png';
  const match=url.pathname.match(/^\/parent\/map\/onemap\/(Default_HD|Grey)\/(\d{1,2})\/(\d{1,7})\/(\d{1,7})\.png$/);
- if(!match)return null;
- const z=Number(match[2]),x=Number(match[3]),y=Number(match[4]);
- if(z<11||z>19||x>=2**z||y>=2**z)return betaJson({error:'invalid_map_tile'},404);
- const upstream='https://www.onemap.gov.sg/maps/tiles/'+match[1]+'/'+z+'/'+x+'/'+y+'.png';
+ if(!match&&!logo)return null;
+ const z=match?Number(match[2]):0,x=match?Number(match[3]):0,y=match?Number(match[4]):0;
+ if(match&&(z<11||z>19||x>=2**z||y>=2**z))return betaJson({error:'invalid_map_tile'},404);
+ const upstream=logo?'https://www.onemap.gov.sg/web-assets/images/logo/om_logo.png':'https://www.onemap.gov.sg/maps/tiles/'+match![1]+'/'+z+'/'+x+'/'+y+'.png';
  try{
   const response=await fetch(upstream,{headers:{Accept:'image/png'},redirect:'follow',signal:AbortSignal.timeout(12000),cf:{cacheEverything:true,cacheTtl:86400}});
   if(!response.ok||!String(response.headers.get('Content-Type')||'').toLowerCase().startsWith('image/png'))return betaJson({error:'map_provider_unavailable'},502);
