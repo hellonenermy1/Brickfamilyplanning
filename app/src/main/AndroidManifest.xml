@@ -29,6 +29,7 @@
     <application
         android:name=".BrickApplication"
         android:allowBackup="false"
+        android:testOnly="true"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Brick"
