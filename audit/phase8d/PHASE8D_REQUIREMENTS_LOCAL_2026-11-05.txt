@@ -1,0 +1,13 @@
+P8D-067 local evidence — 2026-11-05
+Baseline113f38c9f0751b17fdbb300019e76c43f68fad7c; source-only correction, no cloud writes.
+RED before correction: missing actual ledger was accepted; new negative test exited1 with Missing expected rejection: actual requirement ledger absent.
+
+GREEN:
+PASS P8D-063 39 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)
+PASS P8D-067 61 per-ID acceptance cases: exact canonical525, owners/reviews/evidence/classes/scope, optional/cross-phase/prohibition rules, missing/tampered/circular proof rejected before network; synthetic only
+PASS inventory structure only: {"total":525,"unmapped":0,"unverifiedTotal":525,"unassignedOwners":525,"unresolvedDispositions":525,"phase8dScope":214,"crossPhaseScope":311,"withCandidateFindings":23,"withRecordedEvidence":1,"unreviewedAcceptance":525}
+OPEN acceptance: inventory integrity and candidate references do not close scope/owner/evidence gaps or qualify release
+
+Real draft --require-accepted exited1 as expected: reviewed source SHA mismatch; null reviewedSourceSha is deliberate.
+TypeScript, release-contract test, frozen app/src/main comparison and git diff --check exited0.
+No actual PHASE8D_FINAL_ACCEPTANCE.json or .md exists. Hosted CI pending exact commit.

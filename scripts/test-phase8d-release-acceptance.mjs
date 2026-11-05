@@ -1,17 +1,10 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
+import {fixture} from './phase8d-release-fixture.mjs';
 import { verifyPhase8dAcceptance, requireFinalPassMarkdown } from './verify-phase8d-release-acceptance.mjs';
-const repo='hellonenermy1/Brickfamilyplanning',sha='a'.repeat(40),evidence=Buffer.from('synthetic reviewed evidence\n'),digest=crypto.createHash('sha256').update(evidence).digest('hex');
-function fixture(){
- const record={format:'brick-phase8d-release-acceptance-v1',repository:repo,finalStatus:'PASS',testedSourceSha:sha,unresolvedP0:0,unresolvedP1:0,requirements:{total:525,unmapped:0,unverifiedApplicable:0},sourceCi:{runId:123,runAttempt:2},sections:Array.from({length:19},(_,i)=>({id:'8D.'+(i+1),status:'VERIFIED',evidence:[{path:'audit/phase8d/synthetic.json',sha256:digest}]}))};
- const run={id:123,run_attempt:2,repository:{full_name:repo},head_repository:{full_name:repo},head_sha:sha,path:'.github/workflows/v1-phase8d-backend-audit-ci.yml',status:'completed',conclusion:'success'};
- const jobs=['Phase 8D source baseline TypeScript and locked dependencies','P8D-001 — Reproduce production deployment/schema drift','P8D-002 — Reproduce backup coverage drift'].map((name,i)=>({id:i+1,name,run_id:123,status:'completed',conclusion:'success'}));
- const ctx={repository:repo,branch:'v1-p8d-accepted-backend',githubToken:'synthetic-no-network',async isAncestor(){return true;},async changedPaths(){return['audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.json'];},async readFinalMarkdown(){return'FINAL STATUS: PASS\n';},async readTrackedFile(){return evidence;},async fetchImpl(url){return Response.json(url.includes('/attempts/')?{jobs,total_count:jobs.length}:run);}};
- return{record,run,jobs,ctx};
-}
 let checks=0;
 const f=fixture();assert.equal((await verifyPhase8dAcceptance(f.record,f.ctx)).verified,true);checks++;
 const cases=[
+ ['actual requirement ledger absent',f=>delete f.record.requirements.ledger],
  ['wrong branch',f=>f.ctx.branch='v1-p8d-backend-deep-audit'],['wrong repository',f=>f.ctx.repository='other/repo'],
  ['not pass',f=>f.record.finalStatus='NOT PASS'],['bad SHA',f=>f.record.testedSourceSha='main'],
  ['not ancestor',f=>f.ctx.isAncestor=async()=>false],['code changed',f=>f.ctx.changedPaths=async()=>['src/index.ts']],

@@ -1,0 +1,14 @@
+// Purely synthetic acceptance records. Never save these as real release evidence.
+import fs from 'node:fs';
+import {BASELINE_PATH,BASELINE_SHA256,LEDGER_PATH,canonicalRequirements,requirementDigest,hash} from './phase8d-requirements-ledger.mjs';
+const baselineBytes=fs.readFileSync(BASELINE_PATH),canonical=canonicalRequirements(baselineBytes);
+const repo='hellonenermy1/Brickfamilyplanning',sha='a'.repeat(40),evidence=Buffer.from('synthetic reviewed evidence\n'),digest=hash(evidence);
+export function fixture(){
+ const ledger={format:'brick-phase8d-requirement-ledger-v1',repository:repo,reviewedSourceSha:sha,baseline:{path:BASELINE_PATH,sha256:BASELINE_SHA256},requirements:canonical.map(row=>({id:row.requirement_id,title:row.title,classification:row.classification,profile:row.profile,requirementSha256:requirementDigest(row),scope:'PHASE8D',disposition:'VERIFIED_FOR_8D',scopeReason:'Synthetic reviewed applicability for structural tests only',sections:['8D.19'],status:'ACCEPTED',implementationOwner:'Synthetic implementer',testOwner:'Synthetic tester',review:{reviewer:'Synthetic reviewer',reviewedAt:'2026-11-05T00:00:00Z'},evidence:[{kind:row.classification==='FORBIDDEN'?'PROHIBITION_REVIEW':row.classification==='FUTURE-INTERFACE'?'FUTURE_INTERFACE_REVIEW':'SOURCE_CI',path:'audit/phase8d/synthetic.json',sha256:digest}]}))};
+ const record={format:'brick-phase8d-release-acceptance-v1',repository:repo,finalStatus:'PASS',testedSourceSha:sha,unresolvedP0:0,unresolvedP1:0,requirements:{total:525,unmapped:0,unverifiedApplicable:0,ledger:{path:LEDGER_PATH,get sha256(){return hash(JSON.stringify(ledger));}}},sourceCi:{runId:123,runAttempt:2},sections:Array.from({length:19},(_,i)=>({id:'8D.'+(i+1),status:'VERIFIED',evidence:[{path:'audit/phase8d/synthetic.json',sha256:digest}]}))};
+ const run={id:123,run_attempt:2,repository:{full_name:repo},head_repository:{full_name:repo},head_sha:sha,path:'.github/workflows/v1-phase8d-backend-audit-ci.yml',status:'completed',conclusion:'success'};
+ const jobs=['Phase 8D source baseline TypeScript and locked dependencies','P8D-001 — Reproduce production deployment/schema drift','P8D-002 — Reproduce backup coverage drift'].map((name,i)=>({id:i+1,name,run_id:123,status:'completed',conclusion:'success'}));
+ const reads=new Map();
+ const ctx={repository:repo,branch:'v1-p8d-accepted-backend',githubToken:'synthetic-no-network',async isAncestor(){return true;},async changedPaths(){return['audit/phase8d/PHASE8D_FINAL_ACCEPTANCE.json'];},async readFinalMarkdown(){return'FINAL STATUS: PASS\n';},async readTrackedFile(path){reads.set(path,(reads.get(path)??0)+1);return path===BASELINE_PATH?baselineBytes:path===LEDGER_PATH?Buffer.from(JSON.stringify(ledger)):evidence;},async fetchImpl(url){return Response.json(url.includes('/attempts/')?{jobs,total_count:jobs.length}:run);}};
+ return{record,run,jobs,ctx,ledger,reads,baselineBytes};
+}

@@ -224,6 +224,10 @@ jobs:
         run: |
           node scripts/test-phase8d-release-gates.mjs
           node scripts/test-phase8d-release-acceptance.mjs
+      - name: P8D-067 canonical 525 per-ID requirement evidence and inventory
+        run: |
+          node scripts/test-phase8d-requirements-ledger.mjs
+          node scripts/audit-phase8d-requirements.mjs
       - name: P8D-029 fail-closed OneMap and commute parent quotas
         run: |
           npx --no-install esbuild src/worker-p8b.ts --bundle --format=esm --platform=node --target=node22 --alias:cloudflare:workers=./scripts/phase8d-cloudflare-workers-shim.mjs --outfile=/tmp/brick-p8d-prod-worker.mjs

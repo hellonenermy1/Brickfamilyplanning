@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { verifyRequirementsForRelease } from './phase8d-requirements-ledger.mjs';
 const REPO='hellonenermy1/Brickfamilyplanning';
 const SOURCE_WORKFLOW='.github/workflows/v1-phase8d-backend-audit-ci.yml';
 const REQUIRED_JOBS=[
@@ -39,6 +40,7 @@ export async function verifyPhase8dAcceptance(record,ctx){
  requireValue(Array.isArray(changed)&&changed.every(releaseDocumentPath),'code/config/workflow changed after tested source');
  requireValue(record.unresolvedP0===0&&record.unresolvedP1===0,'open critical/high findings');
  requireValue(record.requirements?.total===525&&record.requirements.unmapped===0&&record.requirements.unverifiedApplicable===0,'requirement evidence gaps');
+ const requirements=await verifyRequirementsForRelease(record.requirements,ctx,record.testedSourceSha);
  requireFinalPassMarkdown(await ctx.readFinalMarkdown());
  requireValue(Array.isArray(record.sections)&&record.sections.length===19,'all19 sections required');
  const seen=new Set();
@@ -76,7 +78,7 @@ export async function verifyPhase8dAcceptance(record,ctx){
  requireValue(new Set(jobs.map(j=>j.id)).size===jobs.length,'duplicate CI jobs');
  requireValue(jobs.every(j=>j.run_id===record.sourceCi.runId&&j.status==='completed'&&j.conclusion==='success'),'failed/skipped/incomplete CI job');
  for(const name of REQUIRED_JOBS)requireValue(jobs.filter(j=>j.name===name).length===1,'missing/duplicate required source job');
- return {verified:true,testedSourceSha:record.testedSourceSha,sourceRunId:run.id,sections:seen.size,liveEvidenceSemantics:'requires independent reviewed audit evidence; structural verification is not new live proof'};
+ return {verified:true,testedSourceSha:record.testedSourceSha,sourceRunId:run.id,sections:seen.size,requirements,liveEvidenceSemantics:'requires independent reviewed audit evidence; structural verification is not new live proof'};
 }
 function git(args){return execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']});}
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
