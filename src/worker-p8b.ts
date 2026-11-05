@@ -159,6 +159,10 @@ export default {
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     let failed = false;
     try { if (base.scheduled) await base.scheduled(controller, env, ctx); } catch { failed = true; }
+    if (controller.cron === '17 3 * * *') {
+      if (failed) throw Error('base daily maintenance failed');
+      return;
+    }
 
     // Commute derivation is automatic and uses trusted durable history only. Bound every cron run so
     // it cannot crowd out safety/current-state work.

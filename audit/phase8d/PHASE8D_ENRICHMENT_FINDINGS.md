@@ -30,4 +30,8 @@ Local GREEN suites:12 actual D1 receipt/backoff/concurrency/privacy/rotation cas
 
 ## Remaining boundaries
 
+### P8D-077 follow-up: daily backup independence
+
+The first corrected candidate7b19ddbc made minute faults truthful but also repeated derived work inside the inherited daily invocation. RED follow-up adds a native assertion that an independent completed daily backup retains its positive daily success lease: semantic/refined-cleanup faults fail this assertion (2 failures;5 other cases pass), proving that a persistent minute fault can repeatedly retry an already successful daily job. PHASE8D_DAILY_ISOLATION_RED.txt records this before correction. The daily cron must run its inherited backup/cleanup chain and skip minute-only derived work; minute enrichment failure remains durable and retryable independently. No original backup error is suppressed.
+
 Poison-frame fairness beyond the100-frame window, automatic repair/quarantine for persistent corrupt inputs, Atlas provider task receipts and broader provider isolation remain open. Corrupt inputs are retained and reported with capped retry, not silently discarded. No complete failed-work/cloud/fleet acceptance is inferred. The525 canonical rows/classes and final acceptance reviews remain unchanged. Existing protected archive/source recovery must pass again in CI because the real scheduled chain changed. No APK, UI, deployment, reset, cloud mutation, family-data access or R2/card activation.

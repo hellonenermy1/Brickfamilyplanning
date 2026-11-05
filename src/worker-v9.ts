@@ -180,6 +180,12 @@ export default {
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     let failed = false;
     try { if (base.scheduled) await base.scheduled(controller, env, ctx); } catch { failed = true; }
+    // Daily backup is independently leased. Do not make a successful backup
+    // retry every minute because unrelated minute enrichment is failing.
+    if (controller.cron === '17 3 * * *') {
+      if (failed) throw Error('base daily maintenance failed');
+      return;
+    }
     try { await runBackgroundWork(env.DB, 'semantic-indexes', 'global', () => cleanupPhase5SemanticIndexes(env.DB)); } catch { failed = true; }
     try {
       let pending: string[] = [];

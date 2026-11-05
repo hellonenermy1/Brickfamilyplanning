@@ -86,3 +86,7 @@ PR32 merge metadata is inconsistent: dirty/mergeable=false/null merge commit but
 
 ### Concurrent-base reconciliation
 The apparent PR mergeability discrepancy was stale base metadata. Direct branch read/PR refresh identified beta target612d4a8b16fb829f9528b06ab6448ab85ac483e6, two documentation-only commits after488b34f2; compare shows only PROJECT_MEMORY.md changed (+14 lines). Both target notes and audit evidence are retained. The audit merge brings target history into this branch without changing source/scripts/schema/APK/portal or writing to/deploying the beta target. Recheck final PR merge-result CI at the new audit head.
+
+
+### P8D-077 follow-up — daily task independence
+Native daily-success lease check reproduced2 failures (semantic/refined cleanup) at the previously CI-qualified candidate; other5 cases pass. Daily invocations now preserve inherited backup/cleanup but skip minute-only derived work. Strengthened7-case enrichment suite and original5-case deferred-backup/retry suite plus typecheck pass locally. Full RED/GREEN: PHASE8D_DAILY_ISOLATION_RED/GREEN.txt. Hosted retest pending for this adjustment; prior23-step push/PR evidence remains scoped to its exact older source. Concurrent beta target612d4a8b only appended14 memory lines; integrated as second-parent audit merge64597951 retaining both sets of notes, PR mergeability true. No beta deployment/data/APK/portal change.
