@@ -56,6 +56,10 @@ class BetaReadinessInstrumentedTest {
             j.readableDatabase.rawQuery("SELECT COUNT(*) FROM beta_diagnostic_probe",null).use { assertTrue(it.moveToFirst()); assertEquals(0,it.getInt(0)) }
         }
     }
+    @Test fun betaActivityIsPrivate() {
+        val info=c.packageManager.getActivityInfo(android.content.ComponentName(c,BetaReadinessActivity::class.java),0)
+        assertFalse(info.exported)
+    }
     @Test fun automaticExpiryIsDisabled() { assertFalse(BuildConfig.BRICK_BETA); assertEquals(0L,BuildConfig.BRICK_BETA_EXPIRY_EPOCH_MS); assertFalse(BetaSafety.isExpired(Long.MAX_VALUE)) }
     @Test fun ownerReleaseReadbackMatchesActualUnmanagedDevice() {
         val dpm=c.getSystemService(android.app.admin.DevicePolicyManager::class.java)

@@ -226,6 +226,11 @@ object DeprovisionManager {
             return Result(stage(app), false, "management release required")
         }
 
+        val manager = app.getSystemService(DevicePolicyManager::class.java)
+        val admin = ComponentName(app, BrickDeviceAdminReceiver::class.java)
+        if (!runCatching { !manager.isDeviceOwnerApp(app.packageName) && !manager.isAdminActive(admin) }.getOrDefault(false)) {
+            return Result(stage(app), false, "Device Owner/admin release must be independently verified before purge")
+        }
         if (!com.brick.safety.beta.BetaDiagnostics.quiesceForRemoval()) {
             return Result(stage(app), false, "Beta diagnostics writer/network task not fully quiesced")
         }

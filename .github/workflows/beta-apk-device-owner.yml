@@ -1,0 +1,284 @@
+name: Brick Beta APK — Real AOSP Device Owner Release
+
+on:
+  push:
+    branches: [beta/apk]
+  workflow_dispatch:
+
+env:
+  BRICK_BUILD_SOURCE_SHA: ${{ github.sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  device-owner-lifecycle:
+    name: Clean AOSP DO -> Stage 1 -> reboot -> automatic Stage 2 -> Stage 3 UI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '8.13'
+
+      - name: Locate Android SDK and AVD tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+          AVDMANAGER_PATH="$(find "$SDK_ROOT/cmdline-tools" -type f -name avdmanager 2>/dev/null | sort | tail -n 1)"
+          AVD_HOME="$RUNNER_TEMP/brick-p8-do-avd"
+          mkdir -p "$AVD_HOME"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "SDKMANAGER=$SDKMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "AVDMANAGER=$AVDMANAGER_PATH" >> "$GITHUB_ENV"
+          echo "ADB=$SDK_ROOT/platform-tools/adb" >> "$GITHUB_ENV"
+          echo "EMULATOR=$SDK_ROOT/emulator/emulator" >> "$GITHUB_ENV"
+          echo "ANDROID_AVD_HOME=$AVD_HOME" >> "$GITHUB_ENV"
+
+      - name: Install clean AOSP SDK image and build test APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+
+          retry_sdk_package() {
+            local package="$1"
+            if "$SDKMANAGER" "$package"; then
+              return 0
+            fi
+            echo "First sdkmanager attempt failed for $package; clearing partial download state and retrying once" >&2
+            rm -rf "$ANDROID_SDK_ROOT/.temp" "$HOME/.android/cache" || true
+            if [ "$package" = "emulator" ]; then
+              rm -rf "$ANDROID_SDK_ROOT/emulator" || true
+            elif [[ "$package" == system-images\;* ]]; then
+              rm -rf "$ANDROID_SDK_ROOT/system-images/android-35/default/x86_64" || true
+            fi
+            "$SDKMANAGER" "$package"
+          }
+
+          retry_sdk_package 'platform-tools'
+          retry_sdk_package 'platforms;android-36'
+          if [ ! -x "$EMULATOR" ]; then retry_sdk_package 'emulator'; fi
+          retry_sdk_package 'system-images;android-35;default;x86_64'
+          test -x "$EMULATOR"
+          test -d "$ANDROID_SDK_ROOT/system-images/android-35/default/x86_64"
+
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
+      - name: Boot fresh AOSP emulator and install Brick test packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_APK=app/build/outputs/apk/debug/app-debug.apk
+          TEST_APK=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          echo no | "$AVDMANAGER" create avd --force --name brick-p8-do --package 'system-images;android-35;default;x86_64' --device 'pixel_6'
+          sudo chmod 666 /dev/kvm || true
+          "$ADB" start-server
+          nohup "$EMULATOR" -avd brick-p8-do -wipe-data -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > /tmp/brick-p8-do-emulator.log 2>&1 &
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          "$ADB" install -t "$APP_APK"
+          "$ADB" install -t "$TEST_APK"
+          "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-before.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-before.txt >/dev/null
+          "$ADB" shell pm list users | tee /tmp/p8-do-users-before.txt
+          test "$(grep -c 'UserInfo{' /tmp/p8-do-users-before.txt)" = "1"
+
+      - name: Synchronize Android provisioning cache and provision real Device Owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" wait-for-device
+
+          ready=0
+          for i in $(seq 1 120); do
+            account_service="$("$ADB" shell service check account 2>/dev/null | tr -d '\r' || true)"
+            policy_service="$("$ADB" shell service check device_policy 2>/dev/null | tr -d '\r' || true)"
+            package_path="$("$ADB" shell pm path com.brick.safety 2>/dev/null | tr -d '\r' || true)"
+            user_dump="$("$ADB" shell dumpsys user 2>/dev/null | tr -d '\r' || true)"
+            if grep -Fq 'found' <<<"$account_service" && \
+               grep -Fq 'found' <<<"$policy_service" && \
+               grep -Fq 'package:' <<<"$package_path" && \
+               grep -Fq 'State: RUNNING_UNLOCKED' <<<"$user_dump"; then
+              ready=1
+              printf '%s\n' "$user_dump" > /tmp/p8-do-user-unlocked.txt
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = "1"
+
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-boot.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-boot.txt >/dev/null
+          "$ADB" shell pm list users | tee /tmp/p8-do-users-after-boot.txt
+          test "$(grep -c 'UserInfo{' /tmp/p8-do-users-after-boot.txt)" = "1"
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-initial.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-initial.txt >/dev/null
+
+          # Android 14+ caches account compatibility for owner provisioning. AOSP CTS explicitly
+          # recalculates this cache before Device Owner tests. Mirror that test-only behavior without
+          # changing USER_SETUP_COMPLETE or DEVICE_PROVISIONED; shell provisioning is allowed after
+          # setup when there are no extra users or incompatible accounts.
+          test "$("$ADB" shell getprop ro.debuggable | tr -d '\r')" = "1"
+          "$ADB" logcat -c
+          cleanup_hidden_api() {
+            "$ADB" shell settings delete global hidden_api_policy >/dev/null 2>&1 || true
+          }
+          trap cleanup_hidden_api EXIT
+          "$ADB" shell settings put global hidden_api_policy 1
+          "$ADB" shell am instrument -w \
+            -e p8ProvisioningMode sync \
+            -e class 'com.brick.safety.beta.Phase8ProvisioningHarnessInstrumentedTest#testSynchronizeDevicePolicyProvisioningCaches' \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-do-provisioning-sync.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-do-provisioning-sync.txt >/dev/null
+
+          cache_ready=0
+          for i in $(seq 1 30); do
+            if "$ADB" logcat -d 2>/dev/null | grep -Fq 'Finished calculating hasIncompatibleAccountsTask'; then
+              cache_ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$cache_ready" = "1"
+          cleanup_hidden_api
+          trap - EXIT
+
+          "$ADB" shell dumpsys account | tee /tmp/p8-do-accounts-after-sync.txt
+          grep -F 'Accounts: 0' /tmp/p8-do-accounts-after-sync.txt >/dev/null
+          "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-do-set-owner.txt
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-before.txt
+          grep -F 'com.brick.safety' /tmp/p8-do-owners-before.txt >/dev/null
+
+      - name: Execute Stage 1 without force-stopping Brick and prove durable disarm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The provisioning-cache instrumentation above can leave the target package in Android's
+          # stopped state. Explicitly launch it BEFORE the retirement boundary so Stage 1 begins from
+          # a normal runnable package. Nothing may unstop/launch Brick after Stage 1 and before reboot.
+          "$ADB" shell am start -W -n com.brick.safety/.ui.MainActivity | tee /tmp/p8-stage1-unstop.txt
+          "$ADB" shell input keyevent KEYCODE_HOME || true
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-before-stage1.txt
+          grep -F 'stopped=false' /tmp/p8-package-before-stage1.txt >/dev/null
+
+          "$ADB" logcat -c
+          "$ADB" shell am broadcast --receiver-foreground \
+            -a com.brick.safety.testing.PHASE8_DISARM \
+            -n com.brick.safety/.testing.Phase8RetirementHarnessReceiver | tee /tmp/p8-stage1.txt
+
+          "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_beta_safety.xml | tee /tmp/p8-stage1-prefs.txt
+          grep -F '<string name="retirement_stage">DISARMED</string>' /tmp/p8-stage1-prefs.txt >/dev/null
+          "$ADB" logcat -d | grep -F 'BrickP8Harness' | grep -F 'stage1 committed=true stage=DISARMED' >/dev/null
+
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-stage1.txt
+          grep -F 'com.brick.safety' /tmp/p8-do-owners-stage1.txt >/dev/null
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-stage1.txt
+          grep -F 'stopped=false' /tmp/p8-package-stage1.txt >/dev/null
+
+      - name: Reboot across Stage 1 and require automatic durable Stage 2 recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" reboot
+          "$ADB" wait-for-device
+          for i in $(seq 1 120); do
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
+            sleep 5
+          done
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
+
+          owner_released=0
+          for i in $(seq 1 60); do
+            owners="$("$ADB" shell dpm list-owners 2>&1 | tr -d '\r')"
+            if ! grep -Fq 'com.brick.safety' <<<"$owners"; then
+              owner_released=1
+              break
+            fi
+            sleep 2
+          done
+          test "$owner_released" = "1"
+          "$ADB" shell dpm list-owners | tee /tmp/p8-do-owners-after-reboot.txt
+          ! grep -F 'com.brick.safety' /tmp/p8-do-owners-after-reboot.txt >/dev/null
+
+          stage2_persisted=0
+          for i in $(seq 1 60); do
+            if "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_beta_safety.xml > /tmp/p8-stage2-prefs.txt 2>/dev/null && \
+               grep -Fq '<string name="retirement_stage">MANAGEMENT_RELEASED</string>' /tmp/p8-stage2-prefs.txt; then
+              stage2_persisted=1
+              break
+            fi
+            sleep 2
+          done
+          test "$stage2_persisted" = "1"
+          cat /tmp/p8-stage2-prefs.txt
+
+          "$ADB" shell dumpsys package com.brick.safety | tee /tmp/p8-package-after-reboot.txt
+
+      - name: Verify Stage 3 only requests Android uninstall UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell am instrument -w \
+            -e p8RetirementMode verify \
+            -e class 'com.brick.safety.beta.Phase8BetaSafetyInstrumentedTest#testExternalRebootRecoveryAndStage3Request' \
+            com.brick.safety.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/p8-stage23.txt
+          grep -E 'OK \(1 test\)|OK \(1 tests\)|OK \(' /tmp/p8-stage23.txt >/dev/null
+          "$ADB" shell pm path com.brick.safety | grep -F 'package:' >/dev/null
+
+      - name: Prove package is removable after management release
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ADB" shell pm uninstall com.brick.safety | tee /tmp/p8-do-uninstall.txt
+          grep -F 'Success' /tmp/p8-do-uninstall.txt >/dev/null
+
+      - name: Preserve Device Owner diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p p8-do-failure
+          cp /tmp/brick-p8-do-emulator.log p8-do-failure/emulator.log || true
+          for f in accounts-before accounts-after-boot accounts-after-sync users-before users-after-boot user-unlocked provisioning-sync set-owner owners-initial owners-before owners-stage1 owners-after-reboot stage1-unstop stage1 stage1-prefs stage2-prefs stage23 do-uninstall package-before-stage1 package-stage1 package-after-reboot; do
+            cp "/tmp/p8-do-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || cp "/tmp/p8-$f.txt" "p8-do-failure/$f.txt" 2>/dev/null || true
+          done
+          if timeout 10s "$ADB" get-state >/dev/null 2>&1; then
+            timeout 10s "$ADB" shell settings get secure user_setup_complete > p8-do-failure/user-setup-complete.txt 2>&1 || true
+            timeout 10s "$ADB" shell settings get global device_provisioned > p8-do-failure/device-provisioned.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys account > p8-do-failure/accounts-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys user > p8-do-failure/user-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys device_policy > p8-do-failure/device-policy-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dumpsys package com.brick.safety > p8-do-failure/package-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell pm list users > p8-do-failure/users-current.txt 2>&1 || true
+            timeout 10s "$ADB" shell dpm list-owners > p8-do-failure/owners-current.txt 2>&1 || true
+            timeout 15s "$ADB" logcat -d > p8-do-failure/logcat.txt 2>&1 || true
+          else
+            printf 'No responsive emulator was available at failure collection time.\n' > p8-do-failure/no-device.txt
+          fi
+
+      - name: Upload Device Owner failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: brick-phase8-device-owner-reboot-retirement-failure
+          path: p8-do-failure/
+          if-no-files-found: warn
+          retention-days: 14

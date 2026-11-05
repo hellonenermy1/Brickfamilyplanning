@@ -858,7 +858,7 @@ class BrickLocationService : Service() {
 
         healthIo.execute {
             if (mustQuiesceAsync()) return@execute
-            com.brick.safety.beta.BetaDiagnostics.observe(applicationContext, health)
+            runCatching { com.brick.safety.beta.BetaDiagnostics.observe(applicationContext, health) }
             runCatching { BrickApi.sendHealth(baseUrl, deviceId, health) }
                 .onSuccess { sync ->
                     if (mustQuiesceAsync()) return@onSuccess

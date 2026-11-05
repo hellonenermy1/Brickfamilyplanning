@@ -1,0 +1,19 @@
+# Brick beta APK handoff
+
+Install only the signed Brick-V1-1.0.0-beta.1.apk from the successful exact-commit beta artifact, not app-debug.apk or the AndroidTest APK. Check apk-sha256.txt, build-manifest.json and apk-signing-cert-sha256.txt. Expected package com.brick.safety; code11; permanent certificate bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790. GitHub artifacts are private to permitted repository users and retained30days; Phase2 will add the protected portal download.
+
+Before installing: record the current installed version/certificate/Device Owner and pairing state. This APK uses the same package and can update an existing compatible signed installation. Do not force a downgrade or silently clear data/uninstall a managed installation. If the installed version is higher than11 or the certificate differs, stop and report it so the build/migration can be corrected. No factory reset is part of this beta handoff.
+
+If ADB is being used, select the intended phone explicitly; never issue management/purge commands against an unverified device. Device Owner provisioning depends on the actual phone/build/setup state. Follow the existing tested provisioning path; do not assume an already-configured phone can always be enrolled without additional steps.
+
+The Phase2 portal/backend is NOT deployed by Phase1. Pair only with the verified beta QR/URL supplied in Phase2. No production fallback. Until Phase2 readiness endpoints and browser proof exist, readiness remains PENDING and the72-hour run cannot start. Existing source/CI tests are not proof of OPPO background behaviour.
+
+Open local maintenance through the existing exact entry: seven logo taps, wait at least10seconds, one further tap inside the armed window. Tap Beta Readiness &72-hour run. Run checks, inspect each result. Debug-signed builds deliberately fail permanent-signature readiness. Optional hardware status is separate from core tracking readiness.
+
+Before endurance: on a disposable installation of this exact build, deliberately exercise removal and independently verify Device Owner/admin absence, local purge and Android package removal. Android may require uninstall confirmation. The app cannot attest its own completed disappearance. Then reinstall/reprovision the same signed APK, pair with the isolated beta and pass readiness. Starting endurance records your explicit external escape-verification attestation; it does not fabricate automated proof.
+
+Self-destruct is separate from readiness: confirm REMOVE BRICK locally. The staged flow quiesces, reverses Brick policies, verifies owner/admin release, drains writers and purges local Brick state before Android uninstall handoff. If it stops, inspect the actual failed stage; do not erase state/keys to bypass a failed management release. Backend history is retained. A minimal non-sensitive teardown marker remains until actual uninstall; other apps and phone data are untouched.
+
+During72hours: leave normal tracking running, classify planned tests versus unplanned recovery, and record unexpected interventions. Beta observations are encrypted, bounded and privacy-reduced; no raw coordinates/radio IDs/credentials in the beta export. Existing ordinary history remains separate. A source/paired-identity change ends this segment and requires a new one. Elapsed72hours is REVIEW REQUIRED, not automatic PASS; no expiry or self-destruct timer runs.
+
+At handoff/end: stop the run, export through the explicit Android document picker and retain the JSON privately. Only a stopped successfully exported run can be explicitly reset. A snapshot exported while active is not enough to reset later unseen data. The collector is not an assertion that every feature passed; unknown, unavailable and failed checks remain explicit. Full Phase8D and real OPPO qualification remain outstanding.

@@ -107,6 +107,7 @@ jobs:
           set -euo pipefail
           classes=(
             'com.brick.safety.beta.BetaReadinessInstrumentedTest'
+            'com.brick.safety.beta.BetaPostPurgeInstrumentedTest'
             'com.brick.safety.data.Phase8DurabilityTortureInstrumentedTest'
             'com.brick.safety.data.Phase8LowStorageInstrumentedTest'
             'com.brick.safety.data.Phase8BacklogScaleInstrumentedTest'

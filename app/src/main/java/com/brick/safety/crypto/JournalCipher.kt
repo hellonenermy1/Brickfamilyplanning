@@ -12,6 +12,7 @@ object JournalCipher {
     private const val ALIAS = "brick-journal-aes-v1"
     private val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
+    @Synchronized
     private fun key(): SecretKey {
         val existing = ks.getKey(ALIAS, null) as? SecretKey
         if (existing != null) return existing

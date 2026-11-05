@@ -78,5 +78,7 @@ internal class BetaRunStore(context: Context) : SQLiteOpenHelper(context, "brick
         .put("active", get("active") == "true").put("stopReason", get("stopReason") ?: JSONObject.NULL)
         .put("lastSampleWallMs", get("lastSampleWall")?.toLongOrNull() ?: JSONObject.NULL)
         .put("droppedRecords", get("dropped")?.toLongOrNull() ?: 0).put("ackedThroughId", get("acked")?.toLongOrNull() ?: 0)
+        .put("targetDurationMs", 72L * 60 * 60 * 1000)
+        .put("elapsedWallMs", get("run")?.let { (System.currentTimeMillis() - JSONObject(it).getLong("startedAtMs")).coerceAtLeast(0) } ?: JSONObject.NULL)
         .put("assessment", "REVIEW_REQUIRED; elapsed72h is not acceptance; gaps/reboots/clock changes/interventions need review")
 }

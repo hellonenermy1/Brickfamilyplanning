@@ -66,8 +66,13 @@ object BetaDiagnostics {
     fun runChecks(context: Context): JSONObject = admitted(context) {
         val c = context.applicationContext; val checks = mutableListOf<Check>()
         fun add(id: String, status: Status, text: String, required: Boolean = true) { checks += Check(id, status, text, required) }
-        add("build_identity", if (BuildConfig.BRICK_SOURCE_SHA.matches(Regex("[0-9a-f]{40}")) && !BuildConfig.BRICK_BETA && BuildConfig.BRICK_BETA_EXPIRY_EPOCH_MS == 0L) Status.PASS else Status.FAIL,
-            "${BuildConfig.VERSION_NAME}; release ${BuildConfig.BRICK_RELEASE_ID}; expiry disabled=${!BuildConfig.BRICK_BETA}")
+        val installed = c.packageManager.getPackageInfo(c.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        val cert = installed.signingInfo?.apkContentsSigners?.singleOrNull()?.toByteArray()?.let { bytes ->
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        }
+        val signatureMatches = cert == "bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790"
+        add("build_identity", if (signatureMatches && installed.versionName == BuildConfig.VERSION_NAME && installed.longVersionCode == BuildConfig.VERSION_CODE.toLong() && BuildConfig.BRICK_SOURCE_SHA.matches(Regex("[0-9a-f]{40}")) && !BuildConfig.BRICK_BETA && BuildConfig.BRICK_BETA_EXPIRY_EPOCH_MS == 0L) Status.PASS else Status.FAIL,
+            "${BuildConfig.VERSION_NAME}; release ${BuildConfig.BRICK_RELEASE_ID}; expiry disabled=${!BuildConfig.BRICK_BETA}; permanent signature verified=$signatureMatches")
         add("role", if (DeviceRoleStore.role(c) == DeviceRoleStore.Role.CHILD) Status.PASS else Status.PENDING, "Child must be explicitly paired; parent role is not tracked")
         val permissions = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION, Manifest.permission.ACTIVITY_RECOGNITION) +
             if (Build.VERSION.SDK_INT >= 33) listOf(Manifest.permission.POST_NOTIFICATIONS) else emptyList()
@@ -143,7 +148,7 @@ object BetaDiagnostics {
         val age = System.currentTimeMillis() - report.optLong("checkedAtMs", 0)
         val a = report.optJSONArray("checks") ?: return false
         val checks = (0 until a.length()).map { i -> val v = a.getJSONObject(i); Check(v.getString("id"), Status.valueOf(v.getString("status")), "", v.getBoolean("required")) }
-        return age in 0..300_000 && report.optString("apkSourceSha") == BuildConfig.BRICK_SOURCE_SHA &&
+        return recorderHealthy && age in 0..300_000 && report.optString("apkSourceSha") == BuildConfig.BRICK_SOURCE_SHA &&
             report.optString("bindingHash") == binding(c) && BetaReadinessModel.ready(checks)
     }
     fun startRun(c: Context, escapeVerifiedByUser: Boolean) = admitted(c) {
@@ -172,6 +177,12 @@ object BetaDiagnostics {
             val fields = listOf("serviceUptimeMs", "locationAgeMs", "locationCallbackAgeMs", "ackAgeMs", "pendingRecords", "pendingSafetyEvents", "oldestPendingAgeMs", "network", "locationEnabled", "locationSubscribed", "batteryPct", "charging", "activityMode", "trackingIntervalMs", "recoveryCount", "healthSequence", "networkValidated", "journalWriteHealthy")
             val safe = JSONObject().put("recordedAtMs", System.currentTimeMillis())
             fields.forEach { if (source.has(it)) safe.put(it, source.get(it)) }
+            val battery = c.getSystemService(android.os.BatteryManager::class.java)
+            if (!safe.has("batteryPct")) {
+                val pct = battery.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                safe.put("batteryPct", if (pct in 0..100) pct else JSONObject.NULL)
+            }
+            if (!safe.has("charging")) safe.put("charging", battery.isCharging)
             store(c) { s ->
                 val run = s.get("run")?.let(::JSONObject)
                 if (s.get("active") == "true" && run?.optString("bindingHash") != binding(c)) { s.put("active", "false"); s.put("stopReason", "paired_identity_changed_new_segment_required") }
