@@ -21,6 +21,9 @@ export function parentBetaHtml(base:string){
  </style>`;
  if(!html.includes('</head>'))throw Error('beta_parent_head_missing');
  html=html.replace('</head>',compactMapCss+'</head>');
+ const mapImport="import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
+ if(!html.includes(mapImport))throw Error('beta_parent_map_import_missing');
+ html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus, switchToPrivateFallback } from '/brick-map.mjs';");
  const js=String.raw`
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
