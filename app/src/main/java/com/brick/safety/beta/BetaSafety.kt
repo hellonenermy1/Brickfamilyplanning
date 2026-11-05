@@ -92,13 +92,50 @@ object BetaSafety {
             shutdownRuntime(app)
             if (stage == RetirementStage.DISARMED) {
                 // Idempotent recovery: a reboot/process kill between stages resumes release only.
-                advanceManagementRelease(app)
+                resumeManagementVerification(app)
             }
             return false
         }
 
         if (BuildConfig.BRICK_BETA) scheduleExpiry(app)
         return true
+    }
+
+    private val verificationRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val verificationStopped = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile private var verificationThread: Thread? = null
+
+    /** App/boot bootstrap must return to main so Android can deliver admin-removal callbacks. */
+    private fun resumeManagementVerification(context: Context) {
+        val app = context.applicationContext
+        synchronized(verificationRunning) {
+            if (verificationStopped.get() || com.brick.safety.maintenance.DeprovisionManager.isPostPurge(app) ||
+                !verificationRunning.compareAndSet(false, true)) return
+            verificationThread = Thread({
+                try {
+                    repeat(3) {
+                        if (verificationStopped.get() || Thread.currentThread().isInterrupted ||
+                            com.brick.safety.maintenance.DeprovisionManager.isPostPurge(app) ||
+                            retirementStage(app) != RetirementStage.DISARMED) return@Thread
+                        if (advanceManagementRelease(app).released) return@Thread
+                        Thread.sleep(200L)
+                    }
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                } finally { verificationRunning.set(false) }
+            }, "brick-management-verification").apply { isDaemon = true; start() }
+        }
+    }
+
+    /** Permanent purge closes admission and joins the bounded bootstrap verifier before deleting prefs. */
+    fun quiesceManagementVerification(): Boolean {
+        val thread = synchronized(verificationRunning) {
+            verificationStopped.set(true)
+            verificationThread?.also { it.interrupt() }
+        }
+        if (thread === Thread.currentThread()) return false
+        thread?.join(5_000L)
+        return thread?.isAlive != true
     }
 
     fun scheduleExpiry(context: Context) {

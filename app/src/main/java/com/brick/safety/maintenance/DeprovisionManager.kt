@@ -231,6 +231,9 @@ object DeprovisionManager {
         if (!runCatching { !manager.isDeviceOwnerApp(app.packageName) && !manager.isAdminActive(admin) }.getOrDefault(false)) {
             return Result(stage(app), false, "Device Owner/admin release must be independently verified before purge")
         }
+        if (!BetaSafety.quiesceManagementVerification()) {
+            return Result(stage(app), false, "Management verification writer not fully quiesced")
+        }
         if (!com.brick.safety.beta.BetaDiagnostics.quiesceForRemoval()) {
             return Result(stage(app), false, "Beta diagnostics writer/network task not fully quiesced")
         }
