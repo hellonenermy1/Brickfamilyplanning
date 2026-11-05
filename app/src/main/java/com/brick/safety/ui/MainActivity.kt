@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (DeprovisionManager.isPostPurge(this)) {
+        if (DeprovisionManager.stage(this) != DeprovisionManager.Stage.NONE) {
             startActivity(Intent(this, DiagnosticsActivity::class.java))
             finish()
             return
