@@ -1,3 +1,19 @@
+# Latest continuation — commute paging source and hosted verification
+
+# Commute paging — latest exact-source hosted checkpoint
+**Phase8D IN PROGRESS / NOT PASS.** Tested executable **2f1e2af485d9da54a962bf43f6a33d0a1403d912**. Push42056152910/job127345379060 and PR42056155069/job127345584813 completed-success, all28 steps each; portal/map42056155453/job127344976760 all10 success. Actual logs inspected, exact source confirmed, zero GitHub error markers. PR tested synthetic merge8cf89f7f7fb0920b02cafa80c8bcd555da230190 into612d4a8b16fb829f9528b06ab6448ab85ac483e6. Twelve new commute cases pass, plus inherited storage/protected41+4/D1+DO restore/ACK/retention/background/budget/refined/beta/native/legacy suites. No local runner available this turn; all new execution claims are hosted. Exact receipts: PHASE8D_COMMUTE_PAGING_HOSTED_EVIDENCE.json.
+
+P8D-082 source correction prevents repeated full-window materialization before first durable progress. D1 scans256 rows/page, two pages/slice, with CAS checkpoint and streaming trusted geometry; only a completed generation publishes atomically. Cached trips remain readable while task/root state is PENDING; partial work does not fabricate last success. Candidate index-only020 migration is included in setup/fixture, not applied to live D1. Legacy non-D1 behavior is preserved and compared against streamed output. Checkpoints are reconstructible provider_cache, excluded from disaster archives; summaries remain durable.
+
+Proven cases include22001 points, cross-page resume, legacy geometry/stationary/gap/equal-wall-sequence equivalence, late insert fencing/next generation, failed publication/idempotent retry, stale-CAS transaction rollback, pre-scan revocation, corrupt checkpoint cached reads, loss/reconstruction and malformed packet cursor preservation. See PHASE8D_COMMUTE_PAGING.md for bounds and missing scenarios. This does not certify arbitrary history rewrites/deletes, every epoch tie, mid-publication revoke, poison-row repair, cloud CPU/rows/day/storage/fleet quotas or all inherited cleanup jobs.
+
+Next independent source work: qualify inherited minute/daily global cleanup envelopes with populated/backlog fixtures and bounded resumable progress; split RPCs alone do not bound rows/CPU. Keep Atlas7-ID/BE-019 placement/learning/trust/decay/model history unresolved unless actual authority/source resolves it. Operational independent private capture/destination/key/PITR/cloud drill, deployed schema/config/rollback and all525 per-ID owner/independent reviews remain open. P8D-002 stays P1 OPEN. Generic continue does not merge/deploy PR32; it is draft/unmerged/mergeable. No R2/card, APK/UI-layout/public route/new binding/service/secret, cloud/family-data mutation or phone/72h inference.
+
+
+Current evidence-only audit head74b359808924f884b98656bac689fc73ffc0aede. Read https://github.com/hellonenermy1/Brickfamilyplanning/blob/74b359808924f884b98656bac689fc73ffc0aede/audit/phase8d/PHASE8D_D1_OPERATIONS_HOSTED_CHECKPOINT.md . This formal-branch update changes only the continuation pointer; the runtime is still qualified at the exact source above. Earlier queue entries below are historical and superseded where this pointer states correction verified.
+
+---
+
 # Current continuation pointer — lifecycle and budget source qualified
 
 
