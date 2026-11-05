@@ -1,3 +1,23 @@
+# Latest continuation — bounded cleanup exact-source qualification
+
+# Bounded cleanup — latest exact-source hosted checkpoint
+**Phase8D IN PROGRESS / NOT PASS.** Tested executable **b46f306dcbb91648f15cd6f69dae068d888d1fdf**. P8D-083 is SOURCE/CI CORRECTION VERIFIED ONLY, not a deployed fix or final acceptance. Current code follows the earlier commute/refinement/recovery corrections; no APK/UI-layout, binding/service/secret/public route, cloud/family-data mutation, R2/card or deployment.
+
+D1 refinement-retention now selects at most8 expired frame rows and8 intervals, atomically deletes exact unchanged identities and unchanged/unreferenced object metadata with FK chunk cascade, and deletes at most256 endpoints. Seven measured computation statements;10 with raw durable receipt. Existing-namespace object maintenance-refined-retention isolates this task under44 computation statements plus receipt reserve. Remaining refinement backlog and root state are PENDING; last-success stays truthful. Daily safety, pairing/events, health/closed incidents, crash/audit and parent auth sweeps cap200 rows per table without changing retention periods. Index-only021 is staged in setup/fixture, not live applied.
+
+New independent coverage is20 cleanup cases plus1 native populated retention RPC/root-PENDING case; the native budget suite now has4 cases, including3 inherited. The prior commute12 and all required object/protected41+4/D1+DO restore/ACK/retention/background/lease/budget/refined/beta/native/legacy suites are rerun. Populated conservative per-object aggregate across a tick now max48 across both D1 bindings (supersedes older max45 for current source); forced guarded computation failure47 with durable retry remains covered. These are synthetic hosted Miniflare statement/row envelopes, not live CPU/rows/day/fleet proof.
+
+Next exact source boundary: index.ts runOpsWatchdog selects all active devices, calls openOfflineIncident per overdue device and delivers up to100 pending alerts through device RPCs. Review/reproduce isolation and durable progress without weakening safety-alert delivery timing. Also qualify sustained deletion backlog/cadence, read/CPU/day/storage/fleet budgets and malformed/corrupt cleanup inputs. Do not claim all global maintenance bounded. See PHASE8D_CLEANUP_BACKLOG.md for the full table/cadence map and limitations.
+
+Atlas7-ID/BE-019 placement/learning/trust/decay/model history, operational independent private capture/destination/key/PITR/cloud recovery drill, deployed schema/config/rollback and all525 per-ID owner/independent reviews remain OPEN. P8D-002 stays P1 OPEN; no final disposition is changed. Generic continue does not merge/deploy draft PR32. No phone/browser/72h result inferred. Previous checkpoint sections remain historical scoped evidence.
+
+## Exact hosted verification
+Push42060763413/job127361494675 and PR42060908234/job127362020429 completed-success, all29 steps each. Portal/map42060909270/job127362020566 all10 success. Actual logs inspected, exact sourceb46f306dcbb91648f15cd6f69dae068d888d1fdf confirmed, zero GitHub error markers. PR checkout3b16be9e771cd81577a7d021d1b98c170ba75476 merges the source into612d4a8b16fb829f9528b06ab6448ab85ac483e6. Twenty cleanup cases and the additional populated retention RPC/root-PENDING case pass; native budget suite4/4 includes3 inherited cases. Full inherited suites pass. Exact metadata/extracts: PHASE8D_CLEANUP_BACKLOG_HOSTED_EVIDENCE.json. No local runner available this turn; hosted Miniflare D1 is not live cloud proof.
+
+Current evidence-only audit head6def0f277fc3dabaaad03ac7357787674d1f21e1. Continue from https://github.com/hellonenermy1/Brickfamilyplanning/blob/6def0f277fc3dabaaad03ac7357787674d1f21e1/audit/phase8d/PHASE8D_D1_OPERATIONS_HOSTED_CHECKPOINT.md . This formal branch update changes the handoff only. Historical queue entries below are superseded where the current pointer records source/CI correction; no operational backup/PITR/fleet/final525 gate is inferred.
+
+---
+
 # Latest continuation — commute paging source and hosted verification
 
 # Commute paging — latest exact-source hosted checkpoint
