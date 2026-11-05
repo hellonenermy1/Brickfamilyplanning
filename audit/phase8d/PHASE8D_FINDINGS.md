@@ -611,3 +611,7 @@ P8D-072 (P1): direct D1 history write after exact revoke interleaving; native RE
 Original finding reports and RED/GREEN receipts are retained alongside this ledger; hosted source acceptance is separate, no live closure inferred. P8D-002 full cloud/operational recovery remains P1 OPEN despite local41+4-table recovery progress.
 No525-ID acceptance state is changed; no production/phone/endurance PASS.
 
+
+
+## D1 exact-source hosted retest — a51d4d96a2888004025e7b0ffb7df4f6d31e9f06
+P8D-068/069/070/071/072 SOURCE/CI VERIFIED; runs42008010567/42008019532 and existing portal42008019430 completed-success; actual15/15,15/15 and10/10 step metadata verified, push/PR audit logs inspected. See PHASE8D_D1_HOSTED_CHECKPOINT.md and PHASE8D_D1_HOSTED_SOURCE_EVIDENCE.json. No live closure, P8D-002 operational/cloud P1 still OPEN, Phase8D NOT PASS. Later documentation commits do not change tested code.
