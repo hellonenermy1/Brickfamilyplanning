@@ -210,8 +210,22 @@ object BetaSafety {
             }
         }
 
-        val ownerAfter = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(true)
-        val activeAdminAfter = runCatching { dpm.isAdminActive(admin) }.getOrDefault(true)
+        // DPMS removes the owner record before its asynchronous admin-removal callback settles.
+        // AOSP evidence showed a ~70ms gap: one immediate read correctly refused release but left
+        // the durable retirement state DISARMED forever. Wait briefly for BOTH real postconditions;
+        // never substitute an API return value for verification or wait indefinitely at startup.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 1_500L
+        var ownerAfter: Boolean
+        var activeAdminAfter: Boolean
+        do {
+            ownerAfter = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(true)
+            activeAdminAfter = runCatching { dpm.isAdminActive(admin) }.getOrDefault(true)
+            if ((!ownerAfter && !activeAdminAfter) || failure != null || android.os.SystemClock.elapsedRealtime() >= deadline) break
+            try { Thread.sleep(50L) } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return ReleaseResult(ownerBefore, ownerAfter, activeAdminAfter, "verification_interrupted")
+            }
+        } while (true)
         return ReleaseResult(ownerBefore, ownerAfter, activeAdminAfter, failure?.javaClass?.simpleName)
     }
 
