@@ -61,5 +61,14 @@ try{
   await db.prepare("UPDATE provider_cache SET value_json=json_set(value_json,'$.nextAttemptAt',1) WHERE provider='brick_background_v1'").run();assert.equal(await runBackgroundWork(db,'commute',DEVICE_A,()=>slice()),'COMPLETED');const done=JSON.parse((await db.prepare("SELECT value_json FROM provider_cache WHERE provider='brick_background_v1'").first()).value_json);assert.equal(done.status,'COMPLETED');assert.ok(done.lastSuccessAt>=now);
  });
 
+
+ await test('stationary8-minute and15-minute gap boundaries match legacy across pages',async()=>{await reset();const points=Array.from({length:1400},(_,i)=>packet(i+1,start+i*1000+(i>=1050?16*60000:0),10000000+i*100,i>=300&&i<900?1:2));points.push(packet(2001,start+100000,10010050,3));await insert(points);
+  await refreshCommutes({DB:db,HISTORY:new D1ObjectBucket(db)},DEVICE_A,now-2*86400000,now);const expected=await summaries();assert.equal(expected.length,2);await db.prepare('DELETE FROM commute_summaries').run();await finish();assert.deepEqual(await summaries(),expected);
+ });
+ await test('checkpoint loss safely reconstructs summaries from retained trusted rows',async()=>{await reset();await insert(Array.from({length:600},(_,i)=>packet(i+1,start+i*1000,10000000+i*100)));await finish();const prior=await summaries();await slice();await db.prepare("DELETE FROM provider_cache WHERE provider='brick_commute_scan_v1'").run();const done=await finish();assert.equal(done.processedPoints,600);assert.deepEqual(await summaries(),prior);
+ });
+ await test('malformed trusted packet cannot advance saved cursor or replace cached generation',async()=>{await reset();await insert(Array.from({length:600},(_,i)=>packet(i+1,start+i*1000,10000000+i*100)));await finish();const prior=await summaries();await slice();const checkpoint=(await saved()).value_json;await db.prepare("UPDATE dev_location_history SET trusted_packet_json='[]' WHERE sequence=550").run();await assert.rejects(()=>slice(),/packet/);assert.equal((await saved()).value_json,checkpoint);assert.deepEqual(await summaries(),prior);
+ });
+
  console.log(JSON.stringify({suite:'commute-paging',passed,failed,scope:'actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes'}));if(failed)process.exitCode=1;
 }finally{if(mf)await mf.dispose();fs.rmSync(dir,{recursive:true,force:true});}
