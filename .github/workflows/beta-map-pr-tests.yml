@@ -1,0 +1,30 @@
+name: Brick Beta Map and Portal Regression (no cloud writes)
+on:
+  pull_request:
+    branches: [beta/backend-portal]
+    paths:
+      - 'src/dev-free-runtime.ts'
+      - 'src/parent-v5b.ts'
+      - 'scripts/test-beta-workerd.mjs'
+      - '.github/workflows/beta-map-pr-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: brick-beta-map-pr-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  map-and-parent-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:parent-assets
+      - run: npm run typecheck
+      - name: MapLibre PMTiles ranges and portal device-list independence
+        run: node scripts/test-beta-workerd.mjs
