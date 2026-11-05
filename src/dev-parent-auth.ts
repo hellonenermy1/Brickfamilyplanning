@@ -190,8 +190,8 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
 
 export async function cleanupDevParentAuth(env: DevParentAuthEnv, now = Date.now()) {
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM dev_parent_login_tokens"),
-    env.DB.prepare("DELETE FROM dev_parent_sessions WHERE expires_at<=?1 OR (revoked_at IS NOT NULL AND revoked_at<?2)").bind(now, now - 7 * 86_400_000)
+    env.DB.prepare("DELETE FROM dev_parent_login_tokens WHERE rowid IN(SELECT rowid FROM dev_parent_login_tokens ORDER BY expires_at,rowid LIMIT 200)"),
+    env.DB.prepare("DELETE FROM dev_parent_sessions WHERE rowid IN(SELECT rowid FROM dev_parent_sessions WHERE expires_at<=?1 OR (revoked_at IS NOT NULL AND revoked_at<?2) ORDER BY expires_at,rowid LIMIT 200)").bind(now, now - 7 * 86_400_000)
   ]);
 }
 

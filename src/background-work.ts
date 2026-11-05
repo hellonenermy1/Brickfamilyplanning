@@ -49,7 +49,7 @@ export async function runBackgroundWork(db: D1Database, task: Task, subject: str
   }
   try {
     const result = await work(), waiting = task === 'refinement' && result === 0;
-    const pending=task==='commute'&&result!==null&&typeof result==='object'&&'complete' in result&&(result as {complete:unknown}).complete===false;
+    const pending=(task==='commute'||task==='refined-retention')&&result!==null&&typeof result==='object'&&'complete' in result&&(result as {complete:unknown}).complete===false;
     await finish({...receipt, status: pending?'PENDING':waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting||pending ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + successIntervalMs, lease: null});
     return pending?'PENDING' as const:'COMPLETED' as const;
   } catch(error) {

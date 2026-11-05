@@ -14,6 +14,7 @@ export function cardfreeRuntime(env:Env):Env{
  const result=developmentRuntimeEnv(env);const direct=result.EVENTS;
  return {...result,BACKGROUND_WORK:{
   run(kind,deviceId){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('derived-'+deviceId)).runDerivedWork(kind,deviceId);},
+  cleanup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-refined-retention')).runRetentionWork();},
   backup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-backup')).runDailyBackup();}
  },EVENTS:{
   async send(body:unknown){

@@ -1,3 +1,4 @@
+import {cleanupD1RefinedHistory} from './d1-refined-retention';
 import type { EvidenceRecord } from "./evidence-protocol";
 import type { LivePacket } from "./protocol";
 import { refineHypothesisInterval, validateSmoothingFrame, type SmoothingEndpoint, type SmoothingFrame, type StoredHypothesis } from "./phase5-smoothing";
@@ -10,7 +11,7 @@ const REFINED_RETENTION_MS = 90 * 86_400_000;
 const MAX_SMOOTHING_INTERVAL_MS = 24 * 60 * 60_000;
 const ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
-type RefinementEnv = { DB: D1Database; HISTORY: R2Bucket };
+type RefinementEnv = { DB: D1Database; HISTORY: R2Bucket; BETA_STORAGE_MODE?:string };
 type FrameRow = { record_id: string; wall_time_ms: number; r2_key: string };
 type EndpointRow = {
   epoch: number;
@@ -306,6 +307,7 @@ export async function listRefinedHistory(env: RefinementEnv, deviceId: string, f
 }
 
 export async function cleanupPhase5RefinedHistory(env: RefinementEnv, now = Date.now(), limit = 100) {
+  if(env.BETA_STORAGE_MODE==='d1')return cleanupD1RefinedHistory(env.DB,now,limit);
   const bounded = Math.max(1, Math.min(250, Math.trunc(limit)));
   const frameCutoff = now - FRAME_RETENTION_MS;
   const refinedCutoff = now - REFINED_RETENTION_MS;

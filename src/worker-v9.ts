@@ -198,7 +198,7 @@ export default {
         catch { failed = true; }
       }
     } catch { failed = true; }
-    try { await runBackgroundWork(env.DB, 'refined-retention', 'global', () => cleanupPhase5RefinedHistory(env)); } catch { failed = true; }
+    try { if(env.BACKGROUND_WORK?.cleanup)await env.BACKGROUND_WORK.cleanup();else await runBackgroundWork(env.DB, 'refined-retention', 'global', () => cleanupPhase5RefinedHistory(env)); } catch { failed = true; }
     if (failed) throw Error('derived maintenance failed');
   }
 } satisfies ExportedHandler<Env>;
