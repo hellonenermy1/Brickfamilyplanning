@@ -28,3 +28,5 @@ beta-artifact/
 .brick-p8d-full-recovery-*/
 
 .brick-p8d-workerd-*/
+
+beta-parent-login.encrypted.json

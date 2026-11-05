@@ -1,7 +1,7 @@
 import {validateBetaConfig} from './beta-deployment-contract.mjs';
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash,randomBytes,publicEncrypt,createPublicKey } from 'node:crypto';
 import os from 'node:os';
 import pathModule from 'node:path';
 import { applyDevelopmentSchema16, revokePriorDevelopmentSessions } from './phase8d-development-schema16.mjs';
@@ -38,8 +38,10 @@ const token = process.env.CLOUDFLARE_API_TOKEN;
 const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
 // Explicit operator-supplied high-entropy token. Never publish or log the plaintext/hash.
-const devAccessToken = process.env.BRICK_DEV_PARENT_ACCESS_TOKEN || '';
-if (!/^[A-Za-z0-9_-]{43,128}$/.test(devAccessToken)) {
+let devAccessToken = process.env.BRICK_DEV_PARENT_ACCESS_TOKEN || '';
+let provisionLogin=!!devAccessToken;let generatedLogin=false;
+const parentPublicKey=createPublicKey({key:JSON.parse(await fs.readFile('beta/parent-login-public-key.json','utf8')),format:'jwk'});
+if (devAccessToken && !/^[A-Za-z0-9_-]{43,128}$/.test(devAccessToken)) {
   throw new Error('BRICK_DEV_PARENT_ACCESS_TOKEN must be a securely generated base64url token (at least 32 random bytes); no six-digit beta PIN.');
 }
 
@@ -73,6 +75,17 @@ async function selectAccount() {
 }
 
 const accountId = await selectAccount();
+if(!devAccessToken){
+ let names=[];
+ try{names=await cf(`/accounts/${accountId}/workers/scripts/${WORKER_NAME}/secrets`);}catch(e){if(!String(e.message).includes('Cloudflare API 404 '))throw e;}
+ if(!Array.isArray(names))throw Error('Worker secret inventory unavailable');
+ if(!names.some(x=>x.name==='DEV_PARENT_LOGIN_HASH')){
+  devAccessToken=randomBytes(32).toString('base64url');provisionLogin=true;generatedLogin=true;
+  const encrypted=publicEncrypt({key:parentPublicKey,oaepHash:'sha256'},Buffer.from(devAccessToken));
+  await fs.writeFile('beta-parent-login.encrypted.json',JSON.stringify({format:'brick-parent-bootstrap-v1',algorithm:'RSA-OAEP-SHA256',ciphertext:encrypted.toString('base64')}));
+ }
+}
+
 
 async function ensureD1(name=D1_NAME) {
   const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
@@ -204,6 +217,7 @@ const workerHost = hostMatch[1];
 
 // Provision the hash as a private Worker secret, never as a public Wrangler var.
 // If secret provisioning fails, the new login route fails closed.
+if(provisionLogin){
 const loginHash = createHash('sha256').update(devAccessToken, 'utf8').digest('hex');
 await new Promise((resolve, reject) => {
   const child = spawn(npx, ['wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH', '--config', GENERATED_CONFIG], {
@@ -217,6 +231,7 @@ await new Promise((resolve, reject) => {
 });
 
 
+}
 console.log('[card-free dev 6/6] Writing non-secret deployment state…');
 const sourceGitSha = process.env.GITHUB_SHA || 'local-unverified';
 const state = {
@@ -233,8 +248,9 @@ const state = {
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
   parentLoginMode: 'private-high-entropy-token-v2',
+  parentCredential:generatedLogin?'GENERATED_ENCRYPTED_FOR_USER':provisionLogin?'CONFIGURED_ACTIONS_SECRET':'PRESERVED_WORKER_SECRET',
   priorSessionsRevoked: true,
-  schedulerMode: 'request-driven-d1-lease-no-cron',
+  schedulerMode: 'free-cron-with-d1-lease-and-request-fallback',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
   d1Id, betaD1Id, betaReleaseId:'brick-beta-20261105-01', diagnosticRetentionDays:35,

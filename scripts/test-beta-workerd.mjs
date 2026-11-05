@@ -75,6 +75,15 @@ try{
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/import',{method:'POST',body:JSON.stringify(imported)})).status,200);
  const status=await (await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).json();assert.equal(status.evidence.run.runId,run.runId);assert.equal(status.evidence.review.interventions.length,1);assert.equal(status.evidence.assessment,'REVIEW_REQUIRED');
  assert.equal((await parent('/parent/beta/download/manifest')).status,200);assert.equal((await parent('/parent/beta/download/apk')).status,503);
+ if(fs.existsSync('beta-artifact/Brick.apk')){
+  const apk=fs.readFileSync('beta-artifact/Brick.apk'),key='beta/releases/'+releaseId+'/Brick.apk';
+  {const upload=await parent('/parent/beta/publish/apk',{method:'POST',body:apk});assert.equal(upload.status,200,(await upload.text()).slice(0,1500));}
+  const file=await parent('/parent/beta/download/apk');assert.equal(file.status,200);assert.deepEqual(Buffer.from(await file.arrayBuffer()),apk);
+  assert.ok((await db.prepare('SELECT COUNT(*) n FROM dev_object_chunks WHERE key=?1').bind(key).first()).n>=3);
+  await db.prepare('DELETE FROM dev_object_chunks WHERE key=?1 AND chunk_index=1').bind(key).run();assert.equal((await parent('/parent/beta/download/apk')).status,503);
+  {const upload=await parent('/parent/beta/publish/apk',{method:'POST',body:apk});assert.equal(upload.status,200,(await upload.text()).slice(0,1500));}await objectStore.delete(key);
+  console.log('PASS actual permanent-signed APK D1 multi-chunk authenticated publication/readback; missing chunk refuses download; transactional replacement repairs it');
+ }
  await db.prepare('INSERT INTO dev_object_store(key,size,etag,uploaded_at) VALUES(?1,?2,?3,?4)').bind('beta/releases/'+releaseId+'/Brick.apk',0,'wrong',Date.now()).run();assert.equal((await parent('/parent/beta/download/apk')).status,503);
  await db.prepare('UPDATE devices SET revoked_at=?1 WHERE id=?2').bind(Date.now(),DEVICE_A).run();assert.equal((await signed('/beta/readiness',ready())).status,401);assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,404);
  assert.equal((await parent('/parent/logout',{method:'POST',redirect:'manual'})).status,303);assert.equal((await parent('/parent/api/devices')).status,401);

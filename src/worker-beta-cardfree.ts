@@ -33,7 +33,7 @@ export default {
    const authorized=await authorizeDevParentRequest(clean,auth);if(!authorized)return devParentUnauthorized(clean);
    if(u.pathname==='/parent/beta/publish/apk'){
     if(clean.method!=='POST'||clean.headers.get('Origin')!==u.origin)return betaJson({error:'same_origin_post_required'},403);
-    const body=await readBoundedBody(clean,10*1024*1024);if(!body.ok)return betaJson({error:'apk_too_large'},400);
+    const body=await readBoundedBody(authorized,10*1024*1024);if(!body.ok)return betaJson({error:'apk_too_large'},400);
     const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',body.body))).map(x=>x.toString(16).padStart(2,'0')).join('');
     if(!BETA_RELEASE.available||hash!==BETA_RELEASE.apkSha256)return betaJson({error:'approved_apk_required'},409);
     await r.HISTORY.put(BETA_APK_KEY,body.body);const stored=await r.HISTORY.get(BETA_APK_KEY);if(!stored||stored.size!==body.body.byteLength)return betaJson({error:'apk_storage_failed'},503);
@@ -43,5 +43,11 @@ export default {
    const headers=new Headers(response.headers);headers.set('X-Brick-Storage','d1-chunked-no-r2');headers.set('X-Brick-Parent-Auth','d1-session-v1');return new Response(response.body,{status:response.status,statusText:response.statusText,headers,...(response.webSocket?{webSocket:response.webSocket}:{})});
   }
   return beta.fetch(clean as Request<unknown,IncomingRequestCfProperties>,r,ctx);
+ },
+ async scheduled(controller:ScheduledController,env:Env,ctx:ExecutionContext){
+  // Free Cron triggers retain unattended safety/maintenance; D1 leases deduplicate request fallback.
+  if(env.BETA_STORAGE_MODE!=='d1'||env.APP_ENV!=='development')throw Error('cardfree_configuration_required');
+  const r=runtime(env),daily=controller.cron==='17 3 * * *',task=daily?'beta-daily':'beta-minute';
+  if(await claimDevMaintenance(env.DB,task,daily?86400000:60000,Date.now())){await beta.scheduled(controller,r,ctx);if(daily){await cleanupDevelopmentObjectStore(env.DB);await cleanupDevParentAuth({DB:env.DB});}}
  }
 } satisfies ExportedHandler<Env>;

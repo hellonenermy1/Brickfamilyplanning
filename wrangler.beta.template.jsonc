@@ -120,5 +120,11 @@
     "DEV_PARENT_AUTH_MODE": "d1-session-v1",
     "BETA_STORAGE_MODE": "d1",
     "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
+  },
+  "triggers": {
+    "crons": [
+      "*/1 * * * *",
+      "17 3 * * *"
+    ]
   }
 }
