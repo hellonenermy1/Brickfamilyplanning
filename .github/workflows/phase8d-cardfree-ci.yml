@@ -30,6 +30,8 @@ jobs:
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
+      - name: Bounded cleanup backlog progress and policy regressions
+        run: node scripts/test-phase8d-cleanup-backlog.mjs
       - name: Resumable D1 commute history paging regression
         run: node scripts/test-phase8d-commute-paging.mjs
       - name: D1 object read integrity and atomic conditional-write regressions

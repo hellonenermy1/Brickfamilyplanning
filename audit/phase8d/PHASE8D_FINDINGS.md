@@ -693,3 +693,9 @@ Proven cases include22001 points, cross-page resume, legacy geometry/stationary/
 
 Next independent source work: qualify inherited minute/daily global cleanup envelopes with populated/backlog fixtures and bounded resumable progress; split RPCs alone do not bound rows/CPU. Keep Atlas7-ID/BE-019 placement/learning/trust/decay/model history unresolved unless actual authority/source resolves it. Operational independent private capture/destination/key/PITR/cloud drill, deployed schema/config/rollback and all525 per-ID owner/independent reviews remain open. P8D-002 stays P1 OPEN. Generic continue does not merge/deploy PR32; it is draft/unmerged/mergeable. No R2/card, APK/UI-layout/public route/new binding/service/secret, cloud/family-data mutation or phone/72h inference.
 
+
+
+## P8D-083 — inherited cleanup statement and row backlog envelopes
+- SOURCE OBSERVATION / HOSTED RED PENDING: refined cleanup loops up to100 frame objects plus100 run objects/metadata and deletes expired endpoints without a limit. Daily safety, audit/crash, health and parent-session cleanup deletes all eligible rows in one invocation. Splitting minute/daily RPCs does not bound this work. Candidate source baseline74b359808924f884b98656bac689fc73ffc0aede.
+- Expected: bounded resumable oldest-first cleanup on D1, preserved policies/safety/custom retention and refreshed concurrent state, isolated guarded refinement-retention invocation, actual backlog/retry/rollback regression evidence. No live data deletion or schema change is authorized by this source audit.
+- Reproducer: scripts/test-phase8d-cleanup-backlog.mjs runs only disposable synthetic D1 data. Five initial cases intentionally demand bounded progress; exact hosted RED receipt must be inspected before claiming reproduction. Severity P2 source resource/liveness observation; all525 final dispositions unchanged, P8D-002 P1 remains OPEN.
