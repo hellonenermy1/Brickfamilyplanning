@@ -22,7 +22,7 @@ It reconciles all 38 durable D1 table counts (many intentionally empty; the sepa
 
 A test development issue was caught and corrected: locked Miniflare 5 ignores old per-service persistence options. The final test uses `resourcePersistencePath` and `isolatedResourcePersistencePath`, requires actual SQLite files before deletion and verifies state after restart. Earlier intermediate runs are not counted as destructive recovery evidence.
 
-Local targeted logs: `PHASE8D_FULL_STORE_RECOVERY_LOCAL_2026-11-05.txt`. CI adds one blocking source job step; exact hosted SHA/result must be appended after completion. Existing workerd integration and TypeScript/public asset checks also run for this change.
+Local targeted logs: `PHASE8D_FULL_STORE_RECOVERY_LOCAL_2026-11-05.txt`. CI adds one blocking source job step; hosted exact-source verification **58285064fbf3d6b707dd15d8ef2fd3fb967ae47d**, [CI41952880677](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41952880677), attempt1 completed SUCCESS, all three jobs and source67/67 steps. Actual logs inspected; `PHASE8D_SOURCE_CI_41952880677.txt`. Existing workerd integration and TypeScript/public asset checks also run for this change.
 
 ## What this does not close
 

@@ -6,7 +6,7 @@ Updated 2026-11-05. **8D IN PROGRESS / NOT PASS.** Authority: Phase 8 PDF pp.44â
 
 - Previously green executable: `cd5e50ca050a8afa8932434c590d923e3ade62a4`, [source CI 41869667667](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667), all three jobs successful. Reuse unchanged scoped evidence; a green source suite does not attest a deployment.
 - Latest read-only live check: [41839919454 attempt 5](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/5), completed failure. Attestor source remains `d74b30d97e97a01ce55171f1931c685d51f4d180`; it is not the audit branch HEAD. Sanitized results: `PHASE8D_LIVE_ATTEMPT5_2026-11-05.txt`.
-- Current recovery batch: `PHASE8D_FULL_STORE_RECOVERY_2026-11-05.md`; new local destructive D1/R2/DO evidence, not a live cloud pass. Use its exact source CI checkpoint once available.
+- Current recovery batch: `PHASE8D_FULL_STORE_RECOVERY_2026-11-05.md`; local destructive D1/R2/DO evidence at executable `58285064fbf3d6b707dd15d8ef2fd3fb967ae47d`, [CI41952880677](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41952880677) all three jobs SUCCESS (source67/67). Not a live cloud pass. Exact proof `PHASE8D_SOURCE_CI_41952880677.txt`.
 - D1 recovery scope is **38 durable tables**, four explicitly excluded transient tables and six development-only tables (48 total classified). Older 18-table prose is historical.
 - Canonical requirements: `audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv`. It is a requirement baseline, not a completed per-ID evidence/owner ledger. Full 525-ID applicability and evidence reconciliation remains pending.
 

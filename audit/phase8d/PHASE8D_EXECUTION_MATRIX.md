@@ -1,5 +1,7 @@
 # Brick V1 Phase 8D — Live execution and acceptance ledger
 
+> Current operational checkpoint (2026-11-05): executable `58285064fbf3d6b707dd15d8ef2fd3fb967ae47d`, CI41952880677 all3 jobs SUCCESS (source67/67). P8D-002 local destructive D1/R2/DO recovery verified, cloud P1 OPEN. Live41839919454 attempt5 still FAILURE. Historical rows below retain their original evidence scopes; use `PHASE8D_LIVE_ACCEPTANCE_NEXT.md` for the current fixed all-19-section queue and pending525-ID reconciliation. Phase8D NOT PASS.
+
 **Started:** 2026-11-04, baseline `70a3c287425e9276585fbff85909dcf699dcf2f2`.
 **Status vocabulary:** NOT STARTED / SOURCE REVIEWED / REPRODUCED FAILURE / FIXED — RETEST PENDING / CI VERIFIED / INTEGRATION VERIFIED / VERIFIED UNSUPPORTED / BLOCKED — LIVE EVIDENCE / VERIFIED CLOSED. **No UNKNOWN at closure.**
 

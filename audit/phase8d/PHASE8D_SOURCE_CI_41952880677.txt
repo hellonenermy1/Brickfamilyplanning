@@ -1,0 +1,31 @@
+# Phase 8D exact-source hosted CI evidence — 2026-11-05
+
+Run: https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41952880677
+Attempt: 1
+Executable SHA: 58285064fbf3d6b707dd15d8ef2fd3fb967ae47d
+Workflow: .github/workflows/v1-phase8d-backend-audit-ci.yml
+Status: completed SUCCESS. Actual job logs retrieved and inspected.
+
+Job 127000713635: P8D-001 — Reproduce production deployment/schema drift
+Conclusion SUCCESS; 7/7 steps successful; 0 explicit CI error/FAIL records.
+11 PASS summary lines (not independent test counts).
+
+Job 127000713905: Phase 8D source baseline TypeScript and locked dependencies
+Conclusion SUCCESS; 67/67 steps successful; 0 explicit CI error/FAIL records.
+171 PASS summary lines (not independent test counts).
+
+Job 127000713946: P8D-002 — Reproduce backup coverage drift
+Conclusion SUCCESS; 7/7 steps successful; 0 explicit CI error/FAIL records.
+5 PASS summary lines (not independent test counts).
+
+New recovery step output:
+2026-11-05T02:06:15.0774177Z PASS destroyed actual source D1/R2/DO persistence after quiesced snapshot; recovery uses only saved backup objects and DO snapshots
+2026-11-05T02:06:16.6384040Z PASS fresh local D1 38-table row/FK reconciliation, pending command expiry, R2 HISTORY/MAPS exact bytes and metadata; missing/corrupt R2 fail before writes
+2026-11-05T02:06:17.1087301Z PASS DO restore preserves all eight supported key classes across active/revoked identities, timestamps, sequence/health ordering and reconstructed revocation fence; bad digest/key and occupied target refused
+2026-11-05T02:06:17.9348121Z PASS ordinary Worker environment refuses DO recovery; no HTTP restore endpoint, production configuration or cloud mutation
+2026-11-05T02:06:18.7758117Z PASS restored D1 revocation overrides active snapshot; legacy unpadded identity normalization, unknown state, invalid markers and oversized snapshots checked
+2026-11-05T02:06:18.8131962Z PASS native DO export rejects nonfinite/oversized state, restore refuses a target with an attached WebSocket/alarm
+2026-11-05T02:06:18.8172632Z LIMIT local synthetic evidence only: cloud destructive recovery, cross-store snapshot consistency under traffic, original R2 retention age, scale, RTO/RPO and operator orchestration remain OPEN
+
+Existing workerd integration, strict acceptance verifier controls, route/schema/auth/rate/retention/source tests and SQLite CLI recovery steps also completed successfully within the source job. No deployment workflow ran from this CI.
+Scope: source and synthetic/local service evidence only; no deployed source, cloud recovery, retention, Access or Phase8D PASS inferred.
