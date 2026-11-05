@@ -15,12 +15,12 @@ export default {
   if(parent||download){
    if(!await parentAuthorized(req,env))return unauthorizedParent(req);
    if(req.method!=='GET'&&req.headers.get('Origin')!==u.origin)return betaJson({error:'same_origin_required'},403);
-   if(env.APP_ENV!=='production'||env.BETA_CHANNEL!=='beta')return betaJson({error:'beta_unavailable'},503);
+   if(env.APP_ENV!=='development'||env.BETA_STORAGE_MODE!=='d1'||env.BETA_CHANNEL!=='beta')return betaJson({error:'beta_unavailable'},503);
    try{
     if(!env.BETA_PARENT_RATE||!(await env.BETA_PARENT_RATE.limit({key:'beta-parent:'+(req.headers.get('CF-Connecting-IP')??'unknown')})).success)return betaJson({error:'parent_rate_limited'},429);
     if(parent)return await betaParent(req,env,parent[1],parent[2]);
     if(req.method!=='GET')return betaJson({error:'method_not_allowed'},405);
-    if(download![1]==='manifest')return betaJson({...BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,phase2:'BETA',physicalQualification:'REQUIRED',endurance:'REVIEW_REQUIRED'});
+    if(download![1]==='manifest')return betaJson({...BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,phase2:'BETA',storageMode:'d1-chunked',eventMode:'direct-d1',physicalQualification:'REQUIRED',endurance:'REVIEW_REQUIRED'});
     if(download![1]==='checksum')return new Response(BETA_RELEASE.apkSha256+'  Brick.apk\n',{headers:{'Content-Type':'text/plain','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     if(!BETA_RELEASE.available)return betaJson({error:'new_apk_safety_revision_pending_validation'},503);
     const apk=await env.HISTORY.get(BETA_APK_KEY);if(!apk||apk.size>10*1024*1024)return betaJson({error:'verified_apk_unavailable'},503);

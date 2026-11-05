@@ -26,3 +26,5 @@ beta-cloud-preflight.json
 beta-artifact/
 
 .brick-p8d-full-recovery-*/
+
+.brick-p8d-workerd-*/

@@ -1,3 +1,4 @@
+throw Error('Obsolete R2 path disabled: use setup-beta-d1.mjs; no-card project rule');
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal')throw Error('Beta branch required');
 import fs from 'node:fs/promises';
 import path from 'node:path';

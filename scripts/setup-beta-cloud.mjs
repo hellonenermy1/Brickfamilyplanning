@@ -1,3 +1,4 @@
+throw Error('Obsolete R2 path disabled: use setup-beta-d1.mjs; no-card project rule');
 import { validateBetaConfig } from './beta-deployment-contract.mjs';
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';

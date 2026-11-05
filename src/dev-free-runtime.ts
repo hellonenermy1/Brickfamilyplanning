@@ -16,7 +16,7 @@ type StoredMeta = {
   custom_metadata_json: string;
 };
 
-type ChunkRow = { body: ArrayBuffer | Uint8Array };
+type ChunkRow = { body: ArrayBuffer | Uint8Array | number[] };
 type RangeSpec = { offset: number; length: number } | null;
 type HistoryKind = "raw" | "trusted";
 type HistoryRow = {
@@ -282,7 +282,7 @@ async function virtualHistoryList(db: D1Database, prefix: string, offset: number
   };
 }
 
-class D1ObjectBucket {
+export class D1ObjectBucket {
   constructor(private readonly db: D1Database) {}
 
   async put(key: string, value: unknown, options: Record<string, unknown> = {}) {
@@ -330,6 +330,7 @@ class D1ObjectBucket {
     const chunks = rows.results.map(row => {
       if (row.body instanceof ArrayBuffer) return new Uint8Array(row.body);
       if (ArrayBuffer.isView(row.body)) return new Uint8Array(row.body.buffer, row.body.byteOffset, row.body.byteLength);
+      if (Array.isArray(row.body) && row.body.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) return Uint8Array.from(row.body);
       throw new Error("invalid D1 object chunk");
     });
     const bytes = new Uint8Array(meta.size);

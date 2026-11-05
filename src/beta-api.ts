@@ -4,7 +4,7 @@ import { history } from './phase4';
 import { BETA_RELEASE } from './beta-release';
 import type { BrickDevice } from './device-do';
 
-export type BetaEnv={DB:D1Database;BETA_DB:D1Database;HISTORY:R2Bucket;EVENTS:Queue;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>;BETA_RATE:RateLimit;BETA_PARENT_RATE:RateLimit;APP_ENV:string;BETA_CHANNEL:string;BETA_SOURCE_SHA:string};
+export type BetaEnv={DB:D1Database;BETA_DB:D1Database;HISTORY:R2Bucket;EVENTS:Queue;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>;BETA_RATE:RateLimit;BETA_PARENT_RATE:RateLimit;APP_ENV:string;BETA_CHANNEL:string;BETA_SOURCE_SHA:string;BETA_STORAGE_MODE?:string};
 type Obj=Record<string,unknown>;
 type Challenge={token:string;expires_at:number;queue_at:number|null;portal_at:number|null};
 export const betaJson=(x:unknown,status=200)=>Response.json(x,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -49,15 +49,15 @@ async function proofs(env:BetaEnv,id:string,now:number){
   const token=JSON.stringify({probe:crypto.randomUUID()});const r=await env.DB.prepare("INSERT INTO audit_log(event_type,method,path,status,created_at,detail_json) SELECT 'beta_service_probe','INTERNAL','/beta/probe',200,?1,?2 WHERE EXISTS(SELECT 1 FROM devices WHERE id=?3 AND revoked_at IS NULL)").bind(now,token,id).run();
   const key=r.meta.last_row_id;try{return (await env.DB.prepare("SELECT detail_json FROM audit_log WHERE id=?1 AND event_type='beta_service_probe'").bind(key).first<{detail_json:string}>())?.detail_json===token;}finally{await env.DB.prepare("DELETE FROM audit_log WHERE id=?1 AND event_type='beta_service_probe' AND detail_json=?2").bind(key,token).run();}
  });
- await probe('r2_roundtrip',async()=>{const key='beta/probes/'+id+'/'+crypto.randomUUID();try{await env.HISTORY.put(key,c.token);const v=await env.HISTORY.get(key);return await v?.text()===c.token;}finally{await env.HISTORY.delete(key);}});
- await probe('queue_roundtrip',async()=>{if(c.queue_at===null){await env.EVENTS.send({type:'brick_beta_probe_v1',deviceId:id,token:c.token});return false;}return c.queue_at>=now-300000;});
+ await probe('object_store_roundtrip',async()=>{const key='beta/probes/'+id+'/'+crypto.randomUUID();try{await env.HISTORY.put(key,c.token);const v=await env.HISTORY.get(key);return await v?.text()===c.token;}finally{await env.HISTORY.delete(key);}});
+ await probe('event_persistence_roundtrip',async()=>{await env.EVENTS.send({type:'brick_beta_probe_v1',deviceId:id,token:c.token});const receipt=await env.BETA_DB.prepare('SELECT queue_at FROM beta_challenges WHERE device_id=?1 AND token=?2').bind(id,c.token).first<{queue_at:number|null}>();return typeof receipt?.queue_at==='number'&&receipt.queue_at>=now-300000;});
  await probe('do_roundtrip',async()=>{const stub=env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id));const r=await stub.fetch(new Request('https://internal/beta/probe',{method:'POST',body:JSON.stringify({deviceId:id,token:c.token,expiresAt:c.expires_at})}));if(!r.ok)return false;const b=await r.json<{token:string;stateReadable:boolean}>();return b.token===c.token&&b.stateReadable===true;});
  await probe('history_readback',async()=>{const r=await history(env,id,now-3600000,now);if(!r.ok)return false;const b=await r.json<{points:unknown[]}>();return Array.isArray(b.points)&&b.points.length>0;});
  await probe('portal_delivery',async()=>c.portal_at!==null&&c.portal_at>=now-300000);
  return rows;
 }
 export async function betaDevice(req:Request,env:BetaEnv,id:string,kind:string){
- if(env.APP_ENV!=='production'||env.BETA_CHANNEL!=='beta'||!/^[a-f0-9]{40}$/.test(env.BETA_SOURCE_SHA??''))return betaJson({error:'beta_deployment_unavailable'},503);
+ if(env.APP_ENV!=='development'||env.BETA_STORAGE_MODE!=='d1'||env.BETA_CHANNEL!=='beta'||!/^[a-f0-9]{40}$/.test(env.BETA_SOURCE_SHA??''))return betaJson({error:'beta_deployment_unavailable'},503);
  if(req.method!=='POST')return betaJson({error:'method_not_allowed'},405);
  try{
   if(!env.BETA_RATE||!(await env.BETA_RATE.limit({key:'beta-ip:'+(req.headers.get('CF-Connecting-IP')??'unknown')})).success)return betaJson({error:'beta_rate_limited'},429);
@@ -75,7 +75,7 @@ export async function betaDevice(req:Request,env:BetaEnv,id:string,kind:string){
   const reservation=await env.BETA_DB.prepare('INSERT INTO beta_requests(nonce,device_id,expires_at) VALUES(?1,?2,?3) ON CONFLICT(nonce) DO NOTHING').bind(b.nonce,id,now+600000).run();
   if(reservation.meta.changes!==1)return betaJson({error:'replayed_nonce'},409);
   if(!await activeDevice(env,id))return betaJson({error:'device_revoked'},401);
-  const response={protocol:1,nonce:b.nonce,environment:'beta',releaseId:BETA_RELEASE.releaseId,backendSourceSha:env.BETA_SOURCE_SHA,serverReceivedAtMs:now};
+  const response={storageMode:'d1-chunked',eventMode:'direct-d1-durable',protocol:1,nonce:b.nonce,environment:'beta',releaseId:BETA_RELEASE.releaseId,backendSourceSha:env.BETA_SOURCE_SHA,serverReceivedAtMs:now};
   if(kind==='readiness'){
    const checks=await proofs(env,id,now);await env.BETA_DB.prepare('INSERT INTO beta_latest(device_id,payload,updated_at) VALUES(?1,?2,?3) ON CONFLICT(device_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(id,JSON.stringify({localChecks:b.localChecks,localCheckedAtMs:b.localCheckedAtMs,appVersion:b.appVersion,apkSourceSha:b.apkSourceSha,checks}),now).run();return betaJson({...response,checks});
   }

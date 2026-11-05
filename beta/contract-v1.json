@@ -7,8 +7,18 @@
   "protocol": 1,
   "readinessPath": "/api/device/{deviceId}/beta/readiness",
   "observationPath": "/api/device/{deviceId}/beta/observations",
-  "requiredBackendChecks": ["d1_roundtrip", "r2_roundtrip", "queue_roundtrip", "do_roundtrip", "history_readback", "portal_delivery"],
+  "requiredBackendChecks": [
+    "d1_roundtrip",
+    "object_store_roundtrip",
+    "event_persistence_roundtrip",
+    "do_roundtrip",
+    "history_readback",
+    "portal_delivery"
+  ],
   "authentication": "Existing per-device P-256 signature over exact request bytes; strict device and beta environment binding",
   "retirement": "Explicit local authorisation only; no automatic expiry or 72-hour self-destruct",
-  "phase2Status": "NOT_DEPLOYED"
+  "phase2Status": "NOT_DEPLOYED",
+  "storageMode": "d1-chunked-no-r2",
+  "eventMode": "direct-d1-no-cloudflare-queue",
+  "parentAuthMode": "d1-session-v1-no-zero-trust"
 }

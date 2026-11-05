@@ -1,17 +1,11 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "brick-family-beta",
-  "main": "src/worker-beta.ts",
+  "main": "src/worker-beta-cardfree.ts",
   "compatibility_date": "2026-10-29",
   "workers_dev": true,
   "observability": {
     "enabled": false
-  },
-  "triggers": {
-    "crons": [
-      "*/1 * * * *",
-      "17 3 * * *"
-    ]
   },
   "assets": {
     "directory": "./public"
@@ -44,42 +38,6 @@
       "database_id": "__BETA_D1_DATABASE_ID__"
     }
   ],
-  "r2_buckets": [
-    {
-      "binding": "HISTORY",
-      "bucket_name": "brick-family-beta-history"
-    },
-    {
-      "binding": "MAPS",
-      "bucket_name": "brick-family-beta-maps"
-    }
-  ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "EVENTS",
-        "queue": "brick-family-beta-events"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "brick-family-beta-events",
-        "max_batch_size": 50,
-        "max_batch_timeout": 5,
-        "max_retries": 5,
-        "dead_letter_queue": "brick-family-beta-dlq",
-        "max_concurrency": 1
-      },
-      {
-        "queue": "brick-family-beta-dlq",
-        "max_batch_size": 20,
-        "max_batch_timeout": 5,
-        "max_retries": 100,
-        "retry_delay": 300,
-        "max_concurrency": 1
-      }
-    ]
-  },
   "ratelimits": [
     {
       "name": "DEVICE_RATE",
@@ -144,14 +102,23 @@
         "limit": 60,
         "period": 60
       }
+    },
+    {
+      "name": "PARENT_LOGIN_RATE",
+      "namespace_id": "51009",
+      "simple": {
+        "limit": 6,
+        "period": 60
+      }
     }
   ],
   "vars": {
-    "APP_ENV": "production",
+    "APP_ENV": "development",
     "CURRENT_APP_VERSION": "1.0.0-beta.1",
-    "CF_ACCESS_TEAM_DOMAIN": "__CF_ACCESS_TEAM_DOMAIN__",
-    "CF_ACCESS_AUD": "__CF_ACCESS_AUD__",
     "BETA_CHANNEL": "beta",
-    "BETA_SOURCE_SHA": "__BETA_SOURCE_SHA__"
+    "BETA_SOURCE_SHA": "__BETA_SOURCE_SHA__",
+    "DEV_PARENT_AUTH_MODE": "d1-session-v1",
+    "BETA_STORAGE_MODE": "d1",
+    "BRICK_MAP_SOURCE": "__BRICK_MAP_SOURCE__"
   }
 }

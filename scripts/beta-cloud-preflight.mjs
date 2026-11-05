@@ -11,10 +11,11 @@ let account=process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if(!account){const accounts=await get('/accounts?per_page=50');if(accounts.length!==1)throw Error('Set CLOUDFLARE_ACCOUNT_ID: account selection is ambiguous');account=accounts[0].id;}
 if(!/^[a-f0-9]{32}$/i.test(account))throw Error('Invalid account ID');
 const checks=[];
-for(const [name,path] of [['workers','workers/subdomain'],['d1','d1/database?per_page=100'],['r2','r2/buckets'],['queues','queues?per_page=100'],['access','access/organizations'],['access_apps','access/apps?per_page=100']]){
+if(!/^[A-Za-z0-9_-]{43,128}$/.test(process.env.BRICK_DEV_PARENT_ACCESS_TOKEN??''))checks.push({name:'parent_secret',status:'BLOCKED',detail:'Missing configured high-entropy parent token Actions secret'});else checks.push({name:'parent_secret',status:'CONFIGURED'});
+for(const [name,path] of [['workers','workers/subdomain'],['d1','d1/database?per_page=100']]){
  try {const result=await get('/accounts/'+account+'/'+path);if(name==='workers'&&!result?.subdomain)throw Error('Workers subdomain unavailable');checks.push({name,status:'READABLE'});}
  catch(e){checks.push({name,status:'BLOCKED',detail:e.message});}
 }
-await fs.writeFile('beta-cloud-preflight.json',JSON.stringify({accountId:account,sourceSha:process.env.GITHUB_SHA,checks,allReadable:checks.every(x=>x.status==='READABLE')},null,2));
+await fs.writeFile('beta-cloud-preflight.json',JSON.stringify({accountId:account,sourceSha:process.env.GITHUB_SHA,checks,allReadable:checks.every(x=>['READABLE','CONFIGURED'].includes(x.status))},null,2));
 console.log(JSON.stringify({checks,writePermissions:'NOT_YET_EXERCISED'}));
 if(checks.some(x=>x.status==='BLOCKED'))process.exitCode=1;

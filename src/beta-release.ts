@@ -1,5 +1,5 @@
 export const BETA_RELEASE = {
- releaseId: 'brick-beta-20261105-01', apkSourceSha: '0b9f6facdd0f037c924f21d410e0a32d4f1dae89',
+ releaseId: 'brick-beta-20261105-01', apkSourceSha: 'fa52547d89929e2032fc8ced4511b79e9bf8a23c',
  versionName: '1.0.0-beta.1', versionCode: 11, applicationId: 'com.brick.safety', automaticExpiry: false,
  available: false, availability: 'NEW_APK_SAFETY_REVISION_PENDING_VALIDATION',
  apkSha256: '30f3b53ea9fc5d432cae1a237e074c211f133bab4269d30de3f763e80f228eea',

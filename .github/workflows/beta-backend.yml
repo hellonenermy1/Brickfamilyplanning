@@ -11,8 +11,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   cloud-preflight:
-    # Historical R2/Access capability probe; not a requirement for the D1 redesign.
-    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -20,10 +18,11 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '24'
-      - name: Read account capabilities without changing any resources
+      - name: Read only Workers/D1 capability and parent-secret presence
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+          BRICK_DEV_PARENT_ACCESS_TOKEN: ${{ secrets.BRICK_BETA_PARENT_ACCESS_TOKEN || secrets.BRICK_DEV_PARENT_ACCESS_TOKEN }}
         run: node scripts/beta-cloud-preflight.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
@@ -50,8 +49,7 @@ jobs:
       - name: Bundle the exact beta Worker without cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
   deploy:
-    # User requires D1/card-free: obsolete R2 provisioner must never launch.
-    # Re-enable only after the D1 replacement and matching APK contract pass qualification.
+    # Temporarily held until the new D1 APK artifact passes its independent safety gates.
     if: ${{ false }}
     needs: [cloud-preflight, test, apk-currency]
     runs-on: ubuntu-24.04
@@ -62,6 +60,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+      BRICK_DEV_PARENT_ACCESS_TOKEN: ${{ secrets.BRICK_BETA_PARENT_ACCESS_TOKEN || secrets.BRICK_DEV_PARENT_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
@@ -69,10 +68,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Provision only beta resources and deploy with Access enforcement
-        run: node scripts/setup-beta-cloud.mjs
-      - name: Install verified private Singapore map into beta bucket only
-        run: node scripts/install-beta-map.mjs
+      - name: Provision isolated card-free beta D1 and private parent sessions
+        run: node scripts/setup-beta-d1.mjs
       - name: Download and verify the exact already-signed Phase1 APK
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,7 +77,7 @@ jobs:
           gh api repos/${{ github.repository }}/actions/artifacts/13388980912/zip > /tmp/brick-beta-signed-artifact.zip
           python scripts/stage-beta-apk.py /tmp/brick-beta-signed-artifact.zip
       - name: Publish APK through authenticated beta download route
-        run: npx --no-install wrangler r2 object put brick-family-beta-history/beta/releases/brick-beta-20261105-01/Brick.apk --remote --file beta-artifact/Brick.apk --content-type application/vnd.android.package-archive --config wrangler.beta.jsonc --force
+        run: node scripts/publish-beta-d1-release.mjs
       - name: Deploy exact source annotation
         run: npx --no-install wrangler deploy --strict --config wrangler.beta.jsonc --tag "brick-git-${GITHUB_SHA:0:12}" --message "Brick beta source $GITHUB_SHA APK 0b9f6fac"
       - name: Verify private attack surface and actual deployment address
