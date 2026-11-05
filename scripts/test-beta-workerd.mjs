@@ -36,7 +36,7 @@ try{
  const loginDocument=await mf.dispatchFetch('http://localhost/parent/login');
  assert.equal(loginDocument.status,200);
  assert.equal(loginDocument.headers.get('Referrer-Policy'),'same-origin');
- assert.match(await loginDocument.text(),/form method="post" action="\\/parent\\/login"/);
+ assert.ok((await loginDocument.text()).includes('form method="post" action="/parent/login"'));
  assert.equal((await mf.dispatchFetch('http://localhost/parent',{redirect:'manual'})).status,302);
  assert.equal((await mf.dispatchFetch('http://localhost/parent/api/device/'+DEVICE_A+'/beta/status',{headers:{'X-Brick-Dev-Parent-Verified':'session-v1'}})).status,401);
  const login=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken,redirect:'manual'});assert.equal(login.status,303);cookie=login.headers.get('set-cookie').split(';')[0];
