@@ -1,0 +1,8 @@
+PASS semantic failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS refinement failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS cleanup failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS commute failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS signed durable hypothesis ACK survives optional refinement outage
+PASS cached parent commute response survives refresh failure with durable retry receipt
+PASS background task status is authenticated per-device and redacts lease/provider details
+{"suite":"enrichment-failure","passed":7,"failed":0,"scope":"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes"}

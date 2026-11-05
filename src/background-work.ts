@@ -1,9 +1,11 @@
-// Durable, bounded derived-work receipts in an existing backed-up D1 table.
+// Durable during normal D1 operation; provider_cache is intentionally NOT in
+// disaster archives. Pending durable inputs reconstruct this operational state.
 // No provider payloads, exception messages, location or credentials are stored.
 export const BACKGROUND_PROVIDER = 'brick_background_v1';
+import {RefinementInputsUnavailable,refinementFrameStatus} from './refinement-work-state';
 export const BACKGROUND_TASKS = ['semantic-indexes', 'refinement-scan', 'refinement', 'refined-retention', 'commute-scan', 'commute'] as const;
 type Task = typeof BACKGROUND_TASKS[number];
-type Receipt = { v: 1; status: 'RUNNING' | 'FAILED' | 'COMPLETED' | 'WAITING'; attempts: number; failures: number;
+type Receipt = { v: 1; status: 'RUNNING' | 'FAILED' | 'DEGRADED' | 'COMPLETED' | 'WAITING'; attempts: number; failures: number;
   lastAttemptAt: number; lastSuccessAt: number | null; nextAttemptAt: number; lease: string | null; errorCode: string | null };
 const LEASE_MS = 300_000;
 function key(task: Task, subject: string) {
@@ -13,12 +15,12 @@ function key(task: Task, subject: string) {
 function decode(value: string): Receipt {
   let r: Receipt; try { r = JSON.parse(value); } catch { throw Error('invalid background receipt'); }
   if (!r || Object.keys(r).sort().join(',') !== 'attempts,errorCode,failures,lastAttemptAt,lastSuccessAt,lease,nextAttemptAt,status,v' || r.v !== 1 ||
-      !['RUNNING','FAILED','COMPLETED','WAITING'].includes(r.status) || !Number.isSafeInteger(r.attempts) || r.attempts < 1 ||
+      !['RUNNING','FAILED','DEGRADED','COMPLETED','WAITING'].includes(r.status) || !Number.isSafeInteger(r.attempts) || r.attempts < 1 ||
       !Number.isSafeInteger(r.failures) || r.failures < 0 || !Number.isSafeInteger(r.lastAttemptAt) || r.lastAttemptAt <= 0 ||
       !Number.isSafeInteger(r.nextAttemptAt) || r.nextAttemptAt <= 0 ||
       (r.lastSuccessAt !== null && (!Number.isSafeInteger(r.lastSuccessAt) || r.lastSuccessAt <= 0)) ||
       (r.status === 'RUNNING' ? typeof r.lease !== 'string' || !/^[a-f0-9-]{36}$/.test(r.lease) : r.lease !== null) ||
-      (r.status === 'FAILED' ? r.errorCode !== 'derived_work_failed' : r.errorCode !== null)) throw Error('invalid background receipt');
+      (r.status === 'FAILED' ? r.errorCode !== 'derived_work_failed' : r.status==='DEGRADED'?r.errorCode!=='derived_inputs_unavailable':r.errorCode !== null)) throw Error('invalid background receipt');
   return r;
 }
 export async function runBackgroundWork(db: D1Database, task: Task, subject: string, work: () => Promise<unknown>, successIntervalMs = 60_000) {
@@ -49,9 +51,12 @@ export async function runBackgroundWork(db: D1Database, task: Task, subject: str
     const result = await work(), waiting = task === 'refinement' && result === 0;
     await finish({...receipt, status: waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + successIntervalMs, lease: null});
     return 'COMPLETED' as const;
-  } catch {
+  } catch(error) {
     const failures = Math.min(1_000_000, receipt.failures + 1), retryMs = Math.min(900_000, 60_000 * 2 ** Math.min(4, failures - 1));
-    await finish({...receipt, status: 'FAILED', failures, nextAttemptAt: Date.now() + retryMs, lease: null, errorCode: 'derived_work_failed'});
+    // Frame-level retries/quarantine own poison-input delay. Continue rotating
+    // this device's other pending pages each minute instead of backing all off.
+    const degraded=error instanceof RefinementInputsUnavailable;
+    await finish({...receipt, status: degraded?'DEGRADED':'FAILED', failures, nextAttemptAt: Date.now() + (degraded?60_000:retryMs), lease: null, errorCode: degraded?'derived_inputs_unavailable':'derived_work_failed'});
     throw Error('background work failed');
   }
 }
@@ -61,10 +66,11 @@ export async function backgroundWorkStatus(db: D1Database, subject: string) {
   const identities = [['semantic-indexes','global'],['refinement-scan','global'],['refined-retention','global'],['commute-scan','global'],['refinement',subject],['commute',subject]] as const;
   const rows = await db.prepare('SELECT cache_key,value_json FROM provider_cache WHERE provider=?1 AND cache_key IN (?2,?3,?4,?5,?6,?7)')
     .bind(BACKGROUND_PROVIDER, ...identities.map(([task,id]) => key(task,id))).all<{cache_key:string;value_json:string}>();
+  const frames=await refinementFrameStatus(db,subject);
   return identities.map(([task,id]) => {
     const row=rows.results.find(r=>r.cache_key===key(task,id));
-    if (!row) return {task,status:'NOT_RUN' as const};
+    if (!row) return {task,status:'NOT_RUN' as const,...(task==='refinement'?{frames}:{})};
     const {lease, ...receipt}=decode(row.value_json);
-    return {task,...receipt};
+    return {task,...receipt,...(task==='refinement'?{frames}:{})};
   });
 }

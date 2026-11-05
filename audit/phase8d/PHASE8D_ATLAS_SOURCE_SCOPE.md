@@ -1,0 +1,21 @@
+# Atlas requirements — concrete source scope and carried-evidence inventory
+
+No requirement is accepted or waived here. All525 canonical rows/owners/reviews remain unchanged. Android and APK are untouched.
+
+The complete inspected audit tree at62a8039fb13172e16feec482d6bc32a37c5702d6 has783 entries (not truncated). Four Atlas implementation files have identical Git blob identities on the approved APK branchd67d606b and the inspected backend snapshot. This proves source identity only, not a new APK/instrumentation/phone run. Exact blob identities and per-ID limitations are in PHASE8D_ATLAS_SOURCE_SCOPE.json.
+
+The referenced Phase8A amendment was absent from the beta/formal snapshots but recovered from original authority branchv1-p8a-contract-audit at0ddf2e1e8efbbcb838911ae1acb07b43ccb37579, audit/phase8a/PHASE8A_AMENDED_EXISTING_REQUIREMENTS.md. Its BE-006 amendment requires a dedicated live fast path and asynchronous history/evidence/Atlas/background work without head-of-line blocking. It does not amend BE-019. Do not mislabel a snapshot-path404 as lost authority or make an unsupported baseline waiver.
+
+| ID | Source evidence actually inspected | Still unproved |
+| --- | --- | --- |
+| ATL-002 | Local-first training/matching and bounded encrypted atomic state are present in inspected Android source. | Android callback latency/off-main-thread execution, battery/sensor/provider/72h and physical OPPO qualification; not backend task-queue proof. |
+| BE-006 | Server smoothing/commute work is outside required evidence ACK and isolated from tracker DO alarms; canonical approved amendment recovered from8A source. | Live Cloudflare current-position latency and deployed/resource attestation. |
+| BE-008 | Normal D1 operation retains bounded failed/quarantined records and private status; pending input reconstructs after disaster. | Do not relabel D1 receipts as Cloudflare Queues/DLQ. All message kinds, max-retry/quarantine/recovery policy acceptance remain unreviewed. |
+| BE-019 | Android model learning/matching exists; current backend smoothing and aggregation have durable pending inputs and isolated asynchronous RPC. | No backend Atlas learner/trust-decay/relearning writer to atlas_models or learned_place_models was found among complete inspected src files; backup/schema presence is not implementation. Resolve authoritative processing placement and required acceptance instead of inventing a duplicate trainer or waiving this baseline. |
+| ATL-038 | Current model encoding and encrypted atomic persistence exist; model tables participate in backup contract. | Codec version1/current-state overwrite does not establish chronological model revision/relearning history. |
+| ATL-041 | Eight Atlas capability/health families plus privileged-provider presentation exist in source. | Actual phone uploads, per-provider unsupported/failure/stale truth, Shizuku/Timing Advance coverage and real portal behavior. |
+| REL-015 | Local corruption flags/counters and persistence timestamp are present. | End-to-end lookup/timestamp advancement/corruption cross-check cannot be inferred from field presence or backend tests. |
+
+Controller lines211–216 train on newly arrived trusted provider scans and separately match combined fresh scans. StateStore uses encrypted bounded AtomicFile writes, fsync, failure flags/counters and a persistence timestamp. These local implementations are real; they are not an imaginary missing backend job. Conversely, searches of the complete inspected src tree find atlas_models/learned_place_models only in backup/restore/spec inventories, not a training writer. Their schema/backup presence cannot satisfy full BE-019 processing. Resolve that requirement's intended placement and missing evidence before adding a new model pipeline or declaring it carried/deferred. No unrelated Android redesign is authorised by this inventory.
+
+Next review is finite: qualify server async/current-state boundaries with the new17-case lifecycle/guard/RPC suites; keep BE-019 placement/training/relearning criteria explicit; qualify provider truth and model history from named source/independent8C/8E/8F evidence. No bare 'Atlas processing' completion claim, real Queue/DLQ substitution claim, owner assignment, calibrated health/72h claim or final8D verdict.

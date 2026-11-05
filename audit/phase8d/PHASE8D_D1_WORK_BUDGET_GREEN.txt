@@ -1,0 +1,7 @@
+PASS preparation/bind costs zero; first/all/raw/run and each batch statement count execution
+PASS an over-budget batch is refused before any write executes
+PASS failed queries consume budget and batch transaction rollback is preserved
+PASS foreign statements and unbounded execution/session/dump cannot bypass the guard
+PASS reserved raw receipt queries record a computation budget failure and retain retry
+PASS degraded input rotates every minute without per-device exponential delay or fabricated success
+{"suite":"d1-work-budget","passed":6,"failed":0,"scope":"actual local D1; conservative statement guard, not live CPU or daily quota acceptance"}

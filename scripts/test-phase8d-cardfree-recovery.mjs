@@ -34,8 +34,9 @@ async function counts(db,tables){const result={};for(const table of tables)resul
 try{
  const harness=`import worker from './src/worker-beta-cardfree.ts';import {BrickDevice as BetaDevice,BetaScheduler as ActualScheduler} from './src/worker-beta-cardfree.ts';export class BetaScheduler extends ActualScheduler{async settleSynthetic(){await this.running;}}export class BrickDevice extends BetaDevice{async seedSyntheticState(key,value){if(value===null)await this.ctx.storage.delete(key);else await this.ctx.storage.put(key,value);}async readSyntheticState(key){return await this.ctx.storage.get(key);}}export default {...worker,async fetch(req,env,ctx){if(new URL(req.url).pathname!=='/__synthetic_rpc')return worker.fetch(req,env,ctx);const {id,method,args}=await req.json();try{return Response.json({ok:true,value:await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id))[method](...args)});}catch(e){return Response.json({ok:false,error:e.message});}}};`;
  await build({stdin:{contents:harness,resolveDir:process.cwd()},outfile:path.join(dir,'worker.mjs'),bundle:true,format:'esm',platform:'browser',target:'es2022',external:['cloudflare:workers']});
- for(const [name,file] of [['recovery','src/cardfree-recovery.ts'],['storage','src/dev-free-runtime.ts']])await build({entryPoints:[file],outfile:path.join(dir,name+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24'});
+ for(const [name,file] of [['recovery','src/cardfree-recovery.ts'],['storage','src/dev-free-runtime.ts'],['refined','src/phase5-refined-history.ts']])await build({entryPoints:[file],outfile:path.join(dir,name+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24'});
  const recovery=await import(pathToFileURL(path.join(dir,'recovery.mjs')).href),{D1ObjectBucket}=await import(pathToFileURL(path.join(dir,'storage.mjs')).href);
+ const {processRefinementsForDevice:processFrames}=await import(pathToFileURL(path.join(dir,'refined.mjs')).href);
  let source=await start('source');const key=await ecdsa(),other=await ecdsa(),now=Date.now();
  for(const [id,k] of [[DEVICE_A,key],[DEVICE_B,other]])await source.db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(id,'Synthetic D1 recovery',k.spki,now).run();
  const bytes=livePacketBytes(now,17),signature=Buffer.from(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key.pair.privateKey,bytes)).toString('base64');
@@ -62,12 +63,18 @@ try{
  assert.equal((await rpc(source,DEVICE_A,'readSyntheticState',['betaDiagnostic'])).value.token,token,'snapshot must not delete a live readiness challenge');
  console.log('PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge');
  const sourceSchedulerNs=await source.mf.getDurableObjectNamespace('BETA_SCHEDULER'),sourceScheduler=sourceSchedulerNs.get(sourceSchedulerNs.idFromName('beta-maintenance'));await sourceScheduler.settleSynthetic();assert.equal((await sourceScheduler.status()).lastTick.status,'COMPLETED');
+ // Operational retry state is intentionally reconstructible, not part of this archive.
+ const poisonId='33333333-3333-4333-8333-333333333333',poisonKey='history/hypotheses/recovery-poison';await store.put(poisonKey,'{synthetic-corrupt');
+ await source.db.prepare('INSERT INTO phase5_hypothesis_frames VALUES(?1,?2,?3,?4,?5,NULL)').bind(DEVICE_A,poisonId,now+100,poisonKey,now).run();
+ for(const [seq,stamp]of [[1,now-1000],[2,now+1000]])await source.db.prepare('INSERT INTO phase5_precise_endpoints VALUES(?1,999,?2,?3,1,1,10,?4)').bind(DEVICE_A,seq,stamp,now).run();
+ for(const delta of [0,60000,180000])await assert.rejects(()=>processFrames({DB:source.db,HISTORY:store},DEVICE_A,now+delta),/inputs unavailable/);
+ assert.equal(JSON.parse((await source.db.prepare("SELECT value_json FROM provider_cache WHERE provider='brick_refinement_failure_v1'").first()).value_json).status,'QUARANTINED');
  // No further traffic/writes/maintenance after this synthetic quiescence point.
  await assert.rejects(()=>recovery.exportCardfreeD1(source.env,false),/quiesced/);
  let backup=await recovery.exportCardfreeD1(source.env,true);
  const expected=JSON.parse(new TextDecoder().decode(backup.body));
- assert.equal(expected.primary.tables.dev_object_store.length,2,'prior backup excluded to avoid recursive archives');
- assert.equal(expected.primary.tables.dev_location_history.length,1);
+ assert.equal(expected.primary.tables.dev_object_store.length,3,'prior backup excluded to avoid recursive archives');
+ assert.equal(expected.primary.tables.dev_location_history.length,1);assert.equal(expected.primary.tables.provider_cache,undefined,'operational retry metadata is NOT archived');
  const trustedContext={deployment:'synthetic-cardfree-drill',sourceSha:'a'.repeat(40),backupId:randomBytes(16).toString('hex'),capturedAt:backup.createdAt,keyId:'synthetic-ephemeral'};
  const encryptionKey=randomBytes(32).toString('base64'),protectedFile=path.join(dir,'recovery.brickbackup');
  const encrypted=sealBackup({context:trustedContext,body:backup.body,doSnapshots},encryptionKey);fs.writeFileSync(protectedFile,encrypted,{flag:'wx',mode:0o600});
@@ -111,6 +118,10 @@ try{
  assert.equal(await target.stub(DEVICE_B).setHealth({protocol:1,appVersion:'revoked',healthSequence:100}),false);
  const schedulerNs=await target.mf.getDurableObjectNamespace('BETA_SCHEDULER'),scheduler=schedulerNs.get(schedulerNs.idFromName('beta-maintenance'));assert.equal((await scheduler.status()).nextAlarmAt,null);await scheduler.arm();assert.ok((await scheduler.status()).nextAlarmAt>Date.now());
  const interrupted=await start('interrupted',true);const brokenEnv={...interrupted.env,BETA_DB:{prepare:interrupted.beta.prepare.bind(interrupted.beta),batch:async()=>{throw Error('synthetic diagnostic-store interruption');}}};await assert.rejects(()=>recovery.restoreCardfreeD1(brokenEnv,backup.body,backup.sha256),/synthetic diagnostic-store interruption/);assert.ok((await interrupted.db.prepare('SELECT COUNT(*) n FROM devices').first()).n>0);await assert.rejects(()=>recovery.restoreCardfreeD1(interrupted.env,backup.body,backup.sha256),/not empty/);
+ assert.equal((await target.db.prepare("SELECT COUNT(*) n FROM provider_cache WHERE provider='brick_refinement_failure_v1'").first()).n,0);
+ await assert.rejects(()=>processFrames({DB:target.db,HISTORY:new D1ObjectBucket(target.db)},DEVICE_A,now+240000),/inputs unavailable/);
+ const reconstructed=JSON.parse((await target.db.prepare("SELECT value_json FROM provider_cache WHERE provider='brick_refinement_failure_v1'").first()).value_json);assert.equal(reconstructed.status,'FAILED');assert.equal(reconstructed.attempts,1);
+ console.log('PASS encrypted disaster restore excludes operational quarantine/cursors, retains pending inputs and reconstructs failure from those inputs; prior attempt history is not restored');
  console.log('PASS corrupt/missing stores, malformed late rows/BLOBs, hash and bounds fail before writes; interrupted target is explicitly partial and rejects in-place retry');
  console.log('PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed');
  console.log('LIMIT local quiesced synthetic drill, 16MiB archive envelope; not scheduled/off-platform production backup, cloud drill, interrupted recovery, scale or RTO/RPO acceptance');

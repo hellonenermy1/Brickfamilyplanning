@@ -12,7 +12,10 @@ export type CardfreeEnv=Parameters<typeof beta.fetch>[1]&{PARENT_LOGIN_RATE:Rate
 type Env=CardfreeEnv;
 export function cardfreeRuntime(env:Env):Env{
  const result=developmentRuntimeEnv(env);const direct=result.EVENTS;
- return {...result,EVENTS:{
+ return {...result,BACKGROUND_WORK:{
+  run(kind,deviceId){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('derived-'+deviceId)).runDerivedWork(kind,deviceId);},
+  backup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-backup')).runDailyBackup();}
+ },EVENTS:{
   async send(body:unknown){
    const b=body as {type?:string;deviceId?:string;token?:string};
    if(b?.type==='brick_beta_probe_v1'){
@@ -43,13 +46,20 @@ async function serveBetaOneMapTile(url:URL):Promise<Response|null>{
  }catch{return betaJson({error:'map_provider_unavailable'},502);}
 }
 async function closeSockets(env:Env){let after='';for(let page=0;page<100;page++){const rows=await env.DB.prepare('SELECT id FROM devices WHERE id>?1 ORDER BY id LIMIT 100').bind(after).all<{id:string}>();for(const r of rows.results)await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(r.id)).closeParentSockets();if(rows.results.length<100)return;after=rows.results[rows.results.length-1].id;}throw Error('socket_invalidation_limit');}
-export async function runCardfreeMaintenance(env:Env,ctx:ExecutionContext){
- const r=cardfreeRuntime(env),now=Date.now();let failed=false,busy=false;
- try{busy=(await runMaintenanceTask(env.DB,'beta-minute-v2',60000,()=>awaitScheduledWork(scoped=>beta.scheduled(syntheticScheduledController('*/1 * * * *',now),r,scoped),ctx)))==='BUSY';}catch{failed=true;}
- try{const daily=await runMaintenanceTask(env.DB,'beta-daily-v2',86400000,()=>awaitScheduledWork(async scoped=>{
+export async function runCardfreeMaintenanceGroup(env:Env,ctx:ExecutionContext,group:'minute'|'daily'){
+ const r=cardfreeRuntime(env),now=Date.now();
+ if(group==='minute')return(await runMaintenanceTask(env.DB,'beta-minute-v2',60000,()=>awaitScheduledWork(scoped=>beta.scheduled(syntheticScheduledController('*/1 * * * *',now),r,scoped),ctx)))==='BUSY'?'PENDING' as const:'COMPLETED' as const;
+ if(group!=='daily')throw Error('invalid maintenance group');
+ const daily=await runMaintenanceTask(env.DB,'beta-daily-v2',86400000,()=>awaitScheduledWork(async scoped=>{
   await beta.scheduled(syntheticScheduledController('17 3 * * *',now),r,scoped);
   scoped.waitUntil(cleanupDevelopmentObjectStore(env.DB,now));scoped.waitUntil(cleanupDevParentAuth({DB:env.DB},now));
- },ctx));busy=busy||daily==='BUSY';}catch{failed=true;}
+ },ctx));return daily==='BUSY'?'PENDING' as const:'COMPLETED' as const;
+}
+export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext){
+ let failed=false,busy=false;
+ for(const group of ['minute','daily'] as const)try{
+  const result=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-'+group)).runGroup(group);busy=busy||result==='PENDING';
+ }catch{failed=true;}
  if(failed)throw Error('cardfree maintenance failed');
  return busy?'PENDING' as const:'COMPLETED' as const;
 }

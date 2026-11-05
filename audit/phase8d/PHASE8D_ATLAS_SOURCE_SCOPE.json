@@ -1,0 +1,139 @@
+{
+  "format": "brick-phase8d-atlas-source-scope-v1",
+  "sourceBase": "62a8039fb13172e16feec482d6bc32a37c5702d6",
+  "completeTree": {
+    "truncated": false,
+    "entries": 783
+  },
+  "sources": [
+    {
+      "path": "app/src/main/java/com/brick/safety/atlas/Phase4AtlasController.kt",
+      "gitBlobSha": "3d8cfecc661fb893f68d5066a819243e14b8347e",
+      "inspectedRef": "62a8039fb13172e16feec482d6bc32a37c5702d6",
+      "apkRef": "d67d606bb672892187112196961080dff821c2cf",
+      "apkBlobMatches": true
+    },
+    {
+      "path": "app/src/main/java/com/brick/safety/atlas/EnvironmentalAtlas.kt",
+      "gitBlobSha": "5fc5db1726120803b5ad483fa5c07e8c7aad008b",
+      "inspectedRef": "62a8039fb13172e16feec482d6bc32a37c5702d6",
+      "apkRef": "d67d606bb672892187112196961080dff821c2cf",
+      "apkBlobMatches": true
+    },
+    {
+      "path": "app/src/main/java/com/brick/safety/atlas/AtlasStateStore.kt",
+      "gitBlobSha": "07828195dc6cb10606ac2ad414a81db3c3fd574f",
+      "inspectedRef": "62a8039fb13172e16feec482d6bc32a37c5702d6",
+      "apkRef": "d67d606bb672892187112196961080dff821c2cf",
+      "apkBlobMatches": true
+    },
+    {
+      "path": "app/src/main/java/com/brick/safety/atlas/SignalTrustEngine.kt",
+      "gitBlobSha": "6ded8576d22f4309a9b2f998ba11d5640483fb9f",
+      "inspectedRef": "62a8039fb13172e16feec482d6bc32a37c5702d6",
+      "apkRef": "d67d606bb672892187112196961080dff821c2cf",
+      "apkBlobMatches": true
+    }
+  ],
+  "canonicalRequirements": "audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv",
+  "approvedAmendment": {
+    "branch": "v1-p8a-contract-audit",
+    "ref": "0ddf2e1e8efbbcb838911ae1acb07b43ccb37579",
+    "path": "audit/phase8a/PHASE8A_AMENDED_EXISTING_REQUIREMENTS.md",
+    "blobSha": "1d0e9a7ec0df8a67567016a0f5406ca776352789",
+    "containsBE006": true,
+    "containsBE019": false,
+    "note": "Not present in beta/formal snapshot tree; recovered from original authority branch, not declared missing."
+  },
+  "rows": [
+    {
+      "id": "ATL-002",
+      "source": [
+        "Phase4AtlasController.noteProviderScan",
+        "EnvironmentalAtlas.observeTrusted/match/prune",
+        "AtlasStateStore.write/restoreInto"
+      ],
+      "verified": "Local-first training/matching and bounded encrypted atomic state are present in inspected Android source.",
+      "notProven": "Android callback latency/off-main-thread execution, battery/sensor/provider/72h and physical OPPO qualification; not backend task-queue proof.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "BE-006",
+      "source": [
+        "worker-v9 fast live path",
+        "derived-work-dispatch",
+        "BetaScheduler internal derived/group/backup RPC"
+      ],
+      "verified": "Server smoothing/commute work is outside required evidence ACK and isolated from tracker DO alarms; canonical approved amendment recovered from8A source.",
+      "notProven": "Live Cloudflare current-position latency and deployed/resource attestation.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "BE-008",
+      "source": [
+        "refinement-work-state",
+        "background-work",
+        "cardfree-recovery cache exclusion"
+      ],
+      "verified": "Normal D1 operation retains bounded failed/quarantined records and private status; pending input reconstructs after disaster.",
+      "notProven": "Do not relabel D1 receipts as Cloudflare Queues/DLQ. All message kinds, max-retry/quarantine/recovery policy acceptance remain unreviewed.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "BE-019",
+      "source": [
+        "Phase4AtlasController211/216",
+        "EnvironmentalAtlas.observeTrusted/match",
+        "phase5-refined-history",
+        "commute-summary"
+      ],
+      "verified": "Android model learning/matching exists; current backend smoothing and aggregation have durable pending inputs and isolated asynchronous RPC.",
+      "notProven": "No backend Atlas learner/trust-decay/relearning writer to atlas_models or learned_place_models was found among complete inspected src files; backup/schema presence is not implementation. Resolve authoritative processing placement and required acceptance instead of inventing a duplicate trainer or waiving this baseline.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "ATL-038",
+      "source": [
+        "EnvironmentalAtlas CODEC_VERSION/encode/restore",
+        "AtlasStateStore AtomicFile",
+        "backup inventory atlas_models"
+      ],
+      "verified": "Current model encoding and encrypted atomic persistence exist; model tables participate in backup contract.",
+      "notProven": "Codec version1/current-state overwrite does not establish chronological model revision/relearning history.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "ATL-041",
+      "source": [
+        "Phase4AtlasController.publishHealth/publishProvider",
+        "phase7-health-presentation provider list",
+        "phase7-state-v2"
+      ],
+      "verified": "Eight Atlas capability/health families plus privileged-provider presentation exist in source.",
+      "notProven": "Actual phone uploads, per-provider unsupported/failure/stale truth, Shizuku/Timing Advance coverage and real portal behavior.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "REL-015",
+      "source": [
+        "AtlasStateStore markHealthy/markFailure",
+        "lastAtlasPersistWallMs",
+        "Phase4AtlasController latestCandidateElapsedMs"
+      ],
+      "verified": "Local corruption flags/counters and persistence timestamp are present.",
+      "notProven": "End-to-end lookup/timestamp advancement/corruption cross-check cannot be inferred from field presence or backend tests.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "androidModified": false,
+  "androidTestsRun": false,
+  "requirementsLedgerModified": false,
+  "acceptance": "SOURCE_INVENTORY_ONLY_NOT_PHASE8D_PASS"
+}

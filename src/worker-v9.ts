@@ -3,6 +3,7 @@ import { handleGroundReceiverRequest, type GroundReceiverEnv } from "./ground-re
 import { cleanupPhase5SemanticIndexes } from "./phase5-maintenance";
 import { runBackgroundWork } from './background-work';
 import { nextRefinementCandidates } from './refinement-scheduler';
+import {dispatchDerivedWork,type BackgroundDispatchEnv} from './derived-work-dispatch';
 import { augmentHealthWithLearnedPlaces } from "./phase5-places";
 import { augmentHealthWithCoarseNetwork } from "./phase5-coarse-network";
 import { listCurrentExternalConstraints } from "./phase5-external-constraints";
@@ -28,7 +29,7 @@ import {
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
-type Env = GroundReceiverEnv & FastLiveEnv & AccessAuthEnv & {
+type Env = GroundReceiverEnv & FastLiveEnv & AccessAuthEnv & BackgroundDispatchEnv & {
   HISTORY: R2Bucket;
   MAPS: R2Bucket;
   EVENTS: Queue;
@@ -193,7 +194,7 @@ export default {
       // A failed device backs off individually; it must not back off the cursor
       // scan and thereby delay every other pending device for the same interval.
       for (const deviceId of pending) {
-        try { await runBackgroundWork(env.DB, 'refinement', deviceId, () => processRefinementsForDevice(env, deviceId)); }
+        try { await dispatchDerivedWork(env, 'refinement', deviceId, () => processRefinementsForDevice(env, deviceId)); }
         catch { failed = true; }
       }
     } catch { failed = true; }

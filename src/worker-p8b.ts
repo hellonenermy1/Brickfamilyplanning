@@ -5,6 +5,7 @@ import { parentCommutes, refreshCommutes, type CommuteEnv } from "./commute-summ
 import { nextCommuteRefreshCandidates } from "./commute-scheduler";
 import { claimCommuteRefresh } from "./commute-refresh-claim";
 import { runBackgroundWork } from './background-work';
+import {dispatchDerivedWork,type BackgroundDispatchEnv} from './derived-work-dispatch';
 import { parentReverseOneMap, type OneMapEnv } from "./onemap-client";
 import { parentP8BHtml } from "./parent-p8b";
 import { parentAuthorized, unauthorizedParent, type AccessAuthEnv } from "./access-auth";
@@ -18,7 +19,7 @@ import {
 } from "./pin-pairing";
 export { BrickDevice };
 
-type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv & PinPairingEnv & {
+type Env = FallEventEnv & ScreenTimeEnv & CommuteEnv & OneMapEnv & AccessAuthEnv & PinPairingEnv & BackgroundDispatchEnv & {
   HISTORY: R2Bucket;
   MAPS: R2Bucket;
   EVENTS: Queue;
@@ -141,7 +142,7 @@ export default {
       if (await claimCommuteRefresh(env.DB, deviceId, now)) {
         // The cached response stays independent; this catch follows a durable
         // failure receipt. Scheduled rotation retries according to its backoff.
-        ctx.waitUntil(runBackgroundWork(env.DB, 'commute', deviceId, () => refreshCommutes(env, deviceId, now - 2 * 86_400_000, now)).catch(() => undefined));
+        ctx.waitUntil(dispatchDerivedWork(env, 'commute', deviceId, () => refreshCommutes(env, deviceId, now - 2 * 86_400_000, now)).catch(() => undefined));
       }
       return parentCommutes(env, deviceId, Number(u.searchParams.get("limit") ?? "50"));
     }
@@ -172,7 +173,7 @@ export default {
       // cursor and cover a bounded rotating set each cron without crowding safety ACK work.
       await runBackgroundWork(env.DB, 'commute-scan', 'global', async () => {
         const candidates = await nextCommuteRefreshCandidates(env.DB, 4, now);
-        for (const id of candidates) ctx.waitUntil(runBackgroundWork(env.DB, 'commute', id, () => refreshCommutes(env, id, now - 2 * 86_400_000, now)));
+        for (const id of candidates) ctx.waitUntil(dispatchDerivedWork(env, 'commute', id, () => refreshCommutes(env, id, now - 2 * 86_400_000, now)));
       });
     } catch { failed = true; }
     if (failed) throw Error('derived maintenance failed');

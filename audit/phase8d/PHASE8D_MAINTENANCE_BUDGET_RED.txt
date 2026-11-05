@@ -1,0 +1,3 @@
+MEASURE {"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01":271}
+{"suite":"maintenance-invocation-budget","passed":0,"failed":1,"scope":"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes"}
+FAIL bounded populated maintenance keeps every DO invocation within Free50-statement envelope: query counts {"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01":271}

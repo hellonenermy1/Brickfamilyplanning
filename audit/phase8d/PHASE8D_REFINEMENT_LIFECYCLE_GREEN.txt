@@ -1,0 +1,9 @@
+PASS persistent bad first100 frames cannot starve valid frame101
+PASS persistent corrupt frame is quarantined after3 reads instead of retried forever
+PASS verified normalized replay repairs corrupt storage and clears quarantine without changing first receipt age
+PASS expired normalized inputs are not resurrected by replay and are not selected
+PASS cache loss reconstructs failure from retained pending input rather than pretending history was restored
+PASS stale failure writer cannot recreate state after a trusted repair cleared it
+PASS healthy frame in selected page proceeds even if an earlier frame has no bounding endpoints
+PASS quarantine status is bounded metadata without record keys object paths or raw exception content
+{"suite":"refinement-lifecycle","passed":8,"failed":0,"scope":"actual local D1/object adapter; synthetic frames only"}

@@ -1,0 +1,13 @@
+PASS missing is failed work while healthy peer still refines
+PASS malformed-json is failed work while healthy peer still refines
+PASS wrong-envelope is failed work while healthy peer still refines
+PASS invalid-hypotheses is failed work while healthy peer still refines
+PASS no endpoints remains intentional pending rather than failed or fabricated completion
+{"suite":"refinement-lifecycle","passed":5,"failed":2,"scope":"actual local D1/object adapter; synthetic frames only"}
+FAIL persistent bad first100 frames cannot starve valid frame101: The expression evaluated to a falsy value:
+
+  assert.ok((await db.prepare("SELECT refined_run_id FROM phase5_hypothesis_frames WHERE record_id='healthy-101'").first()).refined_run_id)
+
+FAIL persistent corrupt frame is quarantined after3 reads instead of retried forever: Expected values to be strictly equal:
+
+4 !== 3
