@@ -624,3 +624,7 @@ P8D-074 (P1): D1 retention disagreed with raw30/trusted90, smoothing30/90 and ba
 P8D-075 (P1): stale eligible-object list deleted a fresh replacement; cleanup issued per-object statements. One atomic age-qualified DELETE per class with FK cascade, indexed bounded row cleanup and literal/index-ranged listing now pass actual D1 race/bounds tests. Revised counter avoids double counting preparation plus execution: observed baseline127 executions, corrected8 in60-object fixture; initial247 instrumentation was not a true query count.
 P8D-076 (P1): actual setup brick_dev_migrations table blocked recovery inventory. Exact bookkeeping schema is validated/classified, target ledger retained, unknown/malformed schema still rejected in native destructive recovery.
 Current status LOCAL RUNTIME VERIFIED; hosted exact-source CI pending. No final8D acceptance, live repair or P8D-002 operational/cloud closure inferred. All525 final acceptance rows remain unchanged.
+
+
+## Hosted exact-source D1 operations retest — f332ed06b4510b46cd9b25bf4ebaf2606cbed135
+P8D-073–076 SOURCE/CI VERIFIED: push42012967375/job127196345448 and PR42012975929/job127196374890, all19/19 completed-success steps; portal42012975984 all10/10. Actual push/PR logs inspected;10 retention,5 scheduler,7 lease cases GREEN plus prior regressions. See PHASE8D_D1_OPERATIONS_HOSTED_CHECKPOINT.md and its evidence JSON. No live/operational closure inferred; P8D-002 P1 and Phase8D NOT PASS. Documentation-only successors preserve tested runtime.

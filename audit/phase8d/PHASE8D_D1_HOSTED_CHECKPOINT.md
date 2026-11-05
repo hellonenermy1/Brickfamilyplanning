@@ -1,4 +1,6 @@
 # Phase8D D1 — hosted exact-source checkpoint
+
+> Latest source continuation: f332ed06b4510b46cd9b25bf4ebaf2606cbed135, hosted runs42012967375/42012975929/42012975984 completed-success. Read PHASE8D_D1_OPERATIONS_HOSTED_CHECKPOINT.md before this historical working note. Phase8D NOT PASS; no live deployment.
 **Phase8D IN PROGRESS / NOT PASS.** Candidate source: a51d4d96a2888004025e7b0ffb7df4f6d31e9f06. Branch audit/phase8d-d1-qualification. PR https://github.com/hellonenermy1/Brickfamilyplanning/pull/32 (not merged/deployed).
 The original formal8D audit and beta deployment branches are preserved. Later commits for this report/evidence/instructions are documentation only, not new executables.
 
