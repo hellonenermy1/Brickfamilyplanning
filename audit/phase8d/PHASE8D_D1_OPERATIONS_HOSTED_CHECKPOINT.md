@@ -1,3 +1,18 @@
+# Protected archive continuation — current work
+Local protected-package13-group suite and encrypted41+4/DO destruction/restore passed; source candidate below is awaiting hosted CI at this commit. See PROTECTED_BACKUP_OPERATIONS.md. P8D-002 remains P1 OPEN.
+
+## Finite closure board
+| Group | Implemented source evidence | Still required to close |
+| --- | --- | --- |
+| Backup and restore | Atomic D1/object validation,41+4/DO restore, authenticated encrypted off-platform package | Bounded actual capture with proven quiescence, private independent destination/key custody, scoped PITR and isolated cloud recovery/interrupt/rollback/RTO/RPO |
+| Failed background work | Scheduler child-work/lease/failure/retry verified atf332ed06 | Durable failure/retry/visibility for Atlas/evidence/refinement/commute paths; exact ACK independent of optional enrichment |
+| Cloud candidate | Draft PR32 source/CI receipts; existing deployed beta identity recorded | One approved exact deployed source/config/schema with migrations, budgets and rollback proof |
+| Requirement verdict | Original525 IDs/classes/dispositions preserved | Per-ID evidence reconciliation, owners and independent review; no fabricated final acceptance |
+
+The next backup dependency is specific: live capture/transport and independent destination/key custody are not qualified. Packaging alone does not close that group. Configuration is unverified, not proven absent. Source work may continue on failed-work isolation without accessing live family data. Generic continuation does not merge/deploy this draft PR or authorize cloud/family mutation.
+
+---
+
 # Phase8D D1 operations — exact-source hosted checkpoint
 **Phase8D IN PROGRESS / NOT PASS.** Tested executable: f332ed06b4510b46cd9b25bf4ebaf2606cbed135. Work branch audit/phase8d-d1-qualification; PR32 unmerged/undeployed. Evidence/documentation successors are not new executables.
 Supersedes the previous a51d4d96 working checkpoint for continuing source work; preserves its scoped evidence.
