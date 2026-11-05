@@ -147,12 +147,16 @@ jobs:
               assert len(values) == 1 and values[0] in false_values, (
                   f"packaged {key} is not verifiably false: {values}"
               )
-          for key in ("debuggable", "testOnly"):
-              values = attributes.get(key, [])
-              assert not values or len(values) == 1 and values[0] in false_values, (
-                  f"packaged {key} must be absent or false: {values}"
-              )
-          print("Binary APK manifest explicitly forbids backups and cleartext; no debug/test-only mode")
+          values = attributes.get("debuggable", [])
+          assert not values or len(values) == 1 and values[0] in false_values, (
+              f"packaged debuggable must be absent or false: {values}"
+          )
+          true_values = {"true", "(type 0x12)0xffffffff", "(type 0x12)0x1", "(type 0x12)0x00000001"}
+          values = attributes.get("testOnly", [])
+          assert len(values) == 1 and values[0].lower() in true_values, (
+              f"REJECT beta Device Owner APK without android:testOnly=true: {values}"
+          )
+          print("Binary APK manifest forbids backups, cleartext, debug; testOnly=true REQUIRED for emergency ADB escape")
           PY
           ! grep -F 'Phase8ResourceHarnessReceiver' "$manifest_tree"
           ! grep -F 'Phase8RetirementHarnessReceiver' "$manifest_tree"
