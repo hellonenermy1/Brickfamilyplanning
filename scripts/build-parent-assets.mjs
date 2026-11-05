@@ -31,6 +31,6 @@ await build({
 
 await fs.copyFile('node_modules/maplibre-gl/dist/maplibre-gl.css', path.join(out, 'maplibre-gl.css'));
 await fs.copyFile('node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', path.join(out, 'maplibre-gl-worker.mjs'));
-await fs.writeFile(path.join(out, '_headers'), `/*\n  Cache-Control: public, max-age=31536000, immutable\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n`);
+await fs.writeFile(path.join(out, '_headers'), `/*\n  Cache-Control: no-cache, must-revalidate\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n`);
 
 console.log('Built OneMap-first parent map, private fallback and pairing assets in public/');

@@ -21,9 +21,11 @@ export function parentBetaHtml(base:string){
  </style>`;
  if(!html.includes('</head>'))throw Error('beta_parent_head_missing');
  html=html.replace('</head>',compactMapCss+'</head>');
+ // The old immutable URL can leave a previous map bundle cached for a year.
+ // Keep the original four-export contract while loading the currently built module.
  const mapImport="import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
  if(!html.includes(mapImport))throw Error('beta_parent_map_import_missing');
- html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus, switchToStandardOneMap, switchToPrivateFallback } from '/brick-map.mjs';");
+ html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs?v=beta-parent-recovery-20261105';");
  const js=String.raw`
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
@@ -37,45 +39,7 @@ async function betaLoad(){if(betaLoading||!currentDevice)return;const id=current
  document.getElementById('betaEvidence').textContent=JSON.stringify(r,null,2);
  }catch(e){if(currentDevice===id)document.getElementById('betaHeadline').textContent='Beta evidence unavailable: '+e.message;}finally{betaLoading=false;}}
 
-/* Read-only map diagnostics: use a fixed public Singapore tile, NEVER a phone location. */
-const brickMapStatus=document.createElement('div');
-brickMapStatus.id='brickMapDeliveryStatus';brickMapStatus.setAttribute('role','status');
-brickMapStatus.style.cssText='display:block;margin-top:9px;max-width:270px;font:11px system-ui,sans-serif;line-height:1.45;background:#fffefa;color:#2b3946;border:1px solid #cbd2da;border-radius:9px;padding:7px 9px;overflow-wrap:anywhere';
-brickMapStatus.textContent='Map tiles · checking…';
-const brickMapCard=document.querySelector('.mapCard');if(brickMapCard)brickMapCard.append(brickMapStatus);
-let brickMapErrorSeen=false;
-map.on('error',e=>{
- brickMapErrorSeen=true;
- const msg=String(e?.error?.message||'');
- const category=/401|403/.test(msg)?'map access denied':/404/.test(msg)?'map tile missing':/502|503|504/.test(msg)?'map provider unavailable':'tile or renderer error';
- brickMapStatus.textContent='MapLibre '+category+' · checking tile sources';
-});
-async function brickProbeMapSources(){
- const testTile=path=>fetch(path,{credentials:'same-origin',cache:'no-store'}).then(async r=>{
-   const data=r.ok?new Uint8Array(await r.arrayBuffer()):new Uint8Array();
-   return {status:r.status,png:data.length>=8&&[137,80,78,71,13,10,26,10].every((b,i)=>data[i]===b)};
- }).catch(()=>({status:0,png:false}));
- const [hd,standard,privateMap]=await Promise.all([
-   testTile('/parent/map/onemap/Default_HD/11/1614/1016.png'),
-   testTile('/parent/map/onemap/Default/11/1614/1016.png'),
-   fetch('/parent/map/basemap.pmtiles',{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-15'}}).then(r=>({status:r.status,range:r.headers.get('Content-Range')||''})).catch(()=>({status:0,range:''}))
- ]);
- const hdOk=hd.status===200&&hd.png,standardOk=standard.status===200&&standard.png;
- const privateOk=privateMap.status===206&&privateMap.range.startsWith('bytes 0-15/');
- if(!hdOk&&standardOk){
-   brickMapStatus.textContent='OneMap HD HTTP '+hd.status+' · using standard OneMap tiles';
-   try{switchToStandardOneMap(map)}catch{brickMapStatus.textContent='Standard OneMap tiles reachable · renderer unavailable'}
- }else if(!hdOk&&!standardOk&&privateOk){
-   brickMapStatus.textContent='OneMap HD '+(hd.status||0)+' / standard '+(standard.status||0)+' · private map fallback reachable';
-   try{switchToPrivateFallback(map)}catch{brickMapStatus.textContent='Map fallback could not initialize'}
- }else if(!hdOk&&!standardOk&&!privateOk){
-   brickMapStatus.textContent='Map unavailable · HD '+(hd.status||0)+' · standard '+(standard.status||0)+' · PMTiles '+(privateMap.status||0);
- }else if(hdOk){
-   brickMapStatus.textContent=brickMapErrorSeen?'OneMap tile reachable · MapLibre rendering reported an error':'OneMap HD endpoint reachable · verifying drawing';
- }
- return {hdHttp:hd.status,hdPng:hd.png,standardHttp:standard.status,standardPng:standard.png,privateHttp:privateMap.status,privateRangeOk:privateOk};
-}
-setTimeout(()=>{try{map.resize()}catch{}brickProbeMapSources().catch(()=>{brickMapStatus.textContent='Map diagnostic unavailable'})},250);
+// Deliberately do not couple dashboard startup to optional map diagnostics.
 const betaOldSelect=selectDevice;selectDevice=async function(id){document.getElementById('betaChecks').replaceChildren();document.getElementById('betaRun').textContent='';document.getElementById('betaEvidence').textContent='';document.getElementById('betaHeadline').textContent='Loading selected phone…';await betaOldSelect(id);if(document.getElementById('brickBeta').open)await betaLoad();};
 const betaOldMessage=wsMessage;wsMessage=function(m){betaOldMessage(m);if(m?.type==='beta_challenge'&&m.deviceId===currentDevice&&typeof m.token==='string'&&m.expiresAt>Date.now()){const id=currentDevice;api('/parent/api/device/'+encodeURIComponent(id)+'/beta/ack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:m.token})}).then(()=>{if(currentDevice===id&&document.getElementById('brickBeta').open)betaLoad();}).catch(()=>{});}};
 document.getElementById('betaRefresh').onclick=betaLoad;
