@@ -440,7 +440,11 @@ class RemoteMapBucket {
     if (!range) throw new Error("development map proxy requires byte-range requests");
     const cacheKey = `${range.offset}:${range.length}:${etag}`;
     const cached = this.memory.get(cacheKey);
-    if (cached) return bodyObject(new Uint8Array(cached), remoteMeta(this.source, size, etag), { offset: 0, length: cached.byteLength });
+    if (cached) {
+      // Cached bytes already contain only the requested slice; preserve the original archive offset.
+      const object = bodyObject(new Uint8Array(cached), remoteMeta(this.source, size, etag));
+      return { ...object, range: { offset: range.offset, length: range.length } };
+    }
     const end = range.offset + range.length - 1;
     const response = await fetch(this.source, {
       headers: { Range: `bytes=${range.offset}-${end}` },
