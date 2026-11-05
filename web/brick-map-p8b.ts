@@ -40,7 +40,7 @@ function oneMapStyle(mode: "detailed" | "clean"): maplibregl.StyleSpecification 
     sources: {
       [ONE_SOURCE]: {
         type: "raster",
-        tiles: [`https://www.onemap.gov.sg/maps/tiles/${style}/{z}/{x}/{y}.png`],
+        tiles: [`/parent/map/onemap/${style}/{z}/{x}/{y}.png`],
         tileSize: 256,
         minzoom: 11,
         maxzoom: 19,
