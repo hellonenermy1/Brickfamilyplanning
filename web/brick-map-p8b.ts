@@ -40,11 +40,11 @@ function oneMapStyle(mode: "detailed" | "clean"): maplibregl.StyleSpecification 
     sources: {
       [ONE_SOURCE]: {
         type: "raster",
-        tiles: [`https://www.onemap.gov.sg/maps/tiles/${style}/{z}/{x}/{y}.png`],
+        tiles: [`/parent/map/onemap/${style}/{z}/{x}/{y}.png`],
         tileSize: 256,
         minzoom: 11,
         maxzoom: 19,
-        attribution: '<a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener noreferrer">OneMap</a> © contributors | <a href="https://www.sla.gov.sg/" target="_blank" rel="noopener noreferrer">Singapore Land Authority</a>'
+        attribution: '<img src="/parent/map/onemap/logo.png" alt="OneMap" width="20" height="20" style="vertical-align:middle;margin-right:4px"> <a href="https://www.onemap.gov.sg/" target="_blank" rel="noopener noreferrer">OneMap</a> © contributors | <a href="https://www.sla.gov.sg/" target="_blank" rel="noopener noreferrer">Singapore Land Authority</a>'
       }
     },
     layers: [{ id: "onemap-raster", type: "raster", source: ONE_SOURCE }]
