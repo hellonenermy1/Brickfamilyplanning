@@ -167,6 +167,41 @@ object DeprovisionManager {
     }
 
     private val automaticRemoval = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val removalRecoveryRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Continue ONLY a removal that was already durably authorised by the user. Called at app/boot
+     * entry before any Brick runtime initialises. A killed process or reboot must not turn Brick
+     * back on or require another confirmation to finish releasing management and purging its data.
+     * An unknown/corrupt stage is always fail-closed; no automatic state repair is attempted.
+     *
+     * Android may prohibit background-starting uninstall UI. After PURGE, the app remains safely
+     * quiesced and its existing local Recovery screen can request the system uninstall prompt.
+     */
+    fun resumeAuthorisedRemovalAsync(context: Context) {
+        val app = context.applicationContext
+        val initial = stage(app)
+        if (initial == Stage.INVALID || initial == Stage.NONE || initial.ordinal >= Stage.PURGE_BRICK.ordinal) return
+        if (!removalRecoveryRunning.compareAndSet(false, true)) return
+
+        Thread({
+            try {
+                // The same idempotent, read-back-verified stage executor used by the UI.
+                // Retry transient Android callback/worker-quiescence races; never spin forever.
+                repeat(6) { attempt ->
+                    val current = stage(app)
+                    if (current == Stage.INVALID || current == Stage.NONE || current.ordinal >= Stage.PURGE_BRICK.ordinal) return@Thread
+                    val result = runAuthorisedRemoval(app)
+                    if (result.ok || result.stage == Stage.UNINSTALL) return@Thread
+                    Thread.sleep((500L * (attempt + 1)).coerceAtMost(3_000L))
+                }
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            } finally {
+                removalRecoveryRunning.set(false)
+            }
+        }, "brick-authorised-removal-recovery").apply { isDaemon = true; start() }
+    }
 
     /** Deliberately invoked by local confirmation only. Never part of readiness/canary/expiry. */
     fun runAuthorisedRemoval(context: Context, progress: (Result) -> Unit = {}): Result {
