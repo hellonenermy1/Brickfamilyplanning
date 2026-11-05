@@ -167,6 +167,12 @@ class DiagnosticsActivity : AppCompatActivity() {
         }
         root.addView(stateView)
 
+        if (BuildConfig.BRICK_BETA_DIAGNOSTICS) {
+            root.addView(button("Beta Readiness & 72-hour run") {
+                startActivity(Intent(this, com.brick.safety.beta.BetaReadinessActivity::class.java))
+            }, params(10))
+        }
+
         root.addView(section("ONE-SHOT MAINTENANCE", dp(18)))
         val locationRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL

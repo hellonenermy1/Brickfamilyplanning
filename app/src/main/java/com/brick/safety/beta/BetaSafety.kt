@@ -184,7 +184,9 @@ object BetaSafety {
         val app = context.applicationContext
         val dpm = app.getSystemService(DevicePolicyManager::class.java)
         val admin = ComponentName(app, BrickDeviceAdminReceiver::class.java)
-        val ownerBefore = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(false)
+        val ownerBefore = try { dpm.isDeviceOwnerApp(app.packageName) } catch (_: Exception) {
+            return ReleaseResult(true, true, true, "owner_state_unreadable")
+        }
         var failure: Throwable? = null
 
         if (ownerBefore) {
@@ -192,22 +194,12 @@ object BetaSafety {
             runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_LOCATION) }
             runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_CONFIG_DATE_TIME) }
 
-            var ownerClearReturned = false
             runCatching { dpm.clearDeviceOwnerApp(app.packageName) }
-                .onSuccess { ownerClearReturned = true }
                 .onFailure { failure = it }
 
-            // DevicePolicyManagerService clears the Device Owner and removes its active admin before
-            // clearDeviceOwnerApp() returns. Treat that successful system-server transaction as the
-            // authoritative result instead of risking a transient read-after-write mismatch.
-            if (ownerClearReturned) {
-                return ReleaseResult(
-                    ownerBefore = true,
-                    ownerAfter = false,
-                    activeAdminAfter = false,
-                    error = null
-                )
-            }
+            // A successful API call alone is not an independent postcondition.
+            // Read back BOTH owner and active-admin state below; retry safely if still settling.
+
         } else {
             val active = runCatching { dpm.isAdminActive(admin) }.getOrDefault(false)
             if (active) {
@@ -218,8 +210,8 @@ object BetaSafety {
             }
         }
 
-        val ownerAfter = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(ownerBefore)
-        val activeAdminAfter = runCatching { dpm.isAdminActive(admin) }.getOrDefault(ownerAfter)
+        val ownerAfter = runCatching { dpm.isDeviceOwnerApp(app.packageName) }.getOrDefault(true)
+        val activeAdminAfter = runCatching { dpm.isAdminActive(admin) }.getOrDefault(true)
         return ReleaseResult(ownerBefore, ownerAfter, activeAdminAfter, failure?.javaClass?.simpleName)
     }
 

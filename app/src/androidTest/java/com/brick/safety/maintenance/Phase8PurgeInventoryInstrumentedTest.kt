@@ -19,7 +19,8 @@ class Phase8PurgeInventoryInstrumentedTest : BrickInstrumentationTestCase() {
         "brick_safety_outbox.db",
         "brick_crash_outbox.db",
         "brick_evidence.db",
-        "brick_diagnostics.db"
+        "brick_diagnostics.db",
+        "brick_beta_readiness.db"
     )
     private val preferences = listOf(
         "brick",

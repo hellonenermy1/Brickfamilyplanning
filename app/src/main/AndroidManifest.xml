@@ -59,6 +59,8 @@
             android:exported="false"
             android:label="Brick Maintenance &amp; Recovery" />
 
+        <activity android:name=".beta.BetaReadinessActivity" android:exported="false" android:label="Brick Beta Readiness" />
+
         <service
             android:name=".location.BrickLocationService"
             android:exported="false"

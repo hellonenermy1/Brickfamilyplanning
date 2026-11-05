@@ -39,7 +39,8 @@ object DeprovisionManager {
         "brick_safety_outbox.db",
         "brick_crash_outbox.db",
         "brick_evidence.db",
-        "brick_diagnostics.db"
+        "brick_diagnostics.db",
+        "brick_beta_readiness.db"
     )
 
     /** Every SharedPreferences namespace directly owned by Brick production/upgrade code. */
@@ -165,6 +166,29 @@ object DeprovisionManager {
         return current == Stage.INVALID || current.ordinal >= Stage.PURGE_BRICK.ordinal
     }
 
+    private val automaticRemoval = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Deliberately invoked by local confirmation only. Never part of readiness/canary/expiry. */
+    fun runAuthorisedRemoval(context: Context, progress: (Result) -> Unit = {}): Result {
+        check(android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) { "Removal must run off the UI thread" }
+        if (!automaticRemoval.compareAndSet(false, true)) return Result(stage(context), false, "removal already running")
+        try {
+            repeat(6) {
+                val result = when (stage(context)) {
+                    Stage.INVALID -> Result(Stage.INVALID, false, "invalid provenance; authorised repair required")
+                    Stage.NONE -> authoriseFreeze(context)
+                    Stage.AUTHORISE_FREEZE -> quiesce(context)
+                    Stage.QUIESCE -> undoDeviceManagement(context)
+                    Stage.UNDO_DEVICE_MANAGEMENT -> purgeBrick(context)
+                    Stage.PURGE_BRICK, Stage.UNINSTALL -> uninstall(context)
+                }
+                progress(result)
+                if (!result.ok || result.stage == Stage.UNINSTALL) return result
+            }
+            return Result(stage(context), false, "unexpected removal transition")
+        } finally { automaticRemoval.set(false) }
+    }
+
     @Synchronized
     fun authoriseFreeze(context: Context): Result {
         val app = context.applicationContext
@@ -200,6 +224,10 @@ object DeprovisionManager {
         val app = context.applicationContext
         if (stage(app).ordinal < Stage.UNDO_DEVICE_MANAGEMENT.ordinal) {
             return Result(stage(app), false, "management release required")
+        }
+
+        if (!com.brick.safety.beta.BetaDiagnostics.quiesceForRemoval()) {
+            return Result(stage(app), false, "Beta diagnostics writer/network task not fully quiesced")
         }
 
         // Stop independently running optional/provider state before deleting its preferences/keys.
