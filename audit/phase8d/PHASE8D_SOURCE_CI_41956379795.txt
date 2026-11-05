@@ -1,0 +1,32 @@
+# Phase 8D hosted exact-source CI — 2026-11-05
+
+Run: https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41956379795
+Attempt: 1
+Executable SHA: f87a0be0bdaf320752d747ae2a39da01ee0a1ece
+Workflow: .github/workflows/v1-phase8d-backend-audit-ci.yml
+Overall run status: completed; conclusion: success.
+Actual job logs retrieved; source job completed successfully with68/68 successful steps.
+
+Job 127012150851: P8D-001 — Reproduce production deployment/schema drift
+API status in_progress; conclusion success; 7/7 steps successful.
+Explicit CI error/FAIL records in retrieved log: 0.
+
+Job 127012151088: P8D-002 — Reproduce backup coverage drift
+API status completed; conclusion success; 7/7 steps successful.
+Explicit CI error/FAIL records in retrieved log: 0.
+
+Job 127012151331: Phase 8D source baseline TypeScript and locked dependencies
+API status completed; conclusion success; 68/68 steps successful.
+Explicit CI error/FAIL records in retrieved log: 0.
+
+Metadata qualification: job127012150851 continued to report status in_progress despite conclusion success, all7 steps successful and overall run completed-success. Preserve that inconsistency rather than rewriting the status. The final release verifier must continue requiring every job's status completed; re-attest consistent metadata before final approval. This is not a new live/backend pass.
+
+New gate/inventory output:
+PASS P8D-063 39 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)
+PASS P8D-067 61 per-ID acceptance cases: exact canonical525, owners/reviews/evidence/classes/scope, optional/cross-phase/prohibition rules, missing/tampered/circular proof rejected before network; synthetic only
+PASS inventory structure only: {"total":525,"unmapped":0,"unverifiedTotal":525,"unassignedOwners":525,"unresolvedDispositions":525,"phase8dScope":214,"crossPhaseScope":311,"withCandidateFindings":23,"withRecordedEvidence":1,"unreviewedAcceptance":525}
+OPEN acceptance: inventory integrity and candidate references do not close scope/owner/evidence gaps or qualify release
+
+The inventory values above describe the tested commit's draft, with one recorded per-ID proof entry at CI time. Later audit-only evidence links may be added without changing executable source; their hashes are checked by the inventory command and any future final gate.
+Existing source/asset/schema/identity/auth/rate/retention/Queue/DO/WebSocket/recovery/SQLite CLI tests also succeeded in the source job. Summary lines are not independent test counts.
+Scope: source and synthetic/local-service evidence only. No production deployment, Cloudflare writes, repository-policy change, actual device qualification or Phase8D final acceptance.

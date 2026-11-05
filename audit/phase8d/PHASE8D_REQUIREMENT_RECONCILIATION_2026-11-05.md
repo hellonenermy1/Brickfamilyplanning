@@ -41,12 +41,12 @@ The gate derives and checks deferred/carried counts as well as applicable verifi
 | Draft CROSS_PHASE scope |311 |
 | Unmapped scope rows |0 |
 | Rows with navigation to explicitly mentioning finding entries |23 |
-| Rows with recorded, hash-checked evidence in this new ledger |1 |
+| Rows with recorded, hash-checked evidence in this new ledger |10 |
 | Unresolved final dispositions |525 |
 | Rows without assigned implementation/test owners in this ledger |525 |
 | Rows without complete per-ID acceptance review |525 |
 
-The one evidence entry is OPS-003: actual local destructive workerd D1/R2/DO recovery at58285064/CI41952880677. Its scope and remaining live-cloud requirements are explicit. The rest of the existing source/CI artifacts remain intact and reusable; the counts above mean **not yet individually reconciled into this ledger**, not that525 features are newly broken or that earlier audit work has been reset.
+One evidence entry is OPS-003: actual local destructive workerd D1/R2/DO recovery at58285064/CI41952880677. Its scope and remaining live-cloud requirements are explicit. Nine further records (GOV-001/002/004/005/006/011/013/015, COV-011) link the new partial structural SOURCE_CI proof, with explicit limits and unresolved acceptance. The rest of the existing source/CI artifacts remain intact and reusable; the counts above mean **not yet individually reconciled into this ledger**, not that525 features are newly broken or that earlier audit work has been reset.
 
 Every row preserves source classification, a scope reason and explicit backend section links or cross-phase dependency. Cross-phase rows are not accepted or automatically deferred. All rows retain OPEN BLOCKER for *this per-ID acceptance worksheet*, unresolved disposition, null assigned owners/review and C1–C4 NOT REVIEWED prompts. Severity is UNASSESSED rather than inventing525 P1 findings. Blocker/remediation fields explain the actual review gap; C1–C4 meanings are not reinterpreted or declared passed. Only scopeReview records the audit's completed applicability review.
 
@@ -60,7 +60,7 @@ The draft reviewedSourceSha is null, so it cannot be mistaken for an approved le
 - `node scripts/audit-phase8d-requirements.mjs --require-accepted`: refuses the real draft, as intended. No network or cloud writes.
 - `--initialize` is only for an absent inventory and refuses an existing ledger, preserving later reviewed work. It does not regenerate or erase completed scope reviews.
 - `PHASE8D_REQUIREMENTS_LOCAL_2026-11-05.txt` records the local RED/GREEN and expected real-draft refusal.
-- Existing release-contract tests, TypeScript and source checks are run; full hosted exact-SHA result appended after completion. A new blocking CI step runs per-ID adversarial controls plus the real draft inventory validation.
+- Existing release-contract tests, TypeScript and source checks are run; hosted exact executable **f87a0be0bdaf320752d747ae2a39da01ee0a1ece**, [CI41956379795](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41956379795), attempt1 overall completed SUCCESS, source68/68 and backup7/7 completed-success. Deployment-contract job conclusion/7 steps success but status in_progress at capture; final gate refuses that inconsistency until consistent metadata is re-attested. Exact logs and qualification: `PHASE8D_SOURCE_CI_41956379795.txt`. A new blocking CI step runs per-ID adversarial controls plus the real draft inventory validation.
 
 ## Changed files and purpose
 
@@ -76,3 +76,6 @@ The draft reviewedSourceSha is null, so it cannot be mistaken for an approved le
 | Acceptance contract, findings, operational queue and checkpoint/evidence documents | Preserve findings-first lineage, current scope and exact validation; GOV-006/012/013/014 |
 
 The most recent live evidence remains41839919454 attempt5 failure. No claim that token access/configuration has changed; identical denied reads were not repeated. Correct account/scoped Cloudflare reads, concrete binding/Access repairs, authorized isolated cloud recovery/fault/rollback, actual ownership/WS/rates/retention/diagnostics and appropriate per-ID evidence reviews remain. Do not create final acceptance or start8E/8F implementation from this scope-only mapping.
+
+
+Follow-up evidence links are audit data only under release-evidence; executable source is unchanged after f87a0be0. Inventory and61 per-ID cases rerun after links. CI-time inventory output correctly records the earlier one-proof snapshot; current draft has10 partial proof-bearing rows, no final per-ID acceptance. Read-only GitHub protection/ruleset results and actual-metadata refusal are saved in PHASE8D_REPOSITORY_AND_CI_METADATA_2026-11-05.txt.

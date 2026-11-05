@@ -4,6 +4,8 @@ Updated 2026-11-05. **8D IN PROGRESS / NOT PASS.** Authority: Phase 8 PDF pp.44â
 
 ## Evidence checkpoints and reuse
 
+- Latest audit tooling executable **f87a0be0bdaf320752d747ae2a39da01ee0a1ece**, [CI41956379795](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41956379795) overall SUCCESS, source68/68 completed-success. Deployment-contract job still reports in_progress with success conclusion/7 steps: re-attest consistent completed-success metadata before final approval; strict gate refuses it now. Per-ID source-control correction is locally/source-job verified, not final acceptance.
+
 - Previously green executable: `cd5e50ca050a8afa8932434c590d923e3ade62a4`, [source CI 41869667667](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667), all three jobs successful. Reuse unchanged scoped evidence; a green source suite does not attest a deployment.
 - Latest read-only live check: [41839919454 attempt 5](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/5), completed failure. Attestor source remains `d74b30d97e97a01ce55171f1931c685d51f4d180`; it is not the audit branch HEAD. Sanitized results: `PHASE8D_LIVE_ATTEMPT5_2026-11-05.txt`.
 - Current recovery batch: `PHASE8D_FULL_STORE_RECOVERY_2026-11-05.md`; local destructive D1/R2/DO evidence at executable `58285064fbf3d6b707dd15d8ef2fd3fb967ae47d`, [CI41952880677](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41952880677) all three jobs SUCCESS (source67/67). Not a live cloud pass. Exact proof `PHASE8D_SOURCE_CI_41952880677.txt`.

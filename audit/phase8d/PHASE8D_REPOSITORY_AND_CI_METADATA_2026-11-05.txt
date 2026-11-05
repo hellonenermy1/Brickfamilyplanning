@@ -1,0 +1,12 @@
+Phase8D 2026-11-05 read-only repository/CI metadata checkpoint
+
+Authenticated GitHub connector reads:
+main: protected=false; SHA57343b3cab0c5c18572a8dcafda0a3cfc09209c0.
+v1-p8d-backend-deep-audit: protected=false; SHA f87a0be0bdaf320752d747ae2a39da01ee0a1ece at capture.
+Repository rulesets endpoint returned[] (zero returned rulesets). No policy was created, updated or deleted. No claim about inaccessible administrative settings beyond these reads. Private repo access works; Team subscription alone is not protection evidence.
+
+Run41956379795 attempt1 overall completed-success. Source job127012151331 completed-success68/68 steps; backup job127012151088 completed-success7/7. Deployment contract job127012150851 reports success conclusion and7/7 successful steps but API status in_progress. Both latest-jobs and attempt1-jobs reads preserved the inconsistency.
+
+Temporary local test combined the actual captured run/jobs metadata with the purely synthetic525/19-section fixture (not a real acceptance record). verifyPhase8dAcceptance refused with failed/skipped/incomplete CI job, confirming fail-closed handling of that metadata. No network or deployment in this test. Final approval must re-attest all required job statuses completed and success; overall green run is not used to bypass this rule.
+
+No production deploy, Cloudflare resource/SQL write, family-data access, credential value, repository-policy mutation, Android edit or final acceptance record.
