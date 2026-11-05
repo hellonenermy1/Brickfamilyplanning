@@ -95,12 +95,14 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   const values = packets.map((packet, index) => {
     const base = index * 4;
     bindings.push(deviceId, packet.epoch, packet.sequence, now);
-    // SELECT/WHERE EXISTS runs inside one atomic D1 transaction with the active-device
-    // liveness test. A stale prior auth SELECT must never insert revoked-device history.
-    return `SELECT ?${base + 1},?${base + 2},?${base + 3},'location',?${base + 4} WHERE EXISTS (SELECT 1 FROM devices WHERE id=?${base + 1} AND revoked_at IS NULL)`;
-  }).join(" UNION ALL ");
+    return `(?${base + 1},?${base + 2},?${base + 3},?${base + 4})`;
+  }).join(",");
   const insert = env.DB.prepare(
-    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) ${values}`
+    // VALUES avoids the native D1 compound-SELECT term limit. Keep the active-device
+    // fence inside the same SQL transaction, including every row of a20-point batch.
+    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) ` +
+    `SELECT incoming.column1,incoming.column2,incoming.column3,'location',incoming.column4 FROM (VALUES ${values}) AS incoming ` +
+    `WHERE EXISTS (SELECT 1 FROM devices WHERE id=incoming.column1 AND revoked_at IS NULL)`
   ).bind(...bindings);
   // Any authenticated location upload proves recent device contact, even when it is delayed backlog
   // whose logical epoch/sequence is older than the current watermark. Keep last_seen_at independent

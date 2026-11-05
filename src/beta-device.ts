@@ -2,6 +2,11 @@ import { BrickDevice as BaseBrickDevice } from './device-do';
 
 /** Same real per-device object and sockets; one disposable key, no telemetry/recovery markers changed. */
 export class BrickDevice extends BaseBrickDevice {
+ protected override get recoveryIncludesBetaDiagnostic(): boolean {
+  // The beta adds exactly one disposable diagnostic key. Other unknown keys still
+  // fail the production recovery allowlist; no probe token is restored or revived.
+  return true;
+ }
  override async fetch(req: Request): Promise<Response> {
   if(new URL(req.url).pathname !== '/beta/probe') return super.fetch(req);
   const life = await this.ctx.storage.get<boolean>('wsRevoked');

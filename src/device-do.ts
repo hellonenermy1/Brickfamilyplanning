@@ -103,9 +103,11 @@ export class BrickDevice extends DurableObject<Env> {
     this.ctx.waitUntil(this.initialized);
   }
 
+  protected get recoveryIncludesBetaDiagnostic(): boolean { return false; }
+
   async exportRecoveryState(deviceId: string): Promise<string> {
     await this.initialized;
-    return exportDeviceRecovery(this.ctx, this.env, deviceId);
+    return exportDeviceRecovery(this.ctx, this.env, deviceId, this.recoveryIncludesBetaDiagnostic);
   }
 
   async restoreRecoveryState(deviceId: string, serialized: string, sha256: string): Promise<boolean> {

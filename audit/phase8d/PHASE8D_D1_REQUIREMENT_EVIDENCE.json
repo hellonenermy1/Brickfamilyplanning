@@ -1,0 +1,401 @@
+{
+  "format": "brick-phase8d-d1-supplement-v1",
+  "baselineSource": "488b34f2f2f807c107b4c1e9eee9dccff717011f",
+  "canonicalRequirementSha256": "1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228",
+  "status": "PARTIAL LOCAL EVIDENCE ONLY; NO FINAL REQUIREMENT ACCEPTANCE",
+  "notice": "Source/test navigation and hashes; not an owner assignment, independent acceptance review or replacement for the525-row canonical release ledger. Test files are not themselves proof of execution; read the corresponding exact-source local/hosted logs.",
+  "requirements": [
+    {
+      "requirement_id": "DAT-011",
+      "classification": "MANDATORY",
+      "profile": "PROTO",
+      "title": "Durable ACK before cleanup",
+      "current_requirement": "Local records become cleanup-eligible only after Cloudflare durably accepts them and Brick receives ACK for the corresponding sequence/range.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "DAT-012",
+      "classification": "MANDATORY",
+      "profile": "PROTO",
+      "title": "Resumable catch-up",
+      "current_requirement": "If connectivity fails mid-backlog, resume from last acknowledged sequence/range rather than restarting or losing progress.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "DAT-017",
+      "classification": "MANDATORY",
+      "profile": "PROTO",
+      "title": "Post-reconnect reconciliation",
+      "current_requirement": "After catch-up, compare phone durable sequence/ACK state to backend accepted ranges, resend holes and declare fully synced only at zero missing and zero unsent.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "DAT-024",
+      "classification": "MANDATORY",
+      "profile": "PROTO",
+      "title": "ACK ranges",
+      "current_requirement": "Protocol can acknowledge ranges efficiently while still proving durable receipt and detecting holes.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "BE-002",
+      "classification": "MANDATORY",
+      "profile": "SEC",
+      "title": "Worker API validation",
+      "current_requirement": "Device/portal endpoints enforce schema validation, authentication, replay protection and rate limiting before accepting state changes.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "BE-003",
+      "classification": "MANDATORY",
+      "profile": "DATA",
+      "title": "Per-device Durable Object",
+      "current_requirement": "Each tracked device has an authoritative Durable Object/current-state owner for latest trusted/raw state, sequence, battery, speed, motion, quality, heartbeat and health.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "BE-007",
+      "classification": "MANDATORY",
+      "profile": "PROTO",
+      "title": "Queue idempotency",
+      "current_requirement": "At-least-once Queue delivery is handled with stable unique IDs/idempotency so repeated queue delivery is harmless.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "BE-010",
+      "classification": "MANDATORY",
+      "profile": "DATA",
+      "title": "R2 detailed history/models",
+      "current_requirement": "R2 stores compressed detailed history, short-retention raw evidence, learned model snapshots/refined histories/backups as appropriate rather than one object per GPS point.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "BE-011",
+      "classification": "MANDATORY",
+      "profile": "DATA",
+      "title": "Segmented R2 history",
+      "current_requirement": "History is stored in sensible time/device segments so retrieval and retention are efficient.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "SEC-021",
+      "classification": "MANDATORY",
+      "profile": "SEC",
+      "title": "Retention policy enforcement",
+      "current_requirement": "Detailed raw history, trusted route history, safety events, system logs and raw environmental evidence expire/retain according to explicit policy.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "SEC-022",
+      "classification": "MANDATORY",
+      "profile": "SEC",
+      "title": "Privacy after revocation",
+      "current_requirement": "Revoked history remains read-only and retention rules continue to apply; revocation does not reopen command capability.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "OPS-002",
+      "classification": "MANDATORY",
+      "profile": "REL",
+      "title": "D1 PITR/logical backup",
+      "current_requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "OPS-003",
+      "classification": "MANDATORY",
+      "profile": "TEST",
+      "title": "Backup restore drill",
+      "current_requirement": "Backup is actually restored into a fresh test target and devices/history/config are verified, not merely created.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    },
+    {
+      "requirement_id": "COV-006",
+      "classification": "MANDATORY",
+      "profile": "RELEASE",
+      "title": "Backend coverage closure",
+      "current_requirement": "All Cloudflare/backend responsibilities - API, auth, Durable Objects, WebSockets, Queues/DLQ, D1/R2, ACK/reconciliation, retention, backups and deployments - have explicit PASS/FAIL evidence.",
+      "authority_status": "baseline",
+      "authoritative_source": "SRC-002 / Brick V1 Final Product AI Acceptance Checklist PDF / SHA256 863218723ba49c93a72d4e5e59854425ac1bf32dbebeeae15bca08db96ea6f5e",
+      "evidenceScope": "D1 adapter integrity/ACK or local bounded recovery subset; full requirement and later-phase/live gates remain open",
+      "evidence": [
+        {
+          "path": "scripts/test-phase8d-d1-object-integrity.mjs",
+          "sha256": "17444d750c598f286e620f20e7d35f3786c5d303aa511706bcfd77678d64a354"
+        },
+        {
+          "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+          "sha256": "532d87bb3eea24f44bedb859a53b16e97d48293bac2bf5830613b66e7e1d3dd8"
+        },
+        {
+          "path": "scripts/test-phase8d-d1-ack-faults.mjs",
+          "sha256": "c04f11ba53f427478fedd706084ccfa1d0b10ab57e7603d6694c51ff69807f7b"
+        },
+        {
+          "path": "audit/phase8d/PHASE8D_D1_RECONCILIATION_2026-11-05.md",
+          "sha256": "dccbcbdc9058fb34ecb2484ae8fc5b8fc80558a9ce95a3b61e04e2cbca89fb51"
+        }
+      ]
+    }
+  ]
+}

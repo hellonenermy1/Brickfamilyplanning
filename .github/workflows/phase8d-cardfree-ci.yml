@@ -1,0 +1,39 @@
+name: Phase 8D D1 storage and recovery audit (no cloud writes)
+on:
+  push:
+    branches: [audit/phase8d-d1-qualification]
+    paths: ['src/**', 'scripts/**', 'schema/**', '.github/workflows/phase8d-cardfree-ci.yml']
+  pull_request:
+    branches: [beta/backend-portal]
+    paths: ['src/**', 'scripts/**', 'schema/**', '.github/workflows/phase8d-cardfree-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: phase8d-cardfree-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  d1-storage-and-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build:parent-assets
+      - name: D1 object read integrity and atomic conditional-write regressions
+        run: node scripts/test-phase8d-d1-object-integrity.mjs
+      - name: Destroy source and recover primary D1 diagnostics D1 and beta DO
+        run: node scripts/test-phase8d-cardfree-recovery.mjs
+      - name: Signed D1 history ACK partial-batch retry and exact revoke race
+        run: node scripts/test-phase8d-d1-ack-faults.mjs
+      - name: Existing beta auth history map and WebSocket regressions
+        run: node scripts/test-beta-workerd.mjs
+      - name: Original production DO and multi-store recovery regressions
+        run: node scripts/test-phase8d-full-store-recovery.mjs
+      - name: Existing native production trust-boundary regressions
+        run: node scripts/test-phase8d-workerd-integration.mjs

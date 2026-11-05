@@ -1,8 +1,8 @@
 import { encodeTrustedDelta, gzipJson, trustedPoint } from "./history-codec";
 import type { LivePacket } from "./protocol";
 
-const CHUNK_BYTES = 900_000;
-const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
+export const CHUNK_BYTES = 900_000;
+export const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
 const HISTORY_SEGMENT_MS = 15 * 60 * 1000;
 const MAP_KEY = "basemap/singapore.pmtiles";
 const META_KEY = "basemap/singapore.meta.json";
@@ -16,7 +16,7 @@ type StoredMeta = {
   custom_metadata_json: string;
 };
 
-type ChunkRow = { body: ArrayBuffer | Uint8Array | number[] };
+type ChunkRow = { chunk_index: number; body: ArrayBuffer | Uint8Array | number[] };
 type RangeSpec = { offset: number; length: number } | null;
 type HistoryKind = "raw" | "trusted";
 type HistoryRow = {
@@ -282,6 +282,40 @@ async function virtualHistoryList(db: D1Database, prefix: string, offset: number
   };
 }
 
+function objectWriteCondition(key: string, input: unknown): { sql: string; values: string[] } | null {
+  if (input === undefined) return null;
+  const conditions: string[] = [], values = [key];
+  const add = (raw: unknown, negate: boolean) => {
+    if (typeof raw !== "string" || !raw.trim()) throw new Error("invalid D1 object ETag condition");
+    const tags = raw.split(",").map(tag => tag.trim());
+    if (tags.includes("*")) {
+      if (tags.length !== 1) throw new Error("invalid D1 object ETag condition");
+      conditions.push((negate ? "NOT " : "") + "EXISTS(SELECT 1 FROM dev_object_store WHERE key=?1)");
+      return;
+    }
+    const refs = tags.map(tag => {
+      const plain = tag.replace(/^\"(.*)\"$/, "$1");
+      if (!plain || /[\s\"\\]/.test(plain)) throw new Error("invalid D1 object ETag condition");
+      values.push(plain); return "?" + values.length;
+    });
+    conditions.push((negate ? "NOT " : "") + "EXISTS(SELECT 1 FROM dev_object_store WHERE key=?1 AND etag IN (" + refs.join(",") + "))");
+  };
+  if (input instanceof Headers) {
+    input.forEach((_value, name) => { if (!["if-match", "if-none-match"].includes(name)) throw new Error("unsupported D1 object write condition"); });
+    if (input.has("If-Match")) add(input.get("If-Match"), false);
+    if (input.has("If-None-Match")) add(input.get("If-None-Match"), true);
+  } else {
+    if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("invalid D1 object write condition");
+    const entries = Object.entries(input);
+    for (const [name, value] of entries) {
+      if (name !== "etagMatches" && name !== "etagDoesNotMatch") throw new Error("unsupported D1 object write condition");
+      add(value, name === "etagDoesNotMatch");
+    }
+  }
+  if (!conditions.length) throw new Error("empty D1 object write condition");
+  return { sql: conditions.join(" AND "), values };
+}
+
 export class D1ObjectBucket {
   constructor(private readonly db: D1Database) {}
 
@@ -293,6 +327,7 @@ export class D1ObjectBucket {
     const now = Date.now();
     const httpMetadata = safeJson(options.httpMetadata);
     const customMetadata = safeJson(options.customMetadata);
+    const condition = objectWriteCondition(key, options.onlyIf);
     const statements: D1PreparedStatement[] = [
       this.db.prepare("DELETE FROM dev_object_chunks WHERE key=?1").bind(key),
       this.db.prepare(
@@ -304,7 +339,20 @@ export class D1ObjectBucket {
       const part = bytes.slice(offset, Math.min(bytes.byteLength, offset + CHUNK_BYTES));
       statements.push(this.db.prepare("INSERT INTO dev_object_chunks(key,chunk_index,body) VALUES(?1,?2,?3)").bind(key, index, ownBuffer(part)));
     }
-    await this.db.batch(statements);
+    if (condition) {
+      // D1 exposes transactions through batch(), not a client-side read/check/write.
+      // This first statement deliberately violates one specific NOT NULL constraint
+      // on a failed precondition, rolling back the WHOLE batch before any replacement.
+      // All normal writes below bind validated, non-null sizes. Other errors propagate.
+      statements.unshift(this.db.prepare(
+        "INSERT INTO dev_object_store(key,size,etag,uploaded_at) SELECT ?1,NULL,'',0 WHERE NOT (" + condition.sql + ")"
+      ).bind(...condition.values));
+    }
+    try { await this.db.batch(statements); }
+    catch (error) {
+      if (condition && String(error).includes("NOT NULL constraint failed: dev_object_store.size")) return null;
+      throw error;
+    }
     return headObject({ key, size: bytes.byteLength, etag, uploaded_at: now, http_metadata_json: httpMetadata, custom_metadata_json: customMetadata });
   }
 
@@ -324,19 +372,33 @@ export class D1ObjectBucket {
   async get(key: string, options: { range?: unknown } = {}) {
     const virtual = await virtualHistoryObject(this.db, key);
     if (virtual) return virtual;
-    const meta = await this.meta(key);
+    // Both SELECTs share a single D1 transaction; concurrent replacements cannot
+    // splice an old ETag/size together with the next version's chunks.
+    const result = await this.db.batch<StoredMeta | ChunkRow>([
+      this.db.prepare("SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key=?1").bind(key),
+      this.db.prepare("SELECT chunk_index,body FROM dev_object_chunks WHERE key=?1 ORDER BY chunk_index").bind(key)
+    ]);
+    if (result.length !== 2 || !Array.isArray(result[0]?.results) || !Array.isArray(result[1]?.results)) throw new Error("incomplete D1 object read");
+    const meta = result[0].results[0] as StoredMeta | undefined;
     if (!meta) return null;
-    const rows = await this.db.prepare("SELECT body FROM dev_object_chunks WHERE key=?1 ORDER BY chunk_index").bind(key).all<ChunkRow>();
-    const chunks = rows.results.map(row => {
-      if (row.body instanceof ArrayBuffer) return new Uint8Array(row.body);
-      if (ArrayBuffer.isView(row.body)) return new Uint8Array(row.body.buffer, row.body.byteOffset, row.body.byteLength);
-      if (Array.isArray(row.body) && row.body.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) return Uint8Array.from(row.body);
-      throw new Error("invalid D1 object chunk");
+    if (!Number.isSafeInteger(meta.size) || meta.size < 0 || meta.size > MAX_OBJECT_BYTES || !/^[a-f0-9]{64}$/.test(meta.etag)) throw new Error("invalid D1 object metadata");
+    const rows = result[1].results as ChunkRow[];
+    if (rows.length !== Math.ceil(meta.size / CHUNK_BYTES)) throw new Error("development object is incomplete");
+    const chunks = rows.map((row, index) => {
+      if (row.chunk_index !== index) throw new Error("invalid D1 object chunk index");
+      let bytes: Uint8Array;
+      if (row.body instanceof ArrayBuffer) bytes = new Uint8Array(row.body);
+      else if (ArrayBuffer.isView(row.body)) bytes = new Uint8Array(row.body.buffer, row.body.byteOffset, row.body.byteLength);
+      else if (Array.isArray(row.body) && row.body.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) bytes = Uint8Array.from(row.body);
+      else throw new Error("invalid D1 object chunk");
+      if (bytes.byteLength !== Math.min(CHUNK_BYTES, meta.size - index * CHUNK_BYTES)) throw new Error("invalid D1 object chunk size");
+      return bytes;
     });
     const bytes = new Uint8Array(meta.size);
     let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     if (offset !== meta.size) throw new Error("development object is incomplete");
+    if (await sha256Hex(bytes) !== meta.etag) throw new Error("D1 object integrity hash mismatch");
     const range = parseRange(options.range, meta.size);
     return bodyObject(bytes, meta, range);
   }
@@ -505,7 +567,9 @@ class DirectEventQueue {
         return `(?${base + 1},?${base + 2},?${base + 3},?${base + 4},?${base + 5},?${base + 6},?${base + 7},?${base + 8},?${base + 9})`;
       }).join(",");
       await this.db.prepare(
-        `INSERT OR IGNORE INTO dev_location_history(device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at) VALUES ${values}`
+        `INSERT OR IGNORE INTO dev_location_history(device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at) ` +
+        `SELECT incoming.column1,incoming.column2,incoming.column3,incoming.column4,incoming.column5,incoming.column6,incoming.column7,incoming.column8,incoming.column9 ` +
+        `FROM (VALUES ${values}) AS incoming WHERE EXISTS (SELECT 1 FROM devices WHERE id=incoming.column1 AND revoked_at IS NULL)`
       ).bind(...bindings).run();
     }
   }

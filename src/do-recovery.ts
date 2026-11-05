@@ -45,9 +45,16 @@ async function identity(ctx: DurableObjectState, env: RecoveryEnv, deviceId: str
 
 // Internal RPC only. The caller must quiesce all stores: this transaction is DO-local,
 // not a distributed D1/R2/DO snapshot or a replacement for the cloud recovery drill.
-export async function exportDeviceRecovery(ctx: DurableObjectState, env: RecoveryEnv, deviceId: string) {
+export async function exportDeviceRecovery(ctx: DurableObjectState, env: RecoveryEnv, deviceId: string, betaDiagnostic = false) {
   const device = await identity(ctx, env, deviceId);
-  const state = await ctx.storage.transaction(async txn => Object.fromEntries(await txn.list({ limit: RECOVERY_KEYS.length + 1 })));
+  const state = await ctx.storage.transaction(async txn => Object.fromEntries(await txn.list({ limit: RECOVERY_KEYS.length + (betaDiagnostic ? 2 : 1) })));
+  if (betaDiagnostic && 'betaDiagnostic' in state) {
+    const probe = state.betaDiagnostic;
+    if (!record(probe) || Object.keys(probe).sort().join(',') !== 'expiresAt,token' || typeof probe.token !== 'string' || !/^[0-9a-f-]{36}$/.test(probe.token) || !Number.isSafeInteger(probe.expiresAt) || (probe.expiresAt as number) <= 0) throw new Error('invalid beta diagnostic recovery state');
+    // Disposable challenge, never recovery state or authority. Filter the captured
+    // copy only; do not mutate a still-active readiness probe while exporting.
+    delete state.betaDiagnostic;
+  }
   checkState(state);
   // Preserve a D1 revocation even if a previously interrupted revoke missed this DO.
   if (device.revoked) state.wsRevoked = true;

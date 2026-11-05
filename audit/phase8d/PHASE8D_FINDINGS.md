@@ -599,3 +599,15 @@ P8D-002 continuation exact-source CI: **58285064fbf3d6b707dd15d8ef2fd3fb967ae47d
 P8D-067 local correction/retest: gate now reads the pinned canonical525 baseline and tracked hash-bound per-ID ledger; verifies IDs/classification/profile/title/full-row digest, owners/review/scope/disposition/evidence and derives actual carry/defer counters before network. Phase boundaries remain explicit: approved later-phase device/UI work is not silently accepted or made a circular8D prerequisite. Existing39 gate cases + new61 per-ID cases GREEN locally. Draft all525 rows read/mapped (214 backend/shared,311 cross-phase), all final dispositions/owners/acceptance reviews still pending; OPS-003 local proof linked without closing live P1. Details and changed-file inventory in PHASE8D_REQUIREMENT_RECONCILIATION_2026-11-05.md. Exact hosted CI pending; P8D-067 source correction not yet CI-verified. No final PASS or cloud/policy/Android change.
 
 P8D-067 exact source-job retest: **f87a0be0bdaf320752d747ae2a39da01ee0a1ece**, CI41956379795 attempt1 overall completed SUCCESS/source68/68, existing39 + new61 gate cases GREEN. Source-control flaw corrected and source-job verified; actual per-ID acceptance/owners and existing live P1s remain OPEN. One deployment-contract job metadata status in_progress despite success result is preserved; final all-job gate correctly refuses, confirmed with actual captured metadata and synthetic fixture. Follow-up data links9 scoped structural source proofs (10 total rows with partial evidence) without acceptance claims. No executable change after tested source. Details: PHASE8D_SOURCE_CI_41956379795.txt and PHASE8D_REPOSITORY_AND_CI_METADATA_2026-11-05.txt.
+
+
+## D1-approved architecture continuation — findings P8D-068–072
+Read PHASE8D_D1_RECONCILIATION_2026-11-05.md and PHASE8D_D1_LOCAL_CHECKPOINT.md. Source branch audit/phase8d-d1-qualification starts at beta488b34f2; formal8D audit branch is preserved.
+P8D-068 (P1): incoherent D1 metadata/chunk read and undetected corruption; native RED, corrected local12-case suite GREEN.
+P8D-069 (P2): ignored D1 onlyIf; create/update concurrency RED, atomic transactional guards locally GREEN.
+P8D-070 (P1): readiness betaDiagnostic blocks inherited DO export; native RED, validated ephemeral exclusion and fresh local beta DO restore GREEN.
+P8D-071 (P1): signed20-point batch fails actual D1 compound SELECT; native RED, VALUES-derived insert/fence and20-point retry locally GREEN.
+P8D-072 (P1): direct D1 history write after exact revoke interleaving; native RED, transactional liveness predicate locally GREEN.
+Original finding reports and RED/GREEN receipts are retained alongside this ledger; hosted source acceptance is separate, no live closure inferred. P8D-002 full cloud/operational recovery remains P1 OPEN despite local41+4-table recovery progress.
+No525-ID acceptance state is changed; no production/phone/endurance PASS.
+
