@@ -23,7 +23,7 @@ export function parentBetaHtml(base:string){
  html=html.replace('</head>',compactMapCss+'</head>');
  const mapImport="import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
  if(!html.includes(mapImport))throw Error('beta_parent_map_import_missing');
- html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus, switchToPrivateFallback } from '/brick-map.mjs';");
+ html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus, switchToStandardOneMap, switchToPrivateFallback } from '/brick-map.mjs';");
  const js=String.raw`
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
@@ -51,22 +51,29 @@ map.on('error',e=>{
  brickMapStatus.textContent='MapLibre '+category+' · checking tile sources';
 });
 async function brickProbeMapSources(){
- const checks=await Promise.all([
-  fetch('/parent/map/onemap/Default_HD/11/1614/1016.png',{credentials:'same-origin',cache:'no-store'}).then(async r=>({status:r.status,contentType:r.headers.get('Content-Type')||'',png:r.ok&&new Uint8Array(await r.arrayBuffer()).slice(0,8).every((b,i)=>b===[137,80,78,71,13,10,26,10][i])})).catch(()=>({status:0,contentType:'',png:false})),
-  fetch('/parent/map/basemap.pmtiles',{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-15'}}).then(r=>({status:r.status,range:r.headers.get('Content-Range')||''})).catch(()=>({status:0,range:''}))
+ const testTile=path=>fetch(path,{credentials:'same-origin',cache:'no-store'}).then(async r=>{
+   const data=r.ok?new Uint8Array(await r.arrayBuffer()):new Uint8Array();
+   return {status:r.status,png:data.length>=8&&[137,80,78,71,13,10,26,10].every((b,i)=>data[i]===b)};
+ }).catch(()=>({status:0,png:false}));
+ const [hd,standard,privateMap]=await Promise.all([
+   testTile('/parent/map/onemap/Default_HD/11/1614/1016.png'),
+   testTile('/parent/map/onemap/Default/11/1614/1016.png'),
+   fetch('/parent/map/basemap.pmtiles',{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-15'}}).then(r=>({status:r.status,range:r.headers.get('Content-Range')||''})).catch(()=>({status:0,range:''}))
  ]);
- const [one,privateMap]=checks;
- const oneOk=one.status===200&&one.png;
+ const hdOk=hd.status===200&&hd.png,standardOk=standard.status===200&&standard.png;
  const privateOk=privateMap.status===206&&privateMap.range.startsWith('bytes 0-15/');
- if(!oneOk&&privateOk){
-   brickMapStatus.textContent='OneMap '+(one.status||'network error')+' · trying private OSM fallback';
-   try{switchToPrivateFallback(map)}catch{brickMapStatus.textContent='MapLibre fallback unavailable · tiles OneMap '+(one.status||0);}
- }else if(!oneOk&&!privateOk){
-   brickMapStatus.textContent='Map unavailable · OneMap HTTP '+(one.status||0)+' · private HTTP '+(privateMap.status||0);
- }else if(oneOk){
-   brickMapStatus.textContent=brickMapErrorSeen?'OneMap tile reachable · MapLibre render issue':'OneMap tile endpoint reachable · checking rendering';
- }else brickMapStatus.textContent='Map tiles unavailable · check connection';
- return {oneMapHttp:one.status,oneMapPng:one.png,privateHttp:privateMap.status,privateRangeOk:privateOk};
+ if(!hdOk&&standardOk){
+   brickMapStatus.textContent='OneMap HD HTTP '+hd.status+' · using standard OneMap tiles';
+   try{switchToStandardOneMap(map)}catch{brickMapStatus.textContent='Standard OneMap tiles reachable · renderer unavailable'}
+ }else if(!hdOk&&!standardOk&&privateOk){
+   brickMapStatus.textContent='OneMap HD '+(hd.status||0)+' / standard '+(standard.status||0)+' · private map fallback reachable';
+   try{switchToPrivateFallback(map)}catch{brickMapStatus.textContent='Map fallback could not initialize'}
+ }else if(!hdOk&&!standardOk&&!privateOk){
+   brickMapStatus.textContent='Map unavailable · HD '+(hd.status||0)+' · standard '+(standard.status||0)+' · PMTiles '+(privateMap.status||0);
+ }else if(hdOk){
+   brickMapStatus.textContent=brickMapErrorSeen?'OneMap tile reachable · MapLibre rendering reported an error':'OneMap HD endpoint reachable · verifying drawing';
+ }
+ return {hdHttp:hd.status,hdPng:hd.png,standardHttp:standard.status,standardPng:standard.png,privateHttp:privateMap.status,privateRangeOk:privateOk};
 }
 setTimeout(()=>{try{map.resize()}catch{}brickProbeMapSources().catch(()=>{brickMapStatus.textContent='Map diagnostic unavailable'})},250);
 const betaOldSelect=selectDevice;selectDevice=async function(id){document.getElementById('betaChecks').replaceChildren();document.getElementById('betaRun').textContent='';document.getElementById('betaEvidence').textContent='';document.getElementById('betaHeadline').textContent='Loading selected phone…';await betaOldSelect(id);if(document.getElementById('brickBeta').open)await betaLoad();};
