@@ -18,7 +18,7 @@ import com.brick.safety.beta.BetaSafety
  */
 class Phase8RetirementHarnessReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (!BuildConfig.DEBUG || !BuildConfig.BRICK_BETA || intent.action != ACTION_DISARM) {
+        if (!BuildConfig.DEBUG || !(BuildConfig.BRICK_BETA || BuildConfig.BRICK_BETA_DIAGNOSTICS) || intent.action != ACTION_DISARM) {
             resultCode = Activity.RESULT_CANCELED
             resultData = "rejected"
             return
