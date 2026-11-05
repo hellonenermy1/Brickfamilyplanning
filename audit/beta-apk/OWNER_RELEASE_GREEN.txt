@@ -1,0 +1,14 @@
+Exact APK source0b9f6facdd0f037c924f21d410e0a32d4f1dae89
+GitHub run41967595582 job127048094092: SUCCESS, clean AOSP emulator only.
+Synthetic test, actual Device Owner provisioning and reboot. Android uninstall UI is requested; separate ADB uninstall verifies package removability.
+
+2026-11-05T04:30:26.6931827Z Success
+2026-11-05T04:30:27.3598528Z Success
+2026-11-05T04:30:28.5416895Z no owners
+2026-11-05T04:30:35.3408357Z OK (1 test)
+2026-11-05T04:30:38.8739023Z Active admin set to component com.brick.safety/.managed.BrickDeviceAdminReceiver
+2026-11-05T04:30:44.6070922Z     <string name="retirement_stage">DISARMED</string>
+2026-11-05T04:31:59.9060866Z no owners
+2026-11-05T04:31:59.9789109Z     <string name="retirement_stage">MANAGEMENT_RELEASED</string>
+2026-11-05T04:32:03.2138378Z OK (1 test)
+2026-11-05T04:32:04.4238511Z Success

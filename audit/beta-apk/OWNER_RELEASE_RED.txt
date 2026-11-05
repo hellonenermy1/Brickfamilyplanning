@@ -1,0 +1,18 @@
+Beta owner release RED evidence — source623478566d57122eca1b147ea78ffd0ac8fd8ad1
+Run41963309874; failure artifact13386183706; synthetic clean AOSP only.
+
+11-05 03:49:19.101   511   968 I DevicePolicyManager: Device owner removed: ComponentInfo{com.brick.safety/com.brick.safety.managed.BrickDeviceAdminReceiver}
+11-05 03:49:19.173   511   511 D DevicePolicyManager: Removing device admin ComponentInfo{com.brick.safety/com.brick.safety.managed.BrickDeviceAdminReceiver} from user 0
+11-05 03:49:19.173   511   511 I DevicePolicyManager: Device admin ComponentInfo{com.brick.safety/com.brick.safety.managed.BrickDeviceAdminReceiver} removed from user 0
+
+After reboot owner inventory:
+no owners
+
+Persisted retirement state after wait:
+    <string name="retirement_stage">DISARMED</string>
+
+The immediate postcondition refused to commit MANAGEMENT_RELEASED while asynchronous admin cleanup was settling, with no subsequent verification attempt. Process-kill was an initial unconfirmed hypothesis and is not asserted by this evidence. Correction07744c4 adds bounded1500ms real owner/admin readback, no API-return shortcut. Actual retest pending.
+
+Follow-up07744c4 also failed run41964789135: owner removal04:03:45.182, admin removal04:03:48.689. Startup verification was running on Android main thread, blocking the admin callback during bounded waits. Do not treat the earlier retry-only change as sufficient.
+
+Correction444633ddbfdc7c6fa42ed753ffbff0820238dee1 moves startup verification to a bounded background worker, preserves actual readback and drains it before purge. Real Device Owner run41966313565 SUCCESS: actual provisioning, durable disarm, reboot, automatic management release, Android uninstall UI request and separate ADB removal all passed. This proves AOSP management-release recovery and package removability, not unattended Android self-uninstall or OPPO qualification.
