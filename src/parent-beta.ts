@@ -5,17 +5,17 @@ export function parentBetaHtml(base:string){
  const panel=`<details id="brickBeta" style="position:fixed;right:12px;bottom:12px;z-index:500;background:#fff;color:#18362d;border:2px solid #26755c;border-radius:12px;box-shadow:0 5px 25px #0003;max-width:calc(100vw - 24px);width:420px;padding:12px"><summary style="cursor:pointer;font-weight:800">BETA · Test centre</summary><div style="max-height:65vh;overflow:auto"><p>Controlled beta. The 72-hour run needs review; elapsed time alone never means a pass.</p><p id="betaRelease"><a href="/parent/beta/download/manifest">APK release status</a></p><button type="button" id="betaRefresh">Refresh selected phone</button><p id="betaHeadline" role="status">Select a phone to view its test evidence.</p><div id="betaChecks"></div><p id="betaRun"></p><p>Phone stop state and manual interventions are available in its private export. Import it here after stopping the run; imports remain labelled as parent-provided evidence.</p><label>Import phone evidence <input id="betaImport" type="file" accept="application/json,.json"></label><details><summary>Detailed evidence</summary><pre id="betaEvidence" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details></div></details>`;
  let html=base.replace(/(<body[^>]*>)/,'$1'+panel);
  // Beta only: keep the tracking map compact while allowing the controls to scroll normally.
- // Desktop is half-height; mobile is slightly shorter. This does not change GPS state.
+ // Taller beta map requested by tester: ~2x previous desktop height; preserve independent right-hand controls.
  const compactMapCss=`<style id="brickBetaCompactMap">
  @media(min-width:901px){
  .shell{height:auto;min-height:calc(100vh - 64px);align-items:start}
- .mapWrap{height:clamp(320px,50vh,560px);position:sticky;top:64px}
+ .mapWrap{height:clamp(560px,92vh,1000px);position:sticky;top:64px}
  .side{min-height:calc(100vh - 64px)}
  .content{overflow:visible}
  }
  @media(max-width:900px){
  .shell{height:auto;min-height:0}
- .mapWrap{height:clamp(260px,42vh,420px);min-height:260px;position:relative;top:auto}
+ .mapWrap{height:clamp(360px,70vh,700px);min-height:360px;position:relative;top:auto}
  .side{min-height:0}
  }
  </style>`;
