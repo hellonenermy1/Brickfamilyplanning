@@ -4,7 +4,7 @@ import { history } from './phase4';
 import { BETA_RELEASE } from './beta-release';
 import type { BrickDevice } from './device-do';
 
-export type BetaEnv={DB:D1Database;BETA_DB:D1Database;HISTORY:R2Bucket;EVENTS:Queue;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>;BETA_RATE:RateLimit;BETA_PARENT_RATE:RateLimit;APP_ENV:string;BETA_CHANNEL:string;BETA_SOURCE_SHA:string;BETA_STORAGE_MODE?:string};
+export type BetaEnv={DB:D1Database;BETA_DB:D1Database;HISTORY:R2Bucket;EVENTS:Queue;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>;BETA_RATE:RateLimit;BETA_PARENT_RATE:RateLimit;APP_ENV:string;BETA_CHANNEL:string;BETA_SOURCE_SHA:string;BETA_STORAGE_MODE?:string;BETA_SCHEDULER?:DurableObjectNamespace<import('./beta-scheduler').BetaScheduler>};
 type Obj=Record<string,unknown>;
 type Challenge={token:string;expires_at:number;queue_at:number|null;portal_at:number|null};
 export const betaJson=(x:unknown,status=200)=>Response.json(x,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -51,7 +51,7 @@ async function proofs(env:BetaEnv,id:string,now:number){
  });
  await probe('object_store_roundtrip',async()=>{const key='beta/probes/'+id+'/'+crypto.randomUUID();try{await env.HISTORY.put(key,c.token);const v=await env.HISTORY.get(key);return await v?.text()===c.token;}finally{await env.HISTORY.delete(key);}});
  await probe('event_persistence_roundtrip',async()=>{await env.EVENTS.send({type:'brick_beta_probe_v1',deviceId:id,token:c.token});const receipt=await env.BETA_DB.prepare('SELECT queue_at FROM beta_challenges WHERE device_id=?1 AND token=?2').bind(id,c.token).first<{queue_at:number|null}>();return typeof receipt?.queue_at==='number'&&receipt.queue_at>=now-300000;});
- await probe('do_roundtrip',async()=>{const stub=env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id));const r=await stub.fetch(new Request('https://internal/beta/probe',{method:'POST',body:JSON.stringify({deviceId:id,token:c.token,expiresAt:c.expires_at})}));if(!r.ok)return false;const b=await r.json<{token:string;stateReadable:boolean}>();return b.token===c.token&&b.stateReadable===true;});
+ await probe('do_roundtrip',async()=>{const stub=env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id));const r=await stub.fetch(new Request('https://internal/beta/probe',{method:'POST',body:JSON.stringify({deviceId:id,token:c.token,expiresAt:c.expires_at})}));if(!r.ok)return false;const b=await r.json<{token:string;stateReadable:boolean}>();const scheduler=env.BETA_SCHEDULER?await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).status():null;return b.token===c.token&&b.stateReadable===true&&typeof scheduler?.nextAlarmAt==='number'&&scheduler.nextAlarmAt>Date.now()&&scheduler.lastTick?.status==='COMPLETED'&&scheduler.lastTick.atMs>=now-180000;});
  await probe('history_readback',async()=>{const r=await history(env,id,now-3600000,now);if(!r.ok)return false;const b=await r.json<{points:unknown[]}>();return Array.isArray(b.points)&&b.points.length>0;});
  await probe('portal_delivery',async()=>c.portal_at!==null&&c.portal_at>=now-300000);
  return rows;
@@ -108,7 +108,8 @@ export async function betaParent(req:Request,env:BetaEnv,id:string,action:string
   const runs=await env.BETA_DB.prepare('SELECT run_id,metadata,readiness,dropped,updated_at FROM beta_runs WHERE device_id=?1 ORDER BY updated_at DESC LIMIT 10').bind(id).all<{run_id:string;metadata:string;readiness:string;dropped:number;updated_at:number}>();
   const run=runs.results?.[0];let evidence:unknown=null;
   if(run){const records=await env.BETA_DB.prepare('SELECT record_id,payload FROM beta_records WHERE device_id=?1 AND run_id=?2 ORDER BY record_id DESC LIMIT 100').bind(id,run.run_id).all<{record_id:number;payload:string}>();const counts=await env.BETA_DB.prepare('SELECT COUNT(*) n,MIN(received_at) first_at,MAX(received_at) last_at FROM beta_records WHERE device_id=?1 AND run_id=?2').bind(id,run.run_id).first();const review=await env.BETA_DB.prepare('SELECT payload FROM beta_reviews WHERE device_id=?1 AND run_id=?2').bind(id,run.run_id).first<{payload:string}>();evidence={run:JSON.parse(run.metadata),readiness:JSON.parse(run.readiness),dropped:run.dropped,receivedAt:run.updated_at,records:records.results.map(x=>({id:x.record_id,observation:JSON.parse(x.payload)})),counts,review:review?JSON.parse(review.payload):null,assessment:'REVIEW_REQUIRED',phoneStopState:'NOT_UPLOADED_USE_PRIVATE_EXPORT'};}
-  return betaJson({release:BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,deviceId:id,latest:latest?{...JSON.parse(latest.payload),receivedAt:latest.updated_at,stale:Date.now()-latest.updated_at>300000}:null,evidence});
+  const scheduler=env.BETA_SCHEDULER?await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).status():null;
+  return betaJson({scheduler,release:BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,deviceId:id,latest:latest?{...JSON.parse(latest.payload),receivedAt:latest.updated_at,stale:Date.now()-latest.updated_at>300000}:null,evidence});
  }
  if(req.method==='POST'&&action==='ack'){
   const read=await readBoundedBody(req,1024);if(!read.ok)return betaJson({error:'invalid_body'},400);

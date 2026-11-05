@@ -250,7 +250,7 @@ const state = {
   parentLoginMode: 'private-high-entropy-token-v2',
   parentCredential:generatedLogin?'GENERATED_ENCRYPTED_FOR_USER':provisionLogin?'CONFIGURED_ACTIONS_SECRET':'PRESERVED_WORKER_SECRET',
   priorSessionsRevoked: true,
-  schedulerMode: 'free-cron-with-d1-lease-and-request-fallback',
+  schedulerMode: 'sqlite-do-alarm-with-d1-lease-and-request-fallback',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
   d1Id, betaD1Id, betaReleaseId:'brick-beta-20261105-01', diagnosticRetentionDays:35,

@@ -16,7 +16,7 @@ const loginToken='a'.repeat(43);const loginHash=Buffer.from(await crypto.subtle.
 const config=JSON.parse(fs.readFileSync('wrangler.beta.template.jsonc','utf8'));
 const mf=new Miniflare(convertV4MiniflareOptions({name:'brick-beta-test',modules:true,modulesRoot:dir,scriptPath:runtime,compatibilityDate:config.compatibility_date,
  bindings:{APP_ENV:'development',DEV_PARENT_AUTH_MODE:'d1-session-v1',BETA_STORAGE_MODE:'d1',DEV_PARENT_LOGIN_HASH:loginHash,BRICK_MAP_SOURCE:'https://map.test/fixture.pmtiles',CURRENT_APP_VERSION:'1.0.0-beta.1',BETA_CHANNEL:'beta',BETA_SOURCE_SHA:'a'.repeat(40)},
- d1Databases:['DB','BETA_DB'],durableObjects:{BRICK_DEVICE:{className:'BrickDevice',useSQLite:true}},
+ d1Databases:['DB','BETA_DB'],durableObjects:{BRICK_DEVICE:{className:'BrickDevice',useSQLite:true},BETA_SCHEDULER:{className:'BetaScheduler',useSQLite:true}},
  ratelimits:Object.fromEntries(config.ratelimits.map(x=>[x.name,{namespace_id:x.namespace_id,simple:{limit:10000,period:60}}])),
  outboundService(req){if(req.url==='https://map.test/fixture.pmtiles'){const match=(req.headers.get('Range')||'').match(/bytes=(\d+)-(\d+)/);const data='map-fixture';const body=match?data.slice(Number(match[1]),Number(match[2])+1):data;return new Response(req.method==='HEAD'?null:body,{status:match?206:200,headers:{'Content-Length':String(req.method==='HEAD'?data.length:body.length),ETag:'fixture','Content-Range':match?'bytes '+match[1]+'-'+match[2]+'/'+data.length:''}});}return new Response('unconfigured',{status:503});}
 }));
@@ -42,6 +42,7 @@ try{
  for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))if(match[1].trim())await transform(match[1],{loader:'js'});
  const map=await parent('/parent/map/basemap.pmtiles',{headers:{Range:'bytes=2-5'}});assert.equal(map.status,206);assert.equal(await map.text(),'p-fi');assert.equal(map.headers.get('Content-Range'),'bytes 2-5/11');
  const objectStore=new D1ObjectBucket(db),blob=new Uint8Array(2200000).fill(37);await objectStore.put('synthetic-large-object',blob);assert.equal((await objectStore.get('synthetic-large-object')).size,blob.length);assert.deepEqual(new Uint8Array(await (await objectStore.get('synthetic-large-object',{range:{offset:899995,length:20}})).arrayBuffer()),new Uint8Array(20).fill(37));await objectStore.delete('synthetic-large-object');assert.equal(await objectStore.get('synthetic-large-object'),null);
+ const schedNs=await mf.getDurableObjectNamespace('BETA_SCHEDULER'),sched=schedNs.get(schedNs.idFromName('beta-maintenance'));await sched.runTick();const scheduler=await sched.status();assert.ok(scheduler.nextAlarmAt>Date.now());assert.equal(scheduler.lastTick.status,'COMPLETED');
  console.log('PASS beta portal preserves existing UI, CSP and authenticated private downloads; generated scripts parse');
  assert.equal((await signed('/beta/readiness',{...ready(),apkSourceSha:'b'.repeat(40)})).status,400);
  assert.equal((await signed('/beta/readiness',ready(),await ecdsa())).status,401);
