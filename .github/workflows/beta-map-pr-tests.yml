@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/dev-free-runtime.ts'
       - 'src/parent-v5b.ts'
+      - 'src/parent-beta.ts'
+      - 'src/worker-beta-cardfree.ts'
+      - 'web/brick-map-p8b.ts'
       - 'scripts/test-beta-workerd.mjs'
       - '.github/workflows/beta-map-pr-tests.yml'
   workflow_dispatch:
