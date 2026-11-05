@@ -16,3 +16,6 @@ Read audit/phase8d/PHASE8D_CHAT_HANDOFF_2026-11-05.md before continuing; read th
 - Record exact SHAs, tests actually run, evidence limits, unresolved IDs and next action. Documentation-only changes are not new tested executables.
 - Preserve Android audit freeze on this branch and separately qualified beta safety changes; no unnecessary APK rebuild.
 - No unscoped data reset, destructive cloud drill, credential exposure, private family-data publication or production mutation from a generic continue. Complete concrete reversible preparation first.
+
+## Latest source continuation
+Read the superseding top entry in audit/phase8d/PHASE8D_RESUME_CHECKPOINT.md first. Active D1 work is audit/phase8d-d1-qualification, tested executable a51d4d96; later evidence-only commit bd039bc62ebead0cf10bb611e18565a900d7bd9a. PR32 is unmerged/undeployed. Do not restart from old R2 operational instructions or declare8D acceptance from green source CI. Continue operational backup/PITR, retention and durable failed-work qualification, preserving all525 IDs and current evidence.
