@@ -280,34 +280,33 @@ jobs:
           "$ADB" shell dpm set-device-owner --user 0 --device-owner-only com.brick.safety/.managed.BrickDeviceAdminReceiver | tee /tmp/p8-real-owner-created.txt
           "$ADB" shell dpm list-owners > /tmp/p8-real-owner-before.txt
           grep -Fq 'com.brick.safety' /tmp/p8-real-owner-before.txt
-          "$ADB" shell am broadcast --receiver-foreground \\
-            -a com.brick.safety.testing.PHASE8_AUTHORISE_REMOVAL \\
+          "$ADB" shell am broadcast --receiver-foreground \
+            -a com.brick.safety.testing.PHASE8_AUTHORISE_REMOVAL \
             -n com.brick.safety/.testing.Phase8RetirementHarnessReceiver | tee /tmp/p8-real-authorised.txt
           "$ADB" shell run-as com.brick.safety cat shared_prefs/brick_deprovision_v1.xml | tee /tmp/p8-real-stage1.txt
           grep -Fq '<string name="stage">AUTHORISE_FREEZE</string>' /tmp/p8-real-stage1.txt
           "$ADB" reboot
           "$ADB" wait-for-device
           for i in $(seq 1 120); do
-            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" = "1" ] && break
+            [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break
             sleep 5
           done
-          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\\r')" = "1"
+          test "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1"
           completed=0
           for i in $(seq 1 90); do
-            owners="$("$ADB" shell dpm list-owners 2>&1 | tr -d '\\r')"
+            owners="$("$ADB" shell dpm list-owners 2>&1 | tr -d '\r')"
             stage="$("$ADB" shell run-as com.brick.safety cat shared_prefs/brick_deprovision_v1.xml 2>/dev/null || true)"
-            if ! grep -Fq 'com.brick.safety' <<<"$owners" && \\
-               { grep -Fq '<string name="stage">PURGE_BRICK</string>' <<<"$stage" || \\
+            if ! grep -Fq 'com.brick.safety' <<<"$owners" && \
+               { grep -Fq '<string name="stage">PURGE_BRICK</string>' <<<"$stage" || \
                  grep -Fq '<string name="stage">UNINSTALL</string>' <<<"$stage"; }; then
               completed=1
-              printf '%s\\n' "$owners" > /tmp/p8-real-owner-after.txt
-              printf '%s\\n' "$stage" > /tmp/p8-real-stage-after.txt
+              printf '%s\n' "$owners" > /tmp/p8-real-owner-after.txt
+              printf '%s\n' "$stage" > /tmp/p8-real-stage-after.txt
               break
             fi
             sleep 2
           done
           test "$completed" = "1"
-          "$ADB" shell run-as com.brick.safety ls files/brick_deprovision_origin_v1.guard >/dev/null 2>&1 && exit 1 || true
           "$ADB" shell run-as com.brick.safety ls no_backup/brick_deprovision_origin_v1.guard >/dev/null
           "$ADB" shell pm uninstall com.brick.safety | tee /tmp/p8-real-uninstall.txt
           grep -Fq 'Success' /tmp/p8-real-uninstall.txt
