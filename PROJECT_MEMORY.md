@@ -17,3 +17,11 @@ Resolved in approved APK source fa52547d89929e2032fc8ced4511b79e9bf8a23c: readin
 ## Current delivery (2026-11-05)
 
 The D1 replacement and its guarded launch succeeded. Primary history/objects and diagnostics use separate D1 databases; live state and the maintenance scheduler use separate SQLite Durable Objects. Account Cron quota was full, so the beta uses its own persisted DO alarm plus D1 maintenance leases, without deleting other schedules or upgrading the account. Parent login uses private hashed D1 sessions and a Worker secret; the generated private credential was delivered privately, never committed. No R2, Cloudflare Queue, Zero Trust or paid subscription was enabled. Private APK upload/download and map ranges passed actual live checks. Real phone installation/provisioning/removal and the72h run remain user-side checks, not completed evidence. See audit/beta-backend/FINAL_RESULTS.json and D1_LIVE_VERIFICATION.json.
+
+## Active user-reported bug register (2026-11-05)
+
+Canonical issue: https://github.com/hellonenermy1/Brickfamilyplanning/issues/26 . Update this issue when the user reports a new Brick defect, preserving exact symptoms, affected host, date, root-cause evidence and deployment/verification status; never write access tokens, personal locations, device keys or private data to GitHub.
+
+Unresolved: Phase 8D beta MapLibre map reported not working; live cause not yet verified. Source review found incorrect cached PMTiles Content-Range offset and the portal device-list loading being coupled to map `load`. Track fixes and real-browser tests in #26. Login POST previously returned `Same-origin Brick parent request required` and a header fix was committed, but live success was not confirmed. Old Phase 7 development portal showed a revoked phone; a hide-only fix was committed on a separate branch, not deployed, and the user requested full removal only after a backup-safe reset. A fresh reset of the isolated beta D1/device state is prepared, not executed. Keep `brick-family-v1-dev` (old development) separate from `brick-family-beta` (8D-based beta).
+
+No-code-only success claims: distinguish committed source, CI, live deployed SHA, and actual user verification. Maintain separate Phase 8D acceptance and signed APK. No R2/payment card.
