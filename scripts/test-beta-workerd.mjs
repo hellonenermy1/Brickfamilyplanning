@@ -33,6 +33,10 @@ try{
  const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
  for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();
  await db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(DEVICE_A,'Synthetic beta',key.spki,Date.now()).run();
+ const loginDocument=await mf.dispatchFetch('http://localhost/parent/login');
+ assert.equal(loginDocument.status,200);
+ assert.equal(loginDocument.headers.get('Referrer-Policy'),'same-origin');
+ assert.match(await loginDocument.text(),/form method="post" action="\\/parent\\/login"/);
  assert.equal((await mf.dispatchFetch('http://localhost/parent',{redirect:'manual'})).status,302);
  assert.equal((await mf.dispatchFetch('http://localhost/parent/api/device/'+DEVICE_A+'/beta/status',{headers:{'X-Brick-Dev-Parent-Verified':'session-v1'}})).status,401);
  const login=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken,redirect:'manual'});assert.equal(login.status,303);cookie=login.headers.get('set-cookie').split(';')[0];
