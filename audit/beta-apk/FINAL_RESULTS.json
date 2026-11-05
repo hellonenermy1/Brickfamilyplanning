@@ -1,0 +1,57 @@
+{
+  "format": "brick-beta-apk-phase1-evidence-v1",
+  "releaseId": "brick-beta-20261105-01",
+  "testedApkSourceSha": "0b9f6facdd0f037c924f21d410e0a32d4f1dae89",
+  "phase8dBaseSha": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
+  "branch": "beta/apk",
+  "applicationId": "com.brick.safety",
+  "versionName": "1.0.0-beta.1",
+  "versionCode": 11,
+  "signingCertSha256": "bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790",
+  "automaticExpiry": false,
+  "phase2Status": "NOT_DEPLOYED",
+  "physicalDeviceQualification": "NOT_RUN",
+  "endurance72h": "NOT_STARTED",
+  "limits": [
+    "Source parity verifies retention of production files/manifest declarations, not all feature behaviour.",
+    "Emulator durability tests include repeated classes; test execution counts are not unique feature counts.",
+    "AOSP owner-release test uses debug harness and ADB for final uninstall; release APK excludes harness.",
+    "Local teardown verifies owner/admin absence before purge and requests Android uninstall; Android may require user confirmation.",
+    "Manual purge test is on unmanaged AOSP; combined managed local runner and OEM removal still require physical-device verification.",
+    "Beta evidence excludes raw coordinates/radio identifiers/credentials; normal authenticated history is separate.",
+    "User exports and backend history are not erased by local app purge; a non-sensitive teardown guard remains until uninstall."
+  ],
+  "ci": [
+    {
+      "runId": 41967595583,
+      "name": "Brick Beta APK — Emulator Durability and Readiness",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41967595583",
+      "conclusion": "success"
+    },
+    {
+      "runId": 41967595599,
+      "name": "Brick Beta APK — Build, Sign and Verify",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41967595599",
+      "conclusion": "success"
+    },
+    {
+      "runId": 41967595582,
+      "name": "Brick Beta APK — Real AOSP Device Owner Release",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41967595582",
+      "conclusion": "success"
+    }
+  ],
+  "apkSha256": "30f3b53ea9fc5d432cae1a237e074c211f133bab4269d30de3f763e80f228eea",
+  "artifactId": 13388980912,
+  "artifactZipSha256": "2a814c50dea71fc88b03ca538f017808671b1baa3943a4d64c3bcd367a509e05",
+  "artifactExpiresAt": "2026-12-05T04:33:33Z",
+  "artifactUrl": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41967595599/artifacts/13388980912",
+  "emulator": {
+    "testExecutions": 129,
+    "isolatedInvocations": 39,
+    "uniqueFeatureCount": false
+  },
+  "unitLintRelease": "PASS testDebugUnitTest, lintDebug, assembleDebug, assembleDebugAndroidTest, assembleRelease, lintRelease",
+  "sourceParity": "PASS baseline production file/manifest retention; backend src/schema/public unchanged",
+  "deliveryLibraryFileId": "libfile_cd14b2e678a8819183b8681fc4f1368c"
+}

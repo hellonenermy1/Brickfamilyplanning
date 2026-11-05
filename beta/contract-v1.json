@@ -1,0 +1,14 @@
+{
+  "format": "brick-beta-contract-v1",
+  "releaseId": "brick-beta-20261105-01",
+  "baseSha": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
+  "apkBranch": "beta/apk",
+  "backendBranch": "beta/backend-portal",
+  "protocol": 1,
+  "readinessPath": "/api/device/{deviceId}/beta/readiness",
+  "observationPath": "/api/device/{deviceId}/beta/observations",
+  "requiredBackendChecks": ["d1_roundtrip", "r2_roundtrip", "queue_roundtrip", "do_roundtrip", "history_readback", "portal_delivery"],
+  "authentication": "Existing per-device P-256 signature over exact request bytes; strict device and beta environment binding",
+  "retirement": "Explicit local authorisation only; no automatic expiry or 72-hour self-destruct",
+  "phase2Status": "NOT_DEPLOYED"
+}
