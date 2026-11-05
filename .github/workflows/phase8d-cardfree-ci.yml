@@ -30,6 +30,8 @@ jobs:
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
+      - name: Resumable D1 commute history paging regression
+        run: node scripts/test-phase8d-commute-paging.mjs
       - name: D1 object read integrity and atomic conditional-write regressions
         run: node scripts/test-phase8d-d1-object-integrity.mjs
       - name: Protected off-platform archive authentication identity and CLI
