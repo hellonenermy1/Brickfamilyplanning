@@ -40,9 +40,9 @@ async function betaLoad(){if(betaLoading||!currentDevice)return;const id=current
 /* Read-only map diagnostics: use a fixed public Singapore tile, NEVER a phone location. */
 const brickMapStatus=document.createElement('div');
 brickMapStatus.id='brickMapDeliveryStatus';brickMapStatus.setAttribute('role','status');
-brickMapStatus.style.cssText='position:absolute;left:12px;bottom:16px;z-index:11;max-width:min(480px,calc(100% - 100px));font:12px system-ui,sans-serif;background:#fffefa;color:#2b3946;border:1px solid #cbd2da;border-radius:10px;padding:8px 11px;box-shadow:0 3px 12px #0002';
+brickMapStatus.style.cssText='display:block;margin-top:9px;max-width:270px;font:11px system-ui,sans-serif;line-height:1.45;background:#fffefa;color:#2b3946;border:1px solid #cbd2da;border-radius:9px;padding:7px 9px;overflow-wrap:anywhere';
 brickMapStatus.textContent='Map tiles · checking…';
-const brickMapWrap=document.querySelector('.mapWrap');if(brickMapWrap)brickMapWrap.append(brickMapStatus);
+const brickMapCard=document.querySelector('.mapCard');if(brickMapCard)brickMapCard.append(brickMapStatus);
 let brickMapErrorSeen=false;
 map.on('error',e=>{
  brickMapErrorSeen=true;
