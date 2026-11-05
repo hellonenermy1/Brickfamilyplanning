@@ -17,7 +17,8 @@ object ServiceControl {
     fun ensureTracking(context: Context) {
         val app = context.applicationContext
         // PURGE_BRICK is an uninstall-only state. Do not touch role/Deep Off/beta/diagnostics stores.
-        if (DeprovisionManager.isPostPurge(app)) return
+        // AUTHORISE_FREEZE is already a permanent stop boundary, not only PURGE_BRICK.
+        if (DeprovisionManager.stage(app) != DeprovisionManager.Stage.NONE) return
         if (DeviceRoleStore.role(app) != DeviceRoleStore.Role.CHILD) {
             RecoveryScheduler.cancelAll(app)
             runCatching { app.stopService(Intent(app, BrickLocationService::class.java)) }
