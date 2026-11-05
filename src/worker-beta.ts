@@ -22,6 +22,7 @@ export default {
     if(req.method!=='GET')return betaJson({error:'method_not_allowed'},405);
     if(download![1]==='manifest')return betaJson({...BETA_RELEASE,backendSourceSha:env.BETA_SOURCE_SHA,phase2:'BETA',physicalQualification:'REQUIRED',endurance:'REVIEW_REQUIRED'});
     if(download![1]==='checksum')return new Response(BETA_RELEASE.apkSha256+'  Brick.apk\n',{headers:{'Content-Type':'text/plain','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+    if(!BETA_RELEASE.available)return betaJson({error:'new_apk_safety_revision_pending_validation'},503);
     const apk=await env.HISTORY.get(BETA_APK_KEY);if(!apk||apk.size>10*1024*1024)return betaJson({error:'verified_apk_unavailable'},503);
     const bytes=await apk.arrayBuffer();const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
     if(digest!==BETA_RELEASE.apkSha256)return betaJson({error:'verified_apk_unavailable'},503);

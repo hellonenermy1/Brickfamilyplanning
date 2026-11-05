@@ -1,0 +1,83 @@
+{
+  "format": "brick-beta-backend-phase2-checkpoint-v1",
+  "testedSourceSha": "f8c46cdd14290e04df44ffd518de9c518b634b7b",
+  "phase8dBaseSha": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
+  "apkSourceSha": "0b9f6facdd0f037c924f21d410e0a32d4f1dae89",
+  "releaseId": "brick-beta-20261105-01",
+  "branch": "beta/backend-portal",
+  "runId": 41970873227,
+  "runUrl": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41970873227",
+  "testJob": {
+    "id": 127058563099,
+    "conclusion": "success"
+  },
+  "preflightJob": {
+    "id": 127058562944,
+    "conclusion": "failure"
+  },
+  "deployJob": {
+    "id": 127058820177,
+    "conclusion": "skipped"
+  },
+  "phase2Status": "IMPLEMENTED_TESTED_DEPLOYMENT_BLOCKED",
+  "livePortalUrl": null,
+  "cloudWrites": "NONE",
+  "endurance72h": "NOT_STARTED",
+  "readableCloudServices": [
+    "Workers",
+    "D1",
+    "Queues"
+  ],
+  "blockedCloudServices": [
+    {
+      "service": "R2",
+      "httpStatus": 403,
+      "errorCode": 10042,
+      "meaning": "NotEntitled; ensure R2 subscription/activation in intended account",
+      "reference": "https://developers.cloudflare.com/r2/api/error-codes/"
+    },
+    {
+      "service": "Access organization and apps",
+      "httpStatus": 403,
+      "errorCode": 9999,
+      "meaning": "API unavailable; actual entitlement/setup/permissions must be checked, no inferred specific cause"
+    }
+  ],
+  "passed": [
+    "Worker and browser TypeScript",
+    "current unchanged Phase8D deployment/schema/38-table backup contracts",
+    "beta resource isolation negative controls",
+    "native real D1/R2/Queue/DO/history/WebSocket beta protocol",
+    "nonce/signature/source/time/privacy/identity/conflict/revocation negative controls",
+    "native inherited Worker state, safety, hibernation/revocation/recovery",
+    "native synthetic full-store D1/R2/DO destruction and restore",
+    "actual built public assets secret-surface scan",
+    "tracked private-key scan",
+    "npm audit:0 advisories",
+    "Wrangler beta dry-run bundle",
+    "exact signed APK staging hash verification"
+  ],
+  "notVerified": [
+    "live Cloudflare provisioning",
+    "Cloudflare Access login in actual browser",
+    "live protected portal and maps",
+    "OneMap credential availability/configuration on the new Worker",
+    "real phone pairing and readiness",
+    "physical OPPO removal and smoke test",
+    "72-hour endurance qualification"
+  ],
+  "preservedRefs": [
+    {
+      "branch": "v1-p8d-backend-deep-audit",
+      "sha": "71f5460fa6dfb47e276121e6c69db98cdae4485a"
+    },
+    {
+      "branch": "beta/apk",
+      "sha": "f7c07b328c99c90cd687fdf770b0c4ef3c9ab608"
+    },
+    {
+      "branch": "beta/backend-portal",
+      "sha": "f8c46cdd14290e04df44ffd518de9c518b634b7b"
+    }
+  ]
+}

@@ -48,7 +48,7 @@ jobs:
       - name: Bundle the exact beta Worker without cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
   deploy:
-    needs: [cloud-preflight, test]
+    needs: [cloud-preflight, test, apk-currency]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -88,3 +88,15 @@ jobs:
             beta-setup-state.json
             beta-live-verification.json
           if-no-files-found: ignore
+  apk-currency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+      - name: Require current independently validated APK runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/gate-beta-apk-currency.mjs
