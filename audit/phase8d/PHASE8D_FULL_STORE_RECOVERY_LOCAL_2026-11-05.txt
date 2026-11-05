@@ -1,0 +1,22 @@
+P8D-002 local evidence — 2026-11-05
+Baseline ff020438ce97638ec4af6a584dd33112c82d1ba5. Synthetic fixtures only; no Cloudflare calls.
+RED: latest drill against baseline device-do.ts exited 1: RPC receiver does not implement exportRecoveryState.
+GREEN: corrected locked-runtime persistence configuration; source files required before destruction; final new drill exited 0.
+PASS destroyed actual source D1/R2/DO persistence after quiesced snapshot; recovery uses only saved backup objects and DO snapshots
+PASS fresh local D1 38-table row/FK reconciliation, pending command expiry, R2 HISTORY/MAPS exact bytes and metadata; missing/corrupt R2 fail before writes
+PASS DO restore preserves all eight supported key classes across active/revoked identities, timestamps, sequence/health ordering and reconstructed revocation fence; bad digest/key and occupied target refused
+PASS ordinary Worker environment refuses DO recovery; no HTTP restore endpoint, production configuration or cloud mutation
+PASS restored D1 revocation overrides active snapshot; legacy unpadded identity normalization, unknown state, invalid markers and oversized snapshots checked
+PASS native DO export rejects nonfinite/oversized state, restore refuses a target with an attached WebSocket/alarm
+LIMIT local synthetic evidence only: cloud destructive recovery, cross-store snapshot consistency under traffic, original R2 retention age, scale, RTO/RPO and operator orchestration remain OPEN
+
+Existing integration exited 0:
+PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT
+PASS native workerd signed safety route rejects asymmetric coordinates, retains valid0,0 and acknowledges actual own duplicate
+PASS native workerd internal RPC health ordering and three concurrent monotonic markers
+PASS native workerd DO WebSocket survives hibernation/reconstruction and expires through idle storage alarm
+PASS native workerd revoked/reconstructed DO rejects all six telemetry/marker writes and safety evaluation
+PASS native workerd revoked D1 identity, DO fence reconstruction, archived current state and denied subscription
+PASS native workerd D1/R2 actual v3 snapshot and fresh 38-table restore with retained revocation and accepted sequence index; full live DO disaster recovery remains OPEN
+
+TypeScript, public-asset build and git diff --check exited 0. Hosted exact-source CI recorded separately.

@@ -1,0 +1,29 @@
+# Phase 8D live read-only audit — attempt 5 — 2026-11-05
+
+Run: https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/5
+Attestor source: d74b30d97e97a01ce55171f1931c685d51f4d180 (rerun of existing workflow, not current audit HEAD).
+Overall: completed FAILURE. Three live jobs failed; synthetic assertion job succeeded.
+Scope: existing GET-only metadata and anonymous/forged-header probes; no response bodies, family rows, cookies, secret values or Cloudflare writes.
+
+D1 metadata catalog: BLOCKED — D1 database catalog GET HTTP 401; D1 Read permission/resource access needed
+brick-family-v1/parent: BLOCKED — HTTP 303 inconclusive; redirect category same-origin-parent-login
+brick-family-v1/parent/api/devices: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1/parent:forged-header: BLOCKED — HTTP 303 inconclusive; redirect category same-origin-parent-login
+brick-family-v1/parent/api/devices:forged-header: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1/parent/map/status: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1/parent/login: FAIL — Production publicly served a local login page
+brick-family-v1-dev/parent: ATTESTED — Unauthenticated GET denied (HTTP 302)
+brick-family-v1-dev/parent/api/devices: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1-dev/parent:forged-header: ATTESTED — Unauthenticated GET denied (HTTP 302)
+brick-family-v1-dev/parent/api/devices:forged-header: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1-dev/parent/map/status: ATTESTED — Unauthenticated GET denied (HTTP 401)
+brick-family-v1-dev/parent/login: ATTESTED — Development login page present, HTTP 200 (body ignored)
+production_deployment: BLOCKED — Active version has no readable Git source annotation; this is not proof the code is defective
+development_deployment: BLOCKED — Active version has no readable Git source annotation; this is not proof the code is defective
+production_bindings: DRIFT — Missing ACTIVE: HISTORY,MAPS,EVENTS,PARENT_HISTORY_RATE,PARENT_WS_RATE,PARENT_GEOCODE_RATE,PARENT_COMMUTE_RATE; missing latest settings: HISTORY,MAPS,EVENTS,PARENT_HISTORY_RATE,PARENT_WS_RATE,PARENT_GEOCODE_RATE,PARENT_COMMUTE_RATE
+development_isolation: DRIFT — Missing ACTIVE dev: PARENT_GEOCODE_RATE,PARENT_COMMUTE_RATE; missing latest settings: PARENT_GEOCODE_RATE,PARENT_COMMUTE_RATE
+queue_dlq: DRIFT — Expected Queue/DLQ absent from paginated account listing; verify deployed account before any creation
+history_lifecycle: BLOCKED — Cloudflare token lacks read permission
+parent_access: BLOCKED — Cloudflare token lacks read permission
+
+Result: live blockers unchanged. No deployed source, Access, lifecycle, D1 isolation, Queue or Phase8D PASS inferred.

@@ -1,41 +1,51 @@
-# Phase 8D — Remaining LIVE acceptance packet (no deployment or mutation authorized)
+# Phase 8D fixed acceptance queue — current operational checklist
 
-**Source of authority:** Brick V1 Phase 8 Full Audit Execution Plan pp.44–54, sections **8D.1 through 8D.19**. As of 2026-11-04, code and native SQLite tests last green [41822669148](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41822669148) at `1fd03dd970021532c00f14e0a9a06dcafad8f857`. **8D still NOT PASS.**
+Updated 2026-11-05. **8D IN PROGRESS / NOT PASS.** Authority: Phase 8 PDF pp.44–54, sections 8D.1–19, plus the recovered 525-requirement baseline. This file supersedes its earlier 18-table/live-access packet; the execution matrix and findings ledger retain historical evidence. Do not restart completed source work or treat this checklist as a final acceptance record.
 
-## Why Phase 8D cannot advance based on the existing CI
+## Evidence checkpoints and reuse
 
-A GitHub pass verifies the branch source, **not the deployed Cloudflare account**. The current tool connection allows GitHub repository/source and CI access but **no Cloudflare account API or cloud browser**; GitHub deployment/environment endpoints were unsupported and branch protection returned HTTP 403. We cannot derive the currently serving Worker SHA, live binding values, Access policy, R2 lifecycle or D1 content from a Wrangler template.
+- Previously green executable: `cd5e50ca050a8afa8932434c590d923e3ade62a4`, [source CI 41869667667](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41869667667), all three jobs successful. Reuse unchanged scoped evidence; a green source suite does not attest a deployment.
+- Latest read-only live check: [41839919454 attempt 5](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41839919454/attempts/5), completed failure. Attestor source remains `d74b30d97e97a01ce55171f1931c685d51f4d180`; it is not the audit branch HEAD. Sanitized results: `PHASE8D_LIVE_ATTEMPT5_2026-11-05.txt`.
+- Current recovery batch: `PHASE8D_FULL_STORE_RECOVERY_2026-11-05.md`; new local destructive D1/R2/DO evidence, not a live cloud pass. Use its exact source CI checkpoint once available.
+- D1 recovery scope is **38 durable tables**, four explicitly excluded transient tables and six development-only tables (48 total classified). Older 18-table prose is historical.
+- Canonical requirements: `audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv`. It is a requirement baseline, not a completed per-ID evidence/owner ledger. Full 525-ID applicability and evidence reconciliation remains pending.
 
-## Next six acceptance operations, ordered by risk (read-only first)
+## Ordered work batches
 
-### 1. 8D.1 / 8D.19 — Attest deployed identities and release protections, READ ONLY
+1. **Read-only account/access unblock.** Project owner/admin: extend the existing dedicated `CLOUDFLARE_AUDIT_READ_TOKEN` only with account/resource-scoped D1 Read, Workers R2 Storage Read and Access Apps & Policies Read. Never paste a token or substitute deployment credentials. Verify the intended account before any provisioning. Re-run the existing GET-only audit once access changes; repeating identical denied reads adds no acceptance evidence.
+2. **Concrete infrastructure and Access repair proposal.** After reads identify the correct resources, prepare exact deployment/binding/Queue/Access/policy changes and rollback. Observed seven missing production bindings, two development quotas, absent expected Queue/DLQ, public production local login and unreadable active Git SHA stay open. Templates are not proof repairs are deployed. Existing scope does not authorize applying these changes.
+3. **Isolated production-equivalent recovery and fault batch.** Requires explicitly authorized, named nonproduction Cloudflare resources and synthetic identities. Quiesce stores, capture inventory/checksums, back up, destroy isolated source, restore fresh D1/R2/DO, test missing/corrupt objects, revocation and command expiry, interrupted recovery, measured RTO/RPO, retention age and bounded large data. In the same isolated environment execute ACK/Queue/R2/DO/DLQ failure seams and schema migration/rollback.
+4. **Live trust boundaries and operational policy batch.** Test family ownership, device credentials, WebSocket expiry/reconnect/revocation, Origin, commands, real quotas/NAT fairness, cleanup ages, diagnostics, secrets/rotation evidence and release protection. Use synthetic data, scoped redacted traces and exact deployed identities.
+5. **Closeout reconciliation.** Link exact-source evidence to all 19 sections and all applicable 525 requirements, resolve every P0/P1 and unknown, verify actual release protections and rollback, then evaluate the strict final acceptance contract. No final PASS file exists or may be inferred from source CI.
 
-Capture separately for production and development: exact active deployment ID and Git SHA, HTTP origins and Worker routes, compatibility date, Worker entry, actual D1 binding and schema migration version, R2 HISTORY and MAPS, DO class namespace, Queue+DLQ binding and retry/dead-letter settings, scheduled cron, public Worker.dev hostname, Access application/audience/issuer/policy metadata, rate limiter namespaces, environment variables and **secret names/presence only**. Do **not** read or paste secret values or user locations. Verify GitHub branch protection/rulesets and release gates through an authorized administrative read-only view. Any mismatch from audit branch or lack of an authoritative active SHA is **8D.1 FAIL/BLOCKED**, not a guessed pass.
+## Fixed section checklist
 
-### 2. 8D.16 — Prove real isolated destructive recovery of D1 + R2 + DO
+Every row remains open or partial until its listed proof is recorded. “Local” includes source/native SQLite/workerd evidence only. The active section count is fixed at 19; new findings attach to a row rather than silently expanding acceptance scope.
 
-Use entirely separate, **explicitly named and nonproduction** D1, R2 and Durable Object resources and synthetic child identities. Record a consistent snapshot/cutoff, integrity digest, 18-table inventory plus relationship/FK and revoked identity state; raw/trusted/evidence/history object inventory with checksums and retention settings; DO current truth and persistent revocation state. Back up, destroy/discard **only the isolated target**, restore fresh database and objects, rehydrate/reconnect DO as applicable, then compare hashes/counts/relationships and verify no expired command replays. Ensure recovery fails closed when an R2 history object is missing. Confirm app can read history and current state, and retry safely after simulated interruption. Prior [synthetic snapshot-to-restore CI](https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/41822669148) is a good regression **but does not satisfy this actual Cloudflare gate**. Require written RTO/RPO evidence instead of invented estimates.
+| Section | Existing evidence to reuse | Outstanding acceptance proof / dependency |
+|---|---|---|
+| 8D.1 Deployment identity/config | Exact-source templates, read-only drift attestor | Active prod/dev source SHA, actual bindings/resources/account/Access; seven prod and two dev binding gaps; batches 1–2 |
+| 8D.2 Every backend API | Recorded route/method inventory and source auth checks | Reconcile complete current inventory with deployed methods, auth, storage, rate and side effects; batch 4 |
+| 8D.3 Device signatures | Synthetic P-256, identity canonicalization, replay/revoke tests | Actual deployed valid/invalid/wrong-device/revoked credentials and family separation; batch 4 |
+| 8D.4 Input validation | Bounded payload/schema/coordinate and malformed body cases | Deployed hostile cases, body limits and absence of unintended writes; batch 4 |
+| 8D.5 Sequence/epoch idempotency | Native ordering, immutable UUID content, marker and concurrency regressions | Actual service races, reordering, replay and identity boundaries; batches 3–4 |
+| 8D.6 Durable ACK | Source failure injection and local D1→Queue→R2 chain | Actual pre/post-commit and enqueue faults, device retries and durable convergence; batch 3 |
+| 8D.7 Current-state ordering | Native SQLite/workerd ordering and persisted DO revoke fence | Cross-service concurrent revoke, late writes and restart under real service timing; batch 3 |
+| 8D.8 D1/schema | Current schema/constraints, 38-table recovery and migrations in CI | Actual isolated migration/interruption/rollback, query scale and constraints; batch 3 |
+| 8D.9 Queue/DLQ | Poison/retry and R2-write fault cases, local actual Queue | Correct live Queue/DLQ configuration, delivery retries/exhaustion/replay; batches 2–3 |
+| 8D.10 WebSocket | Local workerd JWT/lease/alarm/hibernation/revoke, client guards | Live Access, cross-family/session rights, logout/revoke/reconnect and browser timing; batch 4 |
+| 8D.11 Parent sessions | Local dev expiry/fixation/rotation checks and Access contract | Correct live production Access-first behavior, issuer/audience/policy/session/ownership; batches 2,4 |
+| 8D.12 CSRF/Origin | Recorded parent mutation rejection matrix, forged marker denial | Actual deployed mutation and upgrade matrix, no cross-site writes; batch 4 |
+| 8D.13 Commands | Local one-shot, expiry, result finality/revoke and no-replay restoration | Real synthetic child delivery/nonce/result/actual-state confirmation and audit trail; batches 3–4 |
+| 8D.14 Rates | Source fail-closed device/provider/parent quota boundaries | Deployed missing bindings, real quotas, shared-IP fairness and SOS priority; batches 2,4 |
+| 8D.15 Secrets | Built-asset checks and bounded Git-history scanner/control evidence | Actual CDN/build/log checks, exposure triage/rotation proof where required; batch 4; no blanket scanner pass |
+| 8D.16 Recovery | D1 v3, local destructive D1+R2+DO and rejection evidence | Full isolated Cloudflare recovery, consistent capture/manifest orchestration, interruption, scale/RTO/RPO; batch 3 |
+| 8D.17 Retention/deletion | Source cleanup/lifecycle merge and boundary regressions | Actual lifecycle/read rights, per-class ages/legacy prefixes, restored R2 original-age handling and isolation; batches 1,3,4 |
+| 8D.18 Observability | Local bounded cron sweep/incident dedupe/fault distinctions | Actual cron/provider/Queue/DO diagnostics and alerts with sanitized logs; batch 4 |
+| 8D.19 CI/release/rollback | Pinned CI, accepted-branch/manual gate, strict hash-bound acceptance verifier | Actual admin policy attestation (main/audit unprotected; rulesets empty in prior reads), isolated rollback and exact deployed identity; batches 1,3,5 |
 
-### 3. 8D.6 / 8D.7 / 8D.9 — Fault seams with actual Queue, D1 and DO
+## Limits and stop conditions
 
-In isolated Cloudflare environment with synthetic signed location and SOS packets: inject outage (a) before D1, (b) after D1 but before Queue, (c) after Queue but before DO, (d) during first R2 raw/trusted object write, (e) on Queue delivery retry and DLQ exhaustion, (f) during revocation and old/new packet interleaving. For each, record HTTP ACK/no ACK, D1 epoch sequence, raw/trusted R2 content, DO live state, safety incident, Queue ACK/retry/DLQ, and whether the device's persisted journal eventually converges after retry without manual intervention. Do **not** equate Queue producer success with R2 finished durable history.
+No production deploy, Cloudflare resource/SQL write, account-policy change, credential rotation, family-data access, Android source edit or APK rebuild is authorized by this audit continuation. GitHub source commits/CI, existing GET-only checks and reversible synthetic local tests are authorized. Current private repository access works; GitHub Team alone does not prove branch protection.
 
-### 4. 8D.2–8D.5 / 8D.10–8D.14 — Live hostile interface and command audit
-
-Use only test identities and owned resources. Probe every candidate endpoint and method against the actual deployed Worker, valid/invalid/wrong-device/revoked P256 credentials, expired/replayed payloads, cross-family Access users, missing and cross-site Origin, wrong/expired command ID, late/wrong command response, WebSocket duplicate clients, subscription expiry, DO hibernation, logout and child revocation under reconnect. Capture exact request ID, response code and sanitized server trace; never put signing keys or location history in logs. Each new public route must be added to the 49-route source candidate inventory and mapped to actual method/auth/storage/rate/side effects. A parent API returning 403 without Access **does not prove per-family authorization**.
-
-### 5. 8D.15 / 8D.17 / 8D.18 — Real secret, lifecycle and diagnostic attestation
-
-Check actual CDN HTML/JS, deployment output and redacted logs (not only Git source) for server secrets; run an authorized Git history secret scan and resolve any exposed credential with careful rotation if confirmed. GET actual R2 lifecycle rules for `history/raw/`, `history/trusted/`, `evidence/raw/`, hypotheses/refined history, legacy prefixes, backups and multipart abort, check 30/90-day vs source policy and object-age boundaries. Verify actual D1 cleanup for crash/health/audit/commands, per-device isolation and revoked history, and that observable incidents distinguish phone offline, backend DB, Queue failure, bad auth, WS and provider outage without raw tracking payloads in logs. Missing policy or unrelated-bucket deletion risk is not PASS.
-
-### 6. 8D.8 / 8D.19 — Real release, migration failure and rollback drill
-
-On an isolated copy of a previously deployed schema: replay migrations 001–018 in actual order, fail midway and demonstrate rollback/no orphan rows, nonreplayed commands, no data loss, expected index/constraint fidelity and clean retry. Verify source SHA+lockfile, pinned actions, approvals/branch rules, deployment tag, and deployment reversal to a known prior healthy version with identical source schema compatibility. No production deploy or user traffic mutation is authorized by this checklist.
-
-## Hard stop/no-pass criteria
-
-No P0/P1 open; zero unknown public routes, unknown auth path, unexplained persistence/ACK boundary, backup without actual full isolated restore, unverified prod worker identity, or missing safety/retention/rollback evidence. Preserve accepted Phase 8C Android build. **Do not start Phase 8E/8F until all applicable 8D exit gates are met or explicitly verified unsupported under the approved plan.**
-
-## Concrete access limitation
-
-Only GitHub source and CI were available this turn. No direct Cloudflare read-only connector, no accessible GitHub deployment/environment metadata through the connector and no GitHub branch-protection administrative permission. These are genuine evidence blockers, **not** evidence that the resources are misconfigured.
+No P0/P1, unknown route/auth/persistence boundary, unproven recovery or undocumented 525-ID gap may be hidden by a source test pass. Freeze accepted Android runtime source at `2c492efff01095e17f96af3c24ac07ac0b5c3739`; the previously documented 8C instrumentation test is not a runtime change. Do not begin 8E/8F or create a final PASS until required evidence is accepted.

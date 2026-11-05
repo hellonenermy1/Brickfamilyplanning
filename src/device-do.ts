@@ -1,8 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
 import { activityName, qualityName, sourceName, type LivePacket, type RouteCorridor } from "./protocol";
 import { shouldAdvanceLiveState } from "./live-state-order";
+import { exportDeviceRecovery, restoreDeviceRecovery, type RecoveryEnv } from "./do-recovery";
 
-type Env = Record<string, never>;
+type Env = RecoveryEnv;
 
 export type DeviceHealth = {
   protocol: number;
@@ -100,6 +101,16 @@ export class BrickDevice extends DurableObject<Env> {
       else this.closeExpiredSockets();
     });
     this.ctx.waitUntil(this.initialized);
+  }
+
+  async exportRecoveryState(deviceId: string): Promise<string> {
+    await this.initialized;
+    return exportDeviceRecovery(this.ctx, this.env, deviceId);
+  }
+
+  async restoreRecoveryState(deviceId: string, serialized: string, sha256: string): Promise<boolean> {
+    await this.initialized;
+    return restoreDeviceRecovery(this.ctx, this.env, deviceId, serialized, sha256, value => { this.revoked = value; });
   }
 
   private deadline(ws: WebSocket): number {
