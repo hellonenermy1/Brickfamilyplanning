@@ -54,7 +54,7 @@ try{
  assert.equal((await mf.dispatchFetch('http://localhost/parent/change-password',{redirect:'manual'})).status,303);
  const urlEncoded=(values)=>new URLSearchParams(values).toString();
  const newPassphrase='ValidSecret_123'; // 15-character test-only fixture
- const changeReq=(values,headers={})=>parent('/parent/change-password',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',...headers},body:urlEncoded(values)});
+ const changeReq=(values,headers={})=>parent('/parent/change-password',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded',...headers},body:urlEncoded(values)});
  assert.equal((await changeReq({current:'WrongSecret_123',next:newPassphrase,confirm:newPassphrase})).status,401);
  assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:'DoesNotMatch123'})).status,400);
  assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:newPassphrase},{Origin:'https://evil.invalid'})).status,403);
