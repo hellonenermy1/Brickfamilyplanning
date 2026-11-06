@@ -55,7 +55,6 @@ class BrickLocationService : Service() {
         const val ACTION_ENSURE_RUNNING = "com.brick.safety.action.ENSURE_RUNNING"
         private const val HEALTH_INTERVAL_MS = 30_000L
         private const val ATLAS_PULSE_MS = 5_000L
-        private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
         private const val BLE_SCAN_NORMAL_MS = 60_000L
         private const val BLE_SCAN_DEGRADED_MS = 30_000L
         private const val LOCATION_V2_BYTES = 90
@@ -110,6 +109,9 @@ class BrickLocationService : Service() {
     @Volatile private var lastReacquireAttemptElapsed = 0L
     @Volatile private var reacquisitionFailedForGap = false
     @Volatile private var lastObservedActivityMode = ActivityMode.UNKNOWN
+    @Volatile private var lastWeakFixReacquireElapsed = 0L
+    @Volatile private var lastTrackingDiagnosticElapsed = 0L
+    @Volatile private var lastUploadDiagnosticElapsed = 0L
     @Volatile private var shuttingDown = false
 
     // An in-flight FLP/provider/network callback must not reopen stores after deprovision begins.
@@ -205,6 +207,7 @@ class BrickLocationService : Service() {
         if (mustQuiesceAsync()) return
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             locationSubscribed = false
+            noteTrackingDiagnostic("fine_permission_missing", "The Android precise location permission is required")
             return
         }
         runCatching { fused.removeLocationUpdates(callback) }
@@ -216,15 +219,20 @@ class BrickLocationService : Service() {
             Priority.PRIORITY_HIGH_ACCURACY
         }
         val minInterval = if (intervalMs <= 1_000L) 1_000L else max(2_000L, intervalMs / 2)
-        val maxDelay = if (intervalMs <= 1_000L) 1_000L else max(intervalMs * 2, 6_000L)
+        val maxDelay = TrackingCadence.maximumBatchDelayMs(intervalMs)
         val req = LocationRequest.Builder(priority, intervalMs)
             .setMinUpdateIntervalMillis(minInterval)
             .setMaxUpdateDelayMillis(maxDelay)
             .build()
         locationSubscribed = false
-        val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }.getOrNull() ?: return
+        val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }
+            .onFailure { noteTrackingDiagnostic("location_registration_threw", it.javaClass.simpleName) }
+            .getOrNull() ?: return
         registration.addOnSuccessListener { locationSubscribed = true }
-        registration.addOnFailureListener { locationSubscribed = false }
+        registration.addOnFailureListener {
+            locationSubscribed = false
+            noteTrackingDiagnostic("location_registration_failed", it.javaClass.simpleName)
+        }
     }
 
     private fun requestFreshSosFix() =
@@ -253,7 +261,31 @@ class BrickLocationService : Service() {
             }
         }
 
+        if (sample.rawAccepted && sample.uncertaintyM >= 75f && !isSosActive() &&
+            activityEngine.snapshot().mode == ActivityMode.STATIONARY &&
+            (lastWeakFixReacquireElapsed == 0L || now - lastWeakFixReacquireElapsed >= 120_000L)) {
+            // Bounded one-shot high-accuracy reacquisition, not a permanent high-power subscription.
+            lastWeakFixReacquireElapsed = now
+            noteTrackingDiagnostic("stationary_uncertainty_degraded", "reportedUncertaintyM=${sample.uncertaintyM.toInt()}")
+            beginReacquisition(now, forceSubscriptionRepair = false)
+        }
         recordSample(sample)
+    }
+
+    private fun noteTrackingDiagnostic(event: String, detail: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastTrackingDiagnosticElapsed > 0L && now >= lastTrackingDiagnosticElapsed &&
+            now - lastTrackingDiagnosticElapsed < 60_000L) return
+        lastTrackingDiagnosticElapsed = now
+        DiagnosticStore.log(this, DiagnosticStore.Severity.WARN, "location", event, detail)
+    }
+
+    private fun noteUploadDiagnostic(event: String, detail: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastUploadDiagnosticElapsed > 0L && now >= lastUploadDiagnosticElapsed &&
+            now - lastUploadDiagnosticElapsed < 60_000L) return
+        lastUploadDiagnosticElapsed = now
+        DiagnosticStore.log(this, DiagnosticStore.Severity.WARN, "upload", event, detail)
     }
 
     private fun recordSample(sample: PositionSample) {
@@ -385,11 +417,8 @@ class BrickLocationService : Service() {
         }, 2, 1, TimeUnit.SECONDS)
     }
 
-    private fun reacquisitionTriggerMs(): Long = when {
-        isSosActive() -> 4_000L
-        trackingIntervalMs >= 60_000L -> trackingIntervalMs * 2 + 10_000L
-        else -> max(10_000L, trackingIntervalMs * 2 + 3_000L)
-    }
+    private fun reacquisitionTriggerMs(): Long =
+        TrackingCadence.reacquisitionTriggerMs(trackingIntervalMs, isSosActive())
 
     private fun reacquisitionTimeoutMs(): Long = if (isSosActive()) 6_000L else 10_000L
 
@@ -445,11 +474,9 @@ class BrickLocationService : Service() {
         }
 
         val token = CancellationTokenSource()
-        val priority = if (sosPriority || activityEngine.snapshot().mode != ActivityMode.STATIONARY) {
-            Priority.PRIORITY_HIGH_ACCURACY
-        } else {
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY
-        }
+        // A stale or low-quality stationary fix needs a bounded accurate refresh; the normal
+        // stationary subscription stays balanced-power for battery efficiency.
+        val priority = Priority.PRIORITY_HIGH_ACCURACY
         val request = runCatching { fused.getCurrentLocation(priority, token.token) }.getOrNull()
         if (request == null) {
             reacquisitionDeadlineElapsed = now
@@ -569,6 +596,7 @@ class BrickLocationService : Service() {
                     }
                     if (!sent) {
                         failed = true
+                        noteUploadDiagnostic("location_batch_not_acked", "records=${pending.size} network=${networkKind()}")
                         return@execute
                     }
                 }
@@ -583,8 +611,9 @@ class BrickLocationService : Service() {
                 // Diagnostics are last. Evidence uses its own worker and explicitly yields to safety,
                 // Location and pending health state.
                 if (!drainCrashReports(baseUrl, deviceId)) failed = true
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
                 failed = true
+                noteUploadDiagnostic("location_upload_exception", t.javaClass.simpleName)
             } finally {
                 uploadPumpRunning.set(false)
                 if (!mustQuiesceAsync()) {
@@ -754,26 +783,12 @@ class BrickLocationService : Service() {
     private fun isSosActive(): Boolean = SafetyDispatcher.isSosActive(this)
 
     private fun desiredIntervalMs(): Long {
-        if (isSosActive()) return 1_000L
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val liveTrackUntil = prefs.getLong("liveTrackUntilMs", 0L)
-        if (liveTrackUntil > System.currentTimeMillis()) return 2_000L
-        val activity = activityEngine.snapshot()
-        return when (activity.mode) {
-            ActivityMode.VEHICLE, ActivityMode.RUNNING -> 3_000L
-            ActivityMode.BICYCLE -> 4_000L
-            ActivityMode.WALKING -> 5_000L
-            ActivityMode.STATIONARY -> {
-                val now = SystemClock.elapsedRealtime()
-                if (activity.modeSinceElapsedMs > 0L && activity.modeSinceElapsedMs <= now &&
-                    now - activity.modeSinceElapsedMs >= DEEP_STATIONARY_AFTER_MS) {
-                    120_000L
-                } else {
-                    60_000L
-                }
-            }
-            ActivityMode.UNKNOWN -> 8_000L
-        }
+        return TrackingCadence.intervalMs(
+            mode = activityEngine.snapshot().mode,
+            sosActive = isSosActive(),
+            liveActive = prefs.getLong("liveTrackUntilMs", 0L) > System.currentTimeMillis()
+        )
     }
 
     private fun appVersionName(): String = runCatching {
