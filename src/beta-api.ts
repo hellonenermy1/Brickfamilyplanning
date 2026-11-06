@@ -1,7 +1,7 @@
 import { readBoundedBody } from './bounded-body';
 import { verifyDeviceSignature } from './crypto';
 import { history } from './phase4';
-import { BETA_RELEASE } from './beta-release';
+import { BETA_RELEASE,findCompatibleBetaClient } from './beta-release';
 import type { BrickDevice } from './device-do';
 
 export type BetaEnv={DB:D1Database;BETA_DB:D1Database;HISTORY:R2Bucket;EVENTS:Queue;BRICK_DEVICE:DurableObjectNamespace<BrickDevice>;BETA_RATE:RateLimit;BETA_PARENT_RATE:RateLimit;APP_ENV:string;BETA_CHANNEL:string;BETA_SOURCE_SHA:string;BETA_STORAGE_MODE?:string;BETA_SCHEDULER?:DurableObjectNamespace<import('./beta-scheduler').BetaScheduler>};
@@ -32,10 +32,10 @@ function observation(v:unknown){
 }
 function runMetadata(v:unknown){
  check(obj(v)&&Object.keys(v).every(k=>['runId','startedAtMs','releaseId','apkSourceSha','bindingHash','version','model','android','osBuild','escapeVerifiedByUser'].includes(k)));
- check(uuid(v.runId)&&int(v.startedAtMs)&&v.startedAtMs<=Date.now()+120000&&v.releaseId===BETA_RELEASE.releaseId&&v.apkSourceSha===BETA_RELEASE.apkSourceSha&&typeof v.bindingHash==='string'&&/^[0-9a-f]{64}$/.test(v.bindingHash)&&v.version===BETA_RELEASE.versionName&&v.escapeVerifiedByUser===true&&short(v.model)&&short(v.android)&&short(v.osBuild));return v;
+ check(uuid(v.runId)&&int(v.startedAtMs)&&v.startedAtMs<=Date.now()+120000&&!!findCompatibleBetaClient(v.releaseId,v.apkSourceSha)&&typeof v.bindingHash==='string'&&/^[0-9a-f]{64}$/.test(v.bindingHash)&&v.version===findCompatibleBetaClient(v.releaseId,v.apkSourceSha)?.versionName&&v.escapeVerifiedByUser===true&&short(v.model)&&short(v.android)&&short(v.osBuild));return v;
 }
 function readiness(v:unknown){
- check(obj(v)&&Object.keys(v).every(k=>['format','releaseId','apkSourceSha','checkedAtMs','bindingHash','coreReady','checks','limits'].includes(k))&&v.format==='brick-beta-readiness-v1'&&v.releaseId===BETA_RELEASE.releaseId&&v.apkSourceSha===BETA_RELEASE.apkSourceSha&&int(v.checkedAtMs)&&typeof v.bindingHash==='string'&&/^[0-9a-f]{64}$/.test(v.bindingHash)&&typeof v.coreReady==='boolean'&&short(v.limits,400));checkRows(v.checks);return v;
+ check(obj(v)&&Object.keys(v).every(k=>['format','releaseId','apkSourceSha','checkedAtMs','bindingHash','coreReady','checks','limits'].includes(k))&&v.format==='brick-beta-readiness-v1'&&!!findCompatibleBetaClient(v.releaseId,v.apkSourceSha)&&int(v.checkedAtMs)&&typeof v.bindingHash==='string'&&/^[0-9a-f]{64}$/.test(v.bindingHash)&&typeof v.coreReady==='boolean'&&short(v.limits,400));checkRows(v.checks);return v;
 }
 async function challenge(env:BetaEnv,id:string,now:number){
  await env.BETA_DB.prepare('INSERT INTO beta_challenges(device_id,token,expires_at) VALUES(?1,?2,?3) ON CONFLICT(device_id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at,queue_at=NULL,portal_at=NULL WHERE beta_challenges.expires_at<?4').bind(id,crypto.randomUUID(),now+300000,now).run();
@@ -67,17 +67,17 @@ export async function betaDevice(req:Request,env:BetaEnv,id:string,kind:string){
   if(!bounded.ok||!bounded.body.byteLength)return betaJson({error:'invalid_body'},400);
   if(!sig||sig.length>512||!await verifyDeviceSignature(d.public_key_spki_b64,bounded.body,sig))return betaJson({error:'signature_required'},401);
   if(!(await env.BETA_RATE.limit({key:'beta-device:'+id})).success)return betaJson({error:'beta_rate_limited'},429);
-  let b:Obj;try{b=JSON.parse(new TextDecoder().decode(bounded.body));check(obj(b));check(b.protocol===1&&uuid(b.nonce)&&b.releaseId===BETA_RELEASE.releaseId&&b.apkSourceSha===BETA_RELEASE.apkSourceSha&&int(b.sentAtMs)&&Math.abs(Date.now()-b.sentAtMs)<=120000);
-   if(kind==='readiness'){check(b.appVersion===BETA_RELEASE.versionName&&int(b.localCheckedAtMs)&&Math.abs(Date.now()-b.localCheckedAtMs)<=120000);checkRows(b.localChecks);}
-   else{runMetadata(b.run);check(Array.isArray(b.records)&&b.records.length>0&&b.records.length<=20&&int(b.droppedRecords));let last=0;for(const row of b.records){check(obj(row)&&int(row.id)&&row.id>last);last=row.id;observation(row.observation);}if(b.readiness!==null)readiness(b.readiness);}
+  let b:Obj;try{b=JSON.parse(new TextDecoder().decode(bounded.body));check(obj(b));check(b.protocol===1&&uuid(b.nonce)&&!!findCompatibleBetaClient(b.releaseId,b.apkSourceSha)&&int(b.sentAtMs)&&Math.abs(Date.now()-b.sentAtMs)<=120000);
+   if(kind==='readiness'){check(b.appVersion===findCompatibleBetaClient(b.releaseId,b.apkSourceSha)?.versionName&&int(b.localCheckedAtMs)&&Math.abs(Date.now()-b.localCheckedAtMs)<=120000);checkRows(b.localChecks);}
+   else{const run=runMetadata(b.run);check(run.releaseId===b.releaseId&&run.apkSourceSha===b.apkSourceSha);check(Array.isArray(b.records)&&b.records.length>0&&b.records.length<=20&&int(b.droppedRecords));let last=0;for(const row of b.records){check(obj(row)&&int(row.id)&&row.id>last);last=row.id;observation(row.observation);}if(b.readiness!==null){const ready=readiness(b.readiness);check(ready.releaseId===b.releaseId&&ready.apkSourceSha===b.apkSourceSha); }}
   }catch{return betaJson({error:'invalid_beta_schema'},400);}
   const now=Date.now();
   const reservation=await env.BETA_DB.prepare('INSERT INTO beta_requests(nonce,device_id,expires_at) VALUES(?1,?2,?3) ON CONFLICT(nonce) DO NOTHING').bind(b.nonce,id,now+600000).run();
   if(reservation.meta.changes!==1)return betaJson({error:'replayed_nonce'},409);
   if(!await activeDevice(env,id))return betaJson({error:'device_revoked'},401);
-  const response={storageMode:'d1-chunked',eventMode:'direct-d1-durable',protocol:1,nonce:b.nonce,environment:'beta',releaseId:BETA_RELEASE.releaseId,backendSourceSha:env.BETA_SOURCE_SHA,serverReceivedAtMs:now};
+  const response={storageMode:'d1-chunked',eventMode:'direct-d1-durable',protocol:1,nonce:b.nonce,environment:'beta',releaseId:b.releaseId,backendSourceSha:env.BETA_SOURCE_SHA,serverReceivedAtMs:now};
   if(kind==='readiness'){
-   const checks=await proofs(env,id,now);await env.BETA_DB.prepare('INSERT INTO beta_latest(device_id,payload,updated_at) VALUES(?1,?2,?3) ON CONFLICT(device_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(id,JSON.stringify({localChecks:b.localChecks,localCheckedAtMs:b.localCheckedAtMs,appVersion:b.appVersion,apkSourceSha:b.apkSourceSha,checks}),now).run();return betaJson({...response,checks});
+   const checks=await proofs(env,id,now);await env.BETA_DB.prepare('INSERT INTO beta_latest(device_id,payload,updated_at) VALUES(?1,?2,?3) ON CONFLICT(device_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(id,JSON.stringify({localChecks:b.localChecks,localCheckedAtMs:b.localCheckedAtMs,appVersion:b.appVersion,apkSourceSha:b.apkSourceSha,releaseId:b.releaseId,checks}),now).run();return betaJson({...response,checks});
   }
   const run=b.run as Obj,records=b.records as {id:number;observation:Obj}[];const metadata=canonical(run);
   const previous=await env.BETA_DB.prepare('SELECT metadata FROM beta_runs WHERE device_id=?1 AND run_id=?2').bind(id,run.runId).first<{metadata:string}>();
