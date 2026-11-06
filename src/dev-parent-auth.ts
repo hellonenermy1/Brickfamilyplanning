@@ -3,7 +3,8 @@ const INTERNAL_HEADER = "X-Brick-Dev-Parent-Verified";
 const INTERNAL_VALUE = "session-v1";
 const SESSION_MS = 30 * 86_400_000;
 const MAX_SESSION_CHARS = 128;
-const LOGIN_TOKEN_RE = /^[A-Za-z0-9_-]{43,128}$/;
+const LOGIN_TOKEN_RE = /^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{16,128}$/;
+const SLOW_VERIFIER_RE = /^pbkdf2-sha256:(\d{6}):([A-Za-z0-9_-]{22,64}):([A-Za-z0-9_-]{43})$/;
 const TOKEN_HASH_RE = /^[0-9a-f]{64}$/i;
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -77,14 +78,14 @@ export function devParentOriginAllowed(req: Request) {
 function loginPage(message = "") {
   const safe = message.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent Beta Login</title><style>
-  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the private, randomly generated development access token. Keep it outside GitHub.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Development access token</label><input id="token" name="token" type="password" autocomplete="current-password" pattern="[A-Za-z0-9_-]{43,128}" minlength="43" maxlength="128" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
+  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter your private parent passphrase. Keep it out of public repositories and messages.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Parent passphrase</label><input id="token" name="token" type="password" autocomplete="current-password" minlength="16" maxlength="128" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
 }
 
 async function readFormToken(req: Request) {
   const type = (req.headers.get("Content-Type") ?? "").toLowerCase();
   if (!type.startsWith("application/x-www-form-urlencoded")) return null;
   const text = await req.text();
-  if (text.length > 200) return null;
+  if (text.length > 400) return null;
   const value = new URLSearchParams(text).get("token")?.trim() ?? "";
   return LOGIN_TOKEN_RE.test(value) ? value : null;
 }
@@ -100,11 +101,34 @@ async function loginRateAllowed(req: Request, env: DevParentAuthEnv) {
   return result.success;
 }
 
+function fromBase64url(encoded: string) {
+  const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  return Uint8Array.from(raw, char => char.charCodeAt(0));
+}
+
 async function loginTokenValid(env: DevParentAuthEnv, code: string) {
-  const expected = env.DEV_PARENT_LOGIN_HASH?.trim().toLowerCase() ?? "";
-  if (!TOKEN_HASH_RE.test(expected)) return false;
-  const actual = await sha256Hex(code);
-  return constantTimeEqual(actual, expected);
+  const expected = env.DEV_PARENT_LOGIN_HASH?.trim() ?? "";
+  // Backward compatibility: existing cryptographically random 256-bit beta tokens
+  // retain their constant-time SHA-256 verifier until a private rotation is completed.
+  if (TOKEN_HASH_RE.test(expected)) {
+    const actual = await sha256Hex(code);
+    return constantTimeEqual(actual, expected.toLowerCase());
+  }
+  // New human-entered passphrases are derived slowly, with a unique 128-bit+ salt.
+  // Cloudflare secrets store only the verifier; no plaintext enters D1 or GitHub.
+  const parts = SLOW_VERIFIER_RE.exec(expected);
+  if (!parts) return false;
+  const iterations = Number(parts[1]);
+  if (iterations < 200000 || iterations > 600000) return false;
+  const salt = fromBase64url(parts[2]);
+  const digest = fromBase64url(parts[3]);
+  if (salt.length < 16 || digest.length !== 32) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
+  const derived = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt, iterations}, key, 256));
+  let diff = 0;
+  for (let i = 0; i < 32; i++) diff |= derived[i] ^ digest[i];
+  return diff === 0;
 }
 
 async function createSession(env: DevParentAuthEnv, now: number) {

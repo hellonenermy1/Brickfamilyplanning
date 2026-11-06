@@ -1,0 +1,40 @@
+name: Brick Phase 2 — Isolated Parent Portal Verification
+
+on:
+  push:
+    branches: [feat/v1-phase2-parent-20261106]
+  pull_request:
+    branches: [beta/backend-portal]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase2-source-and-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Phase 2 safety and private authentication regression
+        run: node scripts/test-phase2-parent-baseline.mjs
+      - name: Typecheck Worker and existing parent app
+        run: npm run typecheck
+      - name: Typecheck parent web module
+        run: npx --no-install tsc -p tsconfig.web.json --noEmit
+      - name: Compile parent map assets
+        run: npm run build:parent-assets
+      - name: Beta parent auth and deployment contractual tests
+        run: |
+          node scripts/test-beta-deployment.mjs
+          node scripts/test-beta-workerd.mjs
+          npx --no-install esbuild src/dev-parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase2-parent-auth.mjs
+          node scripts/test-phase8d-development-login.mjs /tmp/brick-phase2-parent-auth.mjs
+          node scripts/test-phase2-parent-passphrase.mjs /tmp/brick-phase2-parent-auth.mjs
+      - name: Cloudflare bundle dry run only — NO cloud writes
+        run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-phase2-preview

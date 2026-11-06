@@ -27,6 +27,81 @@ export function parentBetaHtml(base:string){
  if(!html.includes(mapImport))throw Error('beta_parent_map_import_missing');
  html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs?v=beta-parent-recovery-20261105';");
  const js=String.raw`
+
+// Phase 2 portal safety: preserve every stored event but group rapid historical fall noise.
+// Grouping only affects presentation, not D1 history, SOS delivery or Android's sensor policy.
+const p2SeenBanners=new Map();
+function p2SafetyKey(e){
+ const id=e?.id??e?.eventId;
+ return id==null||String(id).length===0?null:String(id);
+}
+function p2GroupFallEvents(events){
+ const sorted=[...events].sort((a,b)=>Number(b.server_created_at||0)-Number(a.server_created_at||0));
+ const groups=[];
+ const identities=new Set();
+ for(const e of sorted){
+  const identity=p2SafetyKey(e);
+  if(identity&&identities.has(identity))continue;
+  if(identity)identities.add(identity);
+  const when=Number(e.server_created_at)||0;
+  const prior=groups[groups.length-1];
+  if(e.kind==='fall_detected'&&prior?.kind==='fall_detected'&&when>0&&Math.abs(prior.oldest-when)<=60000){
+   prior.records.push(e);prior.oldest=Math.min(prior.oldest,when);continue;
+  }
+  groups.push({kind:e.kind,records:[e],newest:when,oldest:when});
+ }
+ return groups;
+}
+const p2OriginalLabel=labelEvent;
+labelEvent=function(e){return e?.kind==='fall_detected'?'Unverified phone impact (legacy fall alert)':p2OriginalLabel(e)};
+loadEvents=async function(){
+ const id=currentDevice;if(!id)return;
+ try{
+  const response=await api('/parent/api/device/'+encodeURIComponent(id)+'/events?limit=100');
+  if(id!==currentDevice)return;
+  const root=$('#events');root.replaceChildren();
+  const groups=p2GroupFallEvents(Array.isArray(response.events)?response.events:[]);
+  for(const group of groups){
+   const e=group.records[0],fall=group.kind==='fall_detected';
+   const d=document.createElement('div');d.className='event '+(e.kind==='sos_started'?'sos':e.kind==='battery_critical'||e.kind==='trip_alert'||e.kind==='device_offline'||e.kind==='service_unhealthy'?'warn':'');
+   const title=document.createElement('strong');
+   title.textContent=fall?(group.records.length>1?'Unverified phone impacts · '+group.records.length+' records':'Unverified phone impact (legacy fall alert)'):labelEvent(e);
+   const meta=document.createElement('div');meta.className='small';
+   const detail=(()=>{try{return JSON.parse(e.detail_json||'{}')}catch{return {}}})();
+   meta.textContent=localDate(e.server_created_at)+(fall?' · Not evidence of a person falling; automatic sensor currently unreliable':(detail.reason?' · '+String(detail.reason).replaceAll('_',' '):'')+(detail.batteryPct!=null?' · battery '+detail.batteryPct+'%':'')+(e.accuracy_m!=null?' · ±'+Math.round(e.accuracy_m)+'m':''));
+   d.append(title,meta);
+   if(group.records.length>1){
+    const more=document.createElement('details');const summary=document.createElement('summary');summary.textContent='Show all '+group.records.length+' original event timestamps';more.append(summary);
+    for(const original of group.records){const t=document.createElement('div');t.className='small';t.textContent=localDate(original.server_created_at)+' · event '+String(p2SafetyKey(original)||'ID unavailable').slice(0,12);more.append(t)}
+    d.append(more);
+   }
+   if(!fall&&e.latitude!=null&&e.longitude!=null){d.style.cursor='pointer';d.onclick=()=>{if(map?.isStyleLoaded())map.easeTo({center:[e.longitude,e.latitude],zoom:17,duration:700})}};
+   root.append(d);
+  }
+  if(!groups.length){const n=document.createElement('div');n.className='small';n.textContent='No safety events yet.';root.append(n)}
+ }catch(error){if(id===currentDevice){const root=$('#events');root.replaceChildren();const notice=document.createElement('div');notice.className='small';notice.textContent='Safety event history unavailable: '+String(error?.message||'request failed');root.append(notice)}}
+};
+const p2OriginalWsMessage=wsMessage;
+wsMessage=function(m){
+ if(m?.type==='safety_event'&&m.event){
+  const key=p2SafetyKey(m.event),now=Date.now(),existing=key==null?null:p2SeenBanners.get(currentDevice+':'+key);
+  if(key&&existing&&now-existing<300000)return;
+  if(key)p2SeenBanners.set(currentDevice+':'+key,now);
+  for(const [seen,at] of p2SeenBanners){if(now-at>300000)p2SeenBanners.delete(seen)}
+  // Don't raise unverified human-fall banners. History remains accessible.
+  if(m.event.kind==='fall_detected'){loadEvents();return}
+ }
+ p2OriginalWsMessage(m);
+};
+// MapLibre may still be loading its style when a history request completes.
+// Defer route drawing rather than swallowing all playback behind the API catch block.
+const p2OriginalDrawHistory=drawHistory;
+drawHistory=function(points){
+ const id=currentDevice,copy=Array.isArray(points)?points.slice():[];
+ const apply=()=>{if(id!==currentDevice||!map?.isStyleLoaded())return;try{p2OriginalDrawHistory(copy)}catch(error){text('#historyNote','Map route drawing failed: '+String(error?.message||'unknown'))}};
+ if(map?.isStyleLoaded())apply();else if(map)map.once('style.load',apply);
+};
+
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
  try{const r=await api('/parent/api/device/'+encodeURIComponent(id)+'/beta/status');if(currentDevice!==id)return;
