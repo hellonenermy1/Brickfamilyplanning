@@ -72,8 +72,8 @@ object BrickApi {
         c.setRequestProperty("Content-Type", "application/json")
         val body = JSONObject().put("token", token).put("publicKeySpkiB64", DeviceKeys.publicSpkiBase64()).toString().toByteArray()
         c.outputStream.use { it.write(body) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Pairing failed: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Pairing failed ${c.responseCode}")
         val j = JSONObject(text)
         val apiBase = secureBase(j.getString("apiBase"))
         require(apiBase == requestedBase) { "Pairing server attempted to change Brick API origin" }
@@ -85,8 +85,8 @@ object BrickApi {
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
         c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Upload failed ${c.responseCode}: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Upload failed ${c.responseCode}")
         return JSONObject(text).getLong("ack")
     }
 
@@ -96,8 +96,8 @@ object BrickApi {
         c.requestMethod = "POST"; c.connectTimeout = 5_000; c.readTimeout = 5_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
         c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Live preview failed ${c.responseCode}: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Live preview failed ${c.responseCode}")
         return JSONObject(text).optBoolean("previewed", false)
     }
 
@@ -109,8 +109,8 @@ object BrickApi {
         c.requestMethod = "POST"; c.connectTimeout = 10_000; c.readTimeout = 15_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/octet-stream"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(body))
         c.outputStream.use { it.write(body) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Batch upload failed ${c.responseCode}: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Batch upload failed ${c.responseCode}")
         val response = JSONObject(text); val acks = response.getJSONArray("acked")
         if (acks.length() != items.size) error("Batch ACK count mismatch")
         val expected = items.map { it.epoch to it.sequence }.toSet()
@@ -215,8 +215,8 @@ object BrickApi {
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload))
         c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Health upload failed ${c.responseCode}")
         val config = parseHealthConfig(JSONObject(text))
         applyLearnedPlaceConfig(deviceId, config); applyCoarseNetworkConfig(deviceId, config)
         return HealthSyncResult(config.bleAnchors ?: emptyList(), config.locationCommand, config.liveTrackCommand, config.wifiSchedules)
@@ -234,8 +234,8 @@ object BrickApi {
         val c = connection(endpoint(baseUrl, "/api/device/$deviceId/event"))
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload)); c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Safety event upload failed ${c.responseCode}: $text")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Safety event upload failed ${c.responseCode}")
         val ack = JSONObject(text).optString("eventId"); if (ack != expectedEventId) error("Safety event ACK mismatch"); return ack
     }
 
@@ -243,7 +243,7 @@ object BrickApi {
         val c = connection(endpoint(baseUrl, "/api/device/$deviceId/crash"))
         c.requestMethod = "POST"; c.connectTimeout = 8_000; c.readTimeout = 8_000; c.doOutput = true
         c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("X-Brick-Signature", DeviceKeys.sign(payload)); c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+        val text = SafeResponseReader.read(c)
         if (c.responseCode !in 200..299) error("Crash report failed ${c.responseCode}")
         val ack = JSONObject(text).optString("reportId"); if (ack != expectedReportId) error("Crash report ACK mismatch"); return ack
     }
