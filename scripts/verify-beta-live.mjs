@@ -6,7 +6,10 @@ if(state.sourceGitSha!==process.env.GITHUB_SHA||state.resources.DB!=='brick-fami
 const origin='https://'+state.workerHost,checks=[];
 for(const route of ['/parent','/parent/change-password','/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/devices']){
  const r=await fetch(origin+route,{headers:{'X-Brick-Dev-Parent-Verified':'session-v1'},redirect:'manual',signal:AbortSignal.timeout(20000)});
- if(![302,401].includes(r.status))throw Error('Parent route not private: '+route+' HTTP '+r.status);checks.push({route,status:r.status,forgedHeaderDenied:true});
+ if(route==='/parent/change-password'){
+  if(r.status!==303||r.headers.get('Location')!=='/parent/login')throw Error('Unauthenticated account-change route must redirect only to private login');
+ }else if(![302,401].includes(r.status))throw Error('Parent route not private: '+route+' HTTP '+r.status);
+ checks.push({route,status:r.status,forgedHeaderDenied:true});
 }
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now();
 async function query(sql,params){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});const b=await r.json();if(!r.ok||b.success!==true)throw Error('D1 smoke session request failed');return b.result;}
