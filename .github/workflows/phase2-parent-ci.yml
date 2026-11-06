@@ -36,5 +36,7 @@ jobs:
           npx --no-install esbuild src/dev-parent-auth.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase2-parent-auth.mjs
           node scripts/test-phase8d-development-login.mjs /tmp/brick-phase2-parent-auth.mjs
           node scripts/test-phase2-parent-passphrase.mjs /tmp/brick-phase2-parent-auth.mjs
+          npx --no-install esbuild src/beta-release.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase2-beta-release.mjs
+          node scripts/test-phase2-beta-client-compat.mjs /tmp/brick-phase2-beta-release.mjs
       - name: Cloudflare bundle dry run only — NO cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-phase2-preview
