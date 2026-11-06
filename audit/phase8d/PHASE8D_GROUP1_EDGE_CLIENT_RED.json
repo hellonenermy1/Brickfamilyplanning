@@ -1,0 +1,65 @@
+{
+  "format": "brick-phase8d-edge-client-red-v1",
+  "finding": "P8D-094",
+  "baselineCommitSha": "37873dff58df94c691993c64ee7c406374d544d3",
+  "baselineSourcePath": "src/capture-broker-client.ts",
+  "baselineSourceSha256": "6033d4f58f6062bf98e473301f64c5af11204a7590d6c2e04eedafac220d622a",
+  "reproduction": "scripts/test-phase8d-edge-client.mjs accepts an optional prior TS client path; actual workerd Request constructor, no external HTTP; baseline prior client copied transiently beside its relative imports and removed after the run.",
+  "baselineExitCode": 1,
+  "baselineObservation": {
+    "mode": "unsigned",
+    "calls": 1,
+    "constructed": 0,
+    "cancelled": 0,
+    "redirect": null,
+    "requestError": "Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code).",
+    "ok": false,
+    "result": null
+  },
+  "nativeIntegrationObservation": "Prior actual beta/device/D1/scheduler signed writer integration returned HTTP500 instead of expected200. Fixture-level diagnostics confirmed redirect:error rejected before request construction.",
+  "rootCause": "redirect:error is accepted by Node Fetch but unsupported by the actual Workers Request constructor. Prior tests ran the client only under Node.",
+  "correction": "redirect:manual; explicitly refuse3xx, cancel response body and never follow Location. Existing redirect flag, URL, authenticated response/status/pin/request-digest checks remain.",
+  "correctedEdgeCases": 3,
+  "correctedObservations": [
+    {
+      "mode": "unsigned",
+      "calls": 1,
+      "constructed": 1,
+      "cancelled": 0,
+      "redirect": "manual",
+      "requestError": null,
+      "ok": false,
+      "result": null
+    },
+    {
+      "mode": "redirect",
+      "calls": 1,
+      "constructed": 1,
+      "cancelled": 1,
+      "redirect": "manual",
+      "requestError": null,
+      "ok": false,
+      "result": null
+    },
+    {
+      "mode": "signed",
+      "calls": 1,
+      "constructed": 1,
+      "cancelled": 0,
+      "redirect": "manual",
+      "requestError": null,
+      "ok": true,
+      "result": {
+        "admitted": true,
+        "requiresStart": true,
+        "ticket": {
+          "authorityEpoch": "cccccccccccccccccccccccccccccccc",
+          "writerId": "dddddddddddddddddddddddddddddddd",
+          "tracked": true
+        }
+      }
+    }
+  ],
+  "qualification": "LOCAL_NATIVE_RED_AND_GREEN_REPRODUCED; exact-source hosted verification is recorded separately after completion",
+  "limits": "Staged-source runtime compatibility and synthetic fault/response capabilities only. No live endpoint, key, provider, production installer or urgent-outage fallback acceptance."
+}
