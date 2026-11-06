@@ -1,7 +1,7 @@
 name: Brick Beta Backend and Parent Portal
 on:
   push:
-    branches: [beta/backend-portal]
+    branches: [beta/backend-portal, feat/phase2-parent-selfservice-passphrase-20261106]
     paths: ['src/**', 'scripts/**', 'schema/**', 'beta/**', 'wrangler.beta.template.jsonc', '.github/workflows/beta-backend.yml']
   workflow_dispatch:
 permissions:
@@ -56,6 +56,7 @@ jobs:
       - name: Bundle the exact beta Worker without cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
   deploy:
+    if: github.ref == 'refs/heads/beta/backend-portal'
     needs: [cloud-preflight, test, apk-currency]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
