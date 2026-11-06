@@ -112,6 +112,7 @@ class BrickLocationService : Service() {
     @Volatile private var lastWeakFixReacquireElapsed = 0L
     @Volatile private var lastTrackingDiagnosticElapsed = 0L
     @Volatile private var lastUploadDiagnosticElapsed = 0L
+    @Volatile private var lastFastLiveDiagnosticElapsed = 0L
     @Volatile private var shuttingDown = false
 
     // An in-flight FLP/provider/network callback must not reopen stores after deprovision begins.
@@ -291,8 +292,9 @@ class BrickLocationService : Service() {
     private fun recordSample(sample: PositionSample) {
         if (mustQuiesceAsync()) return
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val deviceId = prefs.getString("deviceId", null) ?: return
-        prefs.getString("apiBase", null) ?: return
+        // Persist valid points after pairing even if the backend URL is temporarily unavailable.
+        // Otherwise a configuration/network recovery silently loses history before ACK is possible.
+        if (prefs.getString("deviceId", null).isNullOrBlank()) return
         val sequence = seq.incrementAndGet()
         prefs.edit().putLong("sequence", sequence).apply()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -345,13 +347,21 @@ class BrickLocationService : Service() {
                     }
                     val r = result.getOrThrow()
                     if (mustQuiesceAsync()) break
-                    DiagnosticStore.log(
-                        this,
-                        DiagnosticStore.Severity.INFO,
-                        "live",
-                        "fast_live_stage",
-                        "trace=${sendTrace.id} sourceAgeMs=${(sendTrace.sendStartWallMs - sendTrace.sourceWallMs).coerceAtLeast(0L)} persistMs=${sendTrace.persistDurationMs} backend=${r.backendReceivedAtMs ?: -1} do=${r.doUpdatedAtMs ?: -1} previewed=${r.previewed}"
-                    )
+                    // Sample successful high-frequency live diagnostics. Logging each 2-3 second
+                    // position would exhaust the 12k-record seven-day local troubleshooting budget.
+                    val diagnosticNow = SystemClock.elapsedRealtime()
+                    if (lastFastLiveDiagnosticElapsed == 0L ||
+                        diagnosticNow < lastFastLiveDiagnosticElapsed ||
+                        diagnosticNow - lastFastLiveDiagnosticElapsed >= 60_000L) {
+                        lastFastLiveDiagnosticElapsed = diagnosticNow
+                        DiagnosticStore.log(
+                            this,
+                            DiagnosticStore.Severity.INFO,
+                            "live",
+                            "fast_live_stage",
+                            "sourceAgeMs=${(sendTrace.sendStartWallMs - sendTrace.sourceWallMs).coerceAtLeast(0L)} persistMs=${sendTrace.persistDurationMs} backend=${r.backendReceivedAtMs ?: -1} do=${r.doUpdatedAtMs ?: -1} previewed=${r.previewed}"
+                        )
+                    }
                 }
             } finally {
                 if (failed && !mustQuiesceAsync() && latestLive.get() != null) {
