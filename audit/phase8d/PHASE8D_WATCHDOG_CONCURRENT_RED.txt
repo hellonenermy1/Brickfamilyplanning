@@ -1,0 +1,8 @@
+PASS 64-device offline sweep advances across bounded invocations without exceeding50 statements
+PASS one failed notification retains retry and does not stop healthy peers
+PASS failed push retries existing durable event after automatic retry interval
+FAIL simultaneous root starts share one maintenance tick and alarm decision: Expected values to be strictly equal:
+
+2 !== 1
+
+{"suite":"watchdog","passed":3,"failed":1,"scope":"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance"}

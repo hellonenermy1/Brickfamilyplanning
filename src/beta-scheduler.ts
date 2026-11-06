@@ -1,5 +1,6 @@
 import {DurableObject} from 'cloudflare:workers';
 import {runCardfreeMaintenance,runCardfreeMaintenanceGroup,cardfreeRuntime,type CardfreeEnv} from './worker-beta-cardfree';
+import {watchdogPage,checkWatchdogDevice} from './watchdog-work';
 import {runBackgroundWork} from './background-work';
 import {cleanupPhase5RefinedHistory,processRefinementsForDevice} from './phase5-refined-history';
 import {refreshCommutes} from './commute-summary';
@@ -10,6 +11,10 @@ import type {DerivedKind} from './derived-work-dispatch';
 /** Dedicated SQLite alarm: never shares or overwrites a device's WebSocket expiry alarm. */
 export class BetaScheduler extends DurableObject<CardfreeEnv>{
  private running:Promise<void>|null=null;
+ private tick:Promise<void>|null=null;
+ private watchdogRunning:ReturnType<typeof watchdogPage>|null=null;
+ async runWatchdogPage(){if(this.watchdogRunning)return this.watchdogRunning;const budget=d1WorkBudget(this.env.DB,44);this.watchdogRunning=watchdogPage(budget.db,id=>this.env.BETA_SCHEDULER.get(this.env.BETA_SCHEDULER.idFromName('watchdog-'+id)).runWatchdogDevice(id)).finally(()=>{this.watchdogRunning=null;});return this.watchdogRunning;}
+ async runWatchdogDevice(id:string){if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))throw Error('invalid watchdog device');const budget=d1WorkBudget(this.env.DB,44);return runBackgroundWork(this.env.DB,'watchdog',id,()=>checkWatchdogDevice(budget.db,id,event=>this.env.BRICK_DEVICE.get(this.env.BRICK_DEVICE.idFromName(id)).pushSafetyEvent(event)));}
  // These internal RPCs use separate named objects/invocations, not the device
  // DO or its alarm. They hold no authoritative DO state; D1 owns work receipts.
  async runGroup(group:'minute'|'daily'){return runCardfreeMaintenanceGroup(this.env,this.ctx as unknown as ExecutionContext,group);}
@@ -33,13 +38,15 @@ export class BetaScheduler extends DurableObject<CardfreeEnv>{
   return {scheduled:true};
  }
  async status(){return {nextAlarmAt:await this.ctx.storage.getAlarm(),lastTick:await this.ctx.storage.get<{atMs:number;status:string}>('lastTick')??null};}
- async runTick(){
+ async runTick(){if(this.tick)return this.tick;this.tick=this.performTick().finally(()=>{this.tick=null;});return this.tick;}
+ private async performTick(){
+  let nextDelayMs=60000;
   const previous=await this.ctx.storage.get<{lastSuccessAtMs?:number;atMs:number;status:string}>('lastTick');
-  try{let status=await runCardfreeMaintenance(this.env,this.ctx as unknown as ExecutionContext);
+  try{let status=await runCardfreeMaintenance(this.env,this.ctx as unknown as ExecutionContext,ms=>{nextDelayMs=ms;});
    if(status==='COMPLETED'){const pending=await this.env.DB.prepare("SELECT COUNT(*) n FROM provider_cache p WHERE p.provider='brick_background_v1' AND p.expires_at>?1 AND json_valid(p.value_json) AND json_extract(p.value_json,'$.status')='PENDING' AND (p.cache_key='refined-retention/global' OR EXISTS(SELECT 1 FROM devices d WHERE p.cache_key='commute/'||d.id AND d.revoked_at IS NULL))").bind(Date.now()).first<{n:number}>();if(Number(pending?.n)>0)status='PENDING';}
    await this.ctx.storage.put('lastTick',{atMs:Date.now(),status,lastSuccessAtMs:status==='COMPLETED'?Date.now():previous?.lastSuccessAtMs??null});}
   catch{await this.ctx.storage.put('lastTick',{atMs:Date.now(),status:'FAILED',errorCode:'maintenance_failed',lastSuccessAtMs:previous?.lastSuccessAtMs??(previous?.status==='COMPLETED'?previous.atMs:null)});throw Error('beta_maintenance_failed');}
-  finally{await this.ctx.storage.setAlarm(Date.now()+60000);}
+  finally{await this.ctx.storage.setAlarm(Date.now()+nextDelayMs);}
  }
  async alarm(){await this.runTick();}
 }

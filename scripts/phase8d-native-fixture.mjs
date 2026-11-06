@@ -26,7 +26,7 @@ export function newCardfreeDatabase(){
   const present=new Set(db.prepare('PRAGMA table_info('+table+')').all().map(x=>x.name));
   for(const [name,type] of columns)if(!present.has(name))db.exec('ALTER TABLE '+table+' ADD COLUMN '+name+' '+type);
  }
- for(const name of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_cardfree_retention.sql','020_commute_paging.sql','021_cardfree_cleanup.sql'])db.exec(readFileSync('schema/'+name,'utf8'));
+ for(const name of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_cardfree_retention.sql','020_commute_paging.sql','021_cardfree_cleanup.sql','022_cardfree_watchdog.sql'])db.exec(readFileSync('schema/'+name,'utf8'));
  return db;
 }
 export function adapter(db,onRead=()=>{}){

@@ -8,11 +8,11 @@ import { BETA_APK_KEY,BETA_RELEASE } from './beta-release';
 export { BetaScheduler } from './beta-scheduler';
 import { readBoundedBody } from './bounded-body';
 export { BrickDevice } from './beta-device';
-export type CardfreeEnv=Parameters<typeof beta.fetch>[1]&{PARENT_LOGIN_RATE:RateLimit;DEV_PARENT_LOGIN_HASH:string;DEV_PARENT_AUTH_MODE:string;BRICK_MAP_SOURCE:string;BETA_STORAGE_MODE:string;BETA_SCHEDULER:DurableObjectNamespace<import('./beta-scheduler').BetaScheduler>};
+export type CardfreeEnv=Parameters<typeof beta.fetch>[1]&{PARENT_LOGIN_RATE:RateLimit;DEV_PARENT_LOGIN_HASH:string;DEV_PARENT_AUTH_MODE:string;BRICK_MAP_SOURCE:string;BETA_STORAGE_MODE:string;WATCHDOG_MANAGED_BY_ROOT?:boolean;BETA_SCHEDULER:DurableObjectNamespace<import('./beta-scheduler').BetaScheduler>};
 type Env=CardfreeEnv;
 export function cardfreeRuntime(env:Env):Env{
  const result=developmentRuntimeEnv(env);const direct=result.EVENTS;
- return {...result,BACKGROUND_WORK:{
+ return {...result,WATCHDOG_MANAGED_BY_ROOT:true,BACKGROUND_WORK:{
   run(kind,deviceId){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('derived-'+deviceId)).runDerivedWork(kind,deviceId);},
   cleanup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-refined-retention')).runRetentionWork();},
   backup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-backup')).runDailyBackup();}
@@ -56,8 +56,9 @@ export async function runCardfreeMaintenanceGroup(env:Env,ctx:ExecutionContext,g
   scoped.waitUntil(cleanupDevelopmentObjectStore(env.DB,now));scoped.waitUntil(cleanupDevParentAuth({DB:env.DB},now));
  },ctx));return daily==='BUSY'?'PENDING' as const:'COMPLETED' as const;
 }
-export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext){
+export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext,onWatchdogDelay?:(ms:number)=>void){
  let failed=false,busy=false;
+ try{const watchdog=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-watchdog')).runWatchdogPage();busy=!watchdog.complete;failed=watchdog.failed;onWatchdogDelay?.(watchdog.nextDelayMs);}catch{failed=true;}
  for(const group of ['minute','daily'] as const)try{
   const result=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-'+group)).runGroup(group);busy=busy||result==='PENDING';
  }catch{failed=true;}

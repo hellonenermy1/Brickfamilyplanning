@@ -30,6 +30,10 @@ jobs:
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
+      - name: Watchdog bounded fleet RPC delivery retry and state races
+        run: |
+          node scripts/test-phase8d-watchdog.mjs
+          node scripts/test-phase8d-watchdog-state.mjs
       - name: Bounded cleanup backlog progress and policy regressions
         run: node scripts/test-phase8d-cleanup-backlog.mjs
       - name: Resumable D1 commute history paging regression

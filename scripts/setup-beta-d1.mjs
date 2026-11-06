@@ -32,7 +32,8 @@ const SCHEMAS = [
   'schema/018_p8b_pin_pairing.sql',
   'schema/019_cardfree_retention.sql',
   'schema/020_commute_paging.sql',
-  'schema/021_cardfree_cleanup.sql'
+  'schema/021_cardfree_cleanup.sql',
+  'schema/022_cardfree_watchdog.sql'
 ];
 
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||!/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA??''))throw Error('Exact beta branch/source required');

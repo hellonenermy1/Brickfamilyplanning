@@ -69,7 +69,7 @@ try{
  });
  await test('background task status is authenticated per-device and redacts lease/provider details',async()=>{
   const uri='/parent/api/device/'+DEVICE_A+'/beta/status';const denied=await mf.dispatchFetch('http://localhost'+uri);assert.equal(denied.status,401);
-  const response=await parent(uri);assert.equal(response.status,200);const body=await response.json();assert.equal(body.backgroundWork.length,6);const work=body.backgroundWork.find(x=>x.task==='commute');assert.equal(work.status,'FAILED');assert.equal(work.errorCode,'derived_work_failed');assert.equal(work.lease,undefined);assert.equal(JSON.stringify(body.backgroundWork).includes('synthetic private provider failure'),false);
+  const response=await parent(uri);assert.equal(response.status,200);const body=await response.json();assert.equal(body.backgroundWork.length,8);const work=body.backgroundWork.find(x=>x.task==='commute');assert.equal(work.status,'FAILED');assert.equal(work.errorCode,'derived_work_failed');assert.equal(work.lease,undefined);assert.equal(JSON.stringify(body.backgroundWork).includes('synthetic private provider failure'),false);
  });
  console.log(JSON.stringify({suite:'enrichment-failure',passed,failed,scope:'actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes'}));if(failed)process.exitCode=1;
 }finally{if(mf)await mf.dispose();fs.rmSync(dir,{recursive:true,force:true});}
