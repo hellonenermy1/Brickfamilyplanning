@@ -12,7 +12,7 @@ export default {
   const u=new URL(req.url);
   const device=u.pathname.match(/^\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(readiness|observations)$/);
   if(device)return betaDevice(req,env,device[1],device[2]);
-  const ops=u.pathname.match(/^\\/parent\\/api\\/device\\/([A-Za-z0-9_-]{1,128})\\/ops-logs$/);
+  const ops=u.pathname.match(/^\/parent\/api\/device\/([A-Za-z0-9_-]{1,128})\/ops-logs$/);
   if(ops){
    if(!await parentAuthorized(req,env))return unauthorizedParent(req);
    if(req.method!=='GET')return betaJson({error:'method_not_allowed'},405);
