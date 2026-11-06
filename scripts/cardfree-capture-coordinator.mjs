@@ -36,11 +36,23 @@ export function privateCaptureJournal(directory) {
         throw Error('journal name'); return path.join(root, key); }
     return {
         async read(key) { const file = name(key); let fd; try {
-            fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+            if (typeof fs.constants.O_NOFOLLOW !== 'number' || typeof fs.constants.O_NONBLOCK !== 'number')
+                throw Error('private journal read unsupported');
+            fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
             const s = fs.fstatSync(fd);
             if (!s.isFile() || (s.mode & 0o077) || s.size > MAX_JOURNAL_ENTRY)
                 throw Error('private journal file required');
-            return fs.readFileSync(fd);
+            const bytes = Buffer.alloc(s.size); let offset = 0;
+            while (offset < bytes.length) {
+                const count = fs.readSync(fd, bytes, offset, bytes.length - offset, null);
+                if (!count) throw Error('private journal read incomplete');
+                offset += count;
+            }
+            if (fs.readSync(fd, Buffer.alloc(1), 0, 1, null)) throw Error('private journal file changed');
+            const after = fs.fstatSync(fd);
+            if (after.size !== s.size || after.mtimeMs !== s.mtimeMs || after.ctimeMs !== s.ctimeMs)
+                throw Error('private journal file changed');
+            return bytes;
         }
         catch (e) {
             if (e.code === 'ENOENT')

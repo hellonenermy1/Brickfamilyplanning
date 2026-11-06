@@ -1,0 +1,12 @@
+{
+  "finding": "P8D-092",
+  "sourceSha": "2d9a3073288a304b4820fe0b30f27a5f8a3fd843",
+  "scope": "actual privateCaptureJournal and coordinator with synthetic runtime/authority, actual local FIFO; no real writer fence/account/data",
+  "configuredPerCallMs": 10,
+  "configuredCaptureMs": 50,
+  "externalTimeoutMs": 1000,
+  "status": null,
+  "errorCode": "ETIMEDOUT",
+  "signal": "SIGTERM",
+  "releaseAttemptObserved": false
+}

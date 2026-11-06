@@ -29,6 +29,9 @@ jobs:
           node --check scripts/setup-beta-d1.mjs
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
+          node --check scripts/beta-deployment-contract.mjs
+          node scripts/test-beta-deployment.mjs
+          node scripts/test-phase8d-beta-config.mjs
       - run: npm run build:parent-assets
       - name: Optional route-map isolation deadlines and signed live recovery
         run: |
@@ -46,6 +49,7 @@ jobs:
           node scripts/test-phase8d-capture-baseline.mjs
           node scripts/test-phase8d-capture-coordinator.mjs
           node scripts/test-phase8d-capture-lifecycle.mjs
+          node scripts/test-phase8d-journal-files.mjs
           node scripts/test-phase8d-cardfree-pitr.mjs
           node scripts/test-phase8d-pitr-lifecycle.mjs
       - name: Watchdog bounded fleet RPC delivery retry and state races
