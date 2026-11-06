@@ -465,7 +465,7 @@ async function remoteSize(source: string) {
   const head = await fetch(source, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (head.ok) {
     const n = Number(head.headers.get("Content-Length"));
-    if (Number.isSafeInteger(n) && n > 0) return { size: n, etag: head.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${n}` };
+    if (Number.isSafeInteger(n) && n > 0) return { size: n, etag: head.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${n}`, versioned: !!head.headers.get('ETag') };
   }
   const probe = await fetch(source, { headers: { Range: "bytes=0-0" }, redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (!probe.ok && probe.status !== 206) throw new Error(`map source unavailable: HTTP ${probe.status}`);
@@ -473,11 +473,11 @@ async function remoteSize(source: string) {
   const match = contentRange.match(/\/(\d+)$/);
   const size = match ? Number(match[1]) : Number(probe.headers.get("Content-Length"));
   if (!Number.isSafeInteger(size) || size <= 0) throw new Error("map source size unavailable");
-  return { size, etag: probe.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${size}` };
+  return { size, etag: probe.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${size}`, versioned: !!probe.headers.get('ETag') };
 }
 
 class RemoteMapBucket {
-  private info: { size: number; etag: string } | null = null;
+  private info: { size: number; etag: string; versioned: boolean } | null = null;
   private readonly memory = new Map<string, ArrayBuffer>();
   constructor(private readonly source: string) {}
 
@@ -540,18 +540,26 @@ class RemoteMapBucket {
     });
     if (!(response.ok || response.status === 206)) throw new Error(`map range unavailable: HTTP ${response.status}`);
     const actualEtag = response.headers.get('ETag')?.replace(/^W\//, '').replaceAll('"', '');
-    if (actualEtag && actualEtag !== etag) {
+    if (actualEtag && generation.versioned && actualEtag !== generation.etag) {
       if (this.info === generation) { this.info = null; this.memory.clear(); }
       void response.body?.cancel().catch(() => undefined);
       throw new Error('map range version changed');
     }
     if (this.info !== generation) { void response.body?.cancel().catch(() => undefined); throw new Error('map metadata changed'); }
+    // A size-only HEAD/probe is not an ETag assertion. Adopt the first real
+    // range validator rather than treating it as an incompatible revision.
+    if (actualEtag && !generation.versioned) {
+      generation.etag = actualEtag;
+      generation.versioned = true;
+      this.memory.clear();
+    }
     const buffer = await response.arrayBuffer();
     if (this.info !== generation) throw new Error('map metadata changed');
     if (buffer.byteLength !== range.length) throw new Error("map range length mismatch");
-    this.memory.set(cacheKey, buffer.slice(0));
+    const verifiedCacheKey = `${range.offset}:${range.length}:${generation.etag}`;
+    this.memory.set(verifiedCacheKey, buffer.slice(0));
     while (this.memory.size > 128) this.memory.delete(this.memory.keys().next().value as string);
-    const obj = bodyObject(new Uint8Array(buffer), remoteMeta(this.source, size, etag), { offset: 0, length: buffer.byteLength });
+    const obj = bodyObject(new Uint8Array(buffer), remoteMeta(this.source, size, generation.etag), { offset: 0, length: buffer.byteLength });
     return { ...obj, range: { offset: range.offset, length: range.length } };
   }
 }
