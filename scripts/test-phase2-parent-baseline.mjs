@@ -27,7 +27,7 @@ result=group([...nine,distant]);
 assert.equal(result.length,2,'distant fall events must not collapse indefinitely');
 
 const parentAuth=readFileSync('src/dev-parent-auth.ts','utf8');
-assert(parentAuth.includes('minlength="16"'),'login form must support 16-character passphrase');
+assert(parentAuth.includes('minlength="15"'),'login form must support the requested 15-character passphrase');
 assert(parentAuth.includes('PBKDF2'),'slow password verification must be present');
 assert(parentAuth.includes('devParentOriginAllowed'),'origin/CSRF remains present');
 assert(parentAuth.includes('devParentSessionValid'),'D1 session authentication remains present');
