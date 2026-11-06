@@ -1,3 +1,4 @@
+# Phase 1 verified runner preflight: rerun Android emulator acceptance on exact HEAD.
 name: Brick Beta APK — Emulator Durability and Readiness
 
 on:

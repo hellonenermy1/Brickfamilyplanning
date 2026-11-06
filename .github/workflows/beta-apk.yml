@@ -1,3 +1,4 @@
+# Phase 1 verified runner preflight: rerun signed version-12 acceptance on exact HEAD.
 name: Brick Beta APK — Build, Sign and Verify
 
 on:
