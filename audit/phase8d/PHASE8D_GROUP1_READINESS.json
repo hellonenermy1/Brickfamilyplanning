@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "854628b22f1935e203fed5e1b47e3f7fdf05eadc",
+  "sourceSha": "3c8b239db9823fa408c7edf6a66cf59f1bdf8718",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -21,7 +21,7 @@
     {
       "id": "CONTROLLED_NATIVE_RECOVERY",
       "state": "LOCAL_NATIVE_ONLY",
-      "scope": "Actual native41+4/deviceDO encrypted destruction/restore now exercises hooked retention refusal, an actual health write preempting capture at release, and exact archived DO-state parity after isolated restore. A controlled outer writer still covers otherwise unhooked fixture writes."
+      "scope": "Actual device/D1/scheduler writer operations and capture operations use signed V2 HMAC/native durable replay/authority; committed STARTED before actual source mutation; actual41+4/deviceDO encrypted destruction/fresh restore retains exact bytes/state/credential exclusions/interruption/restart and max5 source SQL/call Legacy outer synthetic envelope and trusted controls remain."
     },
     {
       "id": "ACTOR_WRITER_HOOKS",
@@ -52,7 +52,7 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 261,
+      "selectedTrackedFiles": 263,
       "explicitManagementClassifications": 66,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 17,
@@ -64,17 +64,18 @@
       "id": "EXTERNAL_OPERATION_BOUNDARIES",
       "state": "INERT_SOURCE_NATIVE_CLI_FIXTURE_AND_CI_VERIFIED",
       "actualToolsHooked": 4,
-      "externalHelperAndCliCases": 21,
+      "externalHelperAndCliCases": 27,
       "newNativeAuthorityCases": 8,
       "productionControllerInstalls": 0,
       "sourceChangingAdmission": "PERMANENT_CAPTURE_QUARANTINE",
       "uncertainWorkOutcome": "OWNERSHIP_RETAINED_NO_AUTOMATIC_REPLAY_OR_EXPIRY",
-      "completeExternalCredentialCoverage": false
+      "completeExternalCredentialCoverage": false,
+      "signedV2TransportInActualCliFixtures": true
     },
     {
       "id": "SIGNED_CAPTURE_BROKER",
       "state": "STAGED_NATIVE_CLIENT_HANDLER_AND_FULL_RESTORE_CI_VERIFIED_NOT_INSTALLED",
-      "nativeClientCases": 43,
+      "nativeClientCases": 44,
       "keyRoles": [
         "capture",
         "runtime-writer",
@@ -83,7 +84,8 @@
       "durableReplay": true,
       "runtimeGraphImports": 0,
       "productionEndpointOrKeyInstalled": false,
-      "protocolVersion": 2
+      "protocolVersion": 2,
+      "actualEdgeCases": 3
     },
     {
       "id": "UNSTARTED_RESERVATION_RECONCILIATION",
@@ -93,9 +95,22 @@
       "cancellationTombstoneLimit": 128,
       "startedOrLegacyOwnershipCanBeCancelled": false,
       "urgentOutageFallback": "NOT_IMPLEMENTED"
+    },
+    {
+      "id": "ACTUAL_SIGNED_WRITER_INTEGRATION",
+      "state": "SOURCE_NATIVE_FULL_RESTORE_CLI_AND_CI_VERIFIED_NOT_INSTALLED",
+      "edgeCompatibilityFinding": "P8D-094_SOURCE_CI_CORRECTED_NOT_LIVE",
+      "actualNativeControllerFaultCases": 5,
+      "actualEdgeCases": 3,
+      "completeWriterCoverage": false
     }
   ],
   "remaining": [
+    {
+      "id": "POPULATED_CONFIG_RELATIONSHIP_PARITY",
+      "state": "NOT_QUALIFIED_IN_SIGNED_D1_DRILL",
+      "needed": "Next code task: populate places/config and relationship records in the signed card-free destruction/restore fixture and verify exact restored values and links, rather than infer nonempty coverage from41-table counts. This does not replace independent live-cloud recovery."
+    },
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "PARTIAL_INERT_ACTOR_AND_D1_ADAPTERS_ONLY",
@@ -139,11 +154,11 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESERVATION_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SIGNED_WRITER_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "runs": [
       {
-        "runId": 42199007771,
+        "runId": 42204232071,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -153,7 +168,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42199007879,
+        "runId": 42204231762,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -163,7 +178,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42199000899,
+        "runId": 42204225236,
         "event": "push",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
