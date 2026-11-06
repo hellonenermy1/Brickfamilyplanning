@@ -880,3 +880,8 @@ The candidate write inventory pins87 actual runtime source Git blobs matched to 
 Only OPS-002/OPS-003 gain partial Group1 staged/native/source-CI proof. All525 canonical classifications,214/311 phase mappings, criteria/statuses/real owners/reviews/final dispositions remain unchanged; reviewedSourceSha=null,17 rows link recorded proof,2100 criterion slots remain unreviewed and remaining product-test count is null. No other group is advanced. Exact receipts PHASE8D_GROUP1_ADMISSION_HOSTED_EVIDENCE.json; scope PHASE8D_GROUP1_ADMISSION_REQUIREMENT_SCOPE.json; source inventory PHASE8D_GROUP1_WRITE_INVENTORY.json; native counterexample PHASE8D_GROUP1_COMMIT_BOUNDARY_RED.json.
 
 No production Worker/template/runtime write path, app UI/APK/phone/family data, live cloud schema/permissions/credentials, R2/card/billing, merge/deploy or actual backup export/restore changed. Draft PR32 remains unmerged; final-production-only issues31/33–39 are preserved.
+
+
+## P8D-002 — Group1 partial inert writer hooks; still P1 OPEN
+
+OPS-002 and OPS-003 gain scoped source/native proof only. Sixteen actor boundaries,21 controlled helper cases,88 exact runtime blobs and native retention/preemption/exact-state restore evidence do not close full Worker/D1/external coverage, urgent-outage fallback, authenticated transport, destination/key custody, schedule, current PITR or cloud recovery/RTO/RPO. No controller activation or canonical acceptance. Exact receipt: PHASE8D_GROUP1_WRITER_HOOK_HOSTED_EVIDENCE.json; scope: PHASE8D_GROUP1_WRITER_HOOK_REQUIREMENT_SCOPE.json.
