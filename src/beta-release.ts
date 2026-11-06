@@ -7,3 +7,17 @@ export const BETA_RELEASE = {
  artifactRunId: 41973723331, artifactId: 13391590323
 } as const;
 export const BETA_APK_KEY = 'beta/releases/brick-beta-20261105-01/Brick.apk';
+
+/**
+ * Signed Android clients allowed to report beta readiness/observations.
+ * NOT a list of APKs approved for parent download. Beta 2 is installed in the
+ * field but its automatic fall sensor has a confirmed false-positive regression.
+ * Never loosen this to a version prefix or source-SHA wildcard.
+ */
+export const BETA_COMPATIBLE_CLIENTS = [
+ {releaseId:BETA_RELEASE.releaseId,apkSourceSha:BETA_RELEASE.apkSourceSha,versionName:BETA_RELEASE.versionName},
+ {releaseId:'brick-phase1-20261106-01',apkSourceSha:'dda193f79598fec0d814883b13fb3c16f5021817',versionName:'1.0.0-beta.2'}
+] as const;
+export function findCompatibleBetaClient(releaseId:unknown,apkSourceSha:unknown){
+ return BETA_COMPATIBLE_CLIENTS.find(c=>c.releaseId===releaseId&&c.apkSourceSha===apkSourceSha);
+}
