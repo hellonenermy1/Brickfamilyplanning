@@ -39,7 +39,7 @@ export function parentBetaHtml(base:string){
  html=html.replace(healthPane,'<section id="logs" class="pane"><div class="sectionTitle"><h3>Phone & cloud observation logs</h3><button id="refreshLogs" type="button">Refresh</button></div><div class="notice">Available: signed beta health observations within the last seven Singapore calendar days. Full Android diagnostic logs are not yet uploaded; absence of observations does not mean the phone is healthy.</div><div id="phase2LogsStatus" class="small">Select a phone to load observations.</div><div id="phase2LogsList"></div></section>'+healthPane);
 // Beta-only protections: reject delayed data from a previously selected phone.
  const p2GuardSwap=(original:string,replacement:string)=>{
-  if(!html.includes(original)||html.split(original).length!==2)throw Error('phase2_device_race_hook_missing');
+  if(!html.includes(original)||html.split(original).length!==2)throw Error('phase2_device_race_hook_missing_'+original.slice(0,44));
   html=html.replace(original,replacement);
  };
  p2GuardSwap("ws.onmessage=e=>{try{wsMessage(JSON.parse(e.data))}catch{}}","ws.onmessage=e=>{if(currentDevice!==id)return;try{wsMessage(JSON.parse(e.data))}catch{}}");
