@@ -106,7 +106,7 @@ try{
  const ws=await parent('/parent/api/device/'+DEVICE_A+'/ws',{headers:{Upgrade:'websocket'}});assert.equal(ws.status,101);socket=ws.webSocket;socket.accept();
  let token;socket.addEventListener('message',e=>{const b=JSON.parse(e.data);if(b.type==='beta_challenge'){assert.equal(b.deviceId,DEVICE_A);token=b.token;}});
  const body=ready();let response=await signed('/beta/readiness',body);assert.equal(response.status,200);let proof=await response.json();assert.equal(proof.nonce,body.nonce);assert.equal(proof.environment,'beta');assert.equal(proof.backendSourceSha,'a'.repeat(40));
- const checks=Object.fromEntries(proof.checks.map(x=>[x.id,x.status]));assert.equal(checks.d1_roundtrip,'PASS');assert.equal(checks.object_store_roundtrip,'PASS');assert.equal(checks.do_roundtrip,'PASS');assert.equal(checks.history_readback,'PENDING');assert.equal(checks.portal_delivery,'PENDING');
+ const checks=Object.fromEntries(proof.checks.map(x=>[x.id,x.status]));console.log('Phase2 synthetic readiness check states '+JSON.stringify(checks));assert.equal(checks.d1_roundtrip,'PASS');assert.equal(checks.object_store_roundtrip,'PASS');assert.equal(checks.do_roundtrip,'PASS');assert.equal(checks.history_readback,'PENDING');assert.equal(checks.portal_delivery,'PENDING');
  assert.equal((await signed('/beta/readiness',body)).status,409);await until(()=>token,'socket challenge');
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/ack',{method:'POST',headers:{Origin:'https://evil.invalid'},body:JSON.stringify({token})})).status,403);
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/ack',{method:'POST',body:JSON.stringify({token:crypto.randomUUID()})})).status,409);
