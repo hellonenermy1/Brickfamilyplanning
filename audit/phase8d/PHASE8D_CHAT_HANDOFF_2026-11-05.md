@@ -1,5 +1,25 @@
 # Latest candidate checkpoint
 
+Candidate evidence head f3038fd1cd98d33a81bdf1ca8d82ad1a567a7c08; exact tested source b1d2ace93476d4151e5d252378cf22008302b488. Draft PR32 remains unmerged against612d4a8b16fb829f9528b06ab6448ab85ac483e6. Formal branch changes only this handoff.
+
+# Selected Group1 — signed capability transport and native end-to-end capture
+
+**Group1 IN PROGRESS / NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. Continue Group1 only.** Exact tested source **b1d2ace93476d4151e5d252378cf22008302b488**. pull_request 42189972010 completed/success (10 steps, all-success=True); pull_request 42189971812 completed/success (33 steps, all-success=True); push 42189963877 completed/success (33 steps, all-success=True). Decoded source/checkout logs inspected; PHASE8D_GROUP1_CAPTURE_BROKER_HOSTED_EVIDENCE.json records exact receipts. Existing Miniflare RPC-stub disposal warning remains.
+
+New staged capture-broker-wire/handler/client modules use WebCrypto HMAC with separate request/response purposes and distinct capture/runtime-writer/external-writer roles. Messages bind exact HTTPS URL, source/resource/authority epoch, key ID, operation/payload, nonce/time and authenticated response status/request digest. Closed operations provide no network initialize/reset/arbitrary SQL/restore/quarantine-clear API. Target scope and current authority epoch are checked. Explicitly initialized native replay records survive restart, refuse replay/loss/corruption/clock regression/capacity and expire authentication records only; writer tickets never expire. Body/reply limits and cooperative full-read/operation deadlines preserve generic uncertainty and P8D-093 semantics. Oversized async reply construction was corrected before qualification; the negative test remains.
+
+36 new actual native/client cases pass, including signed/unsigned/tampered/substituted messages, roles/scopes, epoch recreation, durable replay, body/response timeouts, target validation and existing runtime/external controller bridges. Lost/timed-out admission replies leave committed native ownership unresolved and start no work. Keys/URLs/callbacks are synthetic; real TLS/provider/fleet/latency/key custody are not inferred.
+
+The actual41+4/deviceDO encrypted source-destruction-and-restore fixture now uses the signed transport for capture acquire, held checks, paged data/device reads and release. Actual source allowlists, max5 D1 statements/call, ordinary retention refusal, D1/health preemption, exact bytes/state, credential exclusions, interruption/restart and fresh restore remain. Trusted fixture controls/bootstrap and a declared outer writer envelope remain. Native protocol success is not complete production writer coverage or operational backup acceptance. Source manifests match89 runtime and260 external Git blobs; broker modules are absent from the production import graph and add no live route/binding/migration/key/controller.
+
+**Before activation:** complete raw/external/credential/lifecycle/deferred/process-tree coverage, authenticated target/bootstrap installation, key custody/rotation and replay/rate/traffic qualification, unknown-outcome reconciliation and safe urgent authority/storage/transport-outage fallback. Then actual independent private card-free destination/separate backup key/context, schedule/readback/age/failure monitoring, least-privilege current PITR and explicitly isolated cloud restore/interruption/rollback/RTO/RPO remain. Existing failed login/denied-read barriers are not retried. No partial transport may enable capture.
+
+Only OPS-002/OPS-003 gain supporting proof. All525 canonical classifications,214/311 applicability mappings, criteria/statuses/owners/reviews/final dispositions stay unchanged. reviewedSourceSha=null; formal accepted-status0/214, supporting-evidence coverage16/214, overall implementation percent unknown and remaining product-test count=null. The user's referenced document tab has not been identified/reconciled; this work uses the current repository ledger/Group1 plan and must not be described as document-tab verification. Other groups unchanged; no live family export/schema/permission/credential mutation, APK/UI/phone change, R2/card/billing, merge or deployment. Draft PR32 remains unmerged.
+
+---
+
+# Latest candidate checkpoint
+
 Candidate evidence head 559a3e085c31950936648e26c6bbc3d78acc206a; exact tested source 5e48f065e16bdd79085519d13f864cbb40a70dc9. Draft PR32 remains unmerged against612d4a8b16fb829f9528b06ab6448ab85ac483e6. Formal branch changes only this handoff.
 
 # Selected Group1 — external operation hooks and P8D-093 uncertainty fix
