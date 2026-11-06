@@ -15,17 +15,17 @@ const key=await ecdsa();
 const loginToken='a'.repeat(43);const loginHash=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(loginToken))).toString('hex');let cookie='';
 const config=JSON.parse(fs.readFileSync('wrangler.beta.template.jsonc','utf8'));
 const mf=new Miniflare(convertV4MiniflareOptions({name:'brick-beta-test',modules:true,modulesRoot:dir,scriptPath:runtime,compatibilityDate:config.compatibility_date,
- bindings:{APP_ENV:'development',DEV_PARENT_AUTH_MODE:'d1-session-v1',BETA_STORAGE_MODE:'d1',DEV_PARENT_LOGIN_HASH:loginHash,BRICK_MAP_SOURCE:'https://map.test/fixture.pmtiles',CURRENT_APP_VERSION:'1.0.0-beta.1',BETA_CHANNEL:'beta',BETA_SOURCE_SHA:'a'.repeat(40)},
+ bindings:{APP_ENV:'development',DEV_PARENT_AUTH_MODE:'d1-session-v1',BETA_STORAGE_MODE:'d1',DEV_PARENT_LOGIN_HASH:loginHash,BRICK_MAP_SOURCE:'https://map.test/fixture.pmtiles',CURRENT_APP_VERSION:'1.0.0-beta.2',BETA_CHANNEL:'beta',BETA_SOURCE_SHA:'a'.repeat(40)},
  d1Databases:['DB','BETA_DB'],durableObjects:{BRICK_DEVICE:{className:'BrickDevice',useSQLite:true},BETA_SCHEDULER:{className:'BetaScheduler',useSQLite:true}},
  ratelimits:Object.fromEntries(config.ratelimits.map(x=>[x.name,{namespace_id:x.namespace_id,simple:{limit:10000,period:60}}])),
  outboundService(req){if(req.url==='https://www.onemap.gov.sg/web-assets/images/logo/om_logo.png')return new Response(new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0]),{status:200,headers:{'Content-Type':'image/png'}});if(req.url.startsWith('https://www.onemap.gov.sg/maps/tiles/'))return new Response(new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,0]),{status:200,headers:{'Content-Type':'image/png'}});if(req.url==='https://map.test/fixture.pmtiles'){const match=(req.headers.get('Range')||'').match(/bytes=(\d+)-(\d+)/);const data='map-fixture';const body=match?data.slice(Number(match[1]),Number(match[2])+1):data;return new Response(req.method==='HEAD'?null:body,{status:match?206:200,headers:{'Content-Length':String(req.method==='HEAD'?data.length:body.length),ETag:'fixture','Content-Range':match?'bytes '+match[1]+'-'+match[2]+'/'+data.length:''}});}return new Response('unconfigured',{status:503});}
 }));
 async function parent(suffix,init={}){return mf.dispatchFetch('http://localhost'+suffix,{...init,headers:{Cookie:cookie,Origin:'http://localhost',...init.headers}});}
 async function signed(suffix,body,k=key){const r=await k.signed('http://localhost/api/device/'+DEVICE_A+suffix,body);return mf.dispatchFetch(r.url,{method:r.method,headers:r.headers,body:await r.arrayBuffer()});}
-const releaseId='brick-beta-20261105-01',apkSourceSha='fa52547d89929e2032fc8ced4511b79e9bf8a23c';
+const releaseId='brick-phase1-20261106-01',apkSourceSha='dda193f79598fec0d814883b13fb3c16f5021817';
 const envelope=()=>({protocol:1,nonce:crypto.randomUUID(),releaseId,apkSourceSha,sentAtMs:Date.now()});
 const localChecks=[{id:'tracking',status:'PENDING',detail:'synthetic device',required:true}];
-const ready=()=>({...envelope(),localChecks,localCheckedAtMs:Date.now(),appVersion:'1.0.0-beta.1'});
+const ready=()=>({...envelope(),localChecks,localCheckedAtMs:Date.now(),appVersion:'1.0.0-beta.2'});
 const until=async(fn,label)=>{const end=Date.now()+15000;do{const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,40));}while(Date.now()<end);throw Error('Timeout '+label);};
 let socket;
 try{
@@ -81,7 +81,7 @@ try{
  proof=await (await signed('/beta/readiness',ready())).json();assert.equal(proof.checks.length,6);assert.ok(proof.checks.every(x=>x.status==='PASS'),JSON.stringify(proof.checks));
  assert.equal((await db.prepare('SELECT COUNT(*) n FROM dev_object_store').first()).n,0);
  console.log('PASS native signed D1 primary/chunked-object readback, D1 direct event persistence, real device DO/current state, normal location history and selected-device WebSocket ACK; no canned PASS');
- const run={runId:crypto.randomUUID(),startedAtMs:Date.now(),releaseId,apkSourceSha,bindingHash:'c'.repeat(64),version:'1.0.0-beta.1',model:'synthetic',android:'15',osBuild:'AOSP',escapeVerifiedByUser:true};
+ const run={runId:crypto.randomUUID(),startedAtMs:Date.now(),releaseId,apkSourceSha,bindingHash:'c'.repeat(64),version:'1.0.0-beta.2',model:'synthetic',android:'15',osBuild:'AOSP',escapeVerifiedByUser:true};
  const observation={wallMs:Date.now(),elapsedMs:2000,boot:1,health:{recordedAtMs:Date.now(),network:'wifi',locationSubscribed:true,bleAnchorProviderHealth:'HEALTHY'},sameBootGapMs:null,bootChanged:false};
  const observations=()=>({...envelope(),run,records:[{id:1,observation}],droppedRecords:0,readiness:null});
  let batch=observations();let ack=await signed('/beta/observations',batch);assert.equal(ack.status,200);assert.equal((await ack.json()).acceptedThroughId,1);
