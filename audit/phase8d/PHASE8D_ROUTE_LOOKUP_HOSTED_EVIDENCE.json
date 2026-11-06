@@ -1,0 +1,148 @@
+{
+  "format": "brick-phase8d-route-lookup-hosted-evidence-v1",
+  "sourceSha": "d19776522103a9a7a499c7e89649522a2d0922c2",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newCases": {
+    "routeLookup": 32,
+    "routeLive": 7,
+    "total": 39
+  },
+  "localInheritedSecurityGroups": [
+    {
+      "name": "test-phase8d-fast-live-revoke.mjs",
+      "scope": "Existing Node source/shim regression; not a new native/cloud/device test",
+      "passed": 5,
+      "output": [
+        "PASS P8D-050 actual outer production route permits active signed Fast Live",
+        "PASS P8D-050 actual outer route rechecks D1 after stale authorization",
+        "PASS P8D-050 persistent DO fence denies an otherwise active D1 route",
+        "PASS P8D-050 both latest RPC methods preserve archived state after revoke/reload",
+        "PASS P8D-050 DO outage returns retryable HTTP, no false preview"
+      ]
+    },
+    {
+      "name": "test-phase8d-do-telemetry-fences.mjs",
+      "scope": "Existing Node source/shim regression; not a new native/cloud/device test",
+      "passed": 8,
+      "output": [
+        "PASS P8D-054 revoked resident DO preserves all six archived state keys",
+        "PASS P8D-054 revoked reloaded DO preserves all six archived state keys",
+        "PASS P8D-054 persisted revoke observed after stale constructor memory",
+        "PASS P8D-055 concurrent sequence marker never regresses",
+        "PASS P8D-055 concurrent safety evaluation marker never regresses",
+        "PASS P8D-055 concurrent safety event marker never regresses",
+        "PASS P8D-056 delayed duplicate/legacy health cannot replace newer signed sequence",
+        "PASS P8D-056 legacy health accepted before sequence-aware telemetry, active newer update retained"
+      ]
+    },
+    {
+      "name": "test-phase8d-safety-route-races.mjs",
+      "scope": "Existing Node source/shim regression; not a new native/cloud/device test",
+      "passed": 12,
+      "output": [
+        "PASS P8D-057 fall revoked during Queue send returns401 without D1/DO event",
+        "PASS P8D-057 ordinary safety event revoked after final auth read returns401",
+        "PASS P8D-058 global event-ID collision never falsely ACKs another device: fall_detected",
+        "PASS P8D-058 global event-ID collision never falsely ACKs another device: sos_started",
+        "PASS P8D-059 malformed fall unpaired latitude rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall unpaired longitude rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall invalid latitude rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall invalid longitude rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall string coordinate rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall negative accuracy rejected before Queue/D1/DO",
+        "PASS P8D-059 malformed fall scalar accuracy rejected before Queue/D1/DO",
+        "PASS P8D-057/059 active valid0,0 fall persists and exact retry is duplicate"
+      ]
+    },
+    {
+      "name": "test-phase8d-safety-retry-contract.mjs",
+      "scope": "Existing Node source/shim regression; not a new native/cloud/device test",
+      "passed": 14,
+      "output": [
+        "PASS P8D-061 same UUID changed timestamp conflicts: fall_detected",
+        "PASS P8D-061 same UUID changed coordinates conflicts: fall_detected",
+        "PASS P8D-061 same UUID changed accuracy conflicts: fall_detected",
+        "PASS P8D-061 same UUID changed detail conflicts: fall_detected",
+        "PASS P8D-061 same UUID changed timestamp conflicts: sos_started",
+        "PASS P8D-061 same UUID changed coordinates conflicts: sos_started",
+        "PASS P8D-061 same UUID changed accuracy conflicts: sos_started",
+        "PASS P8D-061 same UUID changed detail conflicts: sos_started",
+        "PASS P8D-061 semantically identical detail with different object key order remains duplicate",
+        "PASS P8D-061 array order/type remain immutable: fall_detected",
+        "PASS P8D-061 array order/type remain immutable: sos_started",
+        "PASS P8D-062 older queued fall survives a higher delivered fall sequence",
+        "PASS P8D-062 reconstructed DO diagnostic high-water does not discard valid UUID",
+        "PASS P8D-062 stale timestamp still refused despite distinct valid UUID"
+      ]
+    },
+    {
+      "name": "test-phase8d-direct-device-rates.mjs",
+      "scope": "Existing Node source/shim regression; not a new native/cloud/device test",
+      "passed": 13,
+      "output": [
+        "PASS P8D-066 fall deny quota refuses before state side effects",
+        "PASS P8D-066 fall missing quota refuses before state side effects",
+        "PASS P8D-066 fall throw quota refuses before state side effects",
+        "PASS P8D-066 fall invalid quota refuses before state side effects",
+        "PASS P8D-066 screen-time deny quota refuses before state side effects",
+        "PASS P8D-066 screen-time missing quota refuses before state side effects",
+        "PASS P8D-066 screen-time throw quota refuses before state side effects",
+        "PASS P8D-066 screen-time invalid quota refuses before state side effects",
+        "PASS P8D-066 fall unsigned request denied before authenticated quota",
+        "PASS P8D-066 screen-time unsigned request denied before authenticated quota",
+        "PASS P8D-066 fall revocation during limiter await still cannot write",
+        "PASS P8D-066 screen-time revocation during limiter await still cannot write",
+        "PASS P8D-066 active handlers use distinct keys and preserve normal success"
+      ]
+    }
+  ],
+  "legacyGeometryRegression": "test-route-constraint.mjs passed locally against current bundle; inherited geometry assertions, not new cases",
+  "runs": [
+    {
+      "runId": 42150540064,
+      "jobId": 127672444363,
+      "event": "push",
+      "conclusion": "success",
+      "steps": 33,
+      "checkoutSha": "d19776522103a9a7a499c7e89649522a2d0922c2",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T02:28:45.8727246Z {\"suite\":\"route-lookup\",\"passed\":32,\"failed\":0,\"scope\":\"actual synthetic PMTiles/MVT and D1-first map adapter; deadlines stop waiting, do not preempt JS/remote effects; no live map/latency/provider/fleet qualification\"}",
+        "2026-11-06T02:28:48.5711593Z {\"suite\":\"route-live\",\"passed\":7,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1, signed beta route and durable DO state; no physical phone, browser draw, live provider or latency/fleet acceptance\"}",
+        "2026-11-06T02:30:21.1142942Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T02:30:27.4303378Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call"
+      ]
+    },
+    {
+      "runId": 42150547473,
+      "jobId": 127672467389,
+      "event": "pull_request",
+      "conclusion": "success",
+      "steps": 33,
+      "checkoutSha": "1d99f450cfb310d71b3a516bbf71480ec76ef3da",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T02:28:52.1174870Z {\"suite\":\"route-lookup\",\"passed\":32,\"failed\":0,\"scope\":\"actual synthetic PMTiles/MVT and D1-first map adapter; deadlines stop waiting, do not preempt JS/remote effects; no live map/latency/provider/fleet qualification\"}",
+        "2026-11-06T02:28:54.6717376Z {\"suite\":\"route-live\",\"passed\":7,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1, signed beta route and durable DO state; no physical phone, browser draw, live provider or latency/fleet acceptance\"}",
+        "2026-11-06T02:30:32.2520602Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T02:30:38.7497489Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call"
+      ]
+    },
+    {
+      "runId": 42150547498,
+      "jobId": 127672467851,
+      "event": "pull_request",
+      "conclusion": "success",
+      "steps": 10,
+      "checkoutSha": "1d99f450cfb310d71b3a516bbf71480ec76ef3da",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    }
+  ],
+  "scope": "Actual synthetic PMTiles/MVT/gzip, native D1/signed beta/DO state, and inherited Node source/shim security regressions only. Not live provider/phone/browser/fleet/latency/PITR/recovery/deployment acceptance. Existing Miniflare restore RPC disposal warning remains."
+}

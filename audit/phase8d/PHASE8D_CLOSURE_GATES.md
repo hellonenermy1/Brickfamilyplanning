@@ -1,3 +1,11 @@
+# Latest source correction — optional route-map isolation
+
+Source d19776522103a9a7a499c7e89649522a2d0922c2 qualifies P8D-087 with39 new cases and full hosted33/33 audit steps in both push/PR plus10/10 portal steps. Provider/cache failure preserves current inertial state without false route attribution; healthy enrichment and automatic retry remain available. Four canonical rows gain partial proof only. Source details and limits: PHASE8D_ROUTE_LOOKUP.md and PHASE8D_ROUTE_LOOKUP_HOSTED_EVIDENCE.json.
+
+All four closure groups below remain open. A250ms optional waiting budget is not live latency acceptance, a per-map cache cap is not total isolate/fleet capacity proof, and ETag consistency is not independent current-version attestation. Existing no-card/D1 architecture and reviewed phase boundaries remain. No merge/deployment or live schema/family-data action was performed.
+
+---
+
 # Current gate interpretation — preserve backend8D boundaries
 
 Exact tested source 3edebe04dd3fbd6dc3baabad42f376508621926d. P8D-086's criterion/review provenance bypass is source/CI-qualified (42 new cases) and a canonical closure-inventory tool is qualified (14 new cases); inherited61 ledger/39 release cases pass. All32 audit steps in push/PR and10 portal steps pass. This is not final8D acceptance.
