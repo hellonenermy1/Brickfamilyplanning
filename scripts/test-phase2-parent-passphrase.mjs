@@ -12,10 +12,20 @@ const hash=pbkdf2Sync(password,salt,240000,32,'sha256');
 const verifier='pbkdf2-sha256:240000:'+salt.toString('base64url')+':'+hash.toString('base64url');
 const sessions=new Map();
 const db={
- prepare(sql){return {bind(...args){return {
-  async first(){const x=sessions.get(args[0]);return x&&x.expires_at>args[1]&&!x.revoked_at?{ok:1}:null},
-  async run(){if(sql.startsWith('INSERT INTO dev_parent_sessions'))sessions.set(args[0],{expires_at:args[2],revoked_at:null});else if(sql.startsWith('UPDATE dev_parent_sessions')){const x=sessions.get(args[1]);if(x)x.revoked_at=args[0]}else throw Error('Unexpected SQL')}
- }}}}
+  prepare(sql){return {
+    async first(){if(sql.includes("SELECT verifier FROM dev_parent_credentials"))return null;throw Error("unexpected direct SELECT");},
+    bind(...args){return {
+      async first(){
+        if(!sql.includes("SELECT 1 AS ok"))throw Error("unexpected SELECT");
+        const x=sessions.get(args[0]);return x&&x.expires_at>args[1]&&!x.revoked_at?{ok:1}:null;
+      },
+      async run(){
+        if(sql.startsWith("INSERT INTO dev_parent_sessions"))sessions.set(args[0],{expires_at:args[2],revoked_at:null});
+        else if(sql.startsWith("UPDATE dev_parent_sessions")){const x=sessions.get(args[1]);if(x)x.revoked_at=args[0];}
+        else throw Error("unexpected SQL");
+      }
+    };}
+  };}
 };
 const env={DEV_PARENT_LOGIN_HASH:verifier,DB:db,PARENT_LOGIN_RATE:{async limit(){return{success:true}}}};
 const post=(secret,site=origin)=>new Request(origin+'/parent/login',{method:'POST',headers:{Origin:site,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({token:secret}).toString()});
