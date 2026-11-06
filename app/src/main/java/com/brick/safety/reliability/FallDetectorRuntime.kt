@@ -220,6 +220,10 @@ object FallDetectorRuntime : SensorEventListener {
         val accuracy = position.getFloat("anchorAccuracyM", Float.NaN)
 
         return JSONObject()
+            // The algorithm detects a sensor pattern, not a verified person falling.
+            // Parent-facing copy must use "Possible fall", never a fabricated probability.
+            .put("eventInterpretation", "possible_fall")
+            .put("probabilityCalibrated", false)
             .put("confidence", confidence.name.lowercase())
             .put("peakImpactG", String.format(java.util.Locale.US, "%.2f", peakImpactG).toDouble())
             .put("peakGyroRadS", String.format(java.util.Locale.US, "%.2f", peakGyro).toDouble())
