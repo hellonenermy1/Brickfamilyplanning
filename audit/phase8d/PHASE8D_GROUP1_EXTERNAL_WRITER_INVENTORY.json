@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "37873dff58df94c691993c64ee7c406374d544d3",
+  "basisCommitSha": "50c0fc8886985817b525e31e40d7594b1b6688ab",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "a94cb5657f9446290c103dd4441588c8735d0f32d2df16644ac05db06b0cfe0e",
   "summary": {
-    "selectedFiles": 263,
+    "selectedFiles": 264,
     "filesWithManagementSignals": 64,
     "explicitClassifications": 66,
     "betaMutatorsUnfenced": 4,
@@ -13,7 +13,7 @@
     "unresolvedRelativeImportCandidates": 1,
     "unresolvedDynamicImports": 126
   },
-  "sourceSetSha256": "1154152bde6c729f62dccd5517070a2dabb1fb1217f6ce5121029995de7ea286",
+  "sourceSetSha256": "3bdbddf7192ef45767d584b25ce1229cd965906538927bc82ab95cc069f60cae",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -1900,6 +1900,11 @@
     },
     {
       "from": "scripts/test-phase8d-cardfree-recovery.mjs",
+      "to": "scripts/phase8d-recovery-relations-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-cardfree-recovery.mjs",
       "to": "scripts/phase8d-signed-writer-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
@@ -2614,8 +2619,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "4df2f3103e12a0a9cfbdb25408ab4f0cb64125c2026e398441e901bd00efb996",
-      "gitBlobSha": "c87752c865907efa5a591522e5adb1e342aaeac8",
+      "sha256": "4c84c01bf0989a8740eeaae52d199b800e40cb315353f6b7283eb71b39f724e4",
+      "gitBlobSha": "b80f4f3333bbbd157a4a4fd62b313f0a00b2240f",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -4314,6 +4319,21 @@
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [],
       "imports": [],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/phase8d-recovery-relations-fixture.mjs",
+      "sha256": "141f25ad59d988871c00bf1c4f513f7902115d8e2060a371d1d5b33bbc845583",
+      "gitBlobSha": "710cf09a597af08bb43a2ca762c135e60de071bf",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict"
+      ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
@@ -6251,13 +6271,13 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "b5a0aac3d12ebe25a55a542d5e2f7ce6d6f98e772f49398c532f4f2e4af39e54",
-      "gitBlobSha": "1508f7f994c59dec29ac59a112c34c600990815b",
+      "sha256": "a98efc917eb7b747176d05d47177324090640f35d031766afb5387a6fd6a4553",
+      "gitBlobSha": "8c616a633cbb9661ff0751f4c0957c889bd6a1bc",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
         {
-          "line": 17,
+          "line": 18,
           "kind": "WRANGLER_LITERAL"
         }
       ],
@@ -6268,6 +6288,7 @@
         "./cardfree-capture-coordinator.mjs",
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
+        "./phase8d-recovery-relations-fixture.mjs",
         "./phase8d-signed-writer-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
