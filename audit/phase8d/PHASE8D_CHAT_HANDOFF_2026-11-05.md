@@ -1,3 +1,25 @@
+# Latest continuation — acceptance worksheet controls and phase-boundary correction
+
+# Acceptance worksheet and truthful closure inventory — current checkpoint
+
+**Phase8D IN PROGRESS / NOT PASS; P8D-002 P1 OPEN.** Exact tested source **3edebe04dd3fbd6dc3baabad42f376508621926d**. Push42146025758/job127657586178 and PR42146034298/job127657614822 completed-success, all32 steps each; portal42146034315/job127657614738 all10 success. Actual decoded logs/source checked, zero GitHub error markers. PR synthetic merge437f3e3199e98af053bb89448e15deabb338cefe into612d4a8b16fb829f9528b06ab6448ab85ac483e6. New42 worksheet and14 inventory cases pass, plus inherited61 ledger/39 release cases and all required capture22/PITR8/watchdog29/cleanup20/commute12/storage/protected41+4/D1+DO restore/security/ACK/retention/background/refinement/budget/beta/native/legacy suites. Existing Miniflare recovery RPC disposal warning remains.
+
+P8D-086 reproduced six false-positive synthetic acceptance records before correction: missing/unreviewed/failed criteria, reviewer same as implementer/tester and mismatched review source all incorrectly returned verified=true. New release guard requires exact C1–C4 terminal records with rationale and in-row hashed evidence references, correct optional unsupported/criterion deferral handling and no all-not-applicable acceptance. Review labels must differ from owner/test owner after normalization, pin exact source and use a valid calendar timestamp. Labels/hashes do not authenticate identity or prove evidence truth; C1–C4 semantic meanings/applicability are not redefined.
+
+The deterministic inventory preserves all525 IDs/classes/scopes and every original criterion/evidence/severity/blocker/remediation. Current draft has214 PHASE8D and311 CROSS_PHASE mappings,2100 NOT REVIEWED criterion slots,525 unresolved final dispositions and525 rows missing actual owner/review assignments. These are worksheet gaps, not525 broken features or2100 remaining tests. Remaining product-test count is null. Six IDs GOV-001/002/006/011/013 and COV-011 gain exact scoped SOURCE_CI proof and P8D-086 navigation only; owners, criteria, classifications, phase mappings, statuses, dispositions and reviewedSourceSha=null are preserved. Only10 rows currently have recorded evidence in this worksheet; much earlier proof remains reusable outside it.
+
+**Phase boundary correction:** browser/physical-phone/endurance work in8E/8F/9 is not automatically a prerequisite for backend8D. The311 cross-phase mappings still require genuine per-ID reviewed carry-forward or plan-backed deferral; they are not automatically waived. Current backend/security obligations and open P0/P1 cannot be deferred away. This restores the already documented phase boundary rather than changing the approved requirement contract.
+
+**Continue from PHASE8D_CLOSURE_GATES.md.** Four groups remain: operational safety-preemptive41+4/DO fence/transport/private independent destination and separate key/PITR/isolated cloud recovery/RTO/RPO; Atlas7-ID/BE-019 processing placement, learning/trust/decay/relearning/model history; exact current backend deployment/schema/config/rollback and appropriate source/live safety/capacity evidence; canonical525 final evidence/owner/independent dispositions with cross-phase boundaries honored. Do not repeat unchanged denied read credentials or use broad deploy secrets. Current live configuration is unverified, not proven absent.
+
+The earlier paged capture/encrypted-progress source and historical deployment artifact qualification remain valid within their explicit limits. Legacy scheduled38-table/same-D1 snapshots are still insufficient; historical source63075728/schema18 is not current provider attestation and staged19–22 indexes are not live applied. No runtime/Android/APK/UI/phone/family-data/cloud/permission change, merge/deployment, new billing/card/R2 dependency or guessed final PASS.
+
+Exact new receipts: PHASE8D_WORKSHEET_HOSTED_EVIDENCE.json; record shape/trust limits: PHASE8D_WORKSHEET_CONTROL.md and PHASE8D_RELEASE_ACCEPTANCE_CONTRACT.md; six canonical scope mappings: PHASE8D_WORKSHEET_REQUIREMENT_SCOPE.json. Current report summary: PHASE8D_CLOSURE_INVENTORY_SUMMARY.json. Generate the full per-ID inventory with node scripts/phase8d-closure-inventory.mjs 3edebe04dd3fbd6dc3baabad42f376508621926d; output binds the current actual ledger hash. Earlier checkpoint sections are historical evidence.
+
+Candidate evidence head **0e86e9d4e52b1287c9b024c2b6c3c37eca260607** on audit/phase8d-d1-qualification. This formal branch changes handoff documentation only; runtime and release-control code remain staged on the candidate branch, not merged/deployed. Exact-source hosted checks qualify the candidate within the documented scope.
+
+---
+
 # Latest continuation — paged recovery capture and finite closure gates
 
 # Paged coherent recovery capture — current checkpoint
