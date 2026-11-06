@@ -1,26 +1,35 @@
 // Explicit off-platform packaging/verification only. Never captures live stores.
 import fs from 'node:fs';
+import path from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {sealBackup,openBackup,MAX_PACKAGE_BYTES} from './cardfree-backup-package.mjs';
 
 function readBounded(file,limit) {
-  const fd=fs.openSync(file,'r');
+  if(typeof fs.constants.O_NOFOLLOW!=='number'||typeof fs.constants.O_NONBLOCK!=='number')throw Error('private read unsupported');
+  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
   try {
     const stat=fs.fstatSync(fd);
-    if (!stat.isFile() || stat.size > limit) throw Error('input file exceeds envelope');
+    if (!stat.isFile() || stat.size > limit || (stat.mode&0o077)!==0) throw Error('private input file required');
     const buffer=Buffer.alloc(stat.size);let offset=0;
     while (offset < buffer.length) { const n=fs.readSync(fd,buffer,offset,buffer.length-offset,null);if (!n) throw Error('incomplete input file');offset+=n; }
     if (fs.readSync(fd,Buffer.alloc(1),0,1,null)) throw Error('input file changed during read');
+    const after=fs.fstatSync(fd);
+    if(after.size!==stat.size||after.mtimeMs!==stat.mtimeMs||after.ctimeMs!==stat.ctimeMs)throw Error('input file changed during read');
     return buffer;
   } finally { fs.closeSync(fd); }
 }
 function publishExclusive(output,bytes) {
+  const parent=path.dirname(path.resolve(output)),directory=fs.lstatSync(parent);
+  if(!directory.isDirectory()||directory.isSymbolicLink()||(directory.mode&0o077)!==0)throw Error('private destination directory required');
   const temp=output+'.tmp-'+randomBytes(12).toString('hex');
   let fd;
   try {
     fd=fs.openSync(temp,'wx',0o600);fs.writeFileSync(fd,bytes);fs.fsyncSync(fd);fs.closeSync(fd);fd=undefined;
+    if(!readBounded(temp,MAX_PACKAGE_BYTES).equals(bytes))throw Error('temporary archive readback failed');
     // Atomic publication on this filesystem, refuses to replace an existing file.
     fs.linkSync(temp,output);
+    const directoryFd=fs.openSync(parent,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_DIRECTORY);
+    try { fs.fsyncSync(directoryFd); } finally { fs.closeSync(directoryFd); }
   } finally { if (fd !== undefined) fs.closeSync(fd);fs.rmSync(temp,{force:true}); }
 }
 try {
@@ -38,7 +47,10 @@ try {
     });
     const bytes=sealBackup({context:capture.context,body,doSnapshots},key);
     publishExclusive(output,bytes);
-    console.log(JSON.stringify({status:'SEALED',encryptedBytes:bytes.length,sha256:createDigest(bytes),context:capture.context}));
+    const stored=readBounded(output,MAX_PACKAGE_BYTES);
+    if(!stored.equals(bytes))throw Error('published archive readback failed');
+    openBackup(stored,key,capture.context);
+    console.log(JSON.stringify({status:'SEALED',publication:'PRIVATE_LOCAL_FSYNC_READBACK',encryptedBytes:bytes.length,sha256:createDigest(bytes),context:capture.context}));
   } else {
     const context=JSON.parse(readBounded(output,4096).toString('utf8'));
     const restored=openBackup(readBounded(input,MAX_PACKAGE_BYTES),key,context);

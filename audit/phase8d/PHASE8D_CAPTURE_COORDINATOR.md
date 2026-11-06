@@ -1,3 +1,9 @@
+# Current lifecycle control
+
+P8D-088 adds per-call deadlines to journal operations, retry pause and final validation, a240s total budget and cooperative AbortSignal cancellation. Release receives its own per-call budget even after cancellation/deadline; late acknowledgements cannot report success.35 new lifecycle cases qualify the source protocol, not a live writer fence. See PHASE8D_CAPTURE_LIFECYCLE.md. Earlier22 source/adapter cases remain inherited. Private CLI publication is separately strengthened by P8D-089/22 cases. Actual account access and the finite live prerequisites are recorded in PHASE8D_LIVE_RECOVERY_PREREQUISITES.md.
+
+---
+
 # Bounded coherent capture source and operator contract
 
 Exact source: c2ecb88c9d34a429512de28d9a6aeedd3063b650. P8D-085 is source/CI qualification only. P8D-002 remains P1 OPEN.

@@ -82,22 +82,43 @@ export function privateCaptureJournal(directory) {
         } }
     };
 }
-export async function captureProtectedBackup({ context: input, expectedFence: pin, runtime, source, authority, journal, key: base64, maxRetries = 2, readTimeoutMs = 15000, pause = ms => new Promise(r => setTimeout(r, ms)) }) {
+export async function captureProtectedBackup({ context: input, expectedFence: pin, runtime, source, authority, journal, key: base64, maxRetries = 2, readTimeoutMs = 15000, captureTimeoutMs = 240000, signal, pause = ms => new Promise(r => setTimeout(r, ms)) }) {
     validateBackupContext(input);
-    if (!runtime || typeof runtime.assertCaptureFence !== 'function' || typeof runtime.finalizeCardfreeCapture !== 'function' || typeof source?.readPage !== 'function' || typeof source?.deviceSnapshot !== 'function' || typeof authority?.release !== 'function' || typeof journal?.read !== 'function' || typeof journal?.create !== 'function' || !Number.isSafeInteger(maxRetries) || maxRetries < 0 || maxRetries > 2 || !Number.isSafeInteger(readTimeoutMs) || readTimeoutMs < 5 || readTimeoutMs > 30000)
+    if (!runtime || typeof runtime.assertCaptureFence !== 'function' || typeof runtime.finalizeCardfreeCapture !== 'function' || typeof source?.readPage !== 'function' || typeof source?.deviceSnapshot !== 'function' || typeof authority?.release !== 'function' || typeof journal?.read !== 'function' || typeof journal?.create !== 'function' || !Number.isSafeInteger(maxRetries) || maxRetries < 0 || maxRetries > 2 || !Number.isSafeInteger(readTimeoutMs) || readTimeoutMs < 5 || readTimeoutMs > 30000 || !Number.isSafeInteger(captureTimeoutMs) || captureTimeoutMs < 5 || captureTimeoutMs > 240000 || (signal !== undefined && !(signal instanceof AbortSignal)))
         throw Error('CAPTURE_CONFIGURATION_INVALID');
     const context = Object.freeze(canonicalContext(input)), expected = Object.freeze(canonicalFence(pin));
     if (expected.captureId !== context.backupId || expected.sourceSha !== context.sourceSha || expected.pausedAt !== context.capturedAt)
         throw Error('CAPTURE_CONTEXT_MISMATCH');
     const key = backupKey(base64);
+    const deadline = performance.now() + captureTimeoutMs;
     let output, failed = false, releaseFailed = false;
     const stats = { sourceReads: 0, journalHits: 0, retries: 0, pages: 0, rows: 0, devices: 0 };
-    async function bounded(work) { let timer; try {
-        return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => { timer = setTimeout(() => reject(Error('capture capability timeout')), readTimeoutMs); })]);
+    async function bounded(work, releasing = false) {
+        const started = performance.now(), remaining = deadline - started;
+        if (!releasing && (signal?.aborted || remaining <= 0)) throw Error('capture stopped');
+        const limit = releasing ? readTimeoutMs : Math.min(readTimeoutMs, remaining), callDeadline = started + limit;
+        let timer, onAbort;
+        try {
+            const stopped = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(Error('capture capability timeout')), limit);
+                if (!releasing && signal) {
+                    onAbort = () => reject(Error('capture cancelled'));
+                    signal.addEventListener('abort', onAbort, { once: true });
+                    if (signal.aborted) onAbort();
+                }
+            });
+            const value = await Promise.race([Promise.resolve().then(() => {
+                if (!releasing && (signal?.aborted || performance.now() >= deadline)) throw Error('capture stopped');
+                return work();
+            }), stopped]);
+            if (performance.now() >= callDeadline) throw Error('capture capability timeout');
+            if (!releasing && (signal?.aborted || performance.now() >= deadline)) throw Error('capture stopped');
+            return value;
+        } finally {
+            clearTimeout(timer);
+            if (onAbort) signal.removeEventListener('abort', onAbort);
+        }
     }
-    finally {
-        clearTimeout(timer);
-    } }
     const held = () => bounded(() => runtime.assertCaptureFence({ assertHeld: e => bounded(() => authority.assertHeld(e)) }, expected));
     const retry = async (work) => { for (let attempt = 0;; attempt++) {
         await held();
@@ -108,13 +129,13 @@ export async function captureProtectedBackup({ context: input, expectedFence: pi
             if (attempt === maxRetries)
                 throw Error('source retry exhausted');
             stats.retries++;
-            await pause(50 * 2 ** attempt);
+            await bounded(() => pause(50 * 2 ** attempt));
         }
     } };
     async function item(name, produce, validate) {
         await held();
         const aad = Buffer.from(JSON.stringify({ format: 'brick-capture-journal-v1', context, fence: expected, name }));
-        const existing = await journal.read(name);
+        const existing = await bounded(() => journal.read(name));
         if (existing !== null) {
             const value = journalOpen(existing, key, aad);
             validate(value);
@@ -126,8 +147,8 @@ export async function captureProtectedBackup({ context: input, expectedFence: pi
         validate(value);
         await held();
         const encrypted = journalSeal(value, key, aad);
-        await journal.create(name, encrypted);
-        const stored = await journal.read(name);
+        await bounded(() => journal.create(name, encrypted));
+        const stored = await bounded(() => journal.read(name));
         if (stored === null)
             throw Error('journal publication unavailable');
         const actual = journalOpen(stored, key, aad);
@@ -173,7 +194,7 @@ export async function captureProtectedBackup({ context: input, expectedFence: pi
             }
         }
         await held();
-        const d1 = await runtime.finalizeCardfreeCapture(snapshot);
+        const d1 = await bounded(() => runtime.finalizeCardfreeCapture(snapshot));
         await held();
         const devices = snapshot.primary.tables.devices;
         if (!Array.isArray(devices) || devices.length > 1000)
@@ -207,7 +228,8 @@ export async function captureProtectedBackup({ context: input, expectedFence: pi
     }
     finally {
         try {
-            const released = await bounded(() => authority.release(expected));
+            // Cancellation/deadline must never suppress the independent release attempt.
+            const released = await bounded(() => authority.release(expected), true);
             if (!released || released.released !== true || released.generation !== expected.generation)
                 releaseFailed = true;
         }
@@ -218,6 +240,7 @@ export async function captureProtectedBackup({ context: input, expectedFence: pi
     }
     if (releaseFailed)
         throw Error('CAPTURE_RELEASE_FAILED');
+    if (signal?.aborted || performance.now() >= deadline) failed = true;
     if (failed)
         throw Error('CAPTURE_FAILED');
     return output;

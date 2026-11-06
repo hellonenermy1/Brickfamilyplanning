@@ -1,3 +1,9 @@
+# Current local publication policy
+
+P8D-089 adds private input/parent checks, nonblocking/no-follow file reads, directory fsync and authenticated published readback.22 new actual-filesystem/CLI cases plus inherited13 protected-format cases pass locally; see PHASE8D_PRIVATE_ARCHIVE_PUBLICATION.md. Keep plaintext capture/context files0600 and capture/archive directories0700. These controls do not configure independent custody or a live backup. P8D-088 separately hardens capture cancellation and release; actual live prerequisites are explicit in PHASE8D_LIVE_RECOVERY_PREREQUISITES.md.
+
+---
+
 # Protected card-free backup — operator contract
 
 Status: off-platform source primitive and synthetic destruction/restore drill only. P8D-002 remains P1 OPEN. No live schedule, capture endpoint, cloud resource, secret or destination is configured by this change. Existing scheduled backup still covers 38 legacy tables in the same D1 store.
@@ -37,7 +43,7 @@ node scripts/phase8d-protected-backup.mjs seal /private/capture/capture.json /pr
 node scripts/phase8d-protected-backup.mjs verify /private/archives/backup.brickbackup /private/receipts/trusted-context.json
 ```
 
-`trusted-context.json` is the independently selected context object. Seal creates a mode-0600 temporary file, fsyncs it and atomically hard-links to a new destination on the same filesystem, refusing overwrite. An interrupted operation before publication may leave a private temporary file; filesystem-wide crash durability/directory fsync is not qualified. Verify decrypts in memory and emits context/device count only; it does not extract plaintext or modify any database. Failures redact paths, data and exception text. Environment inspection, process memory, swap and filesystem security remain operator responsibilities; buffer zeroing does not guarantee elimination of JavaScript/OS copies.
+`trusted-context.json` is the independently selected context object. Seal requires private regular no-follow inputs and a private nonsymlink destination directory. It creates a mode-0600 exclusive temporary file, fsyncs/readbacks it, hard-links without overwrite, fsyncs the destination directory, compares published bytes and authenticates them again before reporting PRIVATE_LOCAL_FSYNC_READBACK. Source inputs, encrypted archives and trusted-context files must have no group/other permission bits. FIFO/nonregular/symlink inputs refuse. Linux local semantics are tested; actual hardware power-loss durability and independent storage are not qualified. A post-link failure may leave private ciphertext and returns failure without deleting an existing artifact. Verify decrypts in memory and emits context/device count only; it does not extract plaintext or modify any database. Failures redact paths, data and exception text. Environment inspection, process memory, swap and filesystem security remain operator responsibilities; buffer zeroing does not guarantee elimination of JavaScript/OS copies.
 
 ## Required to close operational protection
 

@@ -45,6 +45,7 @@ jobs:
         run: |
           node scripts/test-phase8d-capture-baseline.mjs
           node scripts/test-phase8d-capture-coordinator.mjs
+          node scripts/test-phase8d-capture-lifecycle.mjs
           node scripts/test-phase8d-cardfree-pitr.mjs
       - name: Watchdog bounded fleet RPC delivery retry and state races
         run: |
@@ -57,7 +58,9 @@ jobs:
       - name: D1 object read integrity and atomic conditional-write regressions
         run: node scripts/test-phase8d-d1-object-integrity.mjs
       - name: Protected off-platform archive authentication identity and CLI
-        run: node scripts/test-phase8d-protected-backup.mjs
+        run: |
+          node scripts/test-phase8d-protected-backup.mjs
+          node scripts/test-phase8d-private-archive-files.mjs
       - name: Destroy source and recover both D1 stores and beta DO from encrypted package
         run: node scripts/test-phase8d-cardfree-recovery.mjs
       - name: Signed D1 history ACK partial-batch retry and exact revoke race

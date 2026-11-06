@@ -37,7 +37,7 @@ test('CLI uses private exclusive output and metadata-only verification with reda
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'brick-package-'));
  try {
   const d1=path.join(dir,'d1.json'),snapshot=path.join(dir,'do.json'),spec=path.join(dir,'capture.json'),expected=path.join(dir,'expected.json'),output=path.join(dir,'sealed.brickbackup');
-  fs.writeFileSync(d1,body);fs.writeFileSync(snapshot,serialized);fs.writeFileSync(spec,JSON.stringify({context,d1Path:d1,devices:[{id:device.id,path:snapshot}]}));fs.writeFileSync(expected,JSON.stringify(context));
+  fs.writeFileSync(d1,body,{mode:0o600});fs.writeFileSync(snapshot,serialized,{mode:0o600});fs.writeFileSync(spec,JSON.stringify({context,d1Path:d1,devices:[{id:device.id,path:snapshot}]}),{mode:0o600});fs.writeFileSync(expected,JSON.stringify(context),{mode:0o600});
   const run=(action,a,b,k=key)=>spawnSync(process.execPath,['scripts/phase8d-protected-backup.mjs',action,a,b],{encoding:'utf8',env:{...process.env,BRICK_BACKUP_ENCRYPTION_KEY:k}});
   const seal=run('seal',spec,output);assert.equal(seal.status,0,seal.stderr);assert.equal(fs.statSync(output).mode&0o777,0o600);const before=fs.readFileSync(output);
   assert.equal(run('seal',spec,output).status,1);assert.deepEqual(fs.readFileSync(output),before);
