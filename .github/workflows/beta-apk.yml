@@ -2,7 +2,7 @@ name: Brick Beta APK — Build, Sign and Verify
 
 on:
   push:
-    branches: [beta/apk]
+    branches: [beta/apk, fix/v1-p8d-phase1-android-20261106]
     paths:
       - '.github/workflows/beta-apk.yml'
       - 'beta/**'
