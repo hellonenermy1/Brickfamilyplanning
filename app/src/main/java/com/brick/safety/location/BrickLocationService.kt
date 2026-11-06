@@ -114,6 +114,7 @@ class BrickLocationService : Service() {
     @Volatile private var lastTrackingDiagnosticElapsed = 0L
     @Volatile private var lastUploadDiagnosticElapsed = 0L
     @Volatile private var lastFastLiveDiagnosticElapsed = 0L
+    @Volatile private var lastRegistrationAttemptElapsed = 0L
     @Volatile private var shuttingDown = false
 
     // An in-flight FLP/provider/network callback must not reopen stores after deprovision begins.
@@ -213,6 +214,7 @@ class BrickLocationService : Service() {
             return
         }
         if (!registrationInProgress.compareAndSet(false, true)) return
+        lastRegistrationAttemptElapsed = SystemClock.elapsedRealtime()
         // Play services replaces a previous registration for the same LocationCallback. Removing
         // it *before* the new request succeeds creates a location blackout if the update fails.
         val previousSubscribed = locationSubscribed
@@ -404,6 +406,7 @@ class BrickLocationService : Service() {
 
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
+            try {
             if (mustQuiesceAsync()) return@scheduleWithFixedDelay
             val now = SystemClock.elapsedRealtime()
             if (lastAtlasPulseElapsed <= 0L || now < lastAtlasPulseElapsed || now - lastAtlasPulseElapsed >= ATLAS_PULSE_MS) {
@@ -439,6 +442,11 @@ class BrickLocationService : Service() {
                 (lastLocationElapsed > 0L && now - lastLocationElapsed < trigger)) return@scheduleWithFixedDelay
             lastFallbackElapsed = now
             recordSample(sample)
+            } catch (e: Exception) {
+                // An uncaught exception terminates a repeating ScheduledExecutorService task
+                // permanently. Keep the fallback monitor alive after a recoverable provider error.
+                noteTrackingDiagnostic("fallback_tick_failed", e.javaClass.simpleName)
+            }
         }, 2, 1, TimeUnit.SECONDS)
     }
 
@@ -675,6 +683,7 @@ class BrickLocationService : Service() {
 
     private fun startSupervisor() {
         supervisor.scheduleWithFixedDelay({
+            try {
             if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
                 stopSelf()
                 return@scheduleWithFixedDelay
@@ -690,10 +699,16 @@ class BrickLocationService : Service() {
             val desired = desiredIntervalMs()
             val leftSlowStationary = lastObservedActivityMode == ActivityMode.STATIONARY && activity != ActivityMode.STATIONARY
             lastObservedActivityMode = activity
-            if (leftSlowStationary && locationEnabled) {
+            if (!locationEnabled) {
+                noteTrackingDiagnostic("system_location_disabled", "LocationManager.isLocationEnabled=false")
+            } else if (leftSlowStationary) {
                 startTracking(desired)
                 beginReacquisition(now, forceSubscriptionRepair = true)
-            } else if (locationSubscribed && desired != trackingIntervalMs && locationEnabled) {
+            } else if (locationSubscribed && desired != trackingIntervalMs) {
+                startTracking(desired)
+            } else if (!locationSubscribed && !registrationInProgress.get() &&
+                (lastRegistrationAttemptElapsed <= 0L || now - lastRegistrationAttemptElapsed >= 15_000L)) {
+                // A failed FLP registration is retried even when the last accepted fix is recent.
                 startTracking(desired)
             }
 
@@ -713,6 +728,9 @@ class BrickLocationService : Service() {
                 kickUploadPump()
             }
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
+            } catch (e: Exception) {
+                noteTrackingDiagnostic("supervisor_tick_failed", e.javaClass.simpleName)
+            }
         }, 5, 5, TimeUnit.SECONDS)
     }
 
