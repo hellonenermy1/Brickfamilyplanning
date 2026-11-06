@@ -2,7 +2,7 @@ name: Brick Beta APK — Real AOSP Device Owner Release
 
 on:
   push:
-    branches: [beta/apk, fix/v1-p8d-phase1-android-20261106]
+    branches: [beta/apk, fix/v1-p8d-phase1-android-20261106, fix/v1-fall-sensor-off-20261106]
   workflow_dispatch:
 
 env:

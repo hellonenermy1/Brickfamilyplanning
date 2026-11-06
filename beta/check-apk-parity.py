@@ -19,4 +19,10 @@ assert 'buildConfigField("boolean", "BRICK_BETA", "false")' in gradle
 assert 'buildConfigField("long", "BRICK_BETA_EXPIRY_EPOCH_MS", "0L")' in gradle
 assert json.loads(Path('beta/contract-v1.json').read_text())['releaseId'] in gradle
 assert not subprocess.check_output(['git','diff',base,'--','src','schema','public']).strip(),'Phase1 must not modify backend/runtime assets'
+fall=Path('app/src/main/java/com/brick/safety/reliability/FallDetectorRuntime.kt').read_text()
+assert 'AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED = false' in fall,'Human fall auto-detection must remain disabled'
+assert 'if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED) {' in fall,'No listener registration when disabled'
+assert 'if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED || !started) return' in fall,'Sensor callbacks must be blocked'
+assert 'if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED || !started) return resetCandidate()' in fall,'Pending candidates must not dispatch'
+print('PASS Phase2 urgent field safety: automatic fall inference disabled at startup, callback and dispatch while preserving SOS')
 print('PASS baseline production files, permissions and components retained; same package, private diagnostics, expiry disabled; backend unchanged. Functional/device checks remain separate.')

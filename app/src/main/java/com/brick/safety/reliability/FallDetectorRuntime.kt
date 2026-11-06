@@ -23,6 +23,10 @@ import kotlin.math.sqrt
 object FallDetectorRuntime : SensorEventListener {
     enum class Confidence { LOW, MEDIUM, HIGH }
 
+    // Field safety gate: repeated false alarms on ordinary phone placement.
+    // Human-fall detection is disabled until a new, independently validated detector exists.
+    // Do not reuse these events for the separate optional phone-drop feature.
+    private const val AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED = false
     private const val G = 9.80665f
     private const val IMPACT_LOW_G = 2.7f
     private const val IMPACT_MEDIUM_G = 3.2f
@@ -47,6 +51,12 @@ object FallDetectorRuntime : SensorEventListener {
 
     @Synchronized
     fun start(context: Context) {
+        if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED) {
+            // Fail closed on upgrade, service restart, boot and role transitions.
+            // Do not delete historical events or SOS outbox records.
+            if (started) stop()
+            return
+        }
         val application = context.applicationContext
         if (started || DeepOffManager.isActive(application) || DeviceRoleStore.role(application) != DeviceRoleStore.Role.CHILD) return
         refreshHighAlert(application)
@@ -114,7 +124,7 @@ object FallDetectorRuntime : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        if (!started) return
+        if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED || !started) return
         val now = SystemClock.elapsedRealtime()
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
@@ -142,7 +152,7 @@ object FallDetectorRuntime : SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     private fun evaluateCandidate() {
-        if (!started) return resetCandidate()
+        if (!AUTOMATIC_HUMAN_FALL_DETECTION_ENABLED || !started) return resetCandidate()
         val context = app ?: return resetCandidate()
         if (candidateAtElapsed == 0L) return
         val postMotion = if (postMotionSamples > 0) postMotionSum / postMotionSamples else 1f
