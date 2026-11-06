@@ -3,7 +3,7 @@ name: Brick Beta APK — Emulator Durability and Readiness
 
 on:
   push:
-    branches: [beta/apk, fix/v1-p8d-phase1-android-20261106]
+    branches: [beta/apk, fix/v1-p8d-phase1-android-20261106, fix/v1-fall-sensor-off-20261106]
     paths:
       - '.github/workflows/beta-apk-emulator.yml'
       - 'app/src/main/**'

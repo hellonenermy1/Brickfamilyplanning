@@ -1,6 +1,6 @@
 # Brick beta — Phase 1 APK
 
-Base: Phase8D71f5460fa6dfb47e276121e6c69db98cdae4485a. Branch fix/v1-p8d-phase1-android-20261106. Shared release brick-phase1-20261106-01; APK1.0.0-beta.2/code12, same com.brick.safety and existing signing identity. No automatic retirement/expiry. Beta identity is separate from old BRICK_BETA expiry flag (false, expiry0).
+Base: Phase8D71f5460fa6dfb47e276121e6c69db98cdae4485a. Branch fix/v1-fall-sensor-off-20261106. Shared release brick-phase1-20261106-02; APK1.0.0-beta.3/code13, same com.brick.safety and existing signing identity. No automatic retirement/expiry. Beta identity is separate from old BRICK_BETA expiry flag (false, expiry0).
 
 Feature preservation: all baseline production files/permissions/components retained; existing services, child UI, sensors/evidence/fusion/Atlas/witness, journal/outboxes, signed networking, roles/pairing, commands/schedules, maintenance and recovery remain. beta/check-apk-parity.py verifies source/component inventory and no backend changes; functional results require actual tests. This is not Phase8D acceptance or OPPO qualification.
 
@@ -15,3 +15,6 @@ Self-destruct: separate explicit local confirmation; automatic sequence uses exi
 Phase2 must branch beta/backend-portal from the recorded SAME base, import this exact shared contract/release identity, implement per-device signed strict nonce/release/environment bound readiness and observations, provision isolated beta infrastructure, deploy/protect the portal and expose matching APK/version provenance. No weakened production gate or fabricated final acceptance. Do not start72h until both phases and actual phone smoke/escape tests pass.
 
 Build/test status: first13b38a8 emulator suite passed; signed build still running at that checkpoint. Final source adds purge-state recheck, AES key lookup/create serialization, private-activity/recorder teardown tests, actual signer readiness and a Device Owner emulator workflow. Final exact-commit CI/results must be recorded before handoff. Signed build reuses existing private GitHub signing secrets and pinned certificate; never generates a replacement signing key or labels an unsigned/debug APK as the release. CI also runs existing unit tests, lint/R8/package inspection and emulator durability suites plus new beta tests. Emulator success does not prove OPPO-specific behaviour or silent uninstall. Signed artifact includes SHA/cert/provenance; installation may update an existing same-package app, so check existing version and pairing before installing. Accepted APK artifacts and Phase8D branch remain preserved.
+
+
+2026-11-06 safety update: automatic **human-fall detection is disabled** due to severe real-OPPO false positives. Manual SOS, records, tracking, app data and Device Owner remain. The separately planned phone put-down/drop feature is not enabled in this build. Previous queued fall alerts may still exist as historical evidence.
