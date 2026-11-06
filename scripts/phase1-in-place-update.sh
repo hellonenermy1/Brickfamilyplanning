@@ -22,10 +22,10 @@ trap 'rm -rf "$tmp"' EXIT
 normalize() { tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]'; }
 cert() {
   apksigner verify --print-certs "$1" |
-    awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2; exit}' | normalize
+    awk -F': ' '/Signer #1 certificate SHA-256 digest/ && !seen {print $2; seen=1}' | normalize
 }
 identity() {
-  aapt2 dump badging "$1" | grep -m 1 '^package:'
+  aapt2 dump badging "$1" | awk '/^package:/ && !seen {print; seen=1}'
 }
 parse_code() { sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p"; }
 EXPECTED="bfdeb49714fea714536c47f8126deed700f00b2dd113c5c0d452992d7ed5f790"
@@ -55,7 +55,11 @@ OLD_CERT="$(cert "$tmp/installed.apk")"
 
 OWNERS_BEFORE="$(adb -s "$SERIAL" shell dpm list-owners | tr -d '\r')"
 if ! grep -F 'com.brick.safety/.managed.BrickDeviceAdminReceiver' <<< "$OWNERS_BEFORE" >/dev/null; then
-  echo "WARNING: Brick Device Owner not confirmed on this phone. No change made automatically." >&2
+  if [[ "$MODE" == "--apply" ]]; then
+    echo "STOP: Brick Device Owner is not confirmed on this phone. Refusing update until verified." >&2
+    exit 1
+  fi
+  echo "WARNING: Brick Device Owner is not confirmed. Preview only; verify phone setup first." >&2
 fi
 echo "SAFE UPDATE PREFLIGHT: package=com.brick.safety oldVersion=$OLD_CODE newVersion=$NEW_CODE"
 echo "Matching pinned certificate: $NEW_CERT"
