@@ -17,7 +17,7 @@ The obsolete beta setup-beta-cloud.mjs and install-beta-map.mjs already begin wi
 
 ## Reproducible source guard
 
-phase8d-external-writer-inventory.mjs reads selected tracked scripts (including shell/Python/PowerShell/batch), workflow YAML and package.json as bytes. It never imports or executes audited tools, reads credentials or makes cloud requests. Every selected file receives SHA-256 and Git blob identity. Literal management/token/Wrangler/remote markers require an explicit source-policy classification; missing classified files or invalid classifications refuse. Files without a literal marker remain **not proven safe** and are still hashed.
+phase8d-external-writer-inventory.mjs reads selected tracked scripts/tools (including shell/Python/PowerShell/batch), workflow YAML and package.json as bytes. It never imports or executes audited tools, reads credentials or makes cloud requests. Every selected file receives SHA-256 and Git blob identity. Literal management/token/Wrangler/remote markers require an explicit source-policy classification; missing classified files or invalid classifications refuse. Files without a literal marker remain **not proven safe** and are still hashed.
 
 Static JS imports, literal relative file URLs, script text references and known npm-run targets are retained as conservative reachability candidates. References embedded in tests/comments and conditional workflow jobs can overapproximate execution. Dynamic imports, out-of-index dependencies, generated files, npm/shell indirection and subprocess descendants remain visible gaps. POST is not automatically mutation: the metrics GraphQL POST is separately classified. Test filenames do not establish harmless effects.
 

@@ -1,7 +1,7 @@
 // Read source only. Never imports/executes audited tools or calls a cloud API.
 import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';import {pathToFileURL} from 'node:url';import ts from 'typescript';
 const hash=(algorithm,bytes)=>createHash(algorithm).update(bytes).digest('hex');
-export const selectedPath=p=>typeof p==='string'&&!p.includes('\\')&&!p.split('/').some(s=>s==='..'||s==='')&&(p==='package.json'||/^scripts\/.*\.(?:mjs|cjs|js|ts|sh|py|ps1|bat)$/.test(p)||/^\.github\/workflows\/.*\.ya?ml$/.test(p));
+export const selectedPath=p=>typeof p==='string'&&!p.includes('\\')&&!p.split('/').some(s=>s==='..'||s==='')&&(p==='package.json'||/^(?:scripts|tools)\/.*\.(?:mjs|cjs|js|ts|sh|py|ps1|bat)$/.test(p)||/^\.github\/workflows\/.*\.ya?ml$/.test(p));
 const patterns=[['MANAGEMENT_API_LITERAL',/api\.cloudflare\.com/],['CLOUDFLARE_TOKEN_REFERENCE',/CLOUDFLARE_API_TOKEN/],['WRANGLER_LITERAL',/\bwrangler\b/],['D1_MANAGEMENT_QUERY_LITERAL',/\/d1\/database\//],['REMOTE_FLAG_LITERAL',/--remote\b/]];
 export function externalWriterInventory(files,policy,basisCommitSha){
  if(!/^[a-f0-9]{40}$/.test(basisCommitSha))throw Error('Exact basis SHA required');
@@ -25,7 +25,7 @@ export function externalWriterInventory(files,policy,basisCommitSha){
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
  const [basis,...extra]=process.argv.slice(2);if(extra.length>2||extra.length===1||extra.length===2&&extra[0]!=='--source-index')throw Error('Usage: script BASIS_SHA [--source-index LOCAL_PATH_LIST_JSON]');
- const names=extra.length?JSON.parse(fs.readFileSync(extra[1],'utf8')):execFileSync('git',['ls-files','-z','--','scripts','.github/workflows','package.json'],{encoding:'utf8'}).split('\0').filter(selectedPath);
+ const names=extra.length?JSON.parse(fs.readFileSync(extra[1],'utf8')):execFileSync('git',['ls-files','-z','--','scripts','tools','.github/workflows','package.json'],{encoding:'utf8'}).split('\0').filter(selectedPath);
  if(!Array.isArray(names)||names.some(p=>typeof p!=='string'||!selectedPath(p)||p.split('/').includes('..'))||new Set(names).size!==names.length)throw Error('Invalid source path index');
  const policy=JSON.parse(fs.readFileSync('audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json','utf8'));
  console.log(JSON.stringify(externalWriterInventory(new Map(names.map(p=>[p,fs.readFileSync(p)])),policy,basis),null,2));

@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "f5e1de4d0a384677a029b559b08ec6381afdde8ad9acb76e6778d446c4bca815",
   "summary": {
-    "selectedFiles": 256,
+    "selectedFiles": 257,
     "filesWithManagementSignals": 63,
     "explicitClassifications": 63,
     "betaMutatorsUnfenced": 4,
@@ -13,7 +13,7 @@
     "unresolvedRelativeImportCandidates": 1,
     "unresolvedDynamicImports": 124
   },
-  "sourceSetSha256": "3f9a7f291bc71e1d3621587b8a26f1f5635c387920945bee97b27c74046824dc",
+  "sourceSetSha256": "96cb292a447a6ae4edcac5226e8be44e60c29685d7d506d7e6bc9ff3f1ae230c",
   "reachability": [
     {
       "entry": ".github/workflows/beta-backend.yml",
@@ -3965,8 +3965,8 @@
     },
     {
       "path": "scripts/phase8d-external-writer-inventory.mjs",
-      "sha256": "ad3673b47331fdf9f1c8efe2e3eacd8a5aa1dd5e1e0fdc68d8792bb9b7930628",
-      "gitBlobSha": "ff722868094fc47c268773629f09349c635bd84d",
+      "sha256": "b1280585c35517503242b53b5ccbc6bcdc306a7de2eb917eed0621ea1f5ae9df",
+      "gitBlobSha": "386142c465fc553ebee69e12ea8a9ee8a89bf063",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion.",
       "signals": [
@@ -6304,8 +6304,8 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer-inventory.mjs",
-      "sha256": "67368e9f553770c06833a7a2ca0731442cccd12d61e7eef950e3c64241f2ea5c",
-      "gitBlobSha": "c337b9ded726e336b3316c7fdd06e2d3f8c23e29",
+      "sha256": "aaf27ac45f9eb677921d381f8fa7f1a371c35bc2118fb8815d9e58bfc5af666e",
+      "gitBlobSha": "19538383e2a3264159d66a795e4e116bb56a89b6",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic source-map tests contain management strings; no audited tool imported or cloud request performed by these tests.",
       "signals": [
@@ -7732,6 +7732,17 @@
         "node:path",
         "node:url"
       ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "tools/audit_brick_persistence.py",
+      "sha256": "553c14e1f55aca03f2cfbc2dd3946a41bb64120dcc2b699f7ab61639d5c6005e",
+      "gitBlobSha": "89f2fd7b36d7ec85be82c79db03e3115ddbec2f3",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
     }
