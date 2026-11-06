@@ -1,3 +1,9 @@
+# Current selected work: Group1 only
+
+User selected one group at a time. Continue operational backup/recovery Group1 until actually closed or explicitly reselected. Group1 remains NOT READY/P8D-002 P1 OPEN. New durable admission26/native recovery and source inventory are staged proof, not installed writer coverage. Push audit33/33 completed-success and portal10/10 passed; PR audit33 successful steps still has in-progress/null overall status at last observation. PHASE8D_GROUP1_READINESS.json and PHASE8D_GROUP1_CAPTURE_PROTOCOL.md give the finite remaining ownership/outage/transport/custody/schedule/PITR/cloud-drill gates. No source/helper/native success implies Group1 completion. Other groups below remain open and unchanged; no phase waiver, merge or deployment.
+
+---
+
 # Latest source qualification — configuration preflight and journal files
 
 Exact sourceecad1e2ac41f372f16270a62fde9621e79ab1bf7 has72 new hosted-passing cases:56 actual config/early-setup preflight and16 actual private journal-file/coordinator refusal cases. Push/PR audit33/33 and portal10/10 pass with decoded exact-source logs inspected. P8D-091/092 are source/CI corrections only. Current template/runtime/APK/UI are unchanged. See PHASE8D_CONFIG_JOURNAL_HOSTED_EVIDENCE.json and the current checkpoint for limits. OPS-011/SEC-014/OPS-002 get partial proof only; all525 final criteria/owners/reviews/dispositions remain open. Do not repeat these corrected defects or failed Cloudflare login; advance actual fence/transport/independent recovery, Atlas/model history and deployed/review evidence. The four groups and reviewed later-phase boundaries below remain authoritative. No merge/deploy or live mutation.
