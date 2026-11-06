@@ -12,7 +12,7 @@ const sessions = new Map();
 const env = {
   DEV_PARENT_LOGIN_HASH: hash,
   PARENT_LOGIN_RATE: { async limit() { return { success: true }; } },
-  DB: { prepare(sql) {return {bind(...params) {return {
+  DB: { prepare(sql) {return {async first(){if(sql.includes("SELECT verifier FROM dev_parent_credentials"))return null;throw Error("unexpected direct SELECT");},bind(...params) {return {
     async first() {if (!sql.includes("SELECT 1 AS ok")) throw Error("unexpected SELECT"); const s=sessions.get(params[0]);return s && !s.revoked_at && s.expires_at >= params[1]?{ok:1}:null;},
     async run() {
       if (sql.startsWith("INSERT INTO dev_parent_sessions"))sessions.set(params[0],{expires_at:params[2],revoked_at:null});
