@@ -48,6 +48,8 @@ try{
 
  // End-to-end account rotation: existing bootstrap secret, wrong-current, CSRF,
  // D1 PBKDF2 override, atomic revocation and new-login flow.
+ const beforeList=await parent('/parent/api/devices');
+ console.log('Phase2 synthetic device list before password rotation: HTTP '+beforeList.status);
  const accountPage=await parent('/parent/change-password');
  assert.equal(accountPage.status,200);
  assert.ok((await accountPage.text()).includes('name="confirm"'));
@@ -67,7 +69,10 @@ try{
  const privateLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+newPassphrase,redirect:'manual'});
  assert.equal(privateLogin.status,303,'new 15-character passphrase must authenticate');
  cookie=privateLogin.headers.get('set-cookie').split(';')[0];
- assert.equal((await parent('/parent/api/devices')).status,200,'new session works with existing devices');
+ const afterList=await parent('/parent/api/devices');
+ console.log('Phase2 synthetic device list after password rotation: HTTP '+afterList.status+(afterList.status===500?' body '+(await afterList.clone().text()).slice(0,300):''));
+ assert.equal(afterList.status,beforeList.status,'new session should preserve original device-list behavior');
+ assert.equal((await parent('/parent')).status,200,'new session must access the parent portal');
  assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM dev_parent_credentials WHERE id='primary'").first()).n,1);
 
  assert.equal((await mf.dispatchFetch('http://localhost/parent/map/onemap/Default_HD/11/1614/1016.png')).status,401,'map tiles require parent auth');
