@@ -124,7 +124,7 @@
   ],
   "vars": {
     "APP_ENV": "development",
-    "CURRENT_APP_VERSION": "1.0.0-beta.1",
+    "CURRENT_APP_VERSION": "1.0.0-beta.2",
     "BETA_CHANNEL": "beta",
     "BETA_SOURCE_SHA": "__BETA_SOURCE_SHA__",
     "DEV_PARENT_AUTH_MODE": "d1-session-v1",
