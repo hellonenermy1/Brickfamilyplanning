@@ -820,6 +820,7 @@ class BrickLocationService : Service() {
         val stats = runCatching { journal.stats() }.getOrNull()
         val activity = activityEngine.snapshot()
         val gnss = gnssMonitor.snapshot()
+        val phoneHeading = motionEngine.snapshot()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val batteryPct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val command = ParentLocationStateStore.read(this)
@@ -854,6 +855,9 @@ class BrickLocationService : Service() {
             .put("activityMode", activity.mode.name.lowercase())
             .put("activityConfidence", activity.confidence)
             .put("trackingIntervalMs", trackingIntervalMs)
+            .put("phoneFacingHeadingDeg", phoneHeading.headingDeg?.toDouble() ?: JSONObject.NULL)
+            .put("phoneFacingHeadingAgeMs", phoneHeading.headingAgeMs ?: JSONObject.NULL)
+            .put("phoneFacingHeadingSource", phoneHeading.headingSource ?: JSONObject.NULL)
             .put("gnssUsedInFix", gnss.usedInFix)
             .put("gnssTotal", gnss.totalSatellites)
             .put("batteryPct", batteryPct)
