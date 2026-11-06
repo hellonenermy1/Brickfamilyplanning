@@ -8,6 +8,8 @@ export type FallEventEnv = DeviceIngestRateEnv & {
   DB: D1Database;
   EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
+  APP_ENV?: string;
+  BETA_CHANNEL?: string;
 };
 
 function json(data: unknown, status = 200) {
@@ -52,6 +54,19 @@ export async function maybeHandleFallEvent(req: Request, env: FallEventEnv, devi
   if (identity === "revoked") return json({ error: "device unauthorized" }, 401);
   if (identity === "conflict") return json({ error: "safety event identity conflict" }, 409);
   if (identity === "duplicate") return json({ ok: true, eventId, duplicate: true });
+
+  // Phase 2 beta field safety: the installed v11/v12 automatic human-fall
+  // classifier produces severe false alarms from ordinary phone placement.
+  // After exact signed-device, replay, schema, rate and UUID-conflict checks,
+  // acknowledge this *untrusted automatic* event without persisting it,
+  // pushing a live alert, or misrepresenting it as a human emergency.
+  // Historical rows and manual SOS/other safety kinds remain unchanged.
+  // This does not turn off the sensor on already-installed Android APKs.
+  // Production/non-beta environments keep the existing independently
+  // versioned behavior; a future validated sensor needs an explicit opt-in gate.
+  if (env.APP_ENV === "development" && env.BETA_CHANNEL === "beta") {
+    return json({ ok: true, eventId, duplicate: false, disabledByPolicy: true, reason: "automatic_fall_unreliable" });
+  }
 
   const stub = env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(deviceId));
   // SafetyOutbox sends by priority, not sequence. An unseen, correctly signed
