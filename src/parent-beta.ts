@@ -26,7 +26,14 @@ export function parentBetaHtml(base:string){
  const mapImport="import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs';";
  if(!html.includes(mapImport))throw Error('beta_parent_map_import_missing');
  html=html.replace(mapImport,"import { maplibregl, createBrickMap, resolveBrickPlace, getPrivateMapStatus } from '/brick-map.mjs?v=beta-parent-recovery-20261105';");
- const js=String.raw`
+ // Phase 2: read-only Logs tab backed by existing signed beta observation records.
+// Never describe it as a complete Android DiagnosticStore stream until that protocol exists.
+ const healthTab='<button data-tab="health">Health</button>';
+ const healthPane='<section id="health" class="pane">';
+ if(!html.includes(healthTab)||!html.includes(healthPane))throw Error('phase2_logs_markup_anchor_missing');
+ html=html.replace(healthTab,healthTab+'<button data-tab="logs">Logs</button>');
+ html=html.replace(healthPane,'<section id="logs" class="pane"><div class="sectionTitle"><h3>Phone & cloud observation logs</h3><button id="refreshLogs" type="button">Refresh</button></div><div class="notice">Available: signed beta health observations within the last seven Singapore calendar days. Full Android diagnostic logs are not yet uploaded; absence of observations does not mean the phone is healthy.</div><div id="phase2LogsStatus" class="small">Select a phone to load observations.</div><div id="phase2LogsList"></div></section>'+healthPane);
+const js=String.raw`
 
 // Phase 2 portal safety: preserve every stored event but group rapid historical fall noise.
 // Grouping only affects presentation, not D1 history, SOS delivery or Android's sensor policy.
@@ -101,6 +108,33 @@ drawHistory=function(points){
  const apply=()=>{if(id!==currentDevice||!map?.isStyleLoaded())return;try{p2OriginalDrawHistory(copy)}catch(error){text('#historyNote','Map route drawing failed: '+String(error?.message||'unknown'))}};
  if(map?.isStyleLoaded())apply();else if(map)map.once('style.load',apply);
 };
+
+
+async function p2LoadObservationLogs(){
+ const id=currentDevice,root=document.getElementById('phase2LogsList'),status=document.getElementById('phase2LogsStatus');
+ if(!id||!root||!status)return;
+ status.textContent='Loading observation records…';root.replaceChildren();
+ try{
+  const result=await api('/parent/api/device/'+encodeURIComponent(id)+'/beta/logs');
+  if(currentDevice!==id)return;
+  if(result?.source!=='beta_health_observations_only'||result.fullAndroidDiagnosticLogAvailable!==false)throw Error('Unexpected log source');
+  const records=Array.isArray(result.logs)?result.logs:[];
+  status.textContent=records.length+' beta observations · 7 Singapore calendar days'+(result.truncated?' · latest 100 only':'')+'. Not a full Android diagnostic log.';
+  for(const record of records){
+   const card=document.createElement('div');card.className='listItem';
+   const header=document.createElement('strong');header.textContent=new Date(record.capturedAt||record.receivedAt).toLocaleString()+' · '+(record.status==='ATTENTION'?'Needs review':'Observed');
+   const detail=document.createElement('div');detail.className='small';
+   const fmt=value=>typeof value==='number'&&Number.isFinite(value)?Math.round(value/1000)+'s':'unknown';
+   detail.textContent='Network '+String(record.network||'unknown')+' · location fix age '+fmt(record.locationAgeMs)+' · upload ACK '+fmt(record.ackAgeMs)+' · pending '+(record.pendingRecords??'unknown')+' · receipt '+new Date(record.receivedAt).toLocaleString()+(record.bootChanged?' · reboot recorded':'')+(typeof record.gapMs==='number'&&record.gapMs>180000?' · reporting gap '+fmt(record.gapMs):'');
+   card.append(header,detail);root.append(card);
+  }
+  if(records.length===0){const empty=document.createElement('div');empty.className='small';empty.textContent='No beta observations in the selected window. The phone may not have started a test run or may be offline.';root.append(empty)}
+ }catch(error){if(currentDevice===id)status.textContent='Logs unavailable: '+String(error?.message||'request failed')}
+}
+const p2LogsTab=document.querySelector('.tabs [data-tab="logs"]');
+if(p2LogsTab)p2LogsTab.addEventListener('click',p2LoadObservationLogs);
+const p2LogRefresh=document.getElementById('refreshLogs');
+if(p2LogRefresh)p2LogRefresh.onclick=p2LoadObservationLogs;
 
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
