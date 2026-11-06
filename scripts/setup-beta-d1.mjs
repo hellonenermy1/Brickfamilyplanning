@@ -41,8 +41,8 @@ if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
 let devAccessToken = process.env.BRICK_DEV_PARENT_ACCESS_TOKEN || '';
 let provisionLogin=!!devAccessToken;let generatedLogin=false;
 const parentPublicKey=createPublicKey({key:JSON.parse(await fs.readFile('beta/parent-login-public-key.json','utf8')),format:'jwk'});
-if (devAccessToken && !/^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{16,128}$/.test(devAccessToken)) {
-  throw new Error('Parent passphrase must contain 16–128 supported characters; refuse weak short PINs.');
+if (devAccessToken && !/^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{15,128}$/.test(devAccessToken)) {
+  throw new Error('Parent passphrase must contain 15–128 supported characters; refuse weak short PINs.');
 }
 
 async function cf(path, init = {}) {
