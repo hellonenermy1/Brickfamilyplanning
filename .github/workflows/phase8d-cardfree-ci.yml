@@ -30,6 +30,11 @@ jobs:
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
+      - name: Bounded coherent capture source and encrypted coordinator
+        run: |
+          node scripts/test-phase8d-capture-baseline.mjs
+          node scripts/test-phase8d-capture-coordinator.mjs
+          node scripts/test-phase8d-cardfree-pitr.mjs
       - name: Watchdog bounded fleet RPC delivery retry and state races
         run: |
           node scripts/test-phase8d-watchdog.mjs

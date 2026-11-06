@@ -10,10 +10,10 @@ export const CARDFREE_PRIMARY_EXCLUDED = [...TRANSIENT_RECOVERY_TABLES, 'dev_par
 export const CARDFREE_DIAGNOSTIC_TABLES = ['beta_latest', 'beta_runs', 'beta_records', 'beta_reviews'] as const;
 export const CARDFREE_DIAGNOSTIC_EXCLUDED = ['beta_requests', 'beta_challenges'] as const;
 const MAX_ROWS = 100_000;
-type Column = { name: string; type: string; notnull: number; pk: number; dflt_value: string | null };
-type Cell = string | number | null | { blobBase64: string };
-type Store = { columns: Record<string, Column[]>; tables: Record<string, Record<string, Cell>[]> };
-type Snapshot = { format: 'brick-cardfree-d1-v1'; createdAt: number; primary: Store; diagnostics: Store };
+export type Column = { name: string; type: string; notnull: number; pk: number; dflt_value: string | null };
+export type Cell = string | number | null | { blobBase64: string };
+export type Store = { columns: Record<string, Column[]>; tables: Record<string, Record<string, Cell>[]> };
+export type Snapshot = { format: 'brick-cardfree-d1-v1'; createdAt: number; primary: Store; diagnostics: Store };
 type Env = { DB: D1Database; BETA_DB: D1Database; BRICK_RECOVERY_MODE?: string };
 const encoder = new TextEncoder();
 const record = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -74,12 +74,30 @@ export async function exportCardfreeD1(env: Env, quiesced: boolean, now = Date.n
   const snapshot: Snapshot = { format: 'brick-cardfree-d1-v1', createdAt: now,
     primary: await capture(env.DB, CARDFREE_PRIMARY_TABLES, CARDFREE_PRIMARY_EXCLUDED),
     diagnostics: await capture(env.BETA_DB, CARDFREE_DIAGNOSTIC_TABLES, CARDFREE_DIAGNOSTIC_EXCLUDED) };
-  for (const store of [snapshot.primary, snapshot.diagnostics]) for (const [table, rows] of Object.entries(store.tables)) for (const row of rows) for (const column of store.columns[table]) decodeCell(row[column.name], column);
-  await verifyObjects(snapshot.primary);
-  const bytes = encoder.encode(JSON.stringify(snapshot));
-  if (bytes.byteLength > MAX_BACKUP_DECODED_BYTES) throw Error('cardfree recovery byte limit exceeded');
-  return { body: bytes.buffer, sha256: await digest(bytes.buffer), createdAt: now };
+  return finalizeCardfreeCapture(snapshot);
 }
+export function encodeCardfreeCaptureRow(row:Record<string,unknown>,spec:Column[]){
+ const names=spec.map(c=>c.name);if(JSON.stringify(Object.keys(row).sort())!==JSON.stringify([...names].sort()))throw Error('capture column mismatch');
+ const result=Object.fromEntries(spec.map(c=>[c.name,c.type.toUpperCase()==='BLOB'&&row[c.name]!==null?encodeBlob(row[c.name]):row[c.name] as Cell]));
+ for(const c of spec)decodeCell(result[c.name],c);return result;
+}
+export async function finalizeCardfreeCapture(value:unknown){
+ if(!record(value)||Object.keys(value).sort().join(',')!=='createdAt,diagnostics,format,primary'||value.format!=='brick-cardfree-d1-v1'||!Number.isSafeInteger(value.createdAt)||(value.createdAt as number)<=0)throw Error('invalid capture envelope');
+ const snapshot=value as unknown as Snapshot;
+ for(const [store,names] of [[snapshot.primary,CARDFREE_PRIMARY_TABLES],[snapshot.diagnostics,CARDFREE_DIAGNOSTIC_TABLES]] as const){
+  if(!record(store)||Object.keys(store).sort().join(',')!=='columns,tables'||!record(store.columns)||!record(store.tables))throw Error('invalid capture store');
+  for(const obj of [store.columns,store.tables])if(JSON.stringify(Object.keys(obj).sort())!==JSON.stringify([...names].sort()))throw Error('capture inventory mismatch');
+  for(const table of names){const spec=store.columns[table],rows=store.tables[table];
+   if(!Array.isArray(spec)||!spec.length||!Array.isArray(rows)||rows.length>MAX_ROWS||new Set(spec.map(c=>c.name)).size!==spec.length)throw Error('invalid capture table');
+   for(const c of spec)if(!record(c)||Object.keys(c).sort().join(',')!=='dflt_value,name,notnull,pk,type'||typeof c.name!=='string'||!/^[_a-zA-Z][_a-zA-Z0-9]*$/.test(c.name)||!['TEXT','INTEGER','REAL','BLOB'].includes(c.type?.toUpperCase())||![0,1].includes(c.notnull)||!Number.isSafeInteger(c.pk)||c.pk<0||!(c.dflt_value===null||typeof c.dflt_value==='string'))throw Error('invalid capture columns');
+   for(const row of rows){if(!record(row)||JSON.stringify(Object.keys(row).sort())!==JSON.stringify(spec.map(c=>c.name).sort()))throw Error('capture column mismatch');for(const c of spec)decodeCell(row[c.name],c);}
+  }
+ }
+ const bytes=encoder.encode(JSON.stringify(snapshot));if(bytes.byteLength>MAX_BACKUP_DECODED_BYTES)throw Error('cardfree recovery byte limit exceeded');
+ await verifyObjects(snapshot.primary);return{body:bytes.buffer,sha256:await digest(bytes.buffer),createdAt:snapshot.createdAt};
+}
+export {inventory as inspectCardfreeInventory,columns as cardfreeCaptureColumns};
+
 async function preflight(db: D1Database, value: unknown, durable: readonly string[], excluded: readonly string[]) {
   await inventory(db, durable, excluded);
   if (!record(value) || Object.keys(value).sort().join(',') !== 'columns,tables' || !record(value.tables) || !record(value.columns)) throw Error('invalid recovery store');

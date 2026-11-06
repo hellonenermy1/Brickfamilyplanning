@@ -1,3 +1,4 @@
+import {captureProtectedBackup,privateCaptureJournal} from './cardfree-capture-coordinator.mjs';
 // Real local D1/DO stores, synthetic identities only. Never calls Cloudflare APIs.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -32,9 +33,10 @@ async function close(store){await store.mf.dispose();live.delete(store.mf);}
 async function rpc(store,id,method,args){return(await store.mf.dispatchFetch('http://localhost/__synthetic_rpc',{method:'POST',body:JSON.stringify({id,method,args})})).json();}
 async function counts(db,tables){const result={};for(const table of tables)result[table]=(await db.prepare('SELECT COUNT(*) n FROM '+table).first()).n;return result;}
 try{
- const harness=`import worker from './src/worker-beta-cardfree.ts';import {BrickDevice as BetaDevice,BetaScheduler as ActualScheduler} from './src/worker-beta-cardfree.ts';export class BetaScheduler extends ActualScheduler{async settleSynthetic(){await this.running;}}export class BrickDevice extends BetaDevice{async seedSyntheticState(key,value){if(value===null)await this.ctx.storage.delete(key);else await this.ctx.storage.put(key,value);}async readSyntheticState(key){return await this.ctx.storage.get(key);}}export default {...worker,async fetch(req,env,ctx){if(new URL(req.url).pathname!=='/__synthetic_rpc')return worker.fetch(req,env,ctx);const {id,method,args}=await req.json();try{return Response.json({ok:true,value:await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id))[method](...args)});}catch(e){return Response.json({ok:false,error:e.message});}}};`;
+ const harness=`import worker from './src/worker-beta-cardfree.ts';import {BrickDevice as BetaDevice,BetaScheduler as ActualScheduler} from './src/worker-beta-cardfree.ts';export class BetaScheduler extends ActualScheduler{async settleSynthetic(){await this.running;}async pauseSyntheticCapture(){await this.running;await this.ctx.storage.deleteAlarm();}}export class BrickDevice extends BetaDevice{async seedSyntheticState(key,value){if(value===null)await this.ctx.storage.delete(key);else await this.ctx.storage.put(key,value);}async readSyntheticState(key){return await this.ctx.storage.get(key);}}export default {...worker,async fetch(req,env,ctx){if(new URL(req.url).pathname!=='/__synthetic_rpc')return worker.fetch(req,env,ctx);const {id,method,args}=await req.json();try{return Response.json({ok:true,value:await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id))[method](...args)});}catch(e){return Response.json({ok:false,error:e.message});}}};`;
  await build({stdin:{contents:harness,resolveDir:process.cwd()},outfile:path.join(dir,'worker.mjs'),bundle:true,format:'esm',platform:'browser',target:'es2022',external:['cloudflare:workers']});
- for(const [name,file] of [['recovery','src/cardfree-recovery.ts'],['storage','src/dev-free-runtime.ts'],['refined','src/phase5-refined-history.ts']])await build({entryPoints:[file],outfile:path.join(dir,name+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24'});
+ for(const [name,file] of [['recovery','src/cardfree-recovery.ts'],['storage','src/dev-free-runtime.ts'],['refined','src/phase5-refined-history.ts'],['capture','src/cardfree-capture.ts'],['budget','src/d1-work-budget.ts']])await build({entryPoints:[file],outfile:path.join(dir,name+'.mjs'),bundle:true,format:'esm',platform:'node',target:'node24'});
+ const capture=await import(pathToFileURL(path.join(dir,'capture.mjs')).href),{d1WorkBudget}=await import(pathToFileURL(path.join(dir,'budget.mjs')).href);
  const recovery=await import(pathToFileURL(path.join(dir,'recovery.mjs')).href),{D1ObjectBucket}=await import(pathToFileURL(path.join(dir,'storage.mjs')).href);
  const {processRefinementsForDevice:processFrames}=await import(pathToFileURL(path.join(dir,'refined.mjs')).href);
  let source=await start('source');const key=await ecdsa(),other=await ecdsa(),now=Date.now();
@@ -69,6 +71,9 @@ try{
  for(const [seq,stamp]of [[1,now-1000],[2,now+1000]])await source.db.prepare('INSERT INTO phase5_precise_endpoints VALUES(?1,999,?2,?3,1,1,10,?4)').bind(DEVICE_A,seq,stamp,now).run();
  for(const delta of [0,60000,180000])await assert.rejects(()=>processFrames({DB:source.db,HISTORY:store},DEVICE_A,now+delta),/inputs unavailable/);
  assert.equal(JSON.parse((await source.db.prepare("SELECT value_json FROM provider_cache WHERE provider='brick_refinement_failure_v1'").first()).value_json).status,'QUARANTINED');
+ await sourceScheduler.pauseSyntheticCapture();assert.equal((await sourceScheduler.status()).nextAlarmAt,null);
+ // Actual disposable scheduler alarm is paused; no further mutating traffic is submitted.
+ // This controlled fixture is not a production writer-fence implementation.
  // No further traffic/writes/maintenance after this synthetic quiescence point.
  await assert.rejects(()=>recovery.exportCardfreeD1(source.env,false),/quiesced/);
  let backup=await recovery.exportCardfreeD1(source.env,true);
@@ -77,7 +82,14 @@ try{
  assert.equal(expected.primary.tables.dev_location_history.length,1);assert.equal(expected.primary.tables.provider_cache,undefined,'operational retry metadata is NOT archived');
  const trustedContext={deployment:'synthetic-cardfree-drill',sourceSha:'a'.repeat(40),backupId:randomBytes(16).toString('hex'),capturedAt:backup.createdAt,keyId:'synthetic-ephemeral'};
  const encryptionKey=randomBytes(32).toString('base64'),protectedFile=path.join(dir,'recovery.brickbackup');
- const encrypted=sealBackup({context:trustedContext,body:backup.body,doSnapshots},encryptionKey);fs.writeFileSync(protectedFile,encrypted,{flag:'wx',mode:0o600});
+ const fence={captureId:trustedContext.backupId,generation:randomBytes(16).toString('hex'),resourceSetSha256:sha('synthetic-primary-diagnostics-device-stores'),sourceSha:trustedContext.sourceSha,pausedAt:trustedContext.capturedAt};let fenced=true,maxCaptureQueries=0;
+ const authority={async assertHeld(){if(!fenced)throw Error('synthetic fence released');return{...fence,expiresAt:fence.pausedAt+300000,state:'DRAINED',activeWriters:0};},async release(expected){assert.equal(expected.generation,fence.generation);fenced=false;return{released:true,generation:fence.generation};}};
+ const captured=await captureProtectedBackup({context:trustedContext,expectedFence:fence,runtime:{...recovery,...capture},authority,journal:privateCaptureJournal(path.join(dir,'encrypted-capture-journal')),key:encryptionKey,source:{
+  async readPage(request){const binding=request.store==='primary'?source.db:source.beta,budget=d1WorkBudget(binding,44);const page=await capture.readCardfreeCapturePage({DB:request.store==='primary'?budget.db:source.db,BETA_DB:request.store==='diagnostics'?budget.db:source.beta},request,authority);maxCaptureQueries=Math.max(maxCaptureQueries,budget.used());return page;},
+  async deviceSnapshot(id){const response=await rpc(source,id,'exportRecoveryState',[id]);assert.equal(response.ok,true);return response.value;}
+ }});
+ assert.equal(fenced,false);assert.ok(maxCaptureQueries<=5);const encrypted=captured.encrypted;assert.deepEqual(JSON.parse(openBackup(encrypted,encryptionKey,trustedContext).body),expected);fs.writeFileSync(protectedFile,encrypted,{flag:'wx',mode:0o600});
+ console.log('PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max'+maxCaptureQueries+' SQL statements per source call');
  new Uint8Array(backup.body).fill(0);backup=null;doSnapshots=[];
  await close(source);assert(fs.readdirSync(source.persist,{recursive:true}).some(x=>x.endsWith('.sqlite')));fs.rmSync(source.persist,{recursive:true,force:true});assert(!fs.existsSync(source.persist));source=null;
  console.log('PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs');

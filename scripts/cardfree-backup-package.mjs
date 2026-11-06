@@ -134,3 +134,6 @@ export function openBackup(bytes,keyBase64,expectedContext) {
     return validatePayload(decode(plaintext),expectedContext);
   } finally { key.fill(0);plaintext?.fill(0); }
 }
+
+// Shared strict context validation for the off-platform capture coordinator.
+export {checkContext as validateBackupContext};
