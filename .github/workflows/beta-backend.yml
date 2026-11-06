@@ -1,7 +1,7 @@
 name: Brick Beta Backend and Parent Portal
 on:
   push:
-    branches: [beta/backend-portal, feat/phase2-parent-selfservice-passphrase-20261106, fix/phase2-beta-fall-quarantine-20261106 , fix/phase2-parent-client-freshness-20261106 , fix/phase2-history-device-isolation-20261106, fix/phase2-health-evidence-tristate-20261106, fix/phase2-history-gap-truth-20261107]
+    branches: [beta/backend-portal, feat/phase2-parent-selfservice-passphrase-20261106, fix/phase2-beta-fall-quarantine-20261106 , fix/phase2-parent-client-freshness-20261106 , fix/phase2-history-device-isolation-20261106, fix/phase2-health-evidence-tristate-20261106, fix/phase2-history-gap-truth-20261107, fix/phase2-device-tab-response-isolation-20261107]
     paths: ['src/**', 'scripts/**', 'schema/**', 'beta/**', 'wrangler.beta.template.jsonc', '.github/workflows/beta-backend.yml']
   workflow_dispatch:
 permissions:

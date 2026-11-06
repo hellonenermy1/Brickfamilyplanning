@@ -44,6 +44,17 @@ try{
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
  const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+ for(const [name,code] of [
+  ['WebSocket stale-device guard','client.onmessage=e=>{if(ws!==client||currentDevice!==id)return;'],
+  ['Places stale-response guard',"async function loadPlaces(){const requestDevice=currentDevice;"],
+  ['Trips stale-response guard',"async function loadTrips(){const requestDevice=currentDevice;"],
+  ['Health stale-response guard',"async function loadHealthOps(){const requestDevice=currentDevice;"],
+  ['Retention stale-response guard',"async function loadRetention(){const requestDevice=currentDevice;"],
+  ['Crash diagnostics stale-response guard',"async function loadPhase5C(){const requestDevice=currentDevice;"],
+  ['Device identity validation',"if(requestDevice!==currentDevice)return;"]
+ ])assert.ok(html.includes(code),name+' must reject stale device data');
+ assert.ok(!html.includes("ws.onmessage=e=>{try{wsMessage"),'old device socket message handler must be gone');
+
  assert.ok(html.includes('href="/parent/change-password"'),'private account settings link must appear');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
  for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))if(match[1].trim())await transform(match[1],{loader:'js'});
 
