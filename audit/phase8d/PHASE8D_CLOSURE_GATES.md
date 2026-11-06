@@ -1,3 +1,9 @@
+# Current inspection-tool correction and access boundary
+
+P8D-090 at source2d9a3073288a304b4820fe0b30f27a5f8a3fd843 qualifies34 new PITR lifecycle/private-plan cases plus inherited8; final push/PR audit33/33 and portal10/10 passed with actual decoded logs. This only supports OPS-002 inspection tooling. Cloudflare sign-in remains unsuccessful (observed generic error and403; further failure user-reported). Cookies were not cleared; browser settings access was refused. Do not retry unchanged access or infer actual PITR/bindings. See PHASE8D_PITR_LIFECYCLE_HOSTED_EVIDENCE.json and PHASE8D_LIVE_RECOVERY_PREREQUISITES.md. All four groups, current P1 and525 final independent dispositions remain open; no merge/deploy or canonical waiver.
+
+---
+
 # Latest recovery source progress and live-access blocker
 
 Exact source 0dd3e620baa1a1b9277804dda27dc5fd3ca94ff7:57 new cases (35 lifecycle +22 filesystem), all33 audit steps in push/PR and10 portal steps completed-success; actual native41+4/deviceDO destruction/restore rerun. P8D-088/089 source corrections are qualified within their explicit cooperative/OS/local-publication limits. They do not qualify a live source fence, independent storage/key or cloud restore.

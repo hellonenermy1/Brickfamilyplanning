@@ -2,7 +2,13 @@
 
 Phase8D NOT PASS; P8D-002 P1 OPEN. This is an operator readiness record, not an approval or a claim that uninspected configuration is absent.
 
-## Access checked in this continuation
+## Latest access result — login attempts remain unsuccessful
+
+The user attempted Google sign-in and completed phone approvals, then tried another method in the handed-over browser. Cloudflare returned a generic unable-to-sign-in message; a subsequent user-controlled login visibly returned HTTP403. The user reported that another fresh-page retry still failed. No dashboard account/resource state was verified. Browser settings access was refused by browser security policy, so no cookies or browsing data were cleared and no full browser-process reset occurred. Do not repeat sign-in or denied-token attempts without a materially changed authorized access path, and do not infer the root cause.
+
+P8D-090 additionally bounds the GET-only metadata checker and rejects FIFO/changing private plans. Its source/CI evidence does not bypass authentication or establish live retention/recovery. Continue independent repository work while access is blocked.
+
+## Earlier access observation (before user sign-in attempts)
 
 The available integration lookup for Cloudflare returned no result. That lookup is not exhaustive; other integrations may exist in the plugin directory. Existing Sites database tools are scoped to Sites projects and do not establish access to Brick's separate Worker/account. No integration was installed or permission changed.
 
