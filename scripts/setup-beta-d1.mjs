@@ -204,9 +204,8 @@ await run(process.execPath, ['scripts/ensure-beta-d1-columns.mjs']);
 
 console.log('[card-free dev 4/6] Removing obsolete one-time parent bootstrap tokens…');
 await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
-// A new login verifier does not revoke cookies issued under the old verifier.
-// End prior sessions durably before deploying the new authentication boundary.
-await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
+// Existing parent sessions must survive routine deployments when the credential is unchanged.
+// Revoke them only AFTER a newly provisioned Worker verifier was installed successfully.
 
 console.log('[card-free dev 5/6] Deploying isolated worker-v10…');
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -237,6 +236,8 @@ await new Promise((resolve, reject) => {
   child.on('exit', code => code === 0 ? resolve() : reject(new Error('Unable to configure private development login secret')));
   child.stdin.end(loginHash + '\n');
 });
+// The new verifier is active: expire previous sessions and live login cookies now.
+await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
 
 
 }
@@ -255,9 +256,9 @@ const state = {
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
-  parentLoginMode: 'private-high-entropy-token-v2',
+  parentLoginMode: 'worker-secret-pbkdf2-or-legacy-generated-token',
   parentCredential:generatedLogin?'GENERATED_ENCRYPTED_FOR_USER':provisionLogin?'CONFIGURED_ACTIONS_SECRET':'PRESERVED_WORKER_SECRET',
-  priorSessionsRevoked: true,
+  priorSessionsRevoked: provisionLogin,
   schedulerMode: 'sqlite-do-alarm-with-d1-lease-and-request-fallback',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,
