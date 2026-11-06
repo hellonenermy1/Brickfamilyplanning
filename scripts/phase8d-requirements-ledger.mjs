@@ -1,5 +1,6 @@
 // Structural provenance only. A reviewer must assess whether each evidence item proves its claim.
 import crypto from 'node:crypto';
+import {worksheetGaps} from './phase8d-acceptance-worksheet.mjs';
 export const BASELINE_PATH='audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv';
 export const BASELINE_SHA256='1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228';
 export const LEDGER_PATH='audit/phase8d/release-evidence/PHASE8D_REQUIREMENTS_LEDGER.json';
@@ -96,6 +97,8 @@ export async function verifyRequirementsForRelease(claim,ctx,testedSourceSha){
   if(unsupported)refuse(itemKinds.has('UNSUPPORTED_PROOF'),'unsupported proof missing '+item.id);
   if(!deferred&&item.classification==='FORBIDDEN')refuse(accepted&&itemKinds.has('PROHIBITION_REVIEW'),'prohibition proof missing '+item.id);
   if(!deferred&&item.classification==='FUTURE-INTERFACE')refuse(accepted&&itemKinds.has('FUTURE_INTERFACE_REVIEW'),'future-interface proof missing '+item.id);
+  const worksheet=worksheetGaps(item,testedSourceSha);
+  refuse(worksheet.length===0,'worksheet incomplete '+item.id+' '+worksheet.join(','));
  }
  refuse(seen.size===525&&unmapped===0&&unverifiedApplicable===0,'unmapped/unverified dispositions');
  refuse(claim.total===seen.size&&claim.unmapped===unmapped&&claim.unverifiedApplicable===unverifiedApplicable&&(claim.deferredCrossPhase??0)===deferredCrossPhase&&(claim.carriedForward??0)===carriedForward,'claimed totals differ from actual ledger');

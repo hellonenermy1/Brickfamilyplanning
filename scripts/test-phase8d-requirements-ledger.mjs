@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {fixture} from './phase8d-release-fixture.mjs';
+import {fixture,syntheticCriteria} from './phase8d-release-fixture.mjs';
 import {verifyPhase8dAcceptance} from './verify-phase8d-release-acceptance.mjs';
 import {BASELINE_PATH,LEDGER_PATH,parseCsv,hash,verifyRequirementsForRelease} from './phase8d-requirements-ledger.mjs';
 const cases=[
@@ -53,6 +53,7 @@ let checks=0;
 for(const [label,change] of cases){const f=fixture();change(f);let requests=0;f.ctx.fetchImpl=async()=>{requests++;throw Error('local invalid evidence must reject first');};await assert.rejects(verifyPhase8dAcceptance(f.record,f.ctx),/Phase8D release refused/,label);assert.equal(requests,0,label);checks++;}
 const future=fixture(),q=future.ledger.requirements.find(r=>r.id==='QA-001');
 q.scope='CROSS_PHASE';q.disposition='DEFERRED';q.targetPhase='9';q.blockingPhase8D=false;q.status='UNIT/CI VERIFIED';q.deferredReason='Synthetic reviewed plan defers actual OPPO endurance qualification to Phase9';q.evidence[0].kind='SCOPE_REVIEW';future.record.requirements.deferredCrossPhase=1;
+q.criteria=syntheticCriteria('DEFERRED','9');
 assert.equal((await verifyPhase8dAcceptance(future.record,future.ctx)).requirements.deferredCrossPhase,1);checks++;
 for(const [label,mutate]of [
  ['backend cannot defer as current scope',r=>r.scope='PHASE8D'],['arbitrary future phase',r=>r.targetPhase='10'],['deferred blocker',r=>r.blockingPhase8D=true],['defer open blocker',r=>r.status='OPEN BLOCKER'],['deferral no plan proof',r=>r.evidence[0].kind='SOURCE_CI'],['deferral no rationale',r=>delete r.deferredReason]
@@ -61,6 +62,7 @@ const hidden=fixture(),hiddenRow=hidden.ledger.requirements.find(r=>r.id==='QA-0
 const good=fixture();assert.equal((await verifyPhase8dAcceptance(good.record,good.ctx)).requirements.total,525);checks++;
 const optional=fixture(),row=optional.ledger.requirements.find(r=>r.classification==='OPTIONAL-IF-SUPPORTED');
 row.status='VERIFIED UNSUPPORTED';row.reason='Synthetic reviewed optional capability unsupported with explicit test proof';row.evidence[0].kind='UNSUPPORTED_PROOF';
+row.criteria=syntheticCriteria('VERIFIED_UNSUPPORTED');
 assert.equal((await verifyPhase8dAcceptance(optional.record,optional.ctx)).requirements.total,525);checks++;
 const carried=fixture();carried.ledger.requirements[0].scope='CROSS_PHASE';carried.ledger.requirements[0].disposition='CARRIED_FORWARD';carried.ledger.requirements[0].carriedFromPhase='8C';carried.record.requirements.carriedForward=1;carried.ledger.requirements[0].evidence.push({...carried.ledger.requirements[0].evidence[0],kind:'SCOPE_REVIEW'});
 assert.equal((await verifyPhase8dAcceptance(carried.record,carried.ctx)).verified,true);checks++;
