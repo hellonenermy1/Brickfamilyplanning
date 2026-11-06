@@ -100,8 +100,10 @@ export class CaptureAdmissionStore {
   async release(pin:CaptureFence){
     checkPin(pin);pin={...pin};return this.change(s=>{
       if(s.capture&&matches(s.capture,pin)){close(s,'RELEASED');return{released:true,generation:pin.generation};}
-      // Confirm a known closure without releasing a newer unrelated capture.
-      return{released:s.closed?.captureId===pin.captureId&&s.closed.generation===pin.generation,generation:pin.generation};
+      // Only a valid prior release is idempotent success. PREEMPTED/EXPIRED
+      // closure is cleanup, not a valid seal boundary: the coordinator treats
+      // released=true as successful capture completion after its final held-check.
+      return{released:s.closed?.reason==='RELEASED'&&s.closed.captureId===pin.captureId&&s.closed.generation===pin.generation,generation:pin.generation};
     });
   }
   async status(){return this.change(s=>({state:s.quarantined?'QUARANTINED':s.capture?.state??'OPEN',activeWriters:Object.keys(s.writers).length,authorityEpoch:s.authorityEpoch,capture:s.capture?held(s.capture,Object.keys(s.writers).length):null}));}

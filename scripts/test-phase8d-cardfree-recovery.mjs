@@ -84,12 +84,22 @@ try{
  const trustedContext={deployment:'synthetic-cardfree-drill',sourceSha:'a'.repeat(40),backupId:randomBytes(16).toString('hex'),capturedAt:backup.createdAt,keyId:'synthetic-ephemeral'};
  const encryptionKey=randomBytes(32).toString('base64'),protectedFile=path.join(dir,'recovery.brickbackup');
  const acquired=await authorityRpc(source,'requestCapture',[trustedContext.backupId,authorityIdentity,300000]);assert.equal(acquired.state,'DRAINED');assert.equal(acquired.activeWriters,0);trustedContext.capturedAt=acquired.pausedAt;expected.createdAt=acquired.pausedAt;
- const fence=Object.fromEntries(['captureId','generation','resourceSetSha256','sourceSha','pausedAt'].map(k=>[k,acquired[k]]));let maxCaptureQueries=0;
+ let fence=Object.fromEntries(['captureId','generation','resourceSetSha256','sourceSha','pausedAt'].map(k=>[k,acquired[k]]));let maxCaptureQueries=0;
  const authority={assertHeld:expected=>authorityRpc(source,'assertHeld',[expected]),release:expected=>authorityRpc(source,'release',[expected])};
- const captured=await captureProtectedBackup({context:trustedContext,expectedFence:fence,runtime:{...recovery,...capture},authority,journal:privateCaptureJournal(path.join(dir,'encrypted-capture-journal')),key:encryptionKey,source:{
+ const captureOptions={context:trustedContext,expectedFence:fence,runtime:{...recovery,...capture},authority,journal:privateCaptureJournal(path.join(dir,'encrypted-capture-journal')),key:encryptionKey,source:{
   async readPage(request){const binding=request.store==='primary'?source.db:source.beta,budget=d1WorkBudget(binding,44);const page=await capture.readCardfreeCapturePage({DB:request.store==='primary'?budget.db:source.db,BETA_DB:request.store==='diagnostics'?budget.db:source.beta},request,authority);maxCaptureQueries=Math.max(maxCaptureQueries,budget.used());return page;},
   async deviceSnapshot(id){const response=await rpc(source,id,'exportRecoveryState',[id]);assert.equal(response.ok,true);return response.value;}
- }});
+ }};
+ // A preemption between the coordinator's last held-check and release must not
+ // turn cleanup acknowledgement into a successful sealed capture.
+ let urgentDuringRelease;
+ const raceAuthority={...authority,async release(expected){urgentDuringRelease=await authorityRpc(source,'enterWriter',[randomBytes(16).toString('hex'),'urgent']);return authority.release(expected);}};
+ await assert.rejects(()=>captureProtectedBackup({...captureOptions,authority:raceAuthority}),/CAPTURE_RELEASE_FAILED/);
+ assert.equal(urgentDuringRelease.admitted,true);await authorityRpc(source,'exitWriter',[urgentDuringRelease.ticket]);
+ console.log('PASS urgent preemption after final held-check refuses sealed capture at the durable release boundary');
+ trustedContext.backupId=randomBytes(16).toString('hex');const fresh=await authorityRpc(source,'requestCapture',[trustedContext.backupId,authorityIdentity,300000]);assert.equal(fresh.state,'DRAINED');trustedContext.capturedAt=fresh.pausedAt;expected.createdAt=fresh.pausedAt;
+ fence=Object.fromEntries(['captureId','generation','resourceSetSha256','sourceSha','pausedAt'].map(k=>[k,fresh[k]]));captureOptions.expectedFence=fence;captureOptions.journal=privateCaptureJournal(path.join(dir,'fresh-encrypted-capture-journal'));
+ const captured=await captureProtectedBackup(captureOptions);
  assert.equal((await authorityRpc(source,'status')).state,'OPEN');assert.equal((await authorityRpc(source,'status')).activeWriters,0);assert.ok(maxCaptureQueries<=5);const encrypted=captured.encrypted;assert.deepEqual(JSON.parse(openBackup(encrypted,encryptionKey,trustedContext).body),expected);fs.writeFileSync(protectedFile,encrypted,{flag:'wx',mode:0o600});
  console.log('PASS durable admission authority controls the declared synthetic source-writer envelope and confirms capture release; production writer hooks are not installed');
  console.log('PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max'+maxCaptureQueries+' SQL statements per source call');
