@@ -51,7 +51,9 @@ export async function runBackgroundWork(db: D1Database, task: Task, subject: str
   try {
     const result = await work(), waiting = task === 'refinement' && result === 0;
     const pending=(task==='commute'||task==='refined-retention'||task==='watchdog')&&result!==null&&typeof result==='object'&&'complete' in result&&(result as {complete:unknown}).complete===false;
-    await finish({...receipt, status: pending?'PENDING':waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting||pending ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + successIntervalMs, lease: null});
+    // The scan owns watchdog cadence. A success cooldown here can skip a device
+    // moved earlier in the next page order and double its check interval.
+    await finish({...receipt, status: pending?'PENDING':waiting ? 'WAITING' : 'COMPLETED', failures: 0, lastSuccessAt: waiting||pending ? receipt.lastSuccessAt : Date.now(), nextAttemptAt: Date.now() + (task==='watchdog'&&!pending?0:successIntervalMs), lease: null});
     return pending?'PENDING' as const:'COMPLETED' as const;
   } catch(error) {
     const failures = Math.min(1_000_000, receipt.failures + 1), retryMs = Math.min(900_000, 60_000 * 2 ** Math.min(4, failures - 1));

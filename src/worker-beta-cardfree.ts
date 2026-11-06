@@ -1,4 +1,5 @@
 import beta from './worker-beta';
+import {watchdogDeadline} from './watchdog-work';
 import { developmentRuntimeEnv,cleanupDevelopmentObjectStore } from './dev-free-runtime';
 import { authorizeDevParentRequest,cleanupDevParentAuth,devParentSessionValid,devParentUnauthorized,handleDevParentAuthRoute,stripDevParentInternalHeader } from './dev-parent-auth';
 import { syntheticScheduledController } from './dev-maintenance';
@@ -57,12 +58,10 @@ export async function runCardfreeMaintenanceGroup(env:Env,ctx:ExecutionContext,g
  },ctx));return daily==='BUSY'?'PENDING' as const:'COMPLETED' as const;
 }
 export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext,onWatchdogDelay?:(ms:number)=>void){
- let failed=false,busy=false;
- try{const watchdog=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-watchdog')).runWatchdogPage();busy=!watchdog.complete;failed=watchdog.failed;onWatchdogDelay?.(watchdog.nextDelayMs);}catch{failed=true;}
- for(const group of ['minute','daily'] as const)try{
-  const result=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-'+group)).runGroup(group);busy=busy||result==='PENDING';
- }catch{failed=true;}
- if(failed)throw Error('cardfree maintenance failed');
+ let busy=false;
+ // Independent backup/cleanup must start even if a watchdog receiver stalls.
+ const tasks=[(async()=>{const watchdog=await watchdogDeadline(()=>env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-watchdog')).runWatchdogPage(),12000);busy=busy||!watchdog.complete;onWatchdogDelay?.(watchdog.nextDelayMs);if(watchdog.failed)throw Error('watchdog incomplete');})(),...(['minute','daily'] as const).map(async group=>{const result=await env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-'+group)).runGroup(group);busy=busy||result==='PENDING';})];
+ if((await Promise.allSettled(tasks)).some(r=>r.status==='rejected'))throw Error('cardfree maintenance failed');
  return busy?'PENDING' as const:'COMPLETED' as const;
 }
 function maintenance(env:Env,ctx:ExecutionContext){ctx.waitUntil(env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).kick().catch(()=>{}));}

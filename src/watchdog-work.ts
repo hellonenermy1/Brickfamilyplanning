@@ -1,6 +1,18 @@
 import type { RealtimeSafetyEvent } from './device-do';
 const PROVIDER = 'brick_watchdog_v1', KEY = 'scan', DAY = 86400000;
 export const WATCHDOG_PAGE = 8;
+export async function watchdogDeadline<T>(work: () => Promise<T>, ms: number): Promise<T> {
+    if (!Number.isSafeInteger(ms) || ms < 1 || ms > 30000)
+        throw Error('invalid watchdog deadline');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([Promise.resolve().then(work), new Promise<T>((_, reject) => { timer = setTimeout(() => reject(Error('watchdog work timed out')), ms); })]);
+    }
+    finally {
+        if (timer !== undefined)
+            clearTimeout(timer);
+    }
+}
 type Scan = {
     v: 1;
     at: number;
@@ -11,13 +23,18 @@ type Scan = {
     failures: number;
     lastCompletedAt: number | null;
 };
-function decode(text: string): Scan { let s: Scan; try {
-    s = JSON.parse(text);
+function decode(text: string): Scan {
+    let s: Scan;
+    try {
+        s = JSON.parse(text);
+    }
+    catch {
+        throw Error('invalid watchdog checkpoint');
+    }
+    if (!s || Object.keys(s).sort().join(',') !== 'at,complete,cursor,failures,lastCompletedAt,seen,v,water' || s.v !== 1 || !Number.isSafeInteger(s.at) || s.at <= 0 || !Number.isSafeInteger(s.water) || s.water < 0 || typeof s.cursor !== 'string' || s.cursor.length > 128 || !Number.isSafeInteger(s.seen) || s.seen < 0 || typeof s.complete !== 'boolean' || !Number.isSafeInteger(s.failures) || s.failures < 0 || !(s.lastCompletedAt === null || Number.isSafeInteger(s.lastCompletedAt) && s.lastCompletedAt > 0))
+        throw Error('invalid watchdog checkpoint');
+    return s;
 }
-catch {
-    throw Error('invalid watchdog checkpoint');
-} if (!s || Object.keys(s).sort().join(',') !== 'at,complete,cursor,failures,lastCompletedAt,seen,v,water' || s.v !== 1 || !Number.isSafeInteger(s.at) || s.at <= 0 || !Number.isSafeInteger(s.water) || s.water < 0 || typeof s.cursor !== 'string' || s.cursor.length > 128 || !Number.isSafeInteger(s.seen) || s.seen < 0 || typeof s.complete !== 'boolean' || !Number.isSafeInteger(s.failures) || s.failures < 0 || !(s.lastCompletedAt === null || Number.isSafeInteger(s.lastCompletedAt) && s.lastCompletedAt > 0))
-    throw Error('invalid watchdog checkpoint'); return s; }
 export async function watchdogPage(db: D1Database, work: (id: string) => Promise<unknown>, now = Date.now()) {
     if (!Number.isSafeInteger(now) || now <= 0)
         throw Error('invalid watchdog timestamp');
@@ -44,7 +61,7 @@ export async function watchdogPage(db: D1Database, work: (id: string) => Promise
     for (const r of page)
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(r.id))
             throw Error('invalid watchdog device identity');
-    const results = await Promise.allSettled(page.map(r => work(r.id)));
+    const results = await Promise.allSettled(page.map(r => watchdogDeadline(() => work(r.id), 8000)));
     s.failures += results.filter(r => r.status === 'rejected' || r.status === 'fulfilled' && r.value === 'PENDING').length;
     s.seen += page.length;
     if (page.length)
@@ -59,10 +76,15 @@ export async function watchdogPage(db: D1Database, work: (id: string) => Promise
         throw Error('watchdog checkpoint ownership changed');
     return { complete: s.complete, failed: s.failures > 0, nextDelayMs: s.complete ? Math.max(1000, s.at + 60000 - now) : 1000 };
 }
-export async function watchdogStatus(db: D1Database) { const row = await db.prepare('SELECT value_json FROM provider_cache WHERE provider=?1 AND cache_key=?2 AND expires_at>?3').bind(PROVIDER, KEY, Date.now()).first<{
-    value_json: string;
-}>(); if (!row)
-    return { task: 'watchdog-scan', status: 'NOT_RUN' }; const s = decode(row.value_json); return { task: 'watchdog-scan', status: s.failures ? 'FAILED' : s.complete ? 'COMPLETED' : 'PENDING', checkedDevices: s.seen, cycleStartedAt: s.at, lastSuccessAt: s.lastCompletedAt, overdue: !s.complete && Date.now() - s.at > 60000 }; }
+export async function watchdogStatus(db: D1Database) {
+    const row = await db.prepare('SELECT value_json FROM provider_cache WHERE provider=?1 AND cache_key=?2 AND expires_at>?3').bind(PROVIDER, KEY, Date.now()).first<{
+        value_json: string;
+    }>();
+    if (!row)
+        return { task: 'watchdog-scan', status: 'NOT_RUN' };
+    const s = decode(row.value_json);
+    return { task: 'watchdog-scan', status: s.failures ? 'FAILED' : s.complete ? 'COMPLETED' : 'PENDING', selectedDevices: s.seen, cycleStartedAt: s.at, lastSuccessAt: s.lastCompletedAt, overdue: !s.complete && Date.now() - s.at > 60000 };
+}
 export async function checkWatchdogDevice(db: D1Database, deviceId: string, push: (event: RealtimeSafetyEvent) => Promise<boolean>, now = Date.now()) {
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(deviceId) || !Number.isSafeInteger(now) || now <= 0)
         throw Error('invalid watchdog input');
@@ -119,7 +141,7 @@ export async function checkWatchdogDevice(db: D1Database, deviceId: string, push
             if (saved.kind !== kind || !eventDetail || Object.keys(eventDetail).sort().join(',') !== 'incidentId,reason,severity' || eventDetail.incidentId !== row.id || eventDetail.reason !== row.kind || eventDetail.severity !== row.severity)
                 throw Error('invalid watchdog durable event');
             const event: RealtimeSafetyEvent = { id: saved.id, kind: saved.kind, deviceCreatedAt: saved.device_created_at, serverCreatedAt: saved.server_created_at, latitude: null, longitude: null, accuracyM: null, detail: eventDetail };
-            if (!await push(event))
+            if (!await watchdogDeadline(() => push(event), 4000))
                 throw Error('watchdog delivery not accepted');
             await db.prepare('UPDATE health_incidents SET alerted_at=?1 WHERE id=?2 AND device_id=?3 AND ended_at IS NULL AND alerted_at IS NULL AND EXISTS(SELECT 1 FROM devices WHERE id=?3 AND revoked_at IS NULL)').bind(now, row.id, deviceId).run();
         }
