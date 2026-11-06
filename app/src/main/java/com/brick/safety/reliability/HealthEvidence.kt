@@ -2,6 +2,7 @@ package com.brick.safety.reliability
 
 import android.Manifest
 import android.app.ActivityManager
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -11,6 +12,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import com.brick.safety.evidence.EvidenceJournal
 import com.brick.safety.privileged.PrivilegedBridgeRuntime
 import org.json.JSONArray
@@ -21,6 +23,7 @@ object HealthEvidence {
         val sensorManager = context.getSystemService(SensorManager::class.java)
         val powerManager = context.getSystemService(PowerManager::class.java)
         val activityManager = context.getSystemService(ActivityManager::class.java)
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val prefs = context.getSharedPreferences("brick", Context.MODE_PRIVATE)
 
@@ -90,6 +93,10 @@ object HealthEvidence {
             .put("bluetoothScanPermission", Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_SCAN))
             .put("nearbyWifiPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.NEARBY_WIFI_DEVICES))
             .put("notificationPermission", Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS))
+            // Separate runtime notification grant from per-app/channel settings. Neither guarantees
+            // an alert reached the parent; Android FGS disclosure is still mandatory when tracking.
+            .put("notificationsEnabled", NotificationManagerCompat.from(context).areNotificationsEnabled())
+            .put("trackingChannelImportance", notificationManager.getNotificationChannel("brick_tracking")?.importance ?: -1)
             .put("batteryOptimizationExempt", powerManager.isIgnoringBatteryOptimizations(context.packageName))
             .put("powerSaveMode", powerManager.isPowerSaveMode)
             .put("backgroundRestricted", activityManager.isBackgroundRestricted)

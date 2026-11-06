@@ -28,8 +28,8 @@ android {
         applicationId = "com.brick.safety"
         minSdk = 29
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.0.0-beta.1"
+        versionCode = 12
+        versionName = "1.0.0-beta.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Production/release-candidate path. Disposable beta expiry is disabled here; test builds
@@ -38,11 +38,11 @@ android {
         buildConfigField("long", "BRICK_BETA_EXPIRY_EPOCH_MS", "0L")
         // Beta identity is independent of retirement: BRICK_BETA stays false (expiry disabled).
         buildConfigField("boolean", "BRICK_BETA_DIAGNOSTICS", "true")
-        buildConfigField("String", "BRICK_RELEASE_ID", "\"brick-beta-20261105-01\"")
+        buildConfigField("String", "BRICK_RELEASE_ID", "\"brick-phase1-20261106-01\"")
         val sourceSha = providers.environmentVariable("BRICK_BUILD_SOURCE_SHA").orElse("unrecorded").get()
         require(sourceSha == "unrecorded" || sourceSha.matches(Regex("[0-9a-f]{40}")))
         buildConfigField("String", "BRICK_SOURCE_SHA", "\"$sourceSha\"")
-        buildConfigField("String", "BRICK_BETA_CHANNEL", "\"beta-apk\"")
+        buildConfigField("String", "BRICK_BETA_CHANNEL", "\"phase1-android\"")
     }
 
     buildFeatures {

@@ -39,6 +39,7 @@ import com.brick.safety.reliability.HealthEvidence
 import com.brick.safety.reliability.LiveRetryPolicy
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
+import com.brick.safety.reliability.UploadFailureReason
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.CancellationTokenSource
 import org.json.JSONObject
@@ -55,7 +56,6 @@ class BrickLocationService : Service() {
         const val ACTION_ENSURE_RUNNING = "com.brick.safety.action.ENSURE_RUNNING"
         private const val HEALTH_INTERVAL_MS = 30_000L
         private const val ATLAS_PULSE_MS = 5_000L
-        private const val DEEP_STATIONARY_AFTER_MS = 10 * 60_000L
         private const val BLE_SCAN_NORMAL_MS = 60_000L
         private const val BLE_SCAN_DEGRADED_MS = 30_000L
         private const val LOCATION_V2_BYTES = 90
@@ -78,6 +78,8 @@ class BrickLocationService : Service() {
     private val latestLive = AtomicReference<LiveCandidate?>(null)
     private val measuredGeneration = AtomicLong(0L)
     private val reacquisitionInProgress = AtomicBoolean(false)
+    private val registrationInProgress = AtomicBoolean(false)
+    private val locationRegistrationGeneration = AtomicLong(0L)
 
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
@@ -110,6 +112,11 @@ class BrickLocationService : Service() {
     @Volatile private var lastReacquireAttemptElapsed = 0L
     @Volatile private var reacquisitionFailedForGap = false
     @Volatile private var lastObservedActivityMode = ActivityMode.UNKNOWN
+    @Volatile private var lastWeakFixReacquireElapsed = 0L
+    @Volatile private var lastTrackingDiagnosticElapsed = 0L
+    @Volatile private var lastUploadDiagnosticElapsed = 0L
+    @Volatile private var lastFastLiveDiagnosticElapsed = 0L
+    @Volatile private var lastRegistrationAttemptElapsed = 0L
     @Volatile private var shuttingDown = false
 
     // An in-flight FLP/provider/network callback must not reopen stores after deprovision begins.
@@ -205,10 +212,16 @@ class BrickLocationService : Service() {
         if (mustQuiesceAsync()) return
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             locationSubscribed = false
+            noteTrackingDiagnostic("fine_permission_missing", "The Android precise location permission is required")
             return
         }
-        runCatching { fused.removeLocationUpdates(callback) }
-        trackingIntervalMs = intervalMs
+        if (!registrationInProgress.compareAndSet(false, true)) return
+        val generation = locationRegistrationGeneration.incrementAndGet()
+        lastRegistrationAttemptElapsed = SystemClock.elapsedRealtime()
+        // Play services replaces a previous registration for the same LocationCallback. Removing
+        // it *before* the new request succeeds creates a location blackout if the update fails.
+        val previousSubscribed = locationSubscribed
+        val previousInterval = trackingIntervalMs
         val activity = activityEngine.snapshot().mode
         val priority = if (!isSosActive() && activity == ActivityMode.STATIONARY) {
             Priority.PRIORITY_BALANCED_POWER_ACCURACY
@@ -216,15 +229,35 @@ class BrickLocationService : Service() {
             Priority.PRIORITY_HIGH_ACCURACY
         }
         val minInterval = if (intervalMs <= 1_000L) 1_000L else max(2_000L, intervalMs / 2)
-        val maxDelay = if (intervalMs <= 1_000L) 1_000L else max(intervalMs * 2, 6_000L)
+        val maxDelay = TrackingCadence.maximumBatchDelayMs(intervalMs)
         val req = LocationRequest.Builder(priority, intervalMs)
             .setMinUpdateIntervalMillis(minInterval)
             .setMaxUpdateDelayMillis(maxDelay)
             .build()
-        locationSubscribed = false
-        val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }.getOrNull() ?: return
-        registration.addOnSuccessListener { locationSubscribed = true }
-        registration.addOnFailureListener { locationSubscribed = false }
+        val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }
+            .onFailure {
+                registrationInProgress.set(false)
+                noteTrackingDiagnostic("location_registration_threw", it.javaClass.simpleName)
+            }
+            .getOrNull() ?: return
+        registration.addOnSuccessListener {
+            if (locationRegistrationGeneration.get() == generation) {
+                registrationInProgress.set(false)
+                if (!mustQuiesceAsync()) {
+                    trackingIntervalMs = intervalMs
+                    locationSubscribed = true
+                }
+            }
+        }
+        registration.addOnFailureListener {
+            if (locationRegistrationGeneration.get() == generation) {
+                registrationInProgress.set(false)
+                // Only the prior working request remains until a retry; do not mark it dead.
+                trackingIntervalMs = previousInterval
+                locationSubscribed = previousSubscribed
+                noteTrackingDiagnostic("location_registration_failed", it.javaClass.simpleName)
+            }
+        }
     }
 
     private fun requestFreshSosFix() =
@@ -253,14 +286,39 @@ class BrickLocationService : Service() {
             }
         }
 
+        if (sample.rawAccepted && sample.uncertaintyM >= 75f && !isSosActive() &&
+            activityEngine.snapshot().mode == ActivityMode.STATIONARY &&
+            (lastWeakFixReacquireElapsed == 0L || now - lastWeakFixReacquireElapsed >= 120_000L)) {
+            // Bounded one-shot high-accuracy reacquisition, not a permanent high-power subscription.
+            lastWeakFixReacquireElapsed = now
+            noteTrackingDiagnostic("stationary_uncertainty_degraded", "reportedUncertaintyM=${sample.uncertaintyM.toInt()}")
+            beginReacquisition(now, forceSubscriptionRepair = false)
+        }
         recordSample(sample)
+    }
+
+    private fun noteTrackingDiagnostic(event: String, detail: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastTrackingDiagnosticElapsed > 0L && now >= lastTrackingDiagnosticElapsed &&
+            now - lastTrackingDiagnosticElapsed < 60_000L) return
+        lastTrackingDiagnosticElapsed = now
+        DiagnosticStore.log(this, DiagnosticStore.Severity.WARN, "location", event, detail)
+    }
+
+    private fun noteUploadDiagnostic(event: String, detail: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastUploadDiagnosticElapsed > 0L && now >= lastUploadDiagnosticElapsed &&
+            now - lastUploadDiagnosticElapsed < 60_000L) return
+        lastUploadDiagnosticElapsed = now
+        DiagnosticStore.log(this, DiagnosticStore.Severity.WARN, "upload", event, detail)
     }
 
     private fun recordSample(sample: PositionSample) {
         if (mustQuiesceAsync()) return
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val deviceId = prefs.getString("deviceId", null) ?: return
-        prefs.getString("apiBase", null) ?: return
+        // Persist valid points after pairing even if the backend URL is temporarily unavailable.
+        // Otherwise a configuration/network recovery silently loses history before ACK is possible.
+        if (prefs.getString("deviceId", null).isNullOrBlank()) return
         val sequence = seq.incrementAndGet()
         prefs.edit().putLong("sequence", sequence).apply()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
@@ -308,18 +366,27 @@ class BrickLocationService : Service() {
                         // Retain only current best-effort Live state. The durable Journal is separate.
                         // Android-validated Wi-Fi does not imply our API is reachable; retry later.
                         latestLive.compareAndSet(null, candidate)
+                        noteUploadDiagnostic("fast_live_failed", UploadFailureReason.classify(result.exceptionOrNull()))
                         failed = true
                         break
                     }
                     val r = result.getOrThrow()
                     if (mustQuiesceAsync()) break
-                    DiagnosticStore.log(
-                        this,
-                        DiagnosticStore.Severity.INFO,
-                        "live",
-                        "fast_live_stage",
-                        "trace=${sendTrace.id} sourceAgeMs=${(sendTrace.sendStartWallMs - sendTrace.sourceWallMs).coerceAtLeast(0L)} persistMs=${sendTrace.persistDurationMs} backend=${r.backendReceivedAtMs ?: -1} do=${r.doUpdatedAtMs ?: -1} previewed=${r.previewed}"
-                    )
+                    // Sample successful high-frequency live diagnostics. Logging each 2-3 second
+                    // position would exhaust the 12k-record seven-day local troubleshooting budget.
+                    val diagnosticNow = SystemClock.elapsedRealtime()
+                    if (lastFastLiveDiagnosticElapsed == 0L ||
+                        diagnosticNow < lastFastLiveDiagnosticElapsed ||
+                        diagnosticNow - lastFastLiveDiagnosticElapsed >= 60_000L) {
+                        lastFastLiveDiagnosticElapsed = diagnosticNow
+                        DiagnosticStore.log(
+                            this,
+                            DiagnosticStore.Severity.INFO,
+                            "live",
+                            "fast_live_stage",
+                            "sourceAgeMs=${(sendTrace.sendStartWallMs - sendTrace.sourceWallMs).coerceAtLeast(0L)} persistMs=${sendTrace.persistDurationMs} backend=${r.backendReceivedAtMs ?: -1} do=${r.doUpdatedAtMs ?: -1} previewed=${r.previewed}"
+                        )
+                    }
                 }
             } finally {
                 if (failed && !mustQuiesceAsync() && latestLive.get() != null) {
@@ -347,6 +414,7 @@ class BrickLocationService : Service() {
 
     private fun startFallbackTicker() {
         fallbackTicker.scheduleWithFixedDelay({
+            try {
             if (mustQuiesceAsync()) return@scheduleWithFixedDelay
             val now = SystemClock.elapsedRealtime()
             if (lastAtlasPulseElapsed <= 0L || now < lastAtlasPulseElapsed || now - lastAtlasPulseElapsed >= ATLAS_PULSE_MS) {
@@ -382,14 +450,16 @@ class BrickLocationService : Service() {
                 (lastLocationElapsed > 0L && now - lastLocationElapsed < trigger)) return@scheduleWithFixedDelay
             lastFallbackElapsed = now
             recordSample(sample)
+            } catch (e: Exception) {
+                // An uncaught exception terminates a repeating ScheduledExecutorService task
+                // permanently. Keep the fallback monitor alive after a recoverable provider error.
+                noteTrackingDiagnostic("fallback_tick_failed", e.javaClass.simpleName)
+            }
         }, 2, 1, TimeUnit.SECONDS)
     }
 
-    private fun reacquisitionTriggerMs(): Long = when {
-        isSosActive() -> 4_000L
-        trackingIntervalMs >= 60_000L -> trackingIntervalMs * 2 + 10_000L
-        else -> max(10_000L, trackingIntervalMs * 2 + 3_000L)
-    }
+    private fun reacquisitionTriggerMs(): Long =
+        TrackingCadence.reacquisitionTriggerMs(trackingIntervalMs, isSosActive())
 
     private fun reacquisitionTimeoutMs(): Long = if (isSosActive()) 6_000L else 10_000L
 
@@ -445,11 +515,9 @@ class BrickLocationService : Service() {
         }
 
         val token = CancellationTokenSource()
-        val priority = if (sosPriority || activityEngine.snapshot().mode != ActivityMode.STATIONARY) {
-            Priority.PRIORITY_HIGH_ACCURACY
-        } else {
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY
-        }
+        // A stale or low-quality stationary fix needs a bounded accurate refresh; the normal
+        // stationary subscription stays balanced-power for battery efficiency.
+        val priority = Priority.PRIORITY_HIGH_ACCURACY
         val request = runCatching { fused.getCurrentLocation(priority, token.token) }.getOrNull()
         if (request == null) {
             reacquisitionDeadlineElapsed = now
@@ -464,7 +532,9 @@ class BrickLocationService : Service() {
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
         if (mustQuiesceAsync()) return false
-        val sent = DurableLocationDelivery.sendOne(journal, p) { payload -> BrickApi.sendLocation(baseUrl, deviceId, payload) }
+        val sent = DurableLocationDelivery.sendOne(journal, p,
+            onFailure = { noteUploadDiagnostic("location_single_failed", UploadFailureReason.classify(it)) }
+        ) { payload -> BrickApi.sendLocation(baseUrl, deviceId, payload) }
         if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
         return sent
     }
@@ -472,7 +542,9 @@ class BrickLocationService : Service() {
     private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
         if (mustQuiesceAsync()) return false
         if (batch.isEmpty()) return true
-        val sent = DurableLocationDelivery.sendBatch(journal, batch) { pending ->
+        val sent = DurableLocationDelivery.sendBatch(journal, batch,
+            onFailure = { noteUploadDiagnostic("location_batch_failed", UploadFailureReason.classify(it)) }
+        ) { pending ->
             BrickApi.sendLocationBatch(baseUrl, deviceId, pending.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) })
         }
         if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
@@ -569,6 +641,7 @@ class BrickLocationService : Service() {
                     }
                     if (!sent) {
                         failed = true
+                        noteUploadDiagnostic("location_batch_not_acked", "records=${pending.size} network=${networkKind()}")
                         return@execute
                     }
                 }
@@ -583,8 +656,9 @@ class BrickLocationService : Service() {
                 // Diagnostics are last. Evidence uses its own worker and explicitly yields to safety,
                 // Location and pending health state.
                 if (!drainCrashReports(baseUrl, deviceId)) failed = true
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
                 failed = true
+                noteUploadDiagnostic("location_upload_exception", t.javaClass.simpleName)
             } finally {
                 uploadPumpRunning.set(false)
                 if (!mustQuiesceAsync()) {
@@ -621,11 +695,20 @@ class BrickLocationService : Service() {
 
     private fun startSupervisor() {
         supervisor.scheduleWithFixedDelay({
+            try {
             if (mustQuiesceAsync() || DeviceRoleStore.role(this) != DeviceRoleStore.Role.CHILD) {
                 stopSelf()
                 return@scheduleWithFixedDelay
             }
             val now = SystemClock.elapsedRealtime()
+            if (registrationInProgress.get() && lastRegistrationAttemptElapsed > 0L &&
+                now >= lastRegistrationAttemptElapsed &&
+                now - lastRegistrationAttemptElapsed >= 20_000L) {
+                // A Task that never completes cannot permanently block future registrations.
+                locationRegistrationGeneration.incrementAndGet()
+                registrationInProgress.set(false)
+                noteTrackingDiagnostic("location_registration_timed_out", "pendingOverMs=20000")
+            }
             val locationEnabled = androidLocationEnabled()
             if (!locationEnabled && locationSubscribed) {
                 runCatching { fused.removeLocationUpdates(callback) }
@@ -636,10 +719,16 @@ class BrickLocationService : Service() {
             val desired = desiredIntervalMs()
             val leftSlowStationary = lastObservedActivityMode == ActivityMode.STATIONARY && activity != ActivityMode.STATIONARY
             lastObservedActivityMode = activity
-            if (leftSlowStationary && locationEnabled) {
+            if (!locationEnabled) {
+                noteTrackingDiagnostic("system_location_disabled", "LocationManager.isLocationEnabled=false")
+            } else if (leftSlowStationary) {
                 startTracking(desired)
                 beginReacquisition(now, forceSubscriptionRepair = true)
-            } else if (locationSubscribed && desired != trackingIntervalMs && locationEnabled) {
+            } else if (locationSubscribed && desired != trackingIntervalMs) {
+                startTracking(desired)
+            } else if (!locationSubscribed && !registrationInProgress.get() &&
+                (lastRegistrationAttemptElapsed <= 0L || now - lastRegistrationAttemptElapsed >= 15_000L)) {
+                // A failed FLP registration is retried even when the last accepted fix is recent.
                 startTracking(desired)
             }
 
@@ -659,6 +748,9 @@ class BrickLocationService : Service() {
                 kickUploadPump()
             }
             if (now - lastHealthElapsed >= HEALTH_INTERVAL_MS) sendHealth(now, locationEnabled)
+            } catch (e: Exception) {
+                noteTrackingDiagnostic("supervisor_tick_failed", e.javaClass.simpleName)
+            }
         }, 5, 5, TimeUnit.SECONDS)
     }
 
@@ -754,26 +846,12 @@ class BrickLocationService : Service() {
     private fun isSosActive(): Boolean = SafetyDispatcher.isSosActive(this)
 
     private fun desiredIntervalMs(): Long {
-        if (isSosActive()) return 1_000L
         val prefs = getSharedPreferences("brick", MODE_PRIVATE)
-        val liveTrackUntil = prefs.getLong("liveTrackUntilMs", 0L)
-        if (liveTrackUntil > System.currentTimeMillis()) return 2_000L
-        val activity = activityEngine.snapshot()
-        return when (activity.mode) {
-            ActivityMode.VEHICLE, ActivityMode.RUNNING -> 3_000L
-            ActivityMode.BICYCLE -> 4_000L
-            ActivityMode.WALKING -> 5_000L
-            ActivityMode.STATIONARY -> {
-                val now = SystemClock.elapsedRealtime()
-                if (activity.modeSinceElapsedMs > 0L && activity.modeSinceElapsedMs <= now &&
-                    now - activity.modeSinceElapsedMs >= DEEP_STATIONARY_AFTER_MS) {
-                    120_000L
-                } else {
-                    60_000L
-                }
-            }
-            ActivityMode.UNKNOWN -> 8_000L
-        }
+        return TrackingCadence.intervalMs(
+            mode = activityEngine.snapshot().mode,
+            sosActive = isSosActive(),
+            liveActive = prefs.getLong("liveTrackUntilMs", 0L) > System.currentTimeMillis()
+        )
     }
 
     private fun appVersionName(): String = runCatching {
@@ -795,6 +873,7 @@ class BrickLocationService : Service() {
         val stats = runCatching { journal.stats() }.getOrNull()
         val activity = activityEngine.snapshot()
         val gnss = gnssMonitor.snapshot()
+        val phoneHeading = motionEngine.snapshot()
         val bm = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val batteryPct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         val command = ParentLocationStateStore.read(this)
@@ -829,6 +908,9 @@ class BrickLocationService : Service() {
             .put("activityMode", activity.mode.name.lowercase())
             .put("activityConfidence", activity.confidence)
             .put("trackingIntervalMs", trackingIntervalMs)
+            .put("phoneFacingHeadingDeg", phoneHeading.headingDeg?.toDouble() ?: JSONObject.NULL)
+            .put("phoneFacingHeadingAgeMs", phoneHeading.headingAgeMs ?: JSONObject.NULL)
+            .put("phoneFacingHeadingSource", phoneHeading.headingSource ?: JSONObject.NULL)
             .put("gnssUsedInFix", gnss.usedInFix)
             .put("gnssTotal", gnss.totalSatellites)
             .put("batteryPct", batteryPct)
@@ -866,7 +948,10 @@ class BrickLocationService : Service() {
                     updateBleAnchorConfigs(sync.bleAnchors)
                     applyLocationCommand(deviceId, sync.locationCommand)
                 }
-                .onFailure { prefs.edit().putBoolean("healthUploadPending", true).apply() }
+                .onFailure {
+                    prefs.edit().putBoolean("healthUploadPending", true).apply()
+                    noteUploadDiagnostic("health_upload_failed", UploadFailureReason.classify(it))
+                }
         }
     }
 
