@@ -1,3 +1,9 @@
+# Latest source qualification — configuration preflight and journal files
+
+Exact sourceecad1e2ac41f372f16270a62fde9621e79ab1bf7 has72 new hosted-passing cases:56 actual config/early-setup preflight and16 actual private journal-file/coordinator refusal cases. Push/PR audit33/33 and portal10/10 pass with decoded exact-source logs inspected. P8D-091/092 are source/CI corrections only. Current template/runtime/APK/UI are unchanged. See PHASE8D_CONFIG_JOURNAL_HOSTED_EVIDENCE.json and the current checkpoint for limits. OPS-011/SEC-014/OPS-002 get partial proof only; all525 final criteria/owners/reviews/dispositions remain open. Do not repeat these corrected defects or failed Cloudflare login; advance actual fence/transport/independent recovery, Atlas/model history and deployed/review evidence. The four groups and reviewed later-phase boundaries below remain authoritative. No merge/deploy or live mutation.
+
+---
+
 # Current inspection-tool correction and access boundary
 
 P8D-090 at source2d9a3073288a304b4820fe0b30f27a5f8a3fd843 qualifies34 new PITR lifecycle/private-plan cases plus inherited8; final push/PR audit33/33 and portal10/10 passed with actual decoded logs. This only supports OPS-002 inspection tooling. Cloudflare sign-in remains unsuccessful (observed generic error and403; further failure user-reported). Cookies were not cleared; browser settings access was refused. Do not retry unchanged access or infer actual PITR/bindings. See PHASE8D_PITR_LIFECYCLE_HOSTED_EVIDENCE.json and PHASE8D_LIVE_RECOVERY_PREREQUISITES.md. All four groups, current P1 and525 final independent dispositions remain open; no merge/deploy or canonical waiver.
