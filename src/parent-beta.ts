@@ -39,6 +39,31 @@ export function parentBetaHtml(base:string){
  html=html.replace(healthPane,'<section id="logs" class="pane"><div class="sectionTitle"><h3>Phone & cloud observation logs</h3><button id="refreshLogs" type="button">Refresh</button></div><div class="notice">Available: signed beta health observations within the last seven Singapore calendar days. Full Android diagnostic logs are not yet uploaded; absence of observations does not mean the phone is healthy.</div><div id="phase2LogsStatus" class="small">Select a phone to load observations.</div><div id="phase2LogsList"></div></section>'+healthPane);
 const js=String.raw`
 
+// Browser-side fail-closed presentation clamp. A previously delivered "fresh"
+// server snapshot cannot remain fresh forever after the phone or socket stops.
+// Never promote an old/stale server reading to fresh; this affects display only.
+function p2ClampSnapshot(x,now){
+ if(!x||typeof x!=='object')return x;
+ const finite=n=>typeof n==='number'&&Number.isFinite(n);
+ const age=n=>finite(n)&&n>0&&n<=now+120000?Math.max(0,now-n):null;
+ const d={...(x.derived||{})},p=x.latest||{},h=x.health||{};
+ const ages=[age(p.wallTimeMs),age(p.receivedAt)].filter(v=>v!==null);
+ const positionAge=ages.length?Math.max(...ages):null;
+ const invalidFuture=(finite(p.wallTimeMs)&&p.wallTimeMs>now+120000)||(finite(p.receivedAt)&&p.receivedAt>now+120000);
+ const interval=Math.max(1000,Math.min(300000,finite(h.trackingIntervalMs)?h.trackingIntervalMs:5000));
+ const staleAt=Math.max(60000,interval*3+30000);
+ const freshAt=Math.max(15000,Math.min(staleAt/2,interval*1.5+5000));
+ if(d.positionStatus==='fresh'&&(invalidFuture||positionAge===null||positionAge>freshAt)){
+  d.positionStatus=positionAge===null&&!invalidFuture?'unavailable':'stale';
+ }
+ const healthAge=age(h.receivedAt);
+ if(healthAge!==null&&healthAge>75000)d.deviceStatus='offline';
+ if(d.deviceStatus==='offline'&&d.positionStatus==='fresh')d.positionStatus='stale';
+ return {...x,derived:d};
+}
+const p2OriginalRenderSnapshot=renderSnapshot;
+renderSnapshot=function(x){return p2OriginalRenderSnapshot(p2ClampSnapshot(x,Date.now()))};
+
 // Phase 2 portal safety: preserve every stored event but group rapid historical fall noise.
 // Grouping only affects presentation, not D1 history, SOS delivery or Android's sensor policy.
 const p2SeenBanners=new Map();
