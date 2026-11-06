@@ -2,7 +2,7 @@ name: Brick Phase 2 — Isolated Parent Portal Verification
 
 on:
   push:
-    branches: [feat/v1-phase2-parent-20261106, fix/phase2-15char-passphrase-20261106]
+    branches: [feat/v1-phase2-parent-20261106, fix/phase2-15char-passphrase-20261106, fix/phase2-preserve-parent-sessions-20261106]
   pull_request:
     branches: [beta/backend-portal]
   workflow_dispatch:
@@ -22,7 +22,9 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Phase 2 safety and private authentication regression
-        run: node scripts/test-phase2-parent-baseline.mjs
+        run: |
+          node scripts/test-phase2-parent-baseline.mjs
+          node scripts/test-phase2-session-preservation.mjs
       - name: Typecheck Worker and existing parent app
         run: npm run typecheck
       - name: Typecheck parent web module
