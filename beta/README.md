@@ -1,6 +1,6 @@
 # Brick beta — Phase 1 APK
 
-Base: Phase8D71f5460fa6dfb47e276121e6c69db98cdae4485a. Branch beta/apk. Shared release brick-beta-20261105-01; APK1.0.0-beta.1/code11, same com.brick.safety and existing signing identity. No automatic retirement/expiry. Beta identity is separate from old BRICK_BETA expiry flag (false, expiry0).
+Base: Phase8D71f5460fa6dfb47e276121e6c69db98cdae4485a. Branch fix/v1-p8d-phase1-android-20261106. Shared release brick-phase1-20261106-01; APK1.0.0-beta.2/code12, same com.brick.safety and existing signing identity. No automatic retirement/expiry. Beta identity is separate from old BRICK_BETA expiry flag (false, expiry0).
 
 Feature preservation: all baseline production files/permissions/components retained; existing services, child UI, sensors/evidence/fusion/Atlas/witness, journal/outboxes, signed networking, roles/pairing, commands/schedules, maintenance and recovery remain. beta/check-apk-parity.py verifies source/component inventory and no backend changes; functional results require actual tests. This is not Phase8D acceptance or OPPO qualification.
 
