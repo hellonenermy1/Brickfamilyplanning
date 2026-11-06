@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "3c8b239db9823fa408c7edf6a66cf59f1bdf8718",
+  "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -52,7 +52,7 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 263,
+      "selectedTrackedFiles": 264,
       "explicitManagementClassifications": 66,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 17,
@@ -103,13 +103,26 @@
       "actualNativeControllerFaultCases": 5,
       "actualEdgeCases": 3,
       "completeWriterCoverage": false
+    },
+    {
+      "id": "POPULATED_CONFIG_RELATIONSHIP_RECOVERY",
+      "state": "FULL_LOCAL_NATIVE_RESTORE_RESTART_AND_DRIFT_CHECKS_VERIFIED_NOT_CI_OR_LIVE",
+      "stableTables": 16,
+      "stableRows": 33,
+      "oneShotControlRows": 4,
+      "verificationGroups": 7
     }
   ],
   "remaining": [
     {
+      "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
+      "state": "JOBS_FAILED_WITHOUT_TEST_STEPS",
+      "needed": "Exact-source successful hosted execution; cause unavailable through current API. One failed-job retry also unstarted. No automatic billing/permission/card change."
+    },
+    {
       "id": "POPULATED_CONFIG_RELATIONSHIP_PARITY",
-      "state": "NOT_QUALIFIED_IN_SIGNED_D1_DRILL",
-      "needed": "Next code task: populate places/config and relationship records in the signed card-free destruction/restore fixture and verify exact restored values and links, rather than infer nonempty coverage from41-table counts. This does not replace independent live-cloud recovery."
+      "state": "LOCAL_NATIVE_VERIFIED_HOSTED_DID_NOT_START",
+      "needed": "Populated scope is verified locally; current hosted jobs did not start. Do not call this CI-qualified or live-cloud acceptance."
     },
     {
       "id": "COMPLETE_WRITER_HOOKS",
@@ -154,39 +167,77 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SIGNED_WRITER_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": null,
   "hostedStatus": {
-    "runs": [
+    "currentSourceCiQualified": false,
+    "attempts": [
       {
-        "runId": 42204232071,
+        "runId": 42208349586,
+        "attempt": 1,
         "event": "pull_request",
+        "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
         "reportedRunStatus": "completed",
-        "reportedRunConclusion": "success",
+        "reportedRunConclusion": "failure",
+        "jobId": 127860519770,
         "reportedJobStatus": "completed",
-        "reportedJobConclusion": "success",
-        "steps": 10,
-        "allStepsCompletedSuccess": true
+        "reportedJobConclusion": "failure",
+        "steps": null,
+        "runnerId": null,
+        "runnerName": null,
+        "testExecutionVerified": false,
+        "logAvailable": false
       },
       {
-        "runId": 42204231762,
+        "runId": 42208349603,
+        "attempt": 1,
         "event": "pull_request",
+        "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
         "reportedRunStatus": "completed",
-        "reportedRunConclusion": "success",
+        "reportedRunConclusion": "failure",
+        "jobId": 127860519571,
         "reportedJobStatus": "completed",
-        "reportedJobConclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true
+        "reportedJobConclusion": "failure",
+        "steps": null,
+        "runnerId": null,
+        "runnerName": null,
+        "testExecutionVerified": false,
+        "logAvailable": false
       },
       {
-        "runId": 42204225236,
+        "runId": 42208343601,
+        "attempt": 1,
         "event": "push",
+        "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
         "reportedRunStatus": "completed",
-        "reportedRunConclusion": "success",
+        "reportedRunConclusion": "failure",
+        "jobId": 127860499924,
         "reportedJobStatus": "completed",
-        "reportedJobConclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true
+        "reportedJobConclusion": "failure",
+        "steps": null,
+        "runnerId": null,
+        "runnerName": null,
+        "testExecutionVerified": false,
+        "logAvailable": false
+      },
+      {
+        "runId": 42208343601,
+        "attempt": 2,
+        "event": "push",
+        "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
+        "reportedRunStatus": "completed",
+        "reportedRunConclusion": "failure",
+        "jobId": 127861298671,
+        "reportedJobStatus": "completed",
+        "reportedJobConclusion": "failure",
+        "steps": null,
+        "runnerId": null,
+        "runnerName": null,
+        "testExecutionVerified": false,
+        "logAvailable": false
       }
     ]
-  }
+  },
+  "lastHostedQualifiedSourceSha": "3c8b239db9823fa408c7edf6a66cf59f1bdf8718",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SIGNED_WRITER_HOSTED_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_POPULATED_RESTORE_LOCAL_EVIDENCE.json"
 }
