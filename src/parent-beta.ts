@@ -129,15 +129,77 @@ wsMessage=function(m){
  }
  p2OriginalWsMessage(m);
 };
-// MapLibre may still be loading its style when a history request completes.
-// Defer route drawing rather than swallowing all playback behind the API catch block.
+// Phase 2 History: retain raw evidence, but never reuse another device's
+// playback markers, routes, or an earlier asynchronous HTTP response.
+let p2HistoryRequest=0;
+function p2HistoryResponseCurrent(requestDevice,requestId,selectedDevice,activeId){
+ return Boolean(requestDevice)&&requestDevice===selectedDevice&&requestId===activeId;
+}
 const p2OriginalDrawHistory=drawHistory;
+function p2ClearHistoryView(){
+ stopPlay();
+ historyPoints=[];displayPoints=[];playIndex=0;
+ const seek=document.getElementById('seek');
+ if(seek){seek.max='0';seek.value='0';}
+ text('#playTime','—');
+ renderTimeline([]);
+ if(playMarker){try{playMarker.remove()}catch{}playMarker=null;}
+ if(map?.isStyleLoaded()&&map.getSource('historyRoute')){
+  try{p2OriginalDrawHistory([])}catch{}
+ }
+}
+const p2OriginalSelectDevice=selectDevice;
+selectDevice=async function(id){
+ if(id!==currentDevice){
+  p2HistoryRequest++;
+  p2ClearHistoryView();
+  text('#historyNote','Select a range to load history for this phone.');
+ }
+ return p2OriginalSelectDevice(id);
+};
+// MapLibre may still be loading its style when evidence arrives.
 drawHistory=function(points){
- const id=currentDevice,copy=Array.isArray(points)?points.slice():[];
- const apply=()=>{if(id!==currentDevice||!map?.isStyleLoaded())return;try{p2OriginalDrawHistory(copy)}catch(error){text('#historyNote','Map route drawing failed: '+String(error?.message||'unknown'))}};
+ const id=currentDevice,request=p2HistoryRequest,copy=Array.isArray(points)?points.slice():[];
+ const apply=()=>{
+  if(!p2HistoryResponseCurrent(id,request,currentDevice,p2HistoryRequest)||!map?.isStyleLoaded())return;
+  try{p2OriginalDrawHistory(copy)}
+  catch(error){text('#historyNote','Map route drawing failed: '+String(error?.message||'unknown'))}
+ };
  if(map?.isStyleLoaded())apply();else if(map)map.once('style.load',apply);
 };
-
+fetchHistory=async function(from,to){
+ const id=currentDevice,request=++p2HistoryRequest;
+ p2ClearHistoryView();
+ if(!id){text('#historyNote','Select a phone before loading history.');return}
+ if(!Number.isSafeInteger(from)||!Number.isSafeInteger(to)||to<from||to-from>31*86400000){
+  text('#historyNote','Choose a valid history range of up to 31 days.');return;
+ }
+ text('#historyNote','Loading selected phone history…');
+ try{
+  const result=await api('/parent/api/device/'+encodeURIComponent(id)+'/history?from='+from+'&to='+to);
+  if(!p2HistoryResponseCurrent(id,request,currentDevice,p2HistoryRequest))return;
+  if(!result||!Array.isArray(result.points))throw Error('Invalid history response');
+  historyPoints=result.points;
+  displayPoints=Array.isArray(result.displayPoints)?result.displayPoints:historyPoints;
+  const seek=document.getElementById('seek');
+  if(seek)seek.max=String(Math.max(0,historyPoints.length-1));
+  if(historyPoints.length)setPlayPoint(0);
+  drawHistory(displayPoints);
+  renderTimeline(historyPoints);
+  const summary=result.summary||{};
+  text('#sumDistance',summary.distanceM==null?'—':(summary.distanceM/1000).toFixed(summary.distanceM<10000?2:1)+' km');
+  text('#sumDuration',fmtDur(summary.durationMs));
+  text('#sumAvg',summary.averageMovingKph==null?'—':Number(summary.averageMovingKph).toFixed(1)+' km/h');
+  text('#sumMax',summary.maxTrustedKph==null?'—':Number(summary.maxTrustedKph).toFixed(1)+' km/h');
+  text('#sumModes',(summary.modes||[]).join(' → ')||'—');
+  text('#sumStops',String((summary.stops||[]).length));
+  text('#historyNote',historyPoints.length+' evidence points'+(result.truncated?' · result truncated':'')+(historyPoints.length?'':' · no recorded journey in this range'));
+ }catch(error){
+  if(!p2HistoryResponseCurrent(id,request,currentDevice,p2HistoryRequest))return;
+  p2ClearHistoryView();
+  text('#historyNote','History unavailable: '+String(error?.message||'request failed'));
+ }
+};
 
 async function p2LoadObservationLogs(){
  const id=currentDevice,root=document.getElementById('phase2LogsList'),status=document.getElementById('phase2LogsStatus');
