@@ -26,7 +26,7 @@ export default {
     const apk=await env.HISTORY.get(BETA_APK_KEY);if(!apk||apk.size>10*1024*1024)return betaJson({error:'verified_apk_unavailable'},503);
     const bytes=await apk.arrayBuffer();const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(x=>x.toString(16).padStart(2,'0')).join('');
     if(digest!==BETA_RELEASE.apkSha256)return betaJson({error:'verified_apk_unavailable'},503);
-    return new Response(bytes,{headers:{'Content-Type':'application/vnd.android.package-archive','Content-Disposition':'attachment; filename="Brick-Beta-1.0.0-beta.1.apk"','Content-Length':String(apk.size),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'}});
+    return new Response(bytes,{headers:{'Content-Type':'application/vnd.android.package-archive','Content-Disposition':'attachment; filename="Brick-Beta-1.0.0-beta.2.apk"','Content-Length':String(apk.size),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Cross-Origin-Resource-Policy':'same-origin'}});
    }catch{return betaJson({error:'beta_service_unavailable'},503);}
   }
   const response=await base.fetch(req,env,ctx);
