@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "559a3e085c31950936648e26c6bbc3d78acc206a",
+  "basisCommitSha": "f3038fd1cd98d33a81bdf1ca8d82ad1a567a7c08",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "a94cb5657f9446290c103dd4441588c8735d0f32d2df16644ac05db06b0cfe0e",
   "summary": {
-    "selectedFiles": 260,
+    "selectedFiles": 261,
     "filesWithManagementSignals": 64,
     "explicitClassifications": 66,
     "betaMutatorsUnfenced": 4,
@@ -13,7 +13,7 @@
     "unresolvedRelativeImportCandidates": 1,
     "unresolvedDynamicImports": 126
   },
-  "sourceSetSha256": "023cd1629877bcec886d2f1782ca566f938feb358ef42a46c34331c4e9d4a350",
+  "sourceSetSha256": "e63536c4b3c5a62bbb234d337b8b128f92fca85b845c14dd755433cfa834393d",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -521,6 +521,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-capture-lifecycle.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-capture-reservations.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2599,8 +2604,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "c3bcac86476a1fe895eff92f1ac9f649a8528986c98c0093b131feffcf431df9",
-      "gitBlobSha": "42d4c274044988f4ea5caf9075dff2299d846ae4",
+      "sha256": "5eefbe15885e9a82c439288820c38048e9d2920b6cad4db9fc870c6b6b59f01f",
+      "gitBlobSha": "a0dd27e7fe5bd9f486cfa72aac6deae269669c2b",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -2628,6 +2633,7 @@
         "scripts/test-phase8d-capture-coordinator.mjs",
         "scripts/test-phase8d-capture-d1-boundary.mjs",
         "scripts/test-phase8d-capture-lifecycle.mjs",
+        "scripts/test-phase8d-capture-reservations.mjs",
         "scripts/test-phase8d-capture-writer-boundary.mjs",
         "scripts/test-phase8d-cardfree-pitr.mjs",
         "scripts/test-phase8d-cardfree-recovery.mjs",
@@ -4906,8 +4912,8 @@
     },
     {
       "path": "scripts/staged-external-writer.mjs",
-      "sha256": "b0ca8178cbfd20e031c16db160a08bd3e5bf96349206f0cb8c60306094e036a2",
-      "gitBlobSha": "70be39b265648c38bb0214d6ddb9006063c7716d",
+      "sha256": "70a72c722e10996c61a10f0b493dc484c800baf55fc8abef07651eec48d82711",
+      "gitBlobSha": "87c05c585868966607706c0a207b200ea3c0befc",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Inactive external operation ownership adapter; trusted controller injection only in fixtures, no cloud transport or production installer.",
       "signals": [],
@@ -6041,8 +6047,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-broker.mjs",
-      "sha256": "0e4cce0d4551d6292964d4b5139c72481b8f62a269d5c1dd984906da04b5c7c6",
-      "gitBlobSha": "6662340354ece15998c1a19283e0dac9ae52d9e7",
+      "sha256": "9b8a2c06812af1131760065d44e303786562e2d4475fec97a6f3be08e4f45d4a",
+      "gitBlobSha": "43654a5611bfd3ace1d1274eec9e48f5fff45ac0",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic HMAC/replay client/server and native authority with ephemeral test keys and blocked outbound network; no production endpoint/key or provider qualification.",
       "signals": [],
@@ -6054,6 +6060,10 @@
         {
           "line": 40,
           "operation": "probe"
+        },
+        {
+          "line": 48,
+          "operation": "probe"
         }
       ],
       "stagedExternalControllerInstallCalls": [
@@ -6062,6 +6072,9 @@
         },
         {
           "line": 40
+        },
+        {
+          "line": 48
         }
       ],
       "imports": [
@@ -6155,9 +6168,30 @@
       "npmScriptReferences": []
     },
     {
+      "path": "scripts/test-phase8d-capture-reservations.mjs",
+      "sha256": "6d0c3c32727dad46bc44e4fcaf3609a7e11d5eb663428465d8b4e5f4aedc576c",
+      "gitBlobSha": "bec1efc32e457d9b83ef2202a211fe571836077f",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
       "path": "scripts/test-phase8d-capture-writer-boundary.mjs",
-      "sha256": "4d19c0fa4c14bfd0ff76eba1c362b309952b2e4ea0a112b5c8fbd96c19a96887",
-      "gitBlobSha": "a0cf959ed8f76d7f967cf52642f253d3eb81b5ab",
+      "sha256": "bf2095f51c87c83ad2e32dd3db34b43b9a956c799493ede24252d198a0feeca9",
+      "gitBlobSha": "836d4db768f720221a9660b81b7bb0f3ce4d31ed",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],

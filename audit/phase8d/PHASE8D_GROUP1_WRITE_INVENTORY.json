@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "a3917dee247f2ae9a405bd6dab08c712b6d2b072",
+  "basisCommitSha": "f3038fd1cd98d33a81bdf1ca8d82ad1a567a7c08",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
@@ -13,7 +13,7 @@
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "ffad62308abb43cb7e4340c610a3375ac3d974a32fb47743c22e77a93770ec50",
+  "runtimeSourceSetSha256": "3bdac81b0df8db967e21e28af3641d72cd38cadbf0d2db54c22859d3a7d63fcc",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -926,12 +926,12 @@
     },
     {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "9133f3e20297a9ad6f6bab767c128bf579dd0de316c77fdfd72a9d317e06c28c",
-      "gitBlobSha": "2a663a65b9e883b7b9ce62a774030a94f69b0e45",
+      "sha256": "43303a1587408eabd5111bda9b3bd498f813a8a5de843efc42ccfde29d289efd",
+      "gitBlobSha": "f0a0d8629b31715cd01fce6d1ca50a9c34620054",
       "imports": [],
       "sites": [
         {
-          "line": 27,
+          "line": 30,
           "column": 166,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
