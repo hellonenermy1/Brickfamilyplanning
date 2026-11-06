@@ -1,3 +1,13 @@
+# Latest recovery source progress and live-access blocker
+
+Exact source 0dd3e620baa1a1b9277804dda27dc5fd3ca94ff7:57 new cases (35 lifecycle +22 filesystem), all33 audit steps in push/PR and10 portal steps completed-success; actual native41+4/deviceDO destruction/restore rerun. P8D-088/089 source corrections are qualified within their explicit cooperative/OS/local-publication limits. They do not qualify a live source fence, independent storage/key or cloud restore.
+
+Fresh dashboard access check reached Sign in to Cloudflare, so current account/PITR/deployment inspection still needs legitimate authentication. The provider integration lookup returned no entry and is not exhaustive; historical audit401 was not retried. PHASE8D_LIVE_RECOVERY_PREREQUISITES.md lists access, engineering, independent custody, scheduling, isolated drill and owner review as separate prerequisites. Authentication alone does not close the P1 gate.
+
+All four groups and reviewed phase boundaries below remain open. Existing configuration is unverified, not presumed absent. Generic continue never authorizes merge/deploy, live data export/deletion/restore, new credentials/permissions or R2/billing.
+
+---
+
 # Latest source correction — optional route-map isolation
 
 Source d19776522103a9a7a499c7e89649522a2d0922c2 qualifies P8D-087 with39 new cases and full hosted33/33 audit steps in both push/PR plus10/10 portal steps. Provider/cache failure preserves current inertial state without false route attribution; healthy enrichment and automatic retry remain available. Four canonical rows gain partial proof only. Source details and limits: PHASE8D_ROUTE_LOOKUP.md and PHASE8D_ROUTE_LOOKUP_HOSTED_EVIDENCE.json.
