@@ -137,7 +137,7 @@ try{
  // No new D1 safety rows, realtime alerts, or changes to SOS.
  const beforeFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
  for(let i=0;i<3;i++){
-  const payload={eventId:crypto.randomUUID(),eventSequence:700+i,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,accuracyM:null,detail:{confidence:i===0?'high':'low',impactG:4.2}};
+  const payload={protocol:1,eventId:crypto.randomUUID(),eventSequence:700+i,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,accuracyM:null,detail:{confidence:i===0?'high':'low',impactG:4.2}};
   const quiet=await signed('/event',payload);
   assert.equal(quiet.status,200,'signed beta fall must ACK, never queue retries indefinitely');
   const body=await quiet.json();
@@ -146,9 +146,9 @@ try{
  }
  const afterFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
  assert.equal(afterFalls,beforeFalls,'automatic beta fall alerts must never create new safety rows');
- const forged={eventId:crypto.randomUUID(),eventSequence:799,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,detail:{confidence:'high'}};
+ const forged={protocol:1,eventId:crypto.randomUUID(),eventSequence:799,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,detail:{confidence:'high'}};
  assert.equal((await signed('/event',forged,await ecdsa())).status,401,'quarantine must never bypass device signature verification');
- const sos={eventId:crypto.randomUUID(),eventSequence:900,createdAtMs:Date.now(),kind:'sos_started',latitude:null,longitude:null,accuracyM:null,detail:{source:'manual_test'}};
+ const sos={protocol:1,eventId:crypto.randomUUID(),eventSequence:900,createdAtMs:Date.now(),kind:'sos_started',latitude:null,longitude:null,accuracyM:null,detail:{source:'manual_test'}};
  const sosResponse=await signed('/event',sos);
  assert.equal(sosResponse.status,200,'manual SOS must not be silenced by automatic fall quarantine: '+(await sosResponse.clone().text()).slice(0,320));
  const sosRow=await db.prepare("SELECT id FROM safety_events WHERE device_id=?1 AND id=?2 AND kind='sos_started'").bind(DEVICE_A,sos.eventId).first();
