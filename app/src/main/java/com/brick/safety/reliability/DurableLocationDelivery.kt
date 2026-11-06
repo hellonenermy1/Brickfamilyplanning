@@ -13,13 +13,18 @@ object DurableLocationDelivery {
     fun sendOne(
         journal: Journal,
         pending: Journal.Pending,
+        onFailure: ((Throwable) -> Unit)? = null,
         transport: (ByteArray) -> Long
     ): Boolean {
         return try {
             val ack = transport(pending.payload)
-            if (ack != pending.seq) return false
+            if (ack != pending.seq) {
+                runCatching { onFailure?.invoke(IllegalStateException("ack_mismatch")) }
+                return false
+            }
             journal.ackExact(pending.epoch, pending.seq)
-        } catch (_: Throwable) {
+        } catch (e: Exception) {
+            runCatching { onFailure?.invoke(e) }
             false
         }
     }
@@ -27,6 +32,7 @@ object DurableLocationDelivery {
     fun sendBatch(
         journal: Journal,
         pending: List<Journal.Pending>,
+        onFailure: ((Throwable) -> Unit)? = null,
         transport: (List<Journal.Pending>) -> List<Pair<Int, Long>>
     ): Boolean {
         if (pending.isEmpty()) return true
@@ -34,10 +40,12 @@ object DurableLocationDelivery {
             val acked = transport(pending)
             val expected = pending.map { it.epoch to it.seq }
             if (acked.size != expected.size || acked.toSet().size != expected.size || acked.toSet() != expected.toSet()) {
+                runCatching { onFailure?.invoke(IllegalStateException("ack_mismatch")) }
                 return false
             }
             journal.ackBatch(acked)
-        } catch (_: Throwable) {
+        } catch (e: Exception) {
+            runCatching { onFailure?.invoke(e) }
             false
         }
     }
