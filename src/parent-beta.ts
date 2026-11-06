@@ -49,6 +49,16 @@ export function parentBetaHtml(base:string){
  p2GuardSwap("async function loadRetention(){if(!currentDevice)return;try{const j=await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/retention');$('#retentionDays').value=j.safetyEventDays||180","async function loadRetention(){const requestDevice=currentDevice;if(!requestDevice)return;try{const j=await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/retention');if(requestDevice!==currentDevice)return;$('#retentionDays').value=j.safetyEventDays||180");
  p2GuardSwap("async function loadPhase5C(){if(!currentDevice)return;const installed=","async function loadPhase5C(){const requestDevice=currentDevice;if(!requestDevice)return;const installed=");
  p2GuardSwap("api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/crashes?limit=20'),api('/parent/api/audit?limit=20')]);const current=release.currentRelease","api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/crashes?limit=20'),api('/parent/api/audit?limit=20')]);if(requestDevice!==currentDevice)return;const current=release.currentRelease");
+// Finish Phase 2 per-phone async privacy boundary for safety controls and data.
+ p2GuardSwap("async function loadEvents(){if(!currentDevice)return;const j=await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/events?limit=40'),root=$('#events');","async function loadEvents(){const requestDevice=currentDevice;if(!requestDevice)return;const j=await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/events?limit=40');if(requestDevice!==currentDevice)return;const root=$('#events');");
+ p2GuardSwap("d.onclick=()=>map.easeTo({center:[e.longitude,e.latitude],zoom:17,duration:700})","d.onclick=()=>{if(requestDevice===currentDevice)map.easeTo({center:[e.longitude,e.latitude],zoom:17,duration:700})}");
+ p2GuardSwap("async function loadBatteryTrend(){if(!currentDevice)return;try{const b=await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/battery-drain');const rate=","async function loadBatteryTrend(){const requestDevice=currentDevice;if(!requestDevice)return;try{const b=await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/battery-drain');if(requestDevice!==currentDevice)return;const rate=");
+ p2GuardSwap("catch{text('#batteryTrend','Unavailable')}};function setGpsButtons","catch{if(requestDevice===currentDevice)text('#batteryTrend','Unavailable')}};function setGpsButtons");
+ p2GuardSwap("async function p7LoadLocationControl(){if(!currentDevice)return;try{const s=await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/location-control');text('#gpsDesired',","async function p7LoadLocationControl(){const requestDevice=currentDevice;if(!requestDevice)return;try{const s=await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/location-control');if(requestDevice!==currentDevice)return;text('#gpsDesired',");
+ p2GuardSwap("catch(e){text('#gpsAck','—');text('#gpsObserved','—');text('#gpsControlStatus','GPS status unavailable');setGpsButtons(false)}}","catch(e){if(requestDevice!==currentDevice)return;text('#gpsAck','—');text('#gpsObserved','—');text('#gpsControlStatus','GPS status unavailable');setGpsButtons(false)}}");
+ p2GuardSwap("toggle.onclick=async()=>{await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/geofences/'+encodeURIComponent(g.id)","toggle.onclick=async()=>{if(requestDevice!==currentDevice)return;await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/geofences/'+encodeURIComponent(g.id)");
+ p2GuardSwap("del.onclick=async()=>{if(confirm('Delete '+g.name+'?')){await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/geofences/'+encodeURIComponent(g.id)","del.onclick=async()=>{if(requestDevice!==currentDevice)return;if(confirm('Delete '+g.name+'?')){if(requestDevice!==currentDevice)return;await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/geofences/'+encodeURIComponent(g.id)");
+ p2GuardSwap("btn.onclick=async()=>{await api('/parent/api/device/'+encodeURIComponent(currentDevice)+'/trips/'+encodeURIComponent(t.id)+'/end'","btn.onclick=async()=>{if(requestDevice!==currentDevice)return;await api('/parent/api/device/'+encodeURIComponent(requestDevice)+'/trips/'+encodeURIComponent(t.id)+'/end'");
 const js=String.raw`
 
 // Browser-side fail-closed presentation clamp. A previously delivered "fresh"
@@ -165,6 +175,18 @@ selectDevice=async function(id){
  if(id!==currentDevice){
   p2HistoryRequest++;
   p2ClearHistoryView();
+  // The previously selected phone's last heartbeat/coordinates must never
+  // keep rendering under the newly selected phone during network latency.
+  snapshot=null;
+  places=[];
+  for(const selector of ['#events','#placesList','#tripsList','#incidents','#crashes']){
+   const el=document.querySelector(selector);if(el)el.replaceChildren();
+  }
+  for(const selector of ['#quality','#accuracy','#speed','#network','#gpsDesired','#gpsActual','#batteryTrend','#releaseState']){
+   const el=document.querySelector(selector);if(el)el.textContent='—';
+  }
+  text('#gpsControlStatus','Waiting for selected phone…');
+  renderHealthChecks();
   text('#historyNote','Select a range to load history for this phone.');
  }
  return p2OriginalSelectDevice(id);
