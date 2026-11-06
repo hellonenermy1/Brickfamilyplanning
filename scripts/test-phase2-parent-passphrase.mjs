@@ -6,7 +6,7 @@ const path=process.argv[2];
 if(!path)throw Error('Usage: test-phase2-parent-passphrase.mjs <bundled module>');
 const auth=await import(pathToFileURL(path).href);
 const origin='https://brick-beta.invalid';
-const password='TestOnlyPassphraseForPhase2-v2';
+const password='ValidSecret_123'; // 15-character synthetic fixture
 const salt=randomBytes(16);
 const hash=pbkdf2Sync(password,salt,240000,32,'sha256');
 const verifier='pbkdf2-sha256:240000:'+salt.toString('base64url')+':'+hash.toString('base64url');
@@ -28,5 +28,6 @@ const cookie=login.headers.get('set-cookie');
 assert(cookie?.includes('HttpOnly')&&cookie.includes('Secure')&&cookie.includes('SameSite=Strict'));
 const session=cookie.split(';')[0];
 assert(await auth.devParentSessionValid(new Request(origin+'/parent',{headers:{Cookie:session}}),env));
+assert.equal((await auth.handleDevParentAuthRoute(post('ShortSecret123'),env)).status,400,'14-character secrets remain below the minimum');
 assert.equal((await auth.handleDevParentAuthRoute(post('123456'),env)).status,400,'6-digit PIN stays unsupported');
 console.log('PASS: Phase 2 salted PBKDF2 passphrase, bad-password denial, strict cookies and origin protection');
