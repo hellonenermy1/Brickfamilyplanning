@@ -2,6 +2,8 @@ import base from './worker-p8b';
 import { parentAuthorized,unauthorizedParent } from './access-auth';
 import { betaDevice,betaParent,betaJson,cleanupBeta,consumeBetaProbe,type BetaEnv } from './beta-api';
 import { parentBetaHtml } from './parent-beta';
+import { parentPhase2LogsHtml } from './parent-phase2-logs';
+import { readParentOperationalLogs } from './phase2-ops-logs';
 import { BETA_RELEASE,BETA_APK_KEY } from './beta-release';
 export { BrickDevice } from './beta-device';
 type Env=Parameters<typeof base.fetch>[1]&BetaEnv;
@@ -10,6 +12,13 @@ export default {
   const u=new URL(req.url);
   const device=u.pathname.match(/^\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(readiness|observations)$/);
   if(device)return betaDevice(req,env,device[1],device[2]);
+  const ops=u.pathname.match(/^\\/parent\\/api\\/device\\/([A-Za-z0-9_-]{1,128})\\/ops-logs$/);
+  if(ops){
+   if(!await parentAuthorized(req,env))return unauthorizedParent(req);
+   if(req.method!=='GET')return betaJson({error:'method_not_allowed'},405);
+   if(!env.BETA_PARENT_RATE||!(await env.BETA_PARENT_RATE.limit({key:'beta-ops:'+(req.headers.get('CF-Connecting-IP')??'unknown')})).success)return betaJson({error:'parent_rate_limited'},429);
+   return readParentOperationalLogs(env,ops[1],u.searchParams);
+  }
   const parent=u.pathname.match(/^\/parent\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(status|ack|import)$/);
   const download=u.pathname.match(/^\/parent\/beta\/download\/(apk|manifest|checksum)$/);
   if(parent||download){
@@ -30,7 +39,7 @@ export default {
    }catch{return betaJson({error:'beta_service_unavailable'},503);}
   }
   const response=await base.fetch(req,env,ctx);
-  if(req.method==='GET'&&/^\/parent\/?$/.test(u.pathname)&&response.ok&&response.headers.get('Content-Type')?.includes('text/html'))return new Response(parentBetaHtml(await response.text()),{status:response.status,headers:response.headers});
+  if(req.method==='GET'&&/^\/parent\/?$/.test(u.pathname)&&response.ok&&response.headers.get('Content-Type')?.includes('text/html'))return new Response(parentPhase2LogsHtml(parentBetaHtml(await response.text())),{status:response.status,headers:response.headers});
   return response;
  },
  async queue(batch:MessageBatch<unknown>,env:Env,ctx:ExecutionContext){
