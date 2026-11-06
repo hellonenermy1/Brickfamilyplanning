@@ -85,15 +85,25 @@ class MotionEngine(private val context: Context) : SensorEventListener {
     data class Snapshot(
         val totalSteps: Long,
         val headingDeg: Float?,
-        val lastStepElapsedNs: Long
+        val lastStepElapsedNs: Long,
+        val headingAgeMs: Long? = null,
+        val headingSource: String? = null
     )
 
     fun snapshot(): Snapshot {
         val nowNs = SystemClock.elapsedRealtimeNanos()
+        val ageNs = nowNs - lastHeadingElapsedNs
+        // Rotation-vector azimuth is magnetic, not a calibrated true-north bearing or the
+        // person's travel direction. Do not advertise an angle after signal loss/interference.
         val heading = headingDeg.takeIf {
-            lastHeadingElapsedNs > 0L && lastHeadingElapsedNs <= nowNs && nowNs - lastHeadingElapsedNs <= HEADING_STALE_NS
+            lastHeadingElapsedNs > 0L && ageNs in 0L..HEADING_STALE_NS &&
+                magneticAccuracy != SensorManager.SENSOR_STATUS_UNRELIABLE
         }
-        return Snapshot(totalSteps.get(), heading, lastStepElapsedNs)
+        return Snapshot(
+            totalSteps.get(), heading, lastStepElapsedNs,
+            headingAgeMs = heading?.let { ageNs / 1_000_000L },
+            headingSource = heading?.let { "android_rotation_vector_magnetic" }
+        )
     }
 
     @Synchronized
