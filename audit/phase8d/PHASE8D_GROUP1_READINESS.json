@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "beaa99683d26948576bbc6deabf18e5dbdf0ab16",
+  "sourceSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -15,7 +15,7 @@
     {
       "id": "DURABLE_ADMISSION",
       "state": "STAGED_NATIVE_AND_PUSH_CI_VERIFIED_NOT_ACTIVATED",
-      "nativeCases": 26,
+      "nativeCases": 34,
       "path": "src/cardfree-capture-admission.ts"
     },
     {
@@ -27,7 +27,7 @@
       "id": "ACTOR_WRITER_HOOKS",
       "state": "INERT_SOURCE_AND_NATIVE_FIXTURE_VERIFIED",
       "hookBoundaries": 16,
-      "helperCases": 21,
+      "helperCases": 22,
       "profiledActorMethods": 41,
       "productionControllerInstallCalls": 0,
       "completeWriterCoverage": false
@@ -52,20 +52,31 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 257,
-      "explicitManagementClassifications": 63,
+      "selectedTrackedFiles": 259,
+      "explicitManagementClassifications": 65,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 17,
       "unresolvedRelativeImportCandidates": 1,
-      "filesWithDynamicImportExpressions": 124,
+      "filesWithDynamicImportExpressions": 125,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json"
+    },
+    {
+      "id": "EXTERNAL_OPERATION_BOUNDARIES",
+      "state": "INERT_SOURCE_NATIVE_CLI_FIXTURE_AND_CI_VERIFIED",
+      "actualToolsHooked": 4,
+      "externalHelperAndCliCases": 21,
+      "newNativeAuthorityCases": 8,
+      "productionControllerInstalls": 0,
+      "sourceChangingAdmission": "PERMANENT_CAPTURE_QUARANTINE",
+      "uncertainWorkOutcome": "OWNERSHIP_RETAINED_NO_AUTOMATIC_REPLAY_OR_EXPIRY",
+      "completeExternalCredentialCoverage": false
     }
   ],
   "remaining": [
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "PARTIAL_INERT_ACTOR_AND_D1_ADAPTERS_ONLY",
-      "needed": "Enforce maintenance/admission for four known beta management tools and all independent operators/credentials; retain raw/exported-helper/constructor/lifecycle/deferred/package coverage gaps.257-file source profile is not enforcement."
+      "needed": "Activate no partial fence. Finish authenticated external broker/target enforcement, independent operators/credentials, unknown-outcome reconciliation and raw/exported-helper/constructor/lifecycle/deferred/process-tree coverage. Four actual CLI hooks remain inactive; source-changing quarantine cannot automatically reset."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -105,11 +116,11 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_CONTROL_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "runs": [
       {
-        "runId": 42178484495,
+        "runId": 42184899128,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -119,7 +130,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42178484531,
+        "runId": 42184899064,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -129,7 +140,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42178477456,
+        "runId": 42184893315,
         "event": "push",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",

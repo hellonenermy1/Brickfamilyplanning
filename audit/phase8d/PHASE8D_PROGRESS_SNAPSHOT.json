@@ -1,0 +1,26 @@
+{
+  "format": "brick-phase8d-progress-snapshot-v1",
+  "sourceSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
+  "ledgerSha256": "fb18a44711df1ee97154eb0b1a865a936fb8bcb8e4890f4968cc0b2e44f8fb8f",
+  "overallImplementationCompletionPercent": null,
+  "reason": "No validated implementation-completion weighting/denominator exists. Passing tests, source support and draft worksheet gaps cannot be converted to an app-build percentage.",
+  "formalWorksheet": {
+    "phase8dRows": 214,
+    "acceptedStatusRows": 0,
+    "acceptedStatusPercent": 0.0,
+    "reviewedSourceSha": null,
+    "independentFormalAcceptanceVerified": false
+  },
+  "supportingEvidenceCoverage": {
+    "phase8dRowsWithEvidenceReferences": 16,
+    "phase8dDenominator": 214,
+    "phase8dCoveragePercent": 7.48,
+    "allRowsWithEvidenceReferences": 17,
+    "allRows": 525,
+    "allRowsCoveragePercent": 3.24,
+    "notice": "References are supporting material, not accepted/complete requirements or product-test totals."
+  },
+  "crossPhaseRowsStillRequireReviewedDisposition": 311,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "remainingProductTestCount": null
+}

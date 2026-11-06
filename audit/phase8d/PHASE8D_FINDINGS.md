@@ -895,3 +895,12 @@ OPS-002 and OPS-003 gain22 controlled adapter cases and exact-source/native D1 p
 ## P8D-002 — external management source profile; actual fencing remains P1 OPEN
 
 OPS-002 gains257-file exact-source profile and17 synthetic drift-guard cases. Four known beta external tools remain unfenced; source classifications, legacy refusals and reference graphs do not constrain direct credentials/operators or supply urgent-outage fallback, transport/custody/schedule/PITR/cloud recovery acceptance. See PHASE8D_GROUP1_EXTERNAL_WRITER_HOSTED_EVIDENCE.json and PHASE8D_GROUP1_EXTERNAL_WRITER_REQUIREMENT_SCOPE.json. OPS-003 and canonical acceptance unchanged.
+
+
+## P8D-093 — rejected requests could release unknown remote writer outcomes (P1 staged capture integrity; source/CI corrected)
+
+OPS-002. Exact prior compiled helper released ownership on rejected primary/deferred work. A controlled lost-response reproduction observed activeWriters=0/exits=1 while a remote effect was still pending, then that effect completed. Current code retains uncertain durable ownership, preserves original errors/results, drains registered descendants and emits generic uncertainty; no automatic replay/expiry/reset. This is a staged-source counterexample, not a live provider incident or actual production archive. PHASE8D_GROUP1_WRITER_OUTCOME_RED.json records before/after; PHASE8D_GROUP1_EXTERNAL_CONTROL_HOSTED_EVIDENCE.json records exact native/source/CI verification. Production activation, reconciliation and urgent-outage fallback remain open under P8D-002.
+
+## P8D-002 — inactive external operation boundaries and uncertainty retention; P1 OPEN
+
+OPS-002 gains four actual tool hooks, native durable external ownership and source-changing quarantine, plus P8D-093 correction. No authenticated broker/transport, live enforcement, complete external credentials/process-tree accounting, urgent-outage fallback, independent custody/schedule/PITR/cloud recovery or canonical acceptance is claimed. OPS-003 remains unchanged.
