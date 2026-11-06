@@ -1,7 +1,7 @@
 name: Brick Beta Backend and Parent Portal
 on:
   push:
-    branches: [beta/backend-portal]
+    branches: [beta/backend-portal, feat/v1-phase2-beta2-compat-20261106]
     paths: ['src/**', 'scripts/**', 'schema/**', 'beta/**', 'wrangler.beta.template.jsonc', '.github/workflows/beta-backend.yml']
   workflow_dispatch:
 permissions:
@@ -47,7 +47,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/${{ github.repository }}/actions/artifacts/13391590323/zip > /tmp/brick-beta-signed-artifact.zip
+          gh api repos/${{ github.repository }}/actions/artifacts/13502684166/zip > /tmp/brick-beta-signed-artifact.zip
           python scripts/stage-beta-apk.py /tmp/brick-beta-signed-artifact.zip
       - name: Current Phase8D and beta trust-boundary qualification
         run: bash scripts/beta-cloud-regression.sh
@@ -56,6 +56,7 @@ jobs:
       - name: Bundle the exact beta Worker without cloud writes
         run: npx --no-install wrangler deploy --dry-run --config wrangler.beta.template.jsonc --outdir /tmp/brick-beta-worker
   deploy:
+    if: github.ref == 'refs/heads/beta/backend-portal'
     needs: [cloud-preflight, test, apk-currency]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -79,12 +80,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/${{ github.repository }}/actions/artifacts/13391590323/zip > /tmp/brick-beta-signed-artifact.zip
+          gh api repos/${{ github.repository }}/actions/artifacts/13502684166/zip > /tmp/brick-beta-signed-artifact.zip
           python scripts/stage-beta-apk.py /tmp/brick-beta-signed-artifact.zip
       - name: Publish APK through authenticated beta download route
         run: node scripts/publish-beta-d1-release.mjs
       - name: Deploy exact source annotation
-        run: npx --no-install wrangler deploy --strict --config wrangler.beta.jsonc --tag "brick-git-${GITHUB_SHA:0:12}" --message "Brick beta source $GITHUB_SHA APK fa52547d"
+        run: npx --no-install wrangler deploy --strict --config wrangler.beta.jsonc --tag "brick-git-${GITHUB_SHA:0:12}" --message "Brick beta source $GITHUB_SHA APK dda193f7"
       - name: Verify private attack surface and actual deployment address
         run: node scripts/verify-beta-live.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
