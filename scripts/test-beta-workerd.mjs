@@ -133,6 +133,28 @@ try{
   console.log('PASS actual permanent-signed APK D1 multi-chunk authenticated publication/readback; missing chunk refuses download; transactional replacement repairs it');
  }
  await db.prepare('INSERT INTO dev_object_store(key,size,etag,uploaded_at) VALUES(?1,?2,?3,?4)').bind('beta/releases/'+releaseId+'/Brick.apk',0,'wrong',Date.now()).run();assert.equal((await parent('/parent/beta/download/apk')).status,503);
+ // Field safety: signed uncalibrated automatic falls are ACKed quietly in isolated beta.
+ // No new D1 safety rows, realtime alerts, or changes to SOS.
+ const beforeFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
+ for(let i=0;i<3;i++){
+  const payload={eventId:crypto.randomUUID(),eventSequence:700+i,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,accuracyM:null,detail:{confidence:i===0?'high':'low',impactG:4.2}};
+  const quiet=await signed('/event',payload);
+  assert.equal(quiet.status,200,'signed beta fall must ACK, never queue retries indefinitely');
+  const body=await quiet.json();
+  assert.equal(body.disabledByPolicy,true,'automatic fall emergency classification disabled in beta');
+  assert.equal(body.eventId,payload.eventId,'ACK identity must match signed event');
+ }
+ const afterFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
+ assert.equal(afterFalls,beforeFalls,'automatic beta fall alerts must never create new safety rows');
+ const forged={eventId:crypto.randomUUID(),eventSequence:799,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,detail:{confidence:'high'}};
+ assert.equal((await signed('/event',forged,await ecdsa())).status,401,'quarantine must never bypass device signature verification');
+ const sos={eventId:crypto.randomUUID(),eventSequence:900,createdAtMs:Date.now(),kind:'sos_started',latitude:null,longitude:null,accuracyM:null,detail:{source:'manual_test'}};
+ const sosResponse=await signed('/event',sos);
+ assert.equal(sosResponse.status,200,'manual SOS must not be silenced by automatic fall quarantine');
+ const sosRow=await db.prepare("SELECT id FROM safety_events WHERE device_id=?1 AND id=?2 AND kind='sos_started'").bind(DEVICE_A,sos.eventId).first();
+ assert.equal(sosRow?.id,sos.eventId,'manual SOS must remain durable and visible');
+ console.log('PASS beta fall quarantine: signed-only quiet ACK, no false fall rows, unaffected manual SOS');
+
  await db.prepare('UPDATE devices SET revoked_at=?1 WHERE id=?2').bind(Date.now(),DEVICE_A).run();assert.equal((await signed('/beta/readiness',ready())).status,401);assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,404);
  assert.equal((await parent('/parent/logout',{method:'POST',redirect:'manual'})).status,303);assert.equal((await parent('/parent/api/devices')).status,401);
  console.log('PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation');
