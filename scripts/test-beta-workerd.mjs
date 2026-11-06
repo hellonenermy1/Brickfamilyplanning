@@ -45,7 +45,7 @@ try{
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
  const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
  for(const [name,code] of [
-  ['WebSocket stale-device guard','ws.onmessage=e=>{if(currentDevice!==id)return;'],
+  ['WebSocket stale-device guard','client.onmessage=e=>{if(ws!==client||currentDevice!==id)return;'],
   ['Places stale-response guard',"async function loadPlaces(){const requestDevice=currentDevice;"],
   ['Trips stale-response guard',"async function loadTrips(){const requestDevice=currentDevice;"],
   ['Health stale-response guard',"async function loadHealthOps(){const requestDevice=currentDevice;"],
