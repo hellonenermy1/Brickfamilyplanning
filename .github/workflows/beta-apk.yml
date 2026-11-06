@@ -120,8 +120,8 @@ jobs:
           badging=beta-apk-results/badging.txt
           package_line="$(grep -m1 '^package: name=' "$badging")"
           [[ "$package_line" == *"name='com.brick.safety'"* ]]
-          [[ "$package_line" == *"versionCode='11'"* ]]
-          [[ "$package_line" == *"versionName='1.0.0-beta.1'"* ]]
+          [[ "$package_line" == *"versionCode='12'"* ]]
+          [[ "$package_line" == *"versionName='1.0.0-beta.2'"* ]]
           ! grep -q '^application-debuggable' "$badging"
           # AAPT2 v35 prints android attributes as e.g.:
           # A: http://schemas.android.com/apk/res/android:allowBackup(0x01010280)=false
@@ -167,20 +167,20 @@ jobs:
           [[ "$actual" =~ ^[0-9a-f]{64}$ ]]
           test "$actual" = "$BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"
           printf '%s\n' "$actual" > beta-apk-results/apk-signing-cert-sha256.txt
-          cp "$APK" beta-apk-results/Brick-V1-1.0.0-beta.1.apk
-          (cd beta-apk-results && sha256sum Brick-V1-1.0.0-beta.1.apk) | tee beta-apk-results/apk-sha256.txt
+          cp "$APK" beta-apk-results/Brick-V1-1.0.0-beta.2.apk
+          (cd beta-apk-results && sha256sum Brick-V1-1.0.0-beta.2.apk) | tee beta-apk-results/apk-sha256.txt
           cp beta/contract-v1.json beta-apk-results/beta-contract-v1.json
           cp beta/INSTALL.md beta-apk-results/INSTALL.md
           python3 - <<'PY'
           import json,hashlib,os
           from pathlib import Path
-          apk=Path("beta-apk-results/Brick-V1-1.0.0-beta.1.apk")
+          apk=Path("beta-apk-results/Brick-V1-1.0.0-beta.2.apk")
           contract=json.loads(Path("beta/contract-v1.json").read_text())
-          manifest={"releaseId":contract["releaseId"],"baseSha":contract["baseSha"],"apkSourceSha":os.environ["GITHUB_SHA"],"versionName":"1.0.0-beta.1","versionCode":11,"applicationId":"com.brick.safety","apkSha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"signingCertSha256":os.environ["BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"],"automaticExpiry":False,"phase2Status":"NOT_DEPLOYED","fieldReadiness":"PENDING_ACTUAL_PHONE_AND_PHASE2"}
+          manifest={"releaseId":contract["releaseId"],"baseSha":contract["baseSha"],"apkSourceSha":os.environ["GITHUB_SHA"],"versionName":"1.0.0-beta.2","versionCode":12,"applicationId":"com.brick.safety","apkSha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"signingCertSha256":os.environ["BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"],"automaticExpiry":False,"phase2Status":"NOT_DEPLOYED","fieldReadiness":"PENDING_ACTUAL_PHONE_AND_PHASE2"}
           Path("beta-apk-results/build-manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
           PY
           "$AAPT2" dump permissions "$APK" > beta-apk-results/permissions.txt
-          printf 'git_sha=%s\napplication_id=com.brick.safety\nversion_code=11\nversion_name=1.0.0-beta.1\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > beta-apk-results/provenance.txt
+          printf 'git_sha=%s\napplication_id=com.brick.safety\nversion_code=12\nversion_name=1.0.0-beta.2\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > beta-apk-results/provenance.txt
 
       - name: Remove materialized keystore
         if: always()
