@@ -39,6 +39,7 @@ import com.brick.safety.reliability.HealthEvidence
 import com.brick.safety.reliability.LiveRetryPolicy
 import com.brick.safety.reliability.RecoveryScheduler
 import com.brick.safety.reliability.SafetyDispatcher
+import com.brick.safety.reliability.UploadFailureReason
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.CancellationTokenSource
 import org.json.JSONObject
@@ -359,6 +360,7 @@ class BrickLocationService : Service() {
                         // Retain only current best-effort Live state. The durable Journal is separate.
                         // Android-validated Wi-Fi does not imply our API is reachable; retry later.
                         latestLive.compareAndSet(null, candidate)
+                        noteUploadDiagnostic("fast_live_failed", UploadFailureReason.classify(result.exceptionOrNull()))
                         failed = true
                         break
                     }
@@ -524,7 +526,9 @@ class BrickLocationService : Service() {
 
     private fun sendOne(baseUrl: String, deviceId: String, p: Journal.Pending): Boolean {
         if (mustQuiesceAsync()) return false
-        val sent = DurableLocationDelivery.sendOne(journal, p) { payload -> BrickApi.sendLocation(baseUrl, deviceId, payload) }
+        val sent = DurableLocationDelivery.sendOne(journal, p,
+            onFailure = { noteUploadDiagnostic("location_single_failed", UploadFailureReason.classify(it)) }
+        ) { payload -> BrickApi.sendLocation(baseUrl, deviceId, payload) }
         if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
         return sent
     }
@@ -532,7 +536,9 @@ class BrickLocationService : Service() {
     private fun sendBatch(baseUrl: String, deviceId: String, batch: List<Journal.Pending>): Boolean {
         if (mustQuiesceAsync()) return false
         if (batch.isEmpty()) return true
-        val sent = DurableLocationDelivery.sendBatch(journal, batch) { pending ->
+        val sent = DurableLocationDelivery.sendBatch(journal, batch,
+            onFailure = { noteUploadDiagnostic("location_batch_failed", UploadFailureReason.classify(it)) }
+        ) { pending ->
             BrickApi.sendLocationBatch(baseUrl, deviceId, pending.map { BrickApi.LocationUpload(it.epoch, it.seq, it.payload) })
         }
         if (sent) lastAckElapsed = SystemClock.elapsedRealtime()
@@ -928,7 +934,10 @@ class BrickLocationService : Service() {
                     updateBleAnchorConfigs(sync.bleAnchors)
                     applyLocationCommand(deviceId, sync.locationCommand)
                 }
-                .onFailure { prefs.edit().putBoolean("healthUploadPending", true).apply() }
+                .onFailure {
+                    prefs.edit().putBoolean("healthUploadPending", true).apply()
+                    noteUploadDiagnostic("health_upload_failed", UploadFailureReason.classify(it))
+                }
         }
     }
 
