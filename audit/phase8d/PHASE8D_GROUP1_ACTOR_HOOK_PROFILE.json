@@ -1,0 +1,404 @@
+{
+  "format": "brick-group1-actor-hook-profile-v1",
+  "activation": "NOT_READY",
+  "hookedMutationBoundaries": 16,
+  "reviewedMethods": 41,
+  "notice": "Current actor surface and source bodies only. Production controller installs remain zero. Worker/D1/external writers, urgent-outage fallback, authenticated transport and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
+  "methods": [
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "exportRecoveryState",
+      "line": 108,
+      "bodySha256": "714128c93ada4e7ed0fbad585f5fce2140ce17cd44924cc93040407499bc6c73",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Read-only snapshot of captured state; no archive mutation."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "restoreRecoveryState",
+      "line": 113,
+      "bodySha256": "1393b2f48f9f3d23962c1d06faf447ca3a2e176aaff69f8811ff482f9fa7fe9d",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.restore",
+      "priority": "ordinary"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "alarm",
+      "line": 154,
+      "bodySha256": "7a521dc613739072b1b0bd6381c95d621437164e88fb74acfdb0b6818032b5fc",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Socket expiry/alarm lifecycle is reconstructed and not archived device state."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "closeParentSockets",
+      "line": 161,
+      "bodySha256": "1c112cc63e8ac6221384e7125250326bac36717f660126d79eb88c9378b5c585",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Closes ephemeral sockets only; persistent revocation is hooked separately."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "revokeParentSockets",
+      "line": 167,
+      "bodySha256": "7ecac4d4f2357d98e30ff8a2f09f8dc403a6e6be44ac3ab996ce1368b71c72f0",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.revoke",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "setLatest",
+      "line": 239,
+      "bodySha256": "873b006c063a15166edf575eb70a2a71673bb7e9da66633fbf762eb554e8d59f",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.latest",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "setLatestWithTrace",
+      "line": 240,
+      "bodySha256": "5145002904a1e01f37fe9ae4ccb99c19f84289d0f8958dac5ad4ffb88cf23045",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.latest-trace",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "setHealth",
+      "line": 258,
+      "bodySha256": "a33b5f6f37c40af626fe652872b57eba2ddb1126fb3a7c7090e20d30ef8c7d1f",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.health",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "setNetworkEvidence",
+      "line": 271,
+      "bodySha256": "ffa6b8e01b05507fde9ef8d628394dc4070261eeb46b6af7a54365de89fe0619",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.network",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "pushSafetyEvent",
+      "line": 276,
+      "bodySha256": "67c43ebd9919e8d73bef3a157eb7ed67caa5fd306ccc4b8e6200ba8258b3fc63",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.safety",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "readSequenceHighWater",
+      "line": 282,
+      "bodySha256": "26e4114c33724565c1c5ff7ad3fcbf9040b8fc6bf3cc868106e424f06f37d115",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Read-only durable marker lookup."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "commitSequenceHighWater",
+      "line": 283,
+      "bodySha256": "45fbd7079b13ada1719fb3861e004c6c9aa287e26472b63d9f8b9921263c4218",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.sequence",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "canEvaluateSafety",
+      "line": 286,
+      "bodySha256": "cd8176d239b3669243fa35fdc5a1641b70375e430aa29ce0ca93a21c4ad5b803",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Read-only persisted revocation/high-water transaction."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "commitSafetyEvaluation",
+      "line": 294,
+      "bodySha256": "6da59d422daa70704686ae566403ee0a79347a71bcf908a4ec5c61ee043c7e00",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.safety-evaluation",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "readSafetyHighWater",
+      "line": 297,
+      "bodySha256": "a7e215c6121f132dfdf4d185a3c1bfe3addc1a77d0384b5722b5e54982259d9e",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Read-only durable marker lookup."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "commitSafetyHighWater",
+      "line": 298,
+      "bodySha256": "9864493127ea58343148a210b632c67f29f648d07843f7d2846c0b64f355965d",
+      "disposition": "HOOKED_BY_BETA_OVERRIDE",
+      "operation": "device.safety-marker",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "fetch",
+      "line": 302,
+      "bodySha256": "edb0287f700daa4a2b59c0b73c8c0cb79eea3bd5577f2df7771267fb525cb217",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Only state read or ephemeral WebSocket lease/snapshot lifecycle; no captured state put."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "webSocketClose",
+      "line": 336,
+      "bodySha256": "e3760b840ea937092981141adc25320e54c145f632eccd2e90358a3ab4fb295a",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "No persistent state mutation."
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "method": "webSocketError",
+      "line": 337,
+      "bodySha256": "0ba561a50cf4c24a6cc75b8ba2cf9889a76382f6d92b9190f616ad7209ce7908",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "No persistent state mutation."
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "setLatest",
+      "line": 10,
+      "bodySha256": "c8ed2f9927916f33a24e06bf51983d84f6aaf60a3b53abd24921ff98cfdb1c40",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.latest",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "setLatestWithTrace",
+      "line": 11,
+      "bodySha256": "4b1185bcabb4e19f6140d5ac11dc744e662b38693467facdd19f6b9db1c90af1",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.latest-trace",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "setHealth",
+      "line": 12,
+      "bodySha256": "464c04c5ee74f828ad423edd8ae17bc6812a02aa1fef03eb237dafd4f144e6e3",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.health",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "setNetworkEvidence",
+      "line": 13,
+      "bodySha256": "4e393518e93a4d8ad049b17058d422a59d285453209ded59163d89ee1a12c658",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.network",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "pushSafetyEvent",
+      "line": 14,
+      "bodySha256": "fe77d50dd85df64fa9092ffba64d1d7ec59e668a2780ce1a444595494e32d01a",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.safety",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "commitSequenceHighWater",
+      "line": 15,
+      "bodySha256": "4ddb106c25ac26d86af39955d9391b019673d35f3cd115ea55880fb5bf306c83",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.sequence",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "commitSafetyEvaluation",
+      "line": 16,
+      "bodySha256": "9bc80bf152f84cf07a749fdcaaa19d474031f78a1af67f9936fb518a9da68ac9",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.safety-evaluation",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "commitSafetyHighWater",
+      "line": 17,
+      "bodySha256": "9495bd1c12780b7dcd6faad769c81898640528ab520f45a8b133c4c2f8b5c156",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.safety-marker",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "revokeParentSockets",
+      "line": 18,
+      "bodySha256": "fa59dff2014f9c1f0d54b96fc17501414913216b7e5055cf6760abdf15a3936e",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.revoke",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "restoreRecoveryState",
+      "line": 19,
+      "bodySha256": "1adf91b305dffb0479b876d968f29d362da479d9a5289aa8030fa4de40615698",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "device.restore",
+      "priority": "ordinary"
+    },
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "method": "fetch",
+      "line": 25,
+      "bodySha256": "e7d7cf893436ef6695118cddcae179fb85bb85dacc7617b6dae1d84c346ad35b",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Beta probe writes only excluded betaDiagnostic; base fetch exclusions remain."
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runWatchdogPage",
+      "line": 17,
+      "bodySha256": "f46acc3aec9ba36d96ba089be72626a9d0d4e6ec21af1636405a6a5316f47a48",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.watchdog-page",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runWatchdogDevice",
+      "line": 18,
+      "bodySha256": "38259d846828f422d53fb3c00f022e192cc32407a65bc4622745d7b37ecf2587",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.watchdog-device",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runGroup",
+      "line": 21,
+      "bodySha256": "a92af2072cc588f221010937c0da49b49f0ff8f99e870bce53747a3df7302fae",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.group",
+      "priority": "urgent"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runDerivedWork",
+      "line": 22,
+      "bodySha256": "e4d49a1151fdf7d1e740f8666f9143d851e10a7eb76d92624d29798927c03cfb",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.derived",
+      "priority": "ordinary"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runRetentionWork",
+      "line": 29,
+      "bodySha256": "a33535e6ebb2ab5388a1cc2a6875bf270c1bf9226428e36069d46c052a95e18a",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.retention",
+      "priority": "ordinary"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runDailyBackup",
+      "line": 30,
+      "bodySha256": "bf297e0eea19a00f48cbe6b0604ad87cf0be0aa75682da8d8b101cbe17da46ad",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
+      "operation": "scheduler.backup",
+      "priority": "ordinary"
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "arm",
+      "line": 31,
+      "bodySha256": "aec36b5fff519b1b2e3667006eb8926182ef8e315bd2f156631bed37304cbbb3",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Scheduler alarm control is reconstructible and not archived."
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "kick",
+      "line": 32,
+      "bodySha256": "ab0f8bbdfb5f21a4c45ff4d33fce7cc00c81d70bf40d5d4a01c060c9321633d4",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Arms alarm/starts runTick; each archived-writing child RPC has its own boundary."
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "status",
+      "line": 41,
+      "bodySha256": "eb4ec7ee8d170e37a362f1fc585eb49a89e9b1f2ef3e4876a97a5470f375e03f",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Read-only operational scheduler status."
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "runTick",
+      "line": 42,
+      "bodySha256": "8cfbbe7eae5f73a5f3531e9929c8d0e327375ce283ce8d90e77debc8c6173b5a",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Coordinator awaits child RPCs; own lastTick/alarm/provider-cache-read control is not archived."
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "method": "alarm",
+      "line": 52,
+      "bodySha256": "47f4e2bd7fd09aacb5562e0d5f0dcb0c2126acd632f99f6b9da47e08d680cdd2",
+      "disposition": "REVIEWED_CURRENT_EXCLUSION",
+      "reason": "Delegates to runTick and separately owned child RPCs."
+    }
+  ]
+}

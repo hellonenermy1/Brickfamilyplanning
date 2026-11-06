@@ -47,8 +47,11 @@ jobs:
       - name: Bounded coherent capture source and encrypted coordinator
         run: |
           node scripts/test-phase8d-capture-admission.mjs
-          node scripts/phase8d-capture-write-inventory.mjs 0d61bcde05b7c64bfeda156a316fd54712b4be2b > /tmp/group1-write-inventory.json
+          node scripts/test-phase8d-capture-writer-boundary.mjs
+          node scripts/phase8d-capture-write-inventory.mjs 033aa67299ffccc1d18c8b104877820ac2a98be5 > /tmp/group1-write-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
+          node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
+          cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json
           node scripts/test-phase8d-capture-baseline.mjs
           node scripts/test-phase8d-capture-coordinator.mjs
           node scripts/test-phase8d-capture-lifecycle.mjs
