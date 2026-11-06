@@ -1,3 +1,27 @@
+# Selected Group1 only — staged durable admission and explicit activation gaps
+
+# Selected Group1 — durable capture admission staging and writer inventory
+
+**Continue Group1 only. Group1 IN PROGRESS / NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN.** User selected one group at a time. AGENTS.md now preserves that scope. Do not advance Atlas, deployment/capacity qualification or final acceptance to fill a live-access gap.
+
+Exact source **ecd6c2aaf95cf3c5747cef9151de33912054ecdd**: native admission26 and the enhanced actual41+4/deviceDO encrypted source-destruction-and-restore pass. Push42169606706/job127734066852 completed-success/all33 steps; portal42169612470/job127734086202 all10 success. PR42169612222/job127734084922 has all33 steps completed-success and decoded source/test logs checked, but overall job/run still reports **in_progress / conclusion=null** at the last read. Do not relabel it completed; final release must recheck that status. PR checkoutf4ccc540c7004c0d7e60be5d63d4aaa2d5da503b merges this source into612d4a8b16fb829f9528b06ab6448ab85ac483e6. Zero GitHub error markers; existing Miniflare RPC disposal warning remains.
+
+The new CaptureAdmissionStore is a **staged component, not connected to production writers**. Actual Durable Object storage transactions retain declared writer tickets without writer expiry; capture drains only after explicit completion. Urgent admission invalidates capture; stale pins/releases, expiry, corrupt state, clock regression and failed transactions fail closed. Bounded capacity never evicts unresolved owners; urgent overflow durably quarantines future captures with no automatic reset. A native restart retains unresolved ownership/quarantine. This component adds no production import/export, binding, HTTP route, class migration or credential. Urgent-operation authority/storage/transport-outage fallback is still unimplemented and must precede activation.
+
+An interim staged-source687a36f15c492ce63f71c48b94f497b7bb7d7438 release-boundary race was reproduced with the actual coordinator/native fixture: preemption after the final held-check still received cleanup-style released=true and returned a sealed capture. Final code rejects PREEMPTED/EXPIRED closure acknowledgement;26 native cases plus the actual41+4 end-to-end rejection scenario pass before a fresh valid controlled capture/restore. Do not count interim24 and final26 as50 new cases. The local recovery fixture now uses the real durable component with a single declared synthetic writer envelope and paused/settled disposable scheduler; production coverage is not inferred.
+
+The candidate write inventory pins87 actual runtime source Git blobs matched to basis0d61bcde05b7c64bfeda156a316fd54712b4be2b. It records298 prepare candidates (169 write-or-unknown),69 mutation/wrapper candidates,20 deferred sites,3 actor classes and zero unresolved relative imports. These are static review candidates, not complete runtime enforcement. The staged component is absent from that production import graph. CI regenerates and compares the inventory exactly.
+
+**Next Group1 work, in order:** finish actual ingress/RPC/alarm/constructor/deferred/external-writer ownership hooks and a proven urgent authority-outage fallback; connect authenticated resource/source-pinned capture transport; verify actual independent private card-free destination/separate key/trusted-context custody; qualify independent scheduling/readback/age/failure monitoring; obtain usable least-privilege access for current PITR and perform an explicitly scoped isolated cloud restore/interruption/rollback with measured RTO/RPO. See PHASE8D_GROUP1_CAPTURE_PROTOCOL.md and PHASE8D_GROUP1_READINESS.json. No partial gate may enable capture. Do not expire unresolved writers or ignore registry failures to make safety/capture appear available. Existing failed login/denied-read boundaries remain; no retries, broad credential fallback, cookie reset or claim that uninspected configuration is absent.
+
+Only OPS-002/OPS-003 gain partial Group1 staged/native/source-CI proof. All525 canonical classifications,214/311 phase mappings, criteria/statuses/real owners/reviews/final dispositions remain unchanged; reviewedSourceSha=null,17 rows link recorded proof,2100 criterion slots remain unreviewed and remaining product-test count is null. No other group is advanced. Exact receipts PHASE8D_GROUP1_ADMISSION_HOSTED_EVIDENCE.json; scope PHASE8D_GROUP1_ADMISSION_REQUIREMENT_SCOPE.json; source inventory PHASE8D_GROUP1_WRITE_INVENTORY.json; native counterexample PHASE8D_GROUP1_COMMIT_BOUNDARY_RED.json.
+
+No production Worker/template/runtime write path, app UI/APK/phone/family data, live cloud schema/permissions/credentials, R2/card/billing, merge/deploy or actual backup export/restore changed. Draft PR32 remains unmerged; final-production-only issues31/33–39 are preserved.
+
+Candidate evidence head **033aa67299ffccc1d18c8b104877820ac2a98be5** on audit/phase8d-d1-qualification; tested component source **ecd6c2aaf95cf3c5747cef9151de33912054ecdd**. Formal branch changes this handoff only. Group1 is not closed and no other group should be started automatically. Recheck PR42169612222 overall status before any final release claim; successful steps/logs are not relabelled completed run metadata. Preserve no-card architecture and failed-access boundaries.
+
+---
+
 # Latest continuation — strict beta preflight and bounded journal files
 
 # Beta configuration and capture-journal isolation — current checkpoint
