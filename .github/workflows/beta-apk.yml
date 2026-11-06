@@ -177,11 +177,11 @@ jobs:
           from pathlib import Path
           apk=Path("beta-apk-results/Brick-V1-1.0.0-beta.3.apk")
           contract=json.loads(Path("beta/contract-v1.json").read_text())
-          manifest={"releaseId":contract["releaseId"],"baseSha":contract["baseSha"],"apkSourceSha":os.environ["GITHUB_SHA"],"versionName":"1.0.0-beta.3","versionCode":12,"applicationId":"com.brick.safety","apkSha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"signingCertSha256":os.environ["BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"],"automaticExpiry":False,"phase2Status":"NOT_DEPLOYED","fieldReadiness":"PENDING_ACTUAL_PHONE_AND_PHASE2"}
+          manifest={"releaseId":contract["releaseId"],"baseSha":contract["baseSha"],"apkSourceSha":os.environ["GITHUB_SHA"],"versionName":"1.0.0-beta.3","versionCode":13,"applicationId":"com.brick.safety","apkSha256":hashlib.sha256(apk.read_bytes()).hexdigest(),"signingCertSha256":os.environ["BRICK_EXPECTED_SIGNING_CERT_NORMALIZED"],"automaticExpiry":False,"phase2Status":"NOT_DEPLOYED","fieldReadiness":"PENDING_ACTUAL_PHONE_AND_PHASE2"}
           Path("beta-apk-results/build-manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
           PY
           "$AAPT2" dump permissions "$APK" > beta-apk-results/permissions.txt
-          printf 'git_sha=%s\napplication_id=com.brick.safety\nversion_code=12\nversion_name=1.0.0-beta.3\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > beta-apk-results/provenance.txt
+          printf 'git_sha=%s\napplication_id=com.brick.safety\nversion_code=13\nversion_name=1.0.0-beta.3\nsigning_cert_sha256=%s\n' "$GITHUB_SHA" "$actual" > beta-apk-results/provenance.txt
 
       - name: Remove materialized keystore
         if: always()
