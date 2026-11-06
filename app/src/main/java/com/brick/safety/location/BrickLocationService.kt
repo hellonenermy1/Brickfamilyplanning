@@ -77,6 +77,7 @@ class BrickLocationService : Service() {
     private val latestLive = AtomicReference<LiveCandidate?>(null)
     private val measuredGeneration = AtomicLong(0L)
     private val reacquisitionInProgress = AtomicBoolean(false)
+    private val registrationInProgress = AtomicBoolean(false)
 
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
@@ -211,8 +212,11 @@ class BrickLocationService : Service() {
             noteTrackingDiagnostic("fine_permission_missing", "The Android precise location permission is required")
             return
         }
-        runCatching { fused.removeLocationUpdates(callback) }
-        trackingIntervalMs = intervalMs
+        if (!registrationInProgress.compareAndSet(false, true)) return
+        // Play services replaces a previous registration for the same LocationCallback. Removing
+        // it *before* the new request succeeds creates a location blackout if the update fails.
+        val previousSubscribed = locationSubscribed
+        val previousInterval = trackingIntervalMs
         val activity = activityEngine.snapshot().mode
         val priority = if (!isSosActive() && activity == ActivityMode.STATIONARY) {
             Priority.PRIORITY_BALANCED_POWER_ACCURACY
@@ -225,13 +229,24 @@ class BrickLocationService : Service() {
             .setMinUpdateIntervalMillis(minInterval)
             .setMaxUpdateDelayMillis(maxDelay)
             .build()
-        locationSubscribed = false
         val registration = runCatching { fused.requestLocationUpdates(req, callback, mainLooper) }
-            .onFailure { noteTrackingDiagnostic("location_registration_threw", it.javaClass.simpleName) }
+            .onFailure {
+                registrationInProgress.set(false)
+                noteTrackingDiagnostic("location_registration_threw", it.javaClass.simpleName)
+            }
             .getOrNull() ?: return
-        registration.addOnSuccessListener { locationSubscribed = true }
+        registration.addOnSuccessListener {
+            registrationInProgress.set(false)
+            if (!mustQuiesceAsync()) {
+                trackingIntervalMs = intervalMs
+                locationSubscribed = true
+            }
+        }
         registration.addOnFailureListener {
-            locationSubscribed = false
+            registrationInProgress.set(false)
+            // Only the prior working request remains until a retry; do not falsely mark it dead.
+            trackingIntervalMs = previousInterval
+            locationSubscribed = previousSubscribed
             noteTrackingDiagnostic("location_registration_failed", it.javaClass.simpleName)
         }
     }
