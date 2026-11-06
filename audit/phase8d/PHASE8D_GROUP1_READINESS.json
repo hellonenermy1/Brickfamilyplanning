@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "4f0e143fe3856793b78385a4c0b55a6a5f454595",
+  "sourceSha": "53d7e093fd52e11310608f8cf02cfe2d46c3c13c",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -10,7 +10,7 @@
       "id": "SOURCE_WRITE_INVENTORY",
       "state": "RECORDED_NOT_ENFORCED",
       "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
-      "matchedRuntimeGitBlobs": 88
+      "matchedRuntimeGitBlobs": 89
     },
     {
       "id": "DURABLE_ADMISSION",
@@ -31,13 +31,30 @@
       "profiledActorMethods": 41,
       "productionControllerInstallCalls": 0,
       "completeWriterCoverage": false
+    },
+    {
+      "id": "D1_EXECUTION_BOUNDARIES",
+      "state": "INERT_SOURCE_AND_NATIVE_FIXTURE_VERIFIED",
+      "adapterCases": 22,
+      "environmentPlacementSites": 4,
+      "executionMethods": [
+        "run",
+        "first",
+        "all",
+        "raw",
+        "batch",
+        "exec"
+      ],
+      "sessionsWrapped": true,
+      "productionControllerInstallCalls": 0,
+      "completeWriterCoverage": false
     }
   ],
   "remaining": [
     {
       "id": "COMPLETE_WRITER_HOOKS",
-      "state": "PARTIAL_INERT_ACTOR_HOOKS_ONLY",
-      "needed": "Finish real Worker/direct-D1 ingress, constructors/lifecycle, deferred escapes and external writer accounting; current actor hooks alone cannot enable capture."
+      "state": "PARTIAL_INERT_ACTOR_AND_D1_ADAPTERS_ONLY",
+      "needed": "Finish raw/retained capabilities, exported helper paths, constructors/lifecycle/deferred escapes and operator/migration/publication external writer accounting. Current inactive adapters do not establish complete enforcement."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -77,21 +94,11 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_HOOK_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_D1_BOUNDARY_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "runs": [
       {
-        "runId": 42172912132,
-        "event": "pull_request",
-        "reportedRunStatus": "completed",
-        "reportedRunConclusion": "success",
-        "reportedJobStatus": "completed",
-        "reportedJobConclusion": "success",
-        "steps": 10,
-        "allStepsCompletedSuccess": true
-      },
-      {
-        "runId": 42172912062,
+        "runId": 42176089762,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -101,7 +108,17 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42172906721,
+        "runId": 42176089764,
+        "event": "pull_request",
+        "reportedRunStatus": "completed",
+        "reportedRunConclusion": "success",
+        "reportedJobStatus": "completed",
+        "reportedJobConclusion": "success",
+        "steps": 10,
+        "allStepsCompletedSuccess": true
+      },
+      {
+        "runId": 42176082576,
         "event": "push",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",

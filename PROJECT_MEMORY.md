@@ -298,3 +298,22 @@ Intermediate source d04b2864016749ad8d70912d5cdc20eb9924d636 PR42172575287 faile
 Only OPS-002/OPS-003 gain partial proof; all525 canonical classifications,214/311 applicability mappings, criteria/statuses/owners/reviews/final dispositions remain unchanged. reviewedSourceSha=null,17 rows link proof,2100 criterion slots remain unreviewed; remaining product-test count=null. Draft PR32 remains unmerged. No live activation, family-data export, cloud schema/permission/credential mutation, APK/UI/phone change, R2/card/billing, merge or deployment.
 
 ---
+
+
+## 2026-11-06 — selected Group1 D1 execution ownership
+
+# Selected Group1 — inactive D1 execution boundaries
+
+**Group1 IN PROGRESS / NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. Continue Group1 only.** Exact tested source **53d7e093fd52e11310608f8cf02cfe2d46c3c13c**. pull_request 42176089762 completed/success (33 steps, all-success=True); pull_request 42176089764 completed/success (10 steps, all-success=True); push 42176082576 completed/success (33 steps, all-success=True). Actual decoded logs/source identities inspected; exact receipts PHASE8D_GROUP1_D1_BOUNDARY_HOSTED_EVIDENCE.json. Existing Miniflare RPC-stub disposal warning remains.
+
+The new inactive D1 adapter covers configured mutation execution through run/first/all/raw, batch, exec and sessions. Four source placements wrap DB/BETA_DB at card-free fetch/scheduled ingress and device/scheduler construction. With no controller, exact original databases/envs and behaviour remain. Plain single SELECT bypasses ownership; unknown SQL forms are conservatively owned. Bind/options/native receivers/session constraints/bookmarks are preserved; foreign batch statements refuse. Query hangs retain ownership; admission uncertainty never authorizes SQL, and release uncertainty does not turn completed SQL into a false failed result.
+
+22 new controlled adapter cases pass. The native41+4/deviceDO encrypted source-destruction-and-restore drill installs database controllers only inside its harness: actual D1 UPDATE RETURNING preempts held capture without actor mutation admission, changed names are immediately verified and retained by exact restore, and a plain SELECT preserves the drained generation. All prior actor health release-race, retention refusal, byte/state/credential/interruption/restart checks remain. No product RED defect beyond the already-recorded incomplete coverage is invented. Initial optional-device-env type mismatch was corrected before qualification.
+
+Current import inventory pins89 runtime Git blobs,299 prepares/170 write-or-unknown candidates,71 mutation/wrapper candidates,21 deferred sites,3 actors and zero unresolved imports. These are static candidates, not remaining tests or completeness proof. It records17 runCaptureWriter call sites (16 actor plus1 generic D1 executor), zero production controller installs and no runtime durable-authority import. The source profile records41 actor methods plus4 database env placements.
+
+**Still not safe to activate.** Account for raw/retained bindings, exported helper paths, constructors/lifecycle/deferred escapes, dynamic/package behaviour and operator/migration/publication scripts. Configured D1 writes use urgent admission conservatively; capture liveness under traffic is unqualified. Urgent authority/storage/transport outage currently refuses the operation; a safety-preserving fallback remains NOT_IMPLEMENTED. Diagnostic notices cannot replace durable invalidation or justify ignoring an unknown writer. No production bootstrap/authority binding/authenticated capture transport is installed. Then verify independent private card-free destination/separate key/trusted context, independent schedule/readback/age/failure monitoring, current least-privilege PITR and explicitly isolated cloud restore/interruption/rollback/RTO/RPO. Existing failed login/denied-read boundaries stand without repeated retry or broad-token fallback.
+
+Only OPS-002/OPS-003 receive partial proof; all525 canonical classifications,214/311 applicability mappings, criteria/statuses/real owners/reviews/final dispositions stay unchanged. reviewedSourceSha=null,17 rows link evidence,2100 criterion slots remain unreviewed and remaining product-test count=null. Other groups unchanged. Draft PR32 remains unmerged; no live activation/data/cloud schema/permission/credential mutation, APK/UI/phone change, R2/card/billing, merge or deployment.
+
+---

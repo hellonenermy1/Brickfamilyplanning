@@ -885,3 +885,8 @@ No production Worker/template/runtime write path, app UI/APK/phone/family data, 
 ## P8D-002 — Group1 partial inert writer hooks; still P1 OPEN
 
 OPS-002 and OPS-003 gain scoped source/native proof only. Sixteen actor boundaries,21 controlled helper cases,88 exact runtime blobs and native retention/preemption/exact-state restore evidence do not close full Worker/D1/external coverage, urgent-outage fallback, authenticated transport, destination/key custody, schedule, current PITR or cloud recovery/RTO/RPO. No controller activation or canonical acceptance. Exact receipt: PHASE8D_GROUP1_WRITER_HOOK_HOSTED_EVIDENCE.json; scope: PHASE8D_GROUP1_WRITER_HOOK_REQUIREMENT_SCOPE.json.
+
+
+## P8D-002 — Group1 partial inactive D1 boundaries; still P1 OPEN
+
+OPS-002 and OPS-003 gain22 controlled adapter cases and exact-source/native D1 preemption/restore proof. Four env placements and89 source blobs do not establish complete external/raw writer accounting, urgent-outage fallback, transport/custody/schedule/PITR/cloud acceptance. See PHASE8D_GROUP1_D1_BOUNDARY_HOSTED_EVIDENCE.json, PHASE8D_GROUP1_D1_BOUNDARY_REQUIREMENT_SCOPE.json and PHASE8D_GROUP1_D1_BOUNDARIES.md. No controller activation or canonical acceptance.
