@@ -13,6 +13,8 @@ export type CaptureWriterController={
 type Context=Pick<ExecutionContext,'waitUntil'> & Partial<Pick<ExecutionContext,'passThroughOnException'>>;
 type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number};
 const controllers=new WeakMap<object,Installed>();
+// Internal adapter discovery only; this does not install or activate a controller.
+export function stagedCaptureWriterConfigured(owner:object){return controllers.has(owner);}
 const hex32=(x:unknown)=>typeof x==='string'&&/^[a-f0-9]{32}$/.test(x);
 function validTicket(x:unknown,writerId:string):x is Ticket{return x!==null&&typeof x==='object'&&Object.keys(x).sort().join(',')==='authorityEpoch,tracked,writerId'&&hex32((x as Ticket).authorityEpoch)&&(x as Ticket).writerId===writerId&&typeof (x as Ticket).tracked==='boolean';}
 export function installStagedCaptureWriterController(owner:object,controller:CaptureWriterController){

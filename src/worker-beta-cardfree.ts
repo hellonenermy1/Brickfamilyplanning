@@ -1,4 +1,5 @@
 import beta from './worker-beta';
+import {stagedCaptureDatabases} from './capture-d1-boundary';
 import {watchdogDeadline} from './watchdog-work';
 import { developmentRuntimeEnv,cleanupDevelopmentObjectStore } from './dev-free-runtime';
 import { authorizeDevParentRequest,cleanupDevParentAuth,devParentSessionValid,devParentUnauthorized,handleDevParentAuthRoute,stripDevParentInternalHeader } from './dev-parent-auth';
@@ -67,6 +68,7 @@ export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext,onWat
 function maintenance(env:Env,ctx:ExecutionContext){ctx.waitUntil(env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).kick().catch(()=>{}));}
 export default {
  async fetch(req:Request<unknown,IncomingRequestCfProperties>,env:Env,ctx:ExecutionContext):Promise<Response>{
+  env=stagedCaptureDatabases(env,ctx);
   if(env.APP_ENV!=='development'||env.DEV_PARENT_AUTH_MODE!=='d1-session-v1'||env.BETA_STORAGE_MODE!=='d1'||env.BETA_CHANNEL!=='beta')return betaJson({error:'cardfree_configuration_required'},503);
   const clean=stripDevParentInternalHeader(req),u=new URL(clean.url),r=cardfreeRuntime(env);maintenance(env,ctx);
   if(u.pathname==='/parent'||u.pathname.startsWith('/parent/')){
@@ -92,5 +94,5 @@ export default {
   }
   return beta.fetch(clean as Request<unknown,IncomingRequestCfProperties>,r,ctx);
  },
- async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){await runCardfreeMaintenance(env,ctx);}
+ async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){await runCardfreeMaintenance(stagedCaptureDatabases(env,ctx),ctx);}
 } satisfies ExportedHandler<Env>;

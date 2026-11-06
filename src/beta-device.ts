@@ -1,10 +1,12 @@
 import {runCaptureWriter} from './capture-writer-boundary';
+import {stagedCaptureDatabases} from './capture-d1-boundary';
 import type {LivePacket} from './protocol';
 import type {DeviceHealth,NetworkEvidence,RealtimeSafetyEvent,LiveTraceInput} from './device-do';
 import { BrickDevice as BaseBrickDevice } from './device-do';
 
 /** Same real per-device object and sockets; one disposable key, no telemetry/recovery markers changed. */
 export class BrickDevice extends BaseBrickDevice {
+ constructor(ctx:DurableObjectState,env:ConstructorParameters<typeof BaseBrickDevice>[1]){super(ctx,stagedCaptureDatabases(env,ctx));}
  // Only archived-state mutation RPCs are wrapped. Read-only export/state and
  // disposable socket/diagnostic lifecycle stay separate; no live controller is installed.
  override async setLatest(packet:LivePacket){return runCaptureWriter(this,'device.latest','urgent',this.ctx,()=>super.setLatest(packet));}

@@ -48,7 +48,8 @@ jobs:
         run: |
           node scripts/test-phase8d-capture-admission.mjs
           node scripts/test-phase8d-capture-writer-boundary.mjs
-          node scripts/phase8d-capture-write-inventory.mjs 033aa67299ffccc1d18c8b104877820ac2a98be5 > /tmp/group1-write-inventory.json
+          node scripts/test-phase8d-capture-d1-boundary.mjs
+          node scripts/phase8d-capture-write-inventory.mjs 53a70a572986a5421b396b9179863655a14c4b99 > /tmp/group1-write-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
           node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
           cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json

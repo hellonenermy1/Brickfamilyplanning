@@ -1,4 +1,5 @@
 import {runCaptureWriter} from './capture-writer-boundary';
+import {stagedCaptureDatabases} from './capture-d1-boundary';
 import {DurableObject} from 'cloudflare:workers';
 import {runCardfreeMaintenance,runCardfreeMaintenanceGroup,cardfreeRuntime,type CardfreeEnv} from './worker-beta-cardfree';
 import {watchdogPage,checkWatchdogDevice} from './watchdog-work';
@@ -11,6 +12,7 @@ import type {DerivedKind} from './derived-work-dispatch';
 
 /** Dedicated SQLite alarm: never shares or overwrites a device's WebSocket expiry alarm. */
 export class BetaScheduler extends DurableObject<CardfreeEnv>{
+ constructor(ctx:DurableObjectState,env:CardfreeEnv){super(ctx,stagedCaptureDatabases(env,ctx));}
  private running:Promise<void>|null=null;
  private tick:Promise<void>|null=null;
  private watchdogRunning:ReturnType<typeof watchdogPage>|null=null;
