@@ -1,0 +1,67 @@
+{
+  "format": "brick-phase8d-worksheet-requirement-scope-v1",
+  "sourceSha": "3edebe04dd3fbd6dc3baabad42f376508621926d",
+  "acceptance": "PARTIAL_SOURCE_CONTROL_ONLY_NOT_REQUIREMENT_PASS",
+  "rows": [
+    {
+      "id": "GOV-001",
+      "claim": "All525 canonical IDs/scopes and existing owner/status/evidence gaps remain visible; terminal worksheet provenance enforced at release.",
+      "remaining": "Real accountable implementation/test owners and evidence reconciliation remain absent.",
+      "classification": "MANDATORY",
+      "requirement": "Every requirement in all source tabs must have a stable checklist ID, scope classification, implementation owner, test owner, status, and evidence reference; nothing may be silently omitted.",
+      "canonicalDigest": "1f2355ee1b2ffb4a24c3ab6de6207632463e6664c996e25e8011fe961f101d30",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "GOV-002",
+      "claim": "Accepted labels, unreviewed/failed criterion strings and scope-only functional PASS cannot bypass the four-criterion release record.",
+      "remaining": "Structural record validity is not actual functional or device/integration proof.",
+      "classification": "MANDATORY",
+      "requirement": "A feature is not complete merely because code, a class, a route, a UI card, or a test stub exists; acceptance requires functional and device/integration evidence appropriate to the feature.",
+      "canonicalDigest": "1369007f2de062648a7787256f04c5586c711b40409d3b24cd9ef35f82816d4e",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "GOV-006",
+      "claim": "Each terminal criterion cites in-row hashed proof; independent review label pins exact tested source; stale source refuses before network.",
+      "remaining": "File hashes and labels do not establish reproducibility, genuine identity, evidence truth or the appropriate live/device artifact.",
+      "classification": "MANDATORY",
+      "requirement": "Every PASS must cite concrete evidence: source/commit, test ID/result, and the relevant device/backend/UI artifact. Evidence must be reproducible and tied to the reviewed release identity.",
+      "canonicalDigest": "684688c5bfa3e2267fb091a679c4dbc1ab3d8293ab2e61b323394241de8c1b0f",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "GOV-011",
+      "claim": "Exact canonical525 rows preserved; read-only report includes every ID and identifies missing worksheet dimensions.",
+      "remaining": "Prior proof still needs per-ID reconciliation; merely mapping an ID is not its acceptance.",
+      "classification": "MANDATORY",
+      "requirement": "If any source requirement cannot be mapped to a checklist ID and evidence path, the final audit fails even if all mapped items pass.",
+      "canonicalDigest": "4bcd96c94e79c71d76ff040e637aea568c1dc6ea006906604b7c445dd9ade80d",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "GOV-013",
+      "claim": "Report preserves current statuses/dispositions rather than manufacturing accepted, unsupported or deferred results.",
+      "remaining": "Every actual final disposition/owner/independent review remains pending.",
+      "classification": "MANDATORY",
+      "requirement": "Each phase closure must identify ACCEPTED items, OPEN BLOCKERS, and VERIFIED UNSUPPORTED items; nothing may disappear between phase reports.",
+      "canonicalDigest": "893120661d8a13e8ec8f75b0b7968a92b897cc6a85aec03e77598c7cbf014bd3",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "COV-011",
+      "claim": "Report retains all C1-C4 values, proof references, severity, blocker reason and remediation for each canonical ID; missing IDs/classes cannot silently pass.",
+      "remaining": "2100 unreviewed worksheet slots are not2100 runnable tests; meanings, applicability and final results require review.",
+      "classification": "MANDATORY",
+      "requirement": "AI audit output must list every checklist ID, C1-C4 result, evidence, severity, blocker reason, and remediation; missing IDs are an automatic audit failure.",
+      "canonicalDigest": "e64cf9d333d897207b8ba451d7cd87870fce1878ce8cce29a9967fd0b8f23a2b",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ]
+}

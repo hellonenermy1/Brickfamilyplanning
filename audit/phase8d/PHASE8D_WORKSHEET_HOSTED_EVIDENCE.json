@@ -1,0 +1,66 @@
+{
+  "format": "brick-phase8d-worksheet-hosted-evidence-v1",
+  "sourceSha": "3edebe04dd3fbd6dc3baabad42f376508621926d",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newCases": {
+    "acceptanceWorksheet": 42,
+    "closureInventory": 14,
+    "total": 56
+  },
+  "inheritedAcceptanceCases": {
+    "requirementLedger": 61,
+    "release": 39
+  },
+  "runs": [
+    {
+      "runId": 42146025758,
+      "jobId": 127657586178,
+      "event": "push",
+      "steps": 32,
+      "conclusion": "success",
+      "checkoutSha": "3edebe04dd3fbd6dc3baabad42f376508621926d",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T01:46:38.9217691Z PASS P8D-063 39 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)",
+        "2026-11-06T01:46:40.2256379Z PASS P8D-067 61 per-ID acceptance cases: exact canonical525, owners/reviews/evidence/classes/scope, optional/cross-phase/prohibition rules, missing/tampered/circular proof rejected before network; synthetic only",
+        "2026-11-06T01:46:41.3213997Z {\"suite\":\"acceptance-worksheet\",\"passed\":42,\"failed\":0,\"realLedgerUnchanged\":true,\"scope\":\"synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics\"}",
+        "2026-11-06T01:46:41.6321737Z {\"suite\":\"closure-inventory\",\"passed\":14,\"failed\":0,\"scope\":\"deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim\"}",
+        "2026-11-06T01:48:24.5221237Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T01:48:31.7122584Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call"
+      ]
+    },
+    {
+      "runId": 42146034298,
+      "jobId": 127657614822,
+      "event": "pull_request",
+      "steps": 32,
+      "conclusion": "success",
+      "checkoutSha": "437f3e3199e98af053bb89448e15deabb338cefe",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T01:46:44.6989038Z PASS P8D-063 39 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)",
+        "2026-11-06T01:46:45.9425199Z PASS P8D-067 61 per-ID acceptance cases: exact canonical525, owners/reviews/evidence/classes/scope, optional/cross-phase/prohibition rules, missing/tampered/circular proof rejected before network; synthetic only",
+        "2026-11-06T01:46:46.9407124Z {\"suite\":\"acceptance-worksheet\",\"passed\":42,\"failed\":0,\"realLedgerUnchanged\":true,\"scope\":\"synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics\"}",
+        "2026-11-06T01:46:47.2411902Z {\"suite\":\"closure-inventory\",\"passed\":14,\"failed\":0,\"scope\":\"deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim\"}",
+        "2026-11-06T01:48:18.4525556Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T01:48:24.9894063Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call"
+      ]
+    },
+    {
+      "runId": 42146034315,
+      "jobId": 127657614738,
+      "event": "pull_request",
+      "steps": 10,
+      "conclusion": "success",
+      "checkoutSha": "437f3e3199e98af053bb89448e15deabb338cefe",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    }
+  ],
+  "scope": "Synthetic final-record validation and actual canonical worksheet inventory, not genuine reviewer authentication, functional requirement acceptance, live account/phone/endurance/backup/PITR or deployment qualification. Existing recovery RPC disposal warning remains."
+}

@@ -1,3 +1,20 @@
+# Current gate interpretation — preserve backend8D boundaries
+
+Exact tested source 3edebe04dd3fbd6dc3baabad42f376508621926d. P8D-086's criterion/review provenance bypass is source/CI-qualified (42 new cases) and a canonical closure-inventory tool is qualified (14 new cases); inherited61 ledger/39 release cases pass. All32 audit steps in push/PR and10 portal steps pass. This is not final8D acceptance.
+
+**Later-phase browser, physical-phone and endurance checks do not automatically block backend8D.** They still require real per-ID carry-forward or explicit plan-backed8E/8F/9 deferral. The214 backend/shared and311 cross-phase mappings are draft scope decisions, not accepted/deferred dispositions. Current backend/security P0/P1 and applicable backend obligations cannot be waived or relabelled as future work. Older wording below that appears to require every Phase9 proof for backend8D is superseded by this clarification and the existing PHASE8D_REQUIREMENT_RECONCILIATION_2026-11-05.md contract.
+
+| Gate | Current remaining requirement |
+| --- | --- |
+| Operational recovery / P8D-002 P1 OPEN | Real safety-preemptive fence/transport, private independently controlled card-free destination and separately retained key, current scoped PITR/window evidence, isolated cloud restoration of both stores and all DO state, interruption/RTO/RPO/rollback evidence. Source/synthetic components exist; operational capability remains unverified. |
+| Atlas | Resolve canonical BE-019 placement/learning/trust/decay/relearning and model-history acceptance against actual code and approved authority. Keep existing local Android learning intact; no duplicate backend trainer or waiver by assumption. |
+| Exact backend release | Current active source/config/bindings/schema vs staged indexes19–22, rollback and backend safety/capacity/late-delivery boundaries. Handle later browser/phone/endurance evidence through reviewed phase dispositions; no merge/deploy is authorized by generic continue. |
+| Canonical acceptance | Every525 ID needs appropriate evidence, real accountable owners and independent disposition; retain214/311 scope split and null final review rather than fabricate completion. Source control now refuses unreviewed criteria, self-review labels and stale review source, but cannot authenticate a person or prove document truth. |
+
+Inventory has2100 unreviewed criterion slots, not a fixed count of remaining product tests. See PHASE8D_CLOSURE_INVENTORY_SUMMARY.json for measured draft counts, and run scripts/phase8d-closure-inventory.mjs for all per-ID results/evidence/severity/blocker/remediation. Six core IDs now link scoped new SOURCE_CI proof; none is automatically accepted. Existing historical/source capture and deployment proof below remains intact.
+
+---
+
 # Phase8D finite closure gates
 
 Current tested source c2ecb88c9d34a429512de28d9a6aeedd3063b650. Phase8D NOT PASS. Source progress is not a final requirement disposition.
