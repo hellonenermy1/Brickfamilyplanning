@@ -1,0 +1,25 @@
+name: Brick Phase 1 — Runner Preflight
+
+# Isolates GitHub-hosted runner allocation from Gradle, Android SDK and signing secrets.
+# This workflow performs no checkout, network upload, or secret access.
+on:
+  push:
+    branches: [fix/v1-p8d-phase1-android-20261106]
+    paths:
+      - '.github/workflows/phase1-runner-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runner-startup:
+    name: Verify Ubuntu runner starts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Runner acquired
+        run: |
+          echo "runner_assigned=true"
+          echo "sha=$GITHUB_SHA"
+          echo "No keystore, Gradle, deployment or application changes."
