@@ -17,6 +17,7 @@ const ctx=vm.createContext({
  map:{isStyleLoaded:()=>true,getSource:id=>sources[id]||null,addSource:(id,source)=>{sources[id]={setData:data=>rendered.push({device:ctx.currentDevice,data})};rendered.push({device:ctx.currentDevice,data:source.data})},addLayer:()=>{},fitBounds:()=>{}},
  document:{getElementById:id=>id==='seek'?seek:null,querySelector:()=>({replaceChildren(){},textContent:''})},
  renderHealthChecks:()=>{},
+ p2DisplayTrackingDiagnosis:()=>{},
  text:(id,txt)=>notes.push([id,txt]),
  setPlayPoint:i=>{ctx.playIndex=i;},
  api:url=>new Promise((resolve,reject)=>pending.push({url,resolve,reject})),
