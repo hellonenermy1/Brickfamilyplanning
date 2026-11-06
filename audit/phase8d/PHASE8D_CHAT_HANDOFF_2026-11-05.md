@@ -1,3 +1,23 @@
+# Latest continuation — paged recovery capture and finite closure gates
+
+# Paged coherent recovery capture — current checkpoint
+
+**Phase8D IN PROGRESS / NOT PASS; P8D-002 P1 OPEN.** Exact executable **c2ecb88c9d34a429512de28d9a6aeedd3063b650**. Push42140420515/job127639070387 and PR42140428207/job127639093975 completed-success, all31 steps each. Portal/map42140428364/job127639094770 all10 success. Actual logs inspected; zero GitHub error markers; PR synthetic merged84b17bf8a92274ccea06961e9e50dcd42ba3738 into612d4a8b16fb829f9528b06ab6448ab85ac483e6. New22 capture/coordinator and8 synthetic PITR cases pass. Existing actual synthetic D1/DO destruction-and-restore now uses paged41+4 capture, actual device DO snapshots and encrypted progress with a paused disposable scheduler; inherited required suites pass. Maximum5 source SQL statements per page under44 guard. Miniflare recovery RPC disposal warning remains.
+
+P8D-085 adds a separate bounded reader and off-platform encrypted journal/coordinator. It requires an externally enforced DRAINED fence, pins its generation/schema/resource/source identities around reads, covers all45 durable tables and every device including revoked, validates inventory/object bytes, seals/reopens the archive and refuses success after release failure. It does not install real writer fencing, an authenticated source transport, live scheduling or independent destination/key custody. The old whole-call exporter still exceeds the conservative44-statement guard: do not relabel it fixed or operationally deployed. No new public route/binding/secret is introduced.
+
+Historical deployment artifact13400592823 from run41996937662 was downloaded and verified against ZIP SHA2569443b6763dfd2b8189b37546e132cd92c6e9b02c2c5a68362c99301a39bff994. It pins source63075728e51d62d83641a0883deeb5e585fdf116/schema18, distinct D1 stores and no-R2/direct-write parent-session architecture as recorded on5 November. Only sanitized metadata/hashes are committed. It is not current active-version/config/PITR proof; candidate indexes19–22 remain staged. Parent browser/phone were PENDING and72h NOT_STARTED in that artifact.
+
+Prior read-only run41839919454/job126994211457 explicitly returned D1 catalog GET HTTP401. Unchanged denied credentials were not retried; no broad deployment-token fallback. New scripts/cardfree-pitr-readonly.mjs makes GET-only checks against explicitly pinned beta IDs with a dedicated read capability;8 tests are synthetic, no live account call. Bookmark metadata never establishes actual retention window, active Worker bindings or restore success.
+
+**Continue from PHASE8D_CLOSURE_GATES.md and PHASE8D_CAPTURE_COORDINATOR.md.** Remaining gates: operational safety-preemptive fencing/transport/private independent destination and key/PITR/isolated cloud drill; Atlas7-ID/BE-019 learning/trust/decay/model history; exact deployment/config/schema/rollback and real parent/phone/endurance/capacity evidence; all525 final owner/C1-C4/independent reviews. All final dispositions remain UNRECONCILED; reviewedSourceSha and missing owners remain null. No guessed PASS, R2/card, production retention/deletion/UI/APK change, merge or deployment. Draft PR32 remains unmerged; generic continue does not authorize auto-deployment.
+
+Exact receipts: PHASE8D_CAPTURE_HOSTED_EVIDENCE.json. Historical deployment: PHASE8D_DEPLOYMENT_ARTIFACT_EVIDENCE.json. Earlier sections below are historical scoped evidence, not additional latest heads.
+
+Evidence/documentation head20f0ebbc931bef44e1eb78bff8b1d22aebbdd78e on audit/phase8d-d1-qualification. Four-gate board and capture protocol live on that branch. This formal branch changes handoff documentation only; it does not import beta runtime or qualify production.
+
+---
+
 # Latest continuation — watchdog / live-delivery retry / scheduler isolation
 
 # Watchdog isolation and live-delivery retry — current checkpoint
