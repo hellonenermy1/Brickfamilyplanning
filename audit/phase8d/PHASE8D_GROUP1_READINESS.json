@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
+  "sourceSha": "b1d2ace93476d4151e5d252378cf22008302b488",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -52,12 +52,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 259,
-      "explicitManagementClassifications": 65,
+      "selectedTrackedFiles": 260,
+      "explicitManagementClassifications": 66,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 17,
       "unresolvedRelativeImportCandidates": 1,
-      "filesWithDynamicImportExpressions": 125,
+      "filesWithDynamicImportExpressions": 126,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json"
     },
     {
@@ -70,6 +70,19 @@
       "sourceChangingAdmission": "PERMANENT_CAPTURE_QUARANTINE",
       "uncertainWorkOutcome": "OWNERSHIP_RETAINED_NO_AUTOMATIC_REPLAY_OR_EXPIRY",
       "completeExternalCredentialCoverage": false
+    },
+    {
+      "id": "SIGNED_CAPTURE_BROKER",
+      "state": "STAGED_NATIVE_CLIENT_HANDLER_AND_FULL_RESTORE_CI_VERIFIED_NOT_INSTALLED",
+      "nativeClientCases": 36,
+      "keyRoles": [
+        "capture",
+        "runtime-writer",
+        "external-writer"
+      ],
+      "durableReplay": true,
+      "runtimeGraphImports": 0,
+      "productionEndpointOrKeyInstalled": false
     }
   ],
   "remaining": [
@@ -85,8 +98,8 @@
     },
     {
       "id": "AUTHENTICATED_SOURCE_TRANSPORT",
-      "state": "NOT_INSTALLED",
-      "needed": "Exact source/resource/authority identity with private bounded transport; no public capture route or token added."
+      "state": "STAGED_NATIVE_VERIFIED_NOT_INSTALLED",
+      "needed": "Trusted source/resource/epoch/endpoint/bootstrap, production key custody/rotation, replay persistence/rate/traffic qualification and independent review before actual installation. Native fixture protocol success is not live transport acceptance."
     },
     {
       "id": "PRIVATE_INDEPENDENT_DESTINATION",
@@ -116,11 +129,11 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_CONTROL_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_CAPTURE_BROKER_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "runs": [
       {
-        "runId": 42184899128,
+        "runId": 42189972010,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -130,7 +143,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42184899064,
+        "runId": 42189971812,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -140,7 +153,7 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42184893315,
+        "runId": 42189963877,
         "event": "push",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",

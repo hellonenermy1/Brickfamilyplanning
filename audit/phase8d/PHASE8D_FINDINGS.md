@@ -904,3 +904,8 @@ OPS-002. Exact prior compiled helper released ownership on rejected primary/defe
 ## P8D-002 — inactive external operation boundaries and uncertainty retention; P1 OPEN
 
 OPS-002 gains four actual tool hooks, native durable external ownership and source-changing quarantine, plus P8D-093 correction. No authenticated broker/transport, live enforcement, complete external credentials/process-tree accounting, urgent-outage fallback, independent custody/schedule/PITR/cloud recovery or canonical acceptance is claimed. OPS-003 remains unchanged.
+
+
+## P8D-002 — staged authenticated capture capability transport; P1 OPEN
+
+OPS-002 and OPS-003 gain36 native/client broker cases and full signed41+4/deviceDO encrypted destruction/restore source-CI proof. HMAC roles/source/resource/epoch/request/reply bindings and durable replay protect staged capabilities; no production route/controller/key/transport, complete coverage, urgent-outage fallback, independent custody/schedule/PITR/cloud recovery or canonical acceptance is claimed. PHASE8D_GROUP1_CAPTURE_BROKER_HOSTED_EVIDENCE.json and PHASE8D_GROUP1_CAPTURE_BROKER_REQUIREMENT_SCOPE.json record exact scope. P8D-093 uncertainty retention remains in force.
