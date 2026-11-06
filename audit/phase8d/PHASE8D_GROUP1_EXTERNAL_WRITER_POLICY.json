@@ -134,6 +134,10 @@
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
     },
+    "scripts/staged-external-writer.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Inactive external operation ownership adapter; trusted controller injection only in fixtures, no cloud transport or production installer."
+    },
     "scripts/test-beta-deployment.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
@@ -185,6 +189,10 @@
     "scripts/test-phase8d-external-writer-inventory.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic source-map tests contain management strings; no audited tool imported or cloud request performed by these tests."
+    },
+    "scripts/test-phase8d-external-writer.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification."
     },
     "scripts/test-phase8d-full-store-recovery.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",

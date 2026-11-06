@@ -1,19 +1,61 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "85f60ef2aac5bc4887de46d0b43e76848ad6725a",
+  "basisCommitSha": "a3917dee247f2ae9a405bd6dab08c712b6d2b072",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "f5e1de4d0a384677a029b559b08ec6381afdde8ad9acb76e6778d446c4bca815",
+  "policySha256": "d9b53bcf5425f8163e3b52501491be70d7252eaf2338022dace11202eae4e724",
   "summary": {
-    "selectedFiles": 257,
-    "filesWithManagementSignals": 63,
-    "explicitClassifications": 63,
+    "selectedFiles": 259,
+    "filesWithManagementSignals": 64,
+    "explicitClassifications": 65,
     "betaMutatorsUnfenced": 4,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 1,
-    "unresolvedDynamicImports": 124
+    "unresolvedDynamicImports": 125
   },
-  "sourceSetSha256": "96cb292a447a6ae4edcac5226e8be44e60c29685d7d506d7e6bc9ff3f1ae230c",
+  "sourceSetSha256": "06b0da18fdb65cd93bf53173b6a10e00dc5367c157d3c5864557dbc9556bebfe",
+  "knownBetaToolHooks": [
+    {
+      "path": "scripts/ensure-beta-d1-columns.mjs",
+      "calls": [
+        {
+          "line": 43,
+          "operation": "schema"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/publish-beta-d1-release.mjs",
+      "calls": [
+        {
+          "line": 7,
+          "operation": "publication"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/setup-beta-d1.mjs",
+      "calls": [
+        {
+          "line": 83,
+          "operation": "deployment"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/verify-beta-live.mjs",
+      "calls": [
+        {
+          "line": 7,
+          "operation": "probe"
+        }
+      ],
+      "controllerInstallCalls": []
+    }
+  ],
   "reachability": [
     {
       "entry": ".github/workflows/beta-backend.yml",
@@ -80,6 +122,7 @@
         "scripts/cardfree-pitr-readonly.mjs",
         "scripts/ensure-beta-d1-columns.mjs",
         "scripts/phase8d-external-writer-inventory.mjs",
+        "scripts/publish-beta-d1-release.mjs",
         "scripts/setup-beta-d1.mjs",
         "scripts/test-beta-deployment.mjs",
         "scripts/test-beta-workerd.mjs",
@@ -88,6 +131,7 @@
         "scripts/test-phase8d-d1-ack-faults.mjs",
         "scripts/test-phase8d-enrichment-failure.mjs",
         "scripts/test-phase8d-external-writer-inventory.mjs",
+        "scripts/test-phase8d-external-writer.mjs",
         "scripts/test-phase8d-full-store-recovery.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
@@ -532,6 +576,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-external-writer-inventory.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-external-writer.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1335,6 +1384,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/ensure-beta-d1-columns.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/install-beta-map.mjs",
       "to": "scripts/setup.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
@@ -1565,6 +1619,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/publish-beta-d1-release.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/setup-beta-cloud.mjs",
       "to": "scripts/beta-deployment-contract.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -1587,6 +1646,11 @@
     {
       "from": "scripts/setup-beta-d1.mjs",
       "to": "scripts/phase8d-development-schema16.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/setup-beta-d1.mjs",
+      "to": "scripts/staged-external-writer.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
@@ -1960,6 +2024,16 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-external-writer.mjs",
+      "to": "scripts/publish-beta-d1-release.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-external-writer.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-fast-live-revoke.mjs",
       "to": "scripts/phase8d-do-state-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2225,6 +2299,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/verify-beta-live.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/verify-cloudflare-deployment.mjs",
       "to": "scripts/phase8d-access-denial-policy.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2264,6 +2343,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/beta-cloud-preflight.mjs",
@@ -2283,6 +2364,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/test-beta-workerd.mjs"
@@ -2364,6 +2447,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/phase6-cloud-regression.sh",
@@ -2469,6 +2554,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-phase8d-contract.mjs",
@@ -2502,11 +2589,13 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "bfa4cff41a6c044d8170ef07f20d7e3bb2580ec8126f71b848231d68fa6bd116",
-      "gitBlobSha": "e02a2580e300f65dbcb24ac420315c4e793bc57a",
+      "sha256": "9b04362430e51c3fb16a2b438ab5b483f804d6025d314f0dc9da74295459f56c",
+      "gitBlobSha": "f3e2ecb1d1183688c131fd8d80ced173c244c01f",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-phase8d-requirements.mjs",
@@ -2540,6 +2629,7 @@
         "scripts/test-phase8d-d1-work-budget.mjs",
         "scripts/test-phase8d-enrichment-failure.mjs",
         "scripts/test-phase8d-external-writer-inventory.mjs",
+        "scripts/test-phase8d-external-writer.mjs",
         "scripts/test-phase8d-full-store-recovery.mjs",
         "scripts/test-phase8d-journal-files.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
@@ -2595,6 +2685,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/phase8d-cloudflare-readonly.mjs",
@@ -2614,6 +2706,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2625,6 +2719,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2636,6 +2732,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2647,6 +2745,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2658,6 +2758,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2669,6 +2771,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2680,6 +2784,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2691,6 +2797,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2702,6 +2810,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/phase8-identity-migration.mjs",
@@ -2727,6 +2837,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2738,6 +2850,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2749,6 +2863,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2760,6 +2876,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2804,6 +2922,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-p8b-placeholders.mjs",
@@ -2841,6 +2961,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2852,6 +2974,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2863,6 +2987,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2874,6 +3000,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2885,6 +3013,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-privacy.mjs"
@@ -2898,6 +3028,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -2918,6 +3050,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-phase8d-contract.mjs",
@@ -3041,6 +3175,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/build-parent-assets.mjs",
@@ -3059,6 +3195,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs",
         "node:path"
@@ -3078,6 +3216,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs",
@@ -3099,6 +3239,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-requirements-ledger.mjs",
         "node:fs",
@@ -3115,6 +3257,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs/promises",
         "node:path"
@@ -3142,6 +3286,8 @@
           "kind": "MANAGEMENT_API_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs/promises"
       ],
@@ -3155,6 +3301,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-phase8d-contract.mjs",
@@ -3189,6 +3337,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3205,6 +3355,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3216,6 +3368,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "esbuild",
         "node:fs/promises",
@@ -3231,6 +3385,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto"
       ],
@@ -3244,6 +3400,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "node:crypto",
@@ -3269,6 +3427,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto",
         "node:fs",
@@ -3284,6 +3444,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -3303,6 +3465,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -3319,6 +3483,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -3335,6 +3501,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -3351,6 +3519,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -3389,6 +3559,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:fs"
@@ -3424,30 +3596,38 @@
     },
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
-      "sha256": "f2b19a3cfd84d4dcb617ae833ea9eafa3eebf98e17e97e0f625e3a81d580a654",
-      "gitBlobSha": "34703955967ecf1ea99e4c02b2e38e44e67e9974",
+      "sha256": "fb55a232927af6911d9bfb46bffe76038f1c996a383a21d6a119adfa40adf913",
+      "gitBlobSha": "7e90d31fa047ec33f89a0c1d733c3008ca2b73fd",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 2,
+          "line": 3,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 5,
+          "line": 6,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 7,
+          "line": 8,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 43,
+          "line": 45,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 43,
+          "operation": "schema"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
-        "./beta-compat-columns.mjs"
+        "./beta-compat-columns.mjs",
+        "./staged-external-writer.mjs"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3476,6 +3656,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3487,6 +3669,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3523,6 +3707,8 @@
           "kind": "REMOTE_FLAG_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:fs/promises",
@@ -3556,6 +3742,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./.install-private-map-development.generated.mjs",
         "./install-private-map.mjs",
@@ -3606,6 +3794,8 @@
           "kind": "REMOTE_FLAG_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:fs/promises",
@@ -3630,6 +3820,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [
         "scripts/audit-privacy.mjs",
@@ -3697,6 +3889,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs/promises"
       ],
@@ -3710,6 +3904,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto"
       ],
@@ -3752,6 +3948,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:crypto",
@@ -3786,6 +3984,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8-identity-migration.mjs"
       ],
@@ -3799,6 +3999,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3810,6 +4012,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3821,6 +4025,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto",
         "node:fs",
@@ -3836,6 +4042,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto",
         "node:fs",
@@ -3852,6 +4060,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./audit-phase8d-requirements.mjs",
         "./phase8d-acceptance-worksheet.mjs",
@@ -3881,6 +4091,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs",
         "node:url"
@@ -3895,6 +4107,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -3906,6 +4120,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-secret-history-audit.mjs",
         "node:child_process",
@@ -3932,6 +4148,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs",
         "node:url"
@@ -3946,6 +4164,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-schema-compat.mjs"
       ],
@@ -3959,14 +4179,16 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
     {
       "path": "scripts/phase8d-external-writer-inventory.mjs",
-      "sha256": "b1280585c35517503242b53b5ccbc6bcdc306a7de2eb917eed0621ea1f5ae9df",
-      "gitBlobSha": "386142c465fc553ebee69e12ea8a9ee8a89bf063",
+      "sha256": "089803237d06b0fc1115e4be19a506a63242ed3cefef09b13a62a7a3767d7db2",
+      "gitBlobSha": "ffc8f624d61b69578b4a7c075879c47114220764",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion.",
       "signals": [
@@ -3979,6 +4201,8 @@
           "kind": "REMOTE_FLAG_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:crypto",
@@ -4006,6 +4230,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs",
         "node:url"
@@ -4020,6 +4246,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-compat-columns.mjs",
         "node:assert/strict",
@@ -4037,6 +4265,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "node:crypto",
@@ -4053,6 +4283,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -4064,6 +4296,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-requirements-ledger.mjs",
         "node:fs"
@@ -4083,6 +4317,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs",
         "node:url"
@@ -4097,6 +4333,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-acceptance-worksheet.mjs",
         "node:crypto"
@@ -4111,6 +4349,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -4122,6 +4362,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:child_process",
@@ -4134,25 +4376,33 @@
     },
     {
       "path": "scripts/publish-beta-d1-release.mjs",
-      "sha256": "ca83d2c6b65c8751050df48dafebb0dfa92aa9d9637193f5cb9d5e683203bb99",
-      "gitBlobSha": "6c275c0993f3f6dc46b5f547d350c1b0d161544b",
+      "sha256": "a117da1ebfae4863a37f35979ddc1ab8a84e06b0f53c13ddf3c8cfc5925fa917",
+      "gitBlobSha": "48ad793edcf5f0f15124f38f3d90fb2999a86362",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 7,
+          "line": 9,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 7,
+          "line": 9,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 7,
+          "line": 9,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 7,
+          "operation": "publication"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
+        "./staged-external-writer.mjs",
         "node:crypto",
         "node:fs/promises"
       ],
@@ -4166,6 +4416,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4181,6 +4433,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:zlib",
         "pbf",
@@ -4253,6 +4507,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-deployment-contract.mjs",
         "./phase8d-r2-lifecycle-merge.mjs",
@@ -4267,63 +4523,71 @@
     },
     {
       "path": "scripts/setup-beta-d1.mjs",
-      "sha256": "632fb77d39692a819b2af74787294853c18665f1c9491876cf3e5c8178b934e0",
-      "gitBlobSha": "3b3c4deea6d66b5b7723b9e9c1e6be75b8ebb612",
+      "sha256": "d22d593e88982b3899fd5d36ba6eb16a8c9cb7b83758e03ad089f31a0a62544f",
+      "gitBlobSha": "50d4facad06bf97e93910920c98c50297e3c226d",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 9,
+          "line": 10,
           "kind": "MANAGEMENT_API_LITERAL"
-        },
-        {
-          "line": 13,
-          "kind": "WRANGLER_LITERAL"
         },
         {
           "line": 14,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 41,
+          "line": 15,
+          "kind": "WRANGLER_LITERAL"
+        },
+        {
+          "line": 42,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 43,
+          "line": 44,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 108,
+          "line": 110,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 155,
+          "line": 157,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 155,
+          "line": 157,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 206,
+          "line": 208,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 206,
+          "line": 208,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 217,
+          "line": 219,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 227,
+          "line": 229,
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 83,
+          "operation": "deployment"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-deployment-contract.mjs",
         "./phase8d-development-schema16.mjs",
+        "./staged-external-writer.mjs",
         "node:child_process",
         "node:crypto",
         "node:fs/promises",
@@ -4363,6 +4627,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:fs/promises"
@@ -4422,6 +4688,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-development-schema16.mjs",
         "node:child_process",
@@ -4483,6 +4751,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:fs/promises"
@@ -4542,6 +4812,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-r2-lifecycle-merge.mjs",
         "./phase8d-schema-compat.mjs",
@@ -4560,6 +4832,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs/promises"
       ],
@@ -4573,6 +4847,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8-live-identity-preflight.mjs",
         "./setup-v1-phase6.mjs",
@@ -4593,6 +4869,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:child_process",
         "node:crypto",
@@ -4609,7 +4887,24 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/staged-external-writer.mjs",
+      "sha256": "b0ca8178cbfd20e031c16db160a08bd3e5bf96349206f0cb8c60306094e036a2",
+      "gitBlobSha": "70be39b265648c38bb0214d6ddb9006063c7716d",
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Inactive external operation ownership adapter; trusted controller injection only in fixtures, no cloud transport or production installer.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:crypto"
+      ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
@@ -4620,6 +4915,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4642,6 +4939,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-deployment-contract.mjs",
         "node:assert/strict",
@@ -4662,6 +4961,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -4683,6 +4984,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4698,6 +5001,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4713,6 +5018,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -4726,6 +5033,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -4739,6 +5048,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4757,6 +5068,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4775,6 +5088,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4793,6 +5108,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4809,6 +5126,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4824,6 +5143,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4839,6 +5160,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4854,6 +5177,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4871,6 +5196,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4886,6 +5213,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4904,6 +5233,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4919,6 +5250,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4936,6 +5269,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4952,6 +5287,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -4969,6 +5306,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -4985,6 +5324,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5000,6 +5341,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5018,6 +5361,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict"
@@ -5032,6 +5377,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5064,6 +5411,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -5094,6 +5443,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5109,6 +5460,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -5122,6 +5475,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5137,6 +5492,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5155,6 +5512,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5172,6 +5531,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5187,6 +5548,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5205,6 +5568,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5220,6 +5585,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5236,6 +5603,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5251,6 +5620,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5266,6 +5637,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -5279,6 +5652,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5294,6 +5669,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5309,6 +5686,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5324,6 +5703,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5339,6 +5720,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -5352,6 +5735,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5367,6 +5752,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:fs"
       ],
@@ -5380,6 +5767,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5395,6 +5784,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-release-fixture.mjs",
         "./phase8d-requirements-ledger.mjs",
@@ -5412,6 +5803,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-access-denial-policy.mjs",
         "node:assert/strict"
@@ -5426,6 +5819,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5443,6 +5838,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5458,6 +5855,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5473,6 +5872,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5493,6 +5894,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5530,6 +5933,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-deployment-contract.mjs",
         "node:assert/strict",
@@ -5550,6 +5955,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5567,6 +5974,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5578,11 +5987,13 @@
     },
     {
       "path": "scripts/test-phase8d-capture-admission.mjs",
-      "sha256": "d7bdca9bb56c31bdda7a298d145b0ab424db2eecdc25c07024078c9c89bdcb31",
-      "gitBlobSha": "96456f04c875c63fab6b4a3ff04a3e8de6a9c416",
+      "sha256": "4cbac6c52a849d4119153ba26825792ecb4293d44c09ac18a8a0401b5359fac8",
+      "gitBlobSha": "335a1cae5945a570e80d702f3df18c596d9ff295",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "esbuild",
         "miniflare",
@@ -5602,6 +6013,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5622,6 +6035,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "./cardfree-capture-coordinator.mjs",
@@ -5641,11 +6056,13 @@
     },
     {
       "path": "scripts/test-phase8d-capture-d1-boundary.mjs",
-      "sha256": "57758d02ccb647028494512cc3273b2f9f7a37866e2b4ec80123f8ff46de7c36",
-      "gitBlobSha": "f81191d753dc9b133a283ad4af03ddc9a0251efa",
+      "sha256": "29a0596af24bab9b19ea4bf3381e77af9c3c102e1813ba5636db8d7e04e913e2",
+      "gitBlobSha": "ee7b845e9e2026e0b724c57c9fc404c67e9946b4",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -5665,6 +6082,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "./cardfree-capture-coordinator.mjs",
@@ -5685,11 +6104,13 @@
     },
     {
       "path": "scripts/test-phase8d-capture-writer-boundary.mjs",
-      "sha256": "0103b0adb17fb42d9d0dafb133fc6c7a4fd94d8e004d2539dcf5771ce219c2d3",
-      "gitBlobSha": "71430448a2c958b0308960784cbe728204c865fa",
+      "sha256": "4d19c0fa4c14bfd0ff76eba1c362b309952b2e4ea0a112b5c8fbd96c19a96887",
+      "gitBlobSha": "a0cf959ed8f76d7f967cf52642f253d3eb81b5ab",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -5709,6 +6130,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-pitr-readonly.mjs",
         "node:assert/strict"
@@ -5728,6 +6151,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "./cardfree-capture-coordinator.mjs",
@@ -5752,6 +6177,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5772,6 +6199,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-closure-inventory.mjs",
         "./phase8d-release-fixture.mjs",
@@ -5789,6 +6218,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5814,6 +6245,8 @@
           "kind": "MANAGEMENT_API_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-cloudflare-readonly.mjs",
         "node:assert/strict"
@@ -5828,6 +6261,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5848,6 +6283,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5864,6 +6301,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -5890,6 +6329,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -5904,6 +6345,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -5924,6 +6367,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-current-private-key-scan.mjs",
         "node:assert/strict"
@@ -5943,6 +6388,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -5967,6 +6414,8 @@
           "kind": "MANAGEMENT_API_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-d1-catalog-readonly.mjs",
         "node:assert/strict"
@@ -5981,6 +6430,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -6000,6 +6451,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6018,6 +6471,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -6038,6 +6493,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6058,6 +6515,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6079,6 +6538,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -6113,6 +6574,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6138,6 +6601,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -6154,6 +6619,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6170,6 +6637,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-development-schema16.mjs",
         "node:assert/strict",
@@ -6186,6 +6655,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "./phase8d-schema-compat.mjs",
@@ -6209,6 +6680,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6225,6 +6698,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6241,6 +6716,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6256,6 +6733,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6272,6 +6751,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -6291,6 +6772,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "esbuild",
@@ -6322,6 +6805,8 @@
           "kind": "MANAGEMENT_API_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-external-writer-inventory.mjs",
         "node:assert/strict"
@@ -6364,12 +6849,121 @@
       ]
     },
     {
+      "path": "scripts/test-phase8d-external-writer.mjs",
+      "sha256": "285a0c0713915491d998f59c243b4387ecce5f4001fe0d4333c7a6b3a35f0781",
+      "gitBlobSha": "d397a847ddc54682a44c4273bb9993df08b38e09",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
+      "signals": [
+        {
+          "line": 29,
+          "kind": "WRANGLER_LITERAL"
+        },
+        {
+          "line": 32,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 33,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 36,
+          "kind": "MANAGEMENT_API_LITERAL"
+        }
+      ],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 11,
+          "operation": "unused"
+        },
+        {
+          "line": 11,
+          "operation": "unused"
+        },
+        {
+          "line": 13,
+          "operation": "<DYNAMIC>"
+        },
+        {
+          "line": 14,
+          "operation": "probe"
+        },
+        {
+          "line": 14,
+          "operation": "unknown"
+        },
+        {
+          "line": 15,
+          "operation": "probe"
+        },
+        {
+          "line": 16,
+          "operation": "schema"
+        },
+        {
+          "line": 17,
+          "operation": "probe"
+        },
+        {
+          "line": 18,
+          "operation": "probe"
+        },
+        {
+          "line": 19,
+          "operation": "probe"
+        },
+        {
+          "line": 20,
+          "operation": "probe"
+        },
+        {
+          "line": 21,
+          "operation": "probe"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [
+        {
+          "line": 9
+        },
+        {
+          "line": 12
+        },
+        {
+          "line": 12
+        },
+        {
+          "line": 28
+        }
+      ],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:module",
+        "node:os",
+        "node:path",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/publish-beta-d1-release.mjs",
+        "scripts/staged-external-writer.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
       "path": "scripts/test-phase8d-fall-bounds.mjs",
       "sha256": "7e31845e116d5a018b9c589b966b5f4e685dba5705e6a050299e1e712f74e4ed",
       "gitBlobSha": "ffec9d49bedbec8e41018a320816f1e88ea976da",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6385,6 +6979,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -6407,6 +7003,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -6430,6 +7028,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6446,6 +7046,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6462,6 +7064,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6479,6 +7083,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6496,6 +7102,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6513,6 +7121,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6534,6 +7144,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-capture-coordinator.mjs",
         "node:assert/strict",
@@ -6556,6 +7168,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs",
@@ -6571,6 +7185,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6587,6 +7203,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-live-parent-denial.mjs",
         "node:assert/strict"
@@ -6601,6 +7219,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6617,6 +7237,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6634,6 +7256,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6653,6 +7277,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6670,6 +7296,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6691,6 +7319,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6716,6 +7346,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "esbuild",
@@ -6734,6 +7366,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
@@ -6753,6 +7387,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6773,6 +7409,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6789,6 +7427,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6806,6 +7446,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -6827,6 +7469,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6843,6 +7487,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6863,6 +7509,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6879,6 +7527,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-pitr-readonly.mjs",
         "node:assert/strict",
@@ -6899,6 +7549,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "node:assert/strict",
@@ -6920,6 +7572,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./cardfree-backup-package.mjs",
         "node:assert/strict",
@@ -6954,6 +7608,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -6975,6 +7631,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs",
@@ -6990,6 +7648,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7005,6 +7665,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-r2-lifecycle-merge.mjs",
         "node:assert/strict",
@@ -7022,6 +7684,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -7041,6 +7705,8 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7063,6 +7729,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7080,6 +7748,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7100,6 +7770,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7120,6 +7792,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-release-fixture.mjs",
         "./verify-phase8d-release-acceptance.mjs",
@@ -7148,6 +7822,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs"
@@ -7164,6 +7840,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-remediation-plan.mjs",
         "node:assert/strict"
@@ -7178,6 +7856,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-release-fixture.mjs",
         "./phase8d-requirements-ledger.mjs",
@@ -7198,6 +7878,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7215,6 +7897,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7236,6 +7920,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -7257,6 +7943,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./route-map-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7277,6 +7965,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7293,6 +7983,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7309,6 +8001,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -7326,6 +8020,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7342,6 +8038,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-schema-compat.mjs",
         "node:assert/strict",
@@ -7357,6 +8055,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7373,6 +8073,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:fs",
@@ -7388,6 +8090,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7413,6 +8117,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "esbuild",
@@ -7431,6 +8137,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-native-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
@@ -7452,6 +8160,8 @@
           "kind": "WRANGLER_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
@@ -7474,6 +8184,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7490,6 +8202,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7505,6 +8219,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7520,6 +8236,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7535,6 +8253,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
@@ -7545,25 +8265,33 @@
     },
     {
       "path": "scripts/verify-beta-live.mjs",
-      "sha256": "c7992354e0321a11e4c36b428a95f99feec3349b298b9a88ef358ee071744606",
-      "gitBlobSha": "7bb021a0775afc791435126f913fba55c4be0946",
+      "sha256": "687086d00ed6db08b5497862974e2714a4ded0de185d4f5d404da5e1b6ea1842",
+      "gitBlobSha": "707ff7791e870d49b0c8798e31271d81862fe202",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 12,
+          "line": 14,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 12,
+          "line": 14,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 12,
+          "line": 14,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 7,
+          "operation": "probe"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
+        "./staged-external-writer.mjs",
         "node:crypto",
         "node:fs/promises"
       ],
@@ -7602,6 +8330,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-access-denial-policy.mjs",
         "node:child_process",
@@ -7634,6 +8364,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto",
         "node:fs/promises",
@@ -7674,6 +8406,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:assert/strict",
         "node:child_process",
@@ -7709,6 +8443,8 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto",
         "node:fs/promises",
@@ -7724,6 +8460,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./phase8d-requirements-ledger.mjs",
         "node:child_process",
@@ -7742,6 +8480,8 @@
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
       "imports": [],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

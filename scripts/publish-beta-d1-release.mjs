@@ -1,8 +1,10 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import fs from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 const state=JSON.parse(await fs.readFile('beta-setup-state.json','utf8'));
 if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9-]{36}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||state.workerName!=='brick-family-beta'||state.storageMode!=='d1-chunked-no-r2'||state.sourceGitSha!==process.env.GITHUB_SHA||!/^brick-family-beta\.[a-z0-9-]+\.workers\.dev$/.test(state.workerHost))throw Error('Isolated beta provenance required');
+await runStagedExternalWriter('publication',{sourceSha:state.sourceGitSha,accountId:state.accountId,databaseId:state.d1Id,workerName:'brick-family-beta',workerHost:state.workerHost},async()=>{
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now(),origin='https://'+state.workerHost;
 async function query(sql,params){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});const b=await r.json();if(!r.ok||b.success!==true)throw Error('Scoped D1 publish-session request failed: HTTP '+r.status);return b.result;}
 await query('INSERT INTO dev_parent_sessions(session_hash,created_at,expires_at,revoked_at) VALUES(?1,?2,?3,NULL)',[hash,now,now+300000]);
@@ -14,3 +16,4 @@ try{
  const returned=Buffer.from(await download.arrayBuffer());if(!returned.equals(bytes))throw Error('D1 APK download differs from pinned signed bytes');
  console.log('PASS exact signed APK published and read back through private D1 chunk storage; no R2');
 }finally{await query('DELETE FROM dev_parent_sessions WHERE session_hash=?1',[hash]);}
+});

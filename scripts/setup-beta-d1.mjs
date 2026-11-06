@@ -1,3 +1,4 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import {validateBetaConfig} from './beta-deployment-contract.mjs';
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -79,6 +80,7 @@ async function selectAccount() {
 }
 
 const accountId = await selectAccount();
+await runStagedExternalWriter('deployment',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:null,workerName:WORKER_NAME,workerHost:null},async()=>{
 if(!devAccessToken){
  let names=[];
  try{names=await cf(`/accounts/${accountId}/workers/scripts/${WORKER_NAME}/secrets`);}catch(e){if(!String(e.message).includes('Cloudflare API 404 '))throw e;}
@@ -274,3 +276,4 @@ console.log(`Parent login:     ${state.parentLoginMode}`);
 console.log(`Scheduler:        ${state.schedulerMode}`);
 console.log(`Map:              ${state.mapMode}`);
 console.log('Private high-entropy development login hash configured as Cloudflare secret; token never logged.');
+});

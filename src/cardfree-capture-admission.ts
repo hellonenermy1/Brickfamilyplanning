@@ -5,7 +5,8 @@ import type {CaptureFence, HeldCaptureFence} from './cardfree-capture';
 
 type Identity = {sourceSha: string; resourceSetSha256: string};
 export type WriterTicket = {authorityEpoch: string; writerId: string; tracked: boolean};
-type Writer = {priority: 'ordinary' | 'urgent'; admittedAt: number};
+export type ExternalOperation='publication'|'probe'|'schema'|'deployment';
+type Writer = {priority: 'ordinary' | 'urgent'; admittedAt: number; externalOperation?:ExternalOperation};
 type Capture = CaptureFence & {state: 'DRAINING' | 'DRAINED'; expiresAt: number};
 type Closed = {captureId: string; generation: string; reason: 'RELEASED' | 'EXPIRED' | 'PREEMPTED'};
 type State = {format: 1; identity: Identity; authorityEpoch: string; lastSeenAt: number; writers: Record<string, Writer>; capture: Capture | null; closed: Closed | null; quarantined: boolean};
@@ -23,7 +24,7 @@ function validState(v: unknown): asserts v is State {
   const s=v as State;
   try {identity(s.identity);} catch {throw Error('CAPTURE_AUTHORITY_CORRUPT');}
   if(s.format!==1||!hex(s.authorityEpoch,32)||!time(s.lastSeenAt)||typeof s.quarantined!=='boolean'||!object(s.writers)||Object.keys(s.writers).length>MAX_DECLARED_WRITERS)throw Error('CAPTURE_AUTHORITY_CORRUPT');
-  for(const [key,w] of Object.entries(s.writers))if(!hex(key,32)||!exact(w,['priority','admittedAt'])||!['ordinary','urgent'].includes(w.priority)||!time(w.admittedAt)||w.admittedAt>s.lastSeenAt)throw Error('CAPTURE_AUTHORITY_CORRUPT');
+  for(const [key,w] of Object.entries(s.writers))if(!hex(key,32)||!(exact(w,['priority','admittedAt'])||exact(w,['priority','admittedAt','externalOperation'])&&w.priority==='ordinary'&&['publication','probe','schema','deployment'].includes(w.externalOperation!))||!['ordinary','urgent'].includes(w.priority)||!time(w.admittedAt)||w.admittedAt>s.lastSeenAt)throw Error('CAPTURE_AUTHORITY_CORRUPT');
   if(s.closed!==null&&(!exact(s.closed,['captureId','generation','reason'])||!hex(s.closed.captureId,32)||!hex(s.closed.generation,32)||!['RELEASED','EXPIRED','PREEMPTED'].includes(s.closed.reason)))throw Error('CAPTURE_AUTHORITY_CORRUPT');
   if(s.capture!==null){const c=s.capture;if(!exact(c,['captureId','generation','resourceSetSha256','sourceSha','pausedAt','state','expiresAt'])||!hex(c.captureId,32)||!hex(c.generation,32)||!sameIdentity(c,s.identity)||!time(c.pausedAt)||!time(c.expiresAt)||c.expiresAt<=c.pausedAt||c.expiresAt>c.pausedAt+300000||c.pausedAt>s.lastSeenAt||!['DRAINING','DRAINED'].includes(c.state)||s.quarantined||c.state==='DRAINED'&&Object.keys(s.writers).length!==0)throw Error('CAPTURE_AUTHORITY_CORRUPT');}
 }
@@ -57,7 +58,7 @@ export class CaptureAdmissionStore {
     if(!hex(writerId,32)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_INVALID');
     return this.change((s,now)=>{
       const prior=s.writers[writerId];
-      if(prior){if(prior.priority!==priority)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
+      if(prior){if(prior.priority!==priority||prior.externalOperation!==undefined)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
       if(priority==='ordinary'&&(s.capture!==null||s.quarantined))return{admitted:false,code:'CAPTURE_BUSY' as const};
       if(priority==='urgent')close(s,'PREEMPTED');
       if(Object.keys(s.writers).length>=MAX_DECLARED_WRITERS){
@@ -67,6 +68,22 @@ export class CaptureAdmissionStore {
         s.quarantined=true;return{admitted:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:false} satisfies WriterTicket};
       }
       s.writers[writerId]={priority,admittedAt:now};return{admitted:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};
+    });
+  }
+  async enterExternalWriter(writerId:string,operation:ExternalOperation,expected:Identity){
+    identity(expected);expected={...expected};if(!hex(writerId,32)||!['publication','probe','schema','deployment'].includes(operation))throw Error('CAPTURE_EXTERNAL_WRITER_INVALID');
+    return this.change((s,now)=>{
+      if(!sameIdentity(s.identity,expected))throw Error('CAPTURE_IDENTITY_MISMATCH');
+      const prior=s.writers[writerId];
+      if(prior){if(prior.externalOperation!==operation)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,quarantined:s.quarantined,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
+      if(s.capture!==null||s.quarantined)return{admitted:false,code:'CAPTURE_BUSY' as const};
+      if(Object.keys(s.writers).length>=MAX_DECLARED_WRITERS)return{admitted:false,code:'WRITER_CAPACITY' as const};
+      // A schema/deployment transition invalidates the old source/resource proof.
+      // Permanent quarantine is committed BEFORE the tool may mutate. Completion,
+      // initialize/restart and urgent work cannot silently qualify a new capture.
+      if(operation==='schema'||operation==='deployment')s.quarantined=true;
+      s.writers[writerId]={priority:'ordinary',admittedAt:now,externalOperation:operation};
+      return{admitted:true,quarantined:s.quarantined,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};
     });
   }
   async exitWriter(ticket:WriterTicket){

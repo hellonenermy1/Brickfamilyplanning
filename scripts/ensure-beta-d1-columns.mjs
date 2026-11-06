@@ -1,3 +1,4 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import {BETA_COMPAT_COLUMNS} from './beta-compat-columns.mjs';
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-beta';
@@ -39,6 +40,7 @@ const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
 const db = Array.isArray(databases) ? databases.find(x => x.name === D1_NAME) : null;
 if (!db?.uuid) throw new Error(`${D1_NAME} D1 database not found.`);
 
+await runStagedExternalWriter('schema',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:db.uuid,workerName:'brick-family-beta',workerHost:null},async()=>{
 async function d1Query(sql, params = []) {
   return cf(`/accounts/${accountId}/d1/database/${db.uuid}/query`, {
     method: 'POST',
@@ -74,3 +76,4 @@ for (const required of ['last_health_at','health_status','recovery_count','pendi
 }
 
 console.log(added.length ? `Development D1 compatibility columns added: ${added.join(', ')}` : 'Development D1 compatibility columns already present.');
+});

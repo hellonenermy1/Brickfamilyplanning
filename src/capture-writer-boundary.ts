@@ -3,7 +3,7 @@
 // bypass is provided. Partial hook coverage must never enable source capture.
 type Ticket={authorityEpoch:string;writerId:string;tracked:boolean};
 export type CaptureWriterPriority='ordinary'|'urgent';
-export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED';
+export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED';
 export type CaptureWriterController={
  enterWriter(writerId:string,priority:CaptureWriterPriority):Promise<{admitted:boolean;ticket?:Ticket}>;
  exitWriter(ticket:Ticket):Promise<{released:boolean}>;
@@ -39,17 +39,20 @@ export async function runCaptureWriter<T>(owner:object,operation:string,priority
  }
  if(admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
  if(admission?.admitted!==true||!validTicket(admission.ticket,writerId)){report(c,'ADMISSION_UNCERTAIN',operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
- const ticket={...admission.ticket};let closed=false;const pending:Promise<boolean>[]=[];
- const waitUntil=(value:Promise<unknown>)=>{const observed=Promise.resolve(value).then(()=>true,()=>{report(c,'DEFERRED_REJECTED',operation);return false;});if(closed){report(c,'LATE_WORK_UNACCOUNTED',operation);throw Error('CAPTURE_WRITER_SCOPE_CLOSED');}pending.push(observed);};
+ const ticket={...admission.ticket};let closed=false,workRejected=false,deferredRejected=false;const pending:Promise<boolean>[]=[];
+ const waitUntil=(value:Promise<unknown>)=>{const observed=Promise.resolve(value).then(()=>true,()=>{deferredRejected=true;report(c,'DEFERRED_REJECTED',operation);return false;});if(closed){report(c,'LATE_WORK_UNACCOUNTED',operation);throw Error('CAPTURE_WRITER_SCOPE_CLOSED');}pending.push(observed);};
  const scoped=new Proxy(parent,{get(target,key){if(key==='waitUntil')return waitUntil;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}}) as ExecutionContext;
  async function finish(){
   for(let next=0;next<pending.length;){const batch=pending.slice(next);next=pending.length;await Promise.all(batch);}
   closed=true;
+  // Promise rejection is not proof that a remote write stopped/rolled back.
+  // Even after registered descendants settle, retain uncertain durable ownership.
+  if(workRejected||deferredRejected){report(c,'WORK_OUTCOME_UNCERTAIN',operation);return;}
   // Do not put a timeout on work/deferred settlement and then release ownership.
   // A permanently unresolved task leaves its writer durable and blocks capture.
   const result=await bounded(Promise.resolve().then(()=>c.exit(ticket)),c.timeoutMs);
   if(result?.released!==true)throw Error('capture writer release uncertain');
  }
- try{return await work(scoped);}catch(error){report(c,'WORK_REJECTED',operation);throw error;}
+ try{return await work(scoped);}catch(error){workRejected=true;report(c,'WORK_REJECTED',operation);throw error;}
  finally{schedule(parent,finish(),c,operation);}
 }
