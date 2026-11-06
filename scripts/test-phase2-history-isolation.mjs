@@ -8,7 +8,7 @@ assert(start>0&&end>start,'Phase2 history isolation must be injected into parent
 const pending=[],rendered=[],notes=[],seek={value:'4',max:'99'};
 const ctx=vm.createContext({
  currentDevice:'phone-A',historyPoints:[{wallTimeMs:999}],displayPoints:[{}],playIndex:4,playMarker:null,
- stopCount:0,stopPlay(){this.stopCount++;},
+ stopCount:0,stopPlay:()=>{ctx.stopCount++;},
  selectDevice:async id=>{ctx.currentDevice=id;},
  drawHistory:points=>rendered.push({device:ctx.currentDevice,points}),
  renderTimeline:()=>{},
@@ -22,7 +22,7 @@ const ctx=vm.createContext({
 });
 vm.runInContext(source.slice(start,end),ctx,{timeout:1000});
 const beginA=ctx.fetchHistory(100,200);
-assert(pending[0].url.includes('phone-A/history'));
+assert(pending[0]?.url?.includes('phone-A/history'),'first history API request must be scheduled');
 await ctx.selectDevice('phone-B');
 assert.equal(ctx.historyPoints.length,0,'switch must clear history evidence and old marker');
 assert.equal(seek.value,'0','switch must clear playback seek position');
