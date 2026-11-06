@@ -103,6 +103,24 @@ export async function consumeBetaProbe(message:Message<unknown>,env:BetaEnv){
 }
 export async function betaParent(req:Request,env:BetaEnv,id:string,action:string){
  if(!await activeDevice(env,id))return betaJson({error:'device_unavailable'},404);
+ if(req.method==='GET'&&action==='logs'){
+  // Beta observation records are not the Android DiagnosticStore log stream.
+  // Strict seven-local-calendar-day parent window, Asia/Singapore default.
+  const now=Date.now(),sgOffset=8*3600000;
+  const localDay=Math.floor((now+sgOffset)/86400000);
+  const cutoff=(localDay-6)*86400000-sgOffset;
+  const r=await env.BETA_DB.prepare('SELECT run_id,record_id,payload,received_at FROM beta_records WHERE device_id=?1 AND received_at>=?2 ORDER BY received_at DESC,record_id DESC LIMIT 101').bind(id,cutoff).all<{run_id:string;record_id:number;payload:string;received_at:number}>();
+  const logs=[] as Array<{runId:string;recordId:number;receivedAt:number;capturedAt:number|null;network:string;locationAgeMs:number|null;ackAgeMs:number|null;pendingRecords:number|null;gapMs:number|null;bootChanged:boolean;status:string}>;
+  for(const record of r.results.slice(0,100)){
+   let v:unknown;try{v=JSON.parse(record.payload);}catch{return betaJson({error:'diagnostic_record_unreadable'},503);}
+   if(!obj(v)||!obj(v.health))return betaJson({error:'diagnostic_record_invalid'},503);
+   const h=v.health;const cleanNumber=(x:unknown)=>typeof x==='number'&&Number.isSafeInteger(x)&&x>=0?x:null;
+   const locationAgeMs=cleanNumber(h.locationAgeMs),ackAgeMs=cleanNumber(h.ackAgeMs),pendingRecords=cleanNumber(h.pendingRecords);
+   const concerning=(locationAgeMs!=null&&locationAgeMs>120000)||(ackAgeMs!=null&&ackAgeMs>120000)||(pendingRecords!=null&&pendingRecords>100);
+   logs.push({runId:record.run_id,recordId:record.record_id,receivedAt:record.received_at,capturedAt:cleanNumber(v.wallMs),network:short(h.network,80)?h.network:'unknown',locationAgeMs,ackAgeMs,pendingRecords,gapMs:cleanNumber(v.sameBootGapMs),bootChanged:v.bootChanged===true,status:concerning?'ATTENTION':'OBSERVED'});
+  }
+  return betaJson({source:'beta_health_observations_only',fullAndroidDiagnosticLogAvailable:false,timezone:'Asia/Singapore',retainedLocalDays:7,cutoffMs:cutoff,readAtMs:now,truncated:r.results.length>100,logs});
+ }
  if(req.method==='GET'&&action==='status'){
   const latest=await env.BETA_DB.prepare('SELECT payload,updated_at FROM beta_latest WHERE device_id=?1').bind(id).first<{payload:string;updated_at:number}>();
   const runs=await env.BETA_DB.prepare('SELECT run_id,metadata,readiness,dropped,updated_at FROM beta_runs WHERE device_id=?1 ORDER BY updated_at DESC LIMIT 10').bind(id).all<{run_id:string;metadata:string;readiness:string;dropped:number;updated_at:number}>();
