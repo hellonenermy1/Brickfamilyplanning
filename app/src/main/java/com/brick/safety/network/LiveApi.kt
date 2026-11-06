@@ -38,8 +38,8 @@ object LiveApi {
             setRequestProperty("X-Brick-Send-Wall-Ms", trace.sendStartWallMs.toString())
         }
         c.outputStream.use { it.write(payload) }
-        val text = (if (c.responseCode in 200..299) c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
-        if (c.responseCode !in 200..299) error("Live preview failed ${c.responseCode}: ${text.take(300)}")
+        val text = SafeResponseReader.read(c)
+        if (c.responseCode !in 200..299) error("Live preview failed ${c.responseCode}")
         val j = JSONObject(text)
         return Result(
             previewed = j.optBoolean("previewed", false),
