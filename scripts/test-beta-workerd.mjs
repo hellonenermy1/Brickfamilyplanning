@@ -44,6 +44,19 @@ try{
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
  const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+
+ for(const [name,code] of [
+  ['Safety Events',"async function loadEvents(){const requestDevice=currentDevice;"],
+  ['Event map buttons','if(requestDevice===currentDevice)map.easeTo('],
+  ['Battery status',"async function loadBatteryTrend(){const requestDevice=currentDevice;"],
+  ['GPS control status',"async function p7LoadLocationControl(){const requestDevice=currentDevice;"],
+  ['Places mutation guard','toggle.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Place deletion guard','del.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Trips mutation guard','btn.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Health device guard','if(requestDevice!==currentDevice)return;'],
+  ['Phone-switch snapshot clear','snapshot=null;']
+ ])assert.ok(html.includes(code),name+' must be isolated for the currently selected phone');
+
  for(const [name,code] of [
   ['WebSocket stale-device guard','client.onmessage=e=>{if(ws!==client||currentDevice!==id)return;'],
   ['Places stale-response guard',"async function loadPlaces(){const requestDevice=currentDevice;"],
