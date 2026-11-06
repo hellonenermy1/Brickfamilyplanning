@@ -37,6 +37,8 @@ export function parentBetaHtml(base:string){
  if(!html.includes(healthTab)||!html.includes(healthPane))throw Error('phase2_logs_markup_anchor_missing');
  html=html.replace(healthTab,healthTab+'<button data-tab="logs">Logs</button>');
  html=html.replace(healthPane,'<section id="logs" class="pane"><div class="sectionTitle"><h3>Phone & cloud observation logs</h3><button id="refreshLogs" type="button">Refresh</button></div><div class="notice">Available: signed beta health observations within the last seven Singapore calendar days. Full Android diagnostic logs are not yet uploaded; absence of observations does not mean the phone is healthy.</div><div id="phase2LogsStatus" class="small">Select a phone to load observations.</div><div id="phase2LogsList"></div></section>'+healthPane);
+ // Read-only tracking diagnosis from signed phone health and server receipt times.
+ html=html.replace(healthPane,healthPane+'<div class="card" style="margin-bottom:12px"><div class="sectionTitle"><h3>Tracking delivery diagnosis</h3></div><div id="p2TrackingDiagnosis" role="status" class="notice">Waiting for the selected phone\'s signed tracking evidence.</div><p id="p2TrackingEvidence" class="small">No current capture or server receipt has been verified.</p></div>');
 // Beta-only protections: reject delayed data from a previously selected phone.
  const p2GuardSwap=(original:string,replacement:string)=>{
   if(!html.includes(original)||html.split(original).length!==2)throw Error('phase2_device_race_hook_missing_'+original.slice(0,44));
@@ -84,8 +86,40 @@ function p2ClampSnapshot(x,now){
  if(d.deviceStatus==='offline'&&d.positionStatus==='fresh')d.positionStatus='stale';
  return {...x,derived:d};
 }
+
+// Infer only which tracking stage lacks evidence; this is not a claim that the
+// phone is safe, continuously tracked or that a pending event reached the parent.
+function p2TrackingDiagnosis(x,now){
+ const h=x?.health||{},latest=x?.latest||{},d=x?.derived||{};
+ const age=value=>typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=now+120000?Math.max(0,now-value):null;
+ const healthAge=age(h.receivedAt),captureAge=age(latest.wallTimeMs),receiptAge=age(latest.receivedAt);
+ const hasFix=captureAge!==null&&receiptAge!==null;
+ const pending=Number.isSafeInteger(h.pendingRecords)&&h.pendingRecords>=0?h.pendingRecords:null;
+ const ack=typeof h.ackAgeMs==='number'&&Number.isFinite(h.ackAgeMs)&&h.ackAgeMs>=0?h.ackAgeMs:null;
+ const explain=ms=>ms===null?'not reported':Math.round(ms/1000)+'s ago';
+ const evidence='Phone health '+explain(healthAge)+' · GPS capture '+explain(captureAge)+' · cloud receipt '+explain(receiptAge)+' · pending records '+(pending===null?'not reported':pending)+' · last ACK age '+(ack===null?'not reported':Math.round(ack/1000)+'s');
+ const result=(level,code,message)=>({level,code,message,evidence});
+ if(healthAge===null)return result('unknown','no_health_receipt','No usable phone-health receipt. The browser cannot establish whether tracking is running.');
+ if(healthAge>90000)return result('warn','health_heartbeat_stale','Phone health is overdue; check service, battery restrictions and network before trusting the map.');
+ if(h.locationEnabled===false)return result('warn','location_disabled','The phone reports location services disabled.');
+ if(h.fineLocationPermission===false)return result('warn','precise_permission_missing','The phone reports missing precise location permission.');
+ if(h.locationSubscribed===false)return result('warn','location_subscription_missing','The phone reports no active location subscription.');
+ if(pending!==null&&pending>0&&ack!==null&&ack>120000)return result('warn','upload_backlog','The phone reports queued records and an old server ACK. Capture may be working, but delivery needs investigation.');
+ if(!hasFix)return result('unknown','no_fix_receipt','Phone health arrived, but a current GPS capture/server receipt pair is not available.');
+ if(captureAge>120000)return result('warn','gps_capture_stale','The latest trusted GPS capture is old, even if its upload arrived recently.');
+ if(receiptAge>90000)return result('warn','server_receipt_stale','No recent position has reached the parent cloud read model.');
+ if(d.deviceStatus==='offline')return result('warn','device_offline','The server reports the phone offline; last location must be treated as historical.');
+ if(d.positionStatus==='fresh'&&d.deviceStatus==='healthy')return result('info','recent_evidence','Recent phone health, capture and delivery evidence are present. This is not an endurance guarantee.');
+ return result('warn','position_degraded','Recent evidence exists, but tracking is not confirmed fresh and healthy. Inspect Health and Logs.');
+}
+function p2DisplayTrackingDiagnosis(x,now){
+ const result=p2TrackingDiagnosis(x,now);
+ const el=document.getElementById('p2TrackingDiagnosis'),details=document.getElementById('p2TrackingEvidence');
+ if(el){el.textContent=result.message;el.className='notice '+(result.level==='warn'?'warn':'');el.dataset.reason=result.code;}
+ if(details)details.textContent=result.evidence;
+}
 const p2OriginalRenderSnapshot=renderSnapshot;
-renderSnapshot=function(x){return p2OriginalRenderSnapshot(p2ClampSnapshot(x,Date.now()))};
+renderSnapshot=function(x){const now=Date.now(),safe=p2ClampSnapshot(x,now);const rendered=p2OriginalRenderSnapshot(safe);p2DisplayTrackingDiagnosis(safe,now);return rendered};
 
 // Phase 2 portal safety: preserve every stored event but group rapid historical fall noise.
 // Grouping only affects presentation, not D1 history, SOS delivery or Android's sensor policy.
@@ -180,6 +214,7 @@ selectDevice=async function(id){
   // keep rendering under the newly selected phone during network latency.
   snapshot=null;
   places=[];
+  p2DisplayTrackingDiagnosis(null,Date.now());
   for(const selector of ['#events','#placesList','#tripsList','#incidents','#crashes']){
    const el=document.querySelector(selector);if(el)el.replaceChildren();
   }
