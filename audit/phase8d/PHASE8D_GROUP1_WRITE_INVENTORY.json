@@ -1,0 +1,4510 @@
+{
+  "format": "brick-group1-write-inventory-v1",
+  "basisCommitSha": "0d61bcde05b7c64bfeda156a316fd54712b4be2b",
+  "entry": "src/worker-beta-cardfree.ts",
+  "activation": "NOT_READY",
+  "notice": "Static candidates from relative import/export reachability only. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
+  "summary": {
+    "sourceFiles": 87,
+    "sqlPrepareCandidates": 298,
+    "sqlWriteOrUnknown": 169,
+    "mutationOrWrapperCandidates": 69,
+    "deferredWorkCandidates": 20,
+    "actorClasses": 3,
+    "unresolvedLocalImports": 0
+  },
+  "runtimeSourceSetSha256": "178a80ee4302acbbc4c4e09cf2a66e698c2e7dffaed2aa7cc7fe26a0e2865996",
+  "stagedAuthorityImportedByProduction": false,
+  "activationGaps": [
+    "Every real ingress/RPC/alarm/deferred descendant must retain writer ownership through its final side effect.",
+    "Urgent admission must invalidate capture; authority/storage/transport outages require a separately proven safety-preserving fallback.",
+    "External SQL, migrations, publication scripts and direct bindings can bypass a Worker-only gate.",
+    "Source/resource/authority identity and authenticated transport must be pinned.",
+    "Independent private destination, separate key/trusted context, schedule, PITR and isolated cloud recovery remain unverified."
+  ],
+  "unresolvedLocalImports": [],
+  "externalImports": [
+    "@mapbox/vector-tile",
+    "cloudflare:workers",
+    "pbf",
+    "pmtiles"
+  ],
+  "actorEntrypoints": [
+    {
+      "file": "src/beta-device.ts",
+      "className": "BrickDevice",
+      "methods": [
+        {
+          "name": "fetch",
+          "line": 10,
+          "column": 2
+        }
+      ]
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "className": "BetaScheduler",
+      "methods": [
+        {
+          "name": "runWatchdogPage",
+          "line": 16,
+          "column": 2
+        },
+        {
+          "name": "runWatchdogDevice",
+          "line": 17,
+          "column": 2
+        },
+        {
+          "name": "runGroup",
+          "line": 20,
+          "column": 2
+        },
+        {
+          "name": "runDerivedWork",
+          "line": 21,
+          "column": 2
+        },
+        {
+          "name": "runRetentionWork",
+          "line": 28,
+          "column": 2
+        },
+        {
+          "name": "runDailyBackup",
+          "line": 29,
+          "column": 2
+        },
+        {
+          "name": "arm",
+          "line": 30,
+          "column": 2
+        },
+        {
+          "name": "kick",
+          "line": 31,
+          "column": 2
+        },
+        {
+          "name": "status",
+          "line": 40,
+          "column": 2
+        },
+        {
+          "name": "runTick",
+          "line": 41,
+          "column": 2
+        },
+        {
+          "name": "alarm",
+          "line": 51,
+          "column": 2
+        }
+      ]
+    },
+    {
+      "file": "src/device-do.ts",
+      "className": "BrickDevice",
+      "methods": [
+        {
+          "name": "exportRecoveryState",
+          "line": 108,
+          "column": 3
+        },
+        {
+          "name": "restoreRecoveryState",
+          "line": 113,
+          "column": 3
+        },
+        {
+          "name": "alarm",
+          "line": 154,
+          "column": 3
+        },
+        {
+          "name": "closeParentSockets",
+          "line": 161,
+          "column": 3
+        },
+        {
+          "name": "revokeParentSockets",
+          "line": 167,
+          "column": 3
+        },
+        {
+          "name": "setLatest",
+          "line": 239,
+          "column": 3
+        },
+        {
+          "name": "setLatestWithTrace",
+          "line": 240,
+          "column": 3
+        },
+        {
+          "name": "setHealth",
+          "line": 258,
+          "column": 3
+        },
+        {
+          "name": "setNetworkEvidence",
+          "line": 271,
+          "column": 3
+        },
+        {
+          "name": "pushSafetyEvent",
+          "line": 276,
+          "column": 3
+        },
+        {
+          "name": "readSequenceHighWater",
+          "line": 282,
+          "column": 3
+        },
+        {
+          "name": "commitSequenceHighWater",
+          "line": 283,
+          "column": 3
+        },
+        {
+          "name": "canEvaluateSafety",
+          "line": 286,
+          "column": 3
+        },
+        {
+          "name": "commitSafetyEvaluation",
+          "line": 294,
+          "column": 3
+        },
+        {
+          "name": "readSafetyHighWater",
+          "line": 297,
+          "column": 3
+        },
+        {
+          "name": "commitSafetyHighWater",
+          "line": 298,
+          "column": 3
+        },
+        {
+          "name": "fetch",
+          "line": 302,
+          "column": 3
+        },
+        {
+          "name": "webSocketClose",
+          "line": 336,
+          "column": 3
+        },
+        {
+          "name": "webSocketError",
+          "line": 337,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "src/access-auth.ts",
+      "sha256": "4786e1d8542b15c9ad578980f393aacc5714d27b219e400ca5c32557516eaeed",
+      "gitBlobSha": "9a6859b2f3fd9c2ae9151fa36c511a22a3fbbf94",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/background-work.ts",
+      "sha256": "039625bac67943ea560756dd6a681ec17f338459c86bafbd3c2e598c365ed1f8",
+      "gitBlobSha": "7e1877b5dad471c2ab147d2ef514173273a845a5",
+      "imports": [
+        "src/refinement-work-state.ts",
+        "src/watchdog-work.ts"
+      ],
+      "sites": [
+        {
+          "line": 30,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 40,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 47,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 71,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/backup-v6.ts",
+      "sha256": "9b9ec8f835182bb63c592c42c94713252fab342d2912e96159e9735ae0939908",
+      "gitBlobSha": "77616e4e0b9d4bfcee5f93ee072741914b963821",
+      "imports": [],
+      "sites": [
+        {
+          "line": 96,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 98,
+          "column": 23,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 183,
+          "column": 29,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "bucket",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 208,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/battery-health.ts",
+      "sha256": "27f565b725b0f2e569c76ea443b4e1082a344eeaf101c8da37c092d86022aadb",
+      "gitBlobSha": "f357841eaad4190b1373967cc62ab2aea431c270",
+      "imports": [],
+      "sites": [
+        {
+          "line": 29,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/beta-api.ts",
+      "sha256": "495e9521e85c90ed4024a140ceb93f492f4c9bed9564fd2e81aab264619fb0aa",
+      "gitBlobSha": "0b33567f3c9a372ae6ec8b8f6956b2d953b760b6",
+      "imports": [
+        "src/background-work.ts",
+        "src/beta-release.ts",
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/device-do.ts",
+        "src/phase4.ts"
+      ],
+      "sites": [
+        {
+          "line": 18,
+          "column": 100,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 42,
+          "column": 8,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 43,
+          "column": 16,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 73,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 51,
+          "column": 50,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 51,
+          "column": 227,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 53,
+          "column": 111,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 53,
+          "column": 223,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 54,
+          "column": 152,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 76,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 81,
+          "column": 48,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 84,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 86,
+          "column": 47,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 87,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.BETA_DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 88,
+          "column": 4,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 89,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 92,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 94,
+          "column": 47,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 108,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 109,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 111,
+          "column": 31,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 111,
+          "column": 244,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 111,
+          "column": 434,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 119,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 123,
+          "column": 212,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 125,
+          "column": 10,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 132,
+          "column": 219,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/beta-device.ts",
+      "sha256": "650eda6a6f39289936108148518ebee877937078404cb01d3246da3769ffa2a3",
+      "gitBlobSha": "c65571d0b61a30b3ab34441b32d330e0962c4873",
+      "imports": [
+        "src/device-do.ts"
+      ],
+      "sites": [
+        {
+          "line": 16,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/beta-release.ts",
+      "sha256": "13082689db5b1558ac7f3bb5dc975f89916a8e3f127290e78f62b4a1ff340202",
+      "gitBlobSha": "23fd144dd1dbfdb5b424db38c3d3aa93a3a9ca4c",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/beta-scheduler.ts",
+      "sha256": "2b66b140cf5d1a446ef5c50a640bfad9e816f102ad79d36f6819d1d2faf555f0",
+      "gitBlobSha": "b8a38ac813571b43ecea00c2cbfcf042f1493ed8",
+      "imports": [
+        "src/background-work.ts",
+        "src/backup-v6.ts",
+        "src/commute-summary.ts",
+        "src/d1-work-budget.ts",
+        "src/derived-work-dispatch.ts",
+        "src/phase5-refined-history.ts",
+        "src/watchdog-work.ts",
+        "src/worker-beta-cardfree.ts"
+      ],
+      "sites": [
+        {
+          "line": 30,
+          "column": 111,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "setAlarm",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 36,
+          "column": 4,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "this.ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 46,
+          "column": 49,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 47,
+          "column": 10,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 48,
+          "column": 15,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 49,
+          "column": 17,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "setAlarm",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/ble-anchors.ts",
+      "sha256": "72f132567cecd63bde4fc3d5df64ce62929de12c9e59015b6844766d704ea28e",
+      "gitBlobSha": "1d35ce1b33a902bf345af4d13f30ebf5b6a1d684",
+      "imports": [
+        "src/bounded-body.ts"
+      ],
+      "sites": [
+        {
+          "line": 27,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 60,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 65,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 77,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/bounded-body.ts",
+      "sha256": "fe8dd842294165f7b2cb814b16a09c578deb08c8687e6059baba1a6ecfde4303",
+      "gitBlobSha": "d66fb777fa78f71f6fb459d5b3cf053a8d246240",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/canary-route.ts",
+      "sha256": "ea52a37b4e295c7f844b56316fcc93e3cdde5f84a0ce32ad4e7d28190edc3356",
+      "gitBlobSha": "0321bb52fde9910a7835d791f8b15c51fa3508f2",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 13,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/commute-geometry.ts",
+      "sha256": "357d12f32db8ee14320a4fe5fc9eb8344f98faddc4a8ca02e57726bf7eaa7d96",
+      "gitBlobSha": "2c903547149b4ca793c57259821921c9e113411d",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/commute-paging.ts",
+      "sha256": "d007e9676254f56441e0a1fbbc9d5930285ef0a4c43fd62d68b4c174bafa2279",
+      "gitBlobSha": "77e8e9fa7b12fa5d2391d9dba0aca10f3707b0b0",
+      "imports": [
+        "src/commute-geometry.ts",
+        "src/dev-free-runtime.ts"
+      ],
+      "sites": [
+        {
+          "line": 35,
+          "column": 106,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 37,
+          "column": 42,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 43,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 63,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 71,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 81,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 84,
+          "column": 21,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 85,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 86,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 87,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 93,
+          "column": 86,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/commute-refresh-claim.ts",
+      "sha256": "3818e36900693c55c9a917d92f652b71687efe0719d090bbc79448475e01b291",
+      "gitBlobSha": "dc3a0f7698630088e1e2711fe1eafb35f14d1d95",
+      "imports": [],
+      "sites": [
+        {
+          "line": 9,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/commute-scheduler.ts",
+      "sha256": "87fab2c5aa40c5018d78762f79e9f7d610e6d56aea9f2b29f2e24b4ee5b25218",
+      "gitBlobSha": "27c4b83d19e6d2d5294d622a145f8d8d1c06c6c9",
+      "imports": [],
+      "sites": [
+        {
+          "line": 18,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 21,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 26,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 34,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/commute-summary.ts",
+      "sha256": "1d9f203a50f34be4a7aa0c7c98c07f1d5878f122e98ada8e2d8f822429acd2a3",
+      "gitBlobSha": "bb194bed596110a1359c9fd6e829387f30d60738",
+      "imports": [
+        "src/commute-geometry.ts",
+        "src/commute-paging.ts",
+        "src/phase4.ts"
+      ],
+      "sites": [
+        {
+          "line": 39,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 49,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/crypto.ts",
+      "sha256": "2150863bf5269cbc1c7f4e923b94ce65329c02dcf672133e8bd2c9c68ed08e8b",
+      "gitBlobSha": "12fe55d904618e9d0476e6e3d52dd3646e6e740e",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/d1-refined-retention.ts",
+      "sha256": "dfff6a2d67ae51bd8aad5ca0fe991b3791e8a31df2ee4f82afdbd0e0dfdff63c",
+      "gitBlobSha": "419398b75fd941e5c904a86a7dac1d90fa4ee7ec",
+      "imports": [],
+      "sites": [
+        {
+          "line": 8,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 9,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 14,
+          "column": 21,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 15,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 16,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 19,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 20,
+          "column": 3,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 22,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/d1-work-budget.ts",
+      "sha256": "e0c5f96bd1f44414a873d26907c3f0a14ec59270305df0455d756e5f64cb5983",
+      "gitBlobSha": "0a3c1fbc04c3cc4fd34d1cd39753b4d05e830676",
+      "imports": [],
+      "sites": [
+        {
+          "line": 15,
+          "column": 45,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "original",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 17,
+          "column": 38,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "original",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/derived-work-dispatch.ts",
+      "sha256": "c48a4c011ee6705fb93f2b31f87009059da1053bcb8d539ee458f186c54f9d6d",
+      "gitBlobSha": "6aff69ed40f5ebb3c939ceb17e1e2edddcbfce4b",
+      "imports": [
+        "src/background-work.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/dev-free-runtime.ts",
+      "sha256": "7533c1ca789b4d1c30c709392df350eefd2a056915319e94dd3a1f66828bacfd",
+      "gitBlobSha": "cd0ab6605e81016a1132dc527ae36aa25f0a4b69",
+      "imports": [
+        "src/history-codec.ts",
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 239,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 275,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 345,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 346,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 353,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 360,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 364,
+          "column": 17,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "this.db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 373,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 391,
+          "column": 26,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "this.db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 392,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 393,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 425,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 426,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 428,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "this.db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 439,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 561,
+          "column": 36,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "this.memory",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 610,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "this.db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 651,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 658,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 663,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/dev-maintenance.ts",
+      "sha256": "88810359012121afe1fe49b819165fb42ba4e0a9fbfe48f578d6fcce3c49ce41",
+      "gitBlobSha": "811c84c9b1505c0f6d1e9992648df372b3395395",
+      "imports": [],
+      "sites": [
+        {
+          "line": 9,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/dev-parent-auth.ts",
+      "sha256": "1b3ee6cdb43da41357885a568145033cf75395095952769e7b17d79712baf1cf",
+      "gitBlobSha": "6b2efbad52d3df6c5002633307751ec9ef867487",
+      "imports": [],
+      "sites": [
+        {
+          "line": 113,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 121,
+          "column": 3,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "headers",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 129,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 183,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 192,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 193,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 194,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/device-do.ts",
+      "sha256": "64c68fbf9603f4120a2a164ec0423b92db95552ffd0f763eb46ca19b48173845",
+      "gitBlobSha": "946e9bfcc3ee8d24638d4618457f2ce13a8614eb",
+      "imports": [
+        "src/do-recovery.ts",
+        "src/live-state-order.ts",
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 103,
+          "column": 5,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "this.ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 150,
+          "column": 59,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "setAlarm",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 171,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 225,
+          "column": 29,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "transaction",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 232,
+          "column": 13,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "txn",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 249,
+          "column": 12,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "transaction",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 253,
+          "column": 13,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "txn",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 289,
+          "column": 12,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "transaction",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 320,
+          "column": 68,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "setAlarm",
+          "receiver": "this.ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 325,
+          "column": 7,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "this.ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/device-ingest-rate.ts",
+      "sha256": "8a5120d96f89ada82afc9397fbb4667576a81bffbe8374311a41da17e85e5466",
+      "gitBlobSha": "7a343e02b39defc68e3d2cc01c77936c5c312cb3",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/device-json-security.ts",
+      "sha256": "e2e17e398403c50f4dab0ef609a50e8f19ff869592981066efd8f71d3ae75d34",
+      "gitBlobSha": "e5746eb33c6e4ef1b2e77eccdea5667e884b0eca",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 37,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 67,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 75,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/do-recovery.ts",
+      "sha256": "810864802d996d72dbafcd9cf7d3f7918b4efb6df86a06267bf47cba0fbbdab6",
+      "gitBlobSha": "440b6c8611c9c6c885c2bbe0412dd4bc5ed26424",
+      "imports": [
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 40,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 23,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "transaction",
+          "receiver": "ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 81,
+          "column": 13,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "transaction",
+          "receiver": "ctx.storage",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 83,
+          "column": 46,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "txn",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/evidence-ingest.ts",
+      "sha256": "3273392ac50d292bfe4dbfd99d6fcf29f9f005743675faf19081d742ffb8a90c",
+      "gitBlobSha": "58ff475d1c25910f666e250d159e79608706c2e1",
+      "imports": [
+        "src/evidence-protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 49,
+          "column": 10,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 56,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 63,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 106,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 118,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 127,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 135,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 145,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 161,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 171,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/evidence-protocol.ts",
+      "sha256": "a3d731abaf0b3cde5f2701ca3b77a0c047f9a4e8df4c3575ec4aaac15445e611",
+      "gitBlobSha": "195988cd799eea21dc21baded61b592d728d29aa",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/evidence-route.ts",
+      "sha256": "693b93d5c23150c0617e877a67eccd9995be0e7d6823565c3d71c4c756c58f96",
+      "gitBlobSha": "e9295967b5f7723ff7390199489b83c08d8fc07c",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/evidence-ingest.ts",
+        "src/evidence-protocol.ts",
+        "src/phase5-evidence.ts",
+        "src/phase5-refined-history.ts"
+      ],
+      "sites": [
+        {
+          "line": 35,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 98,
+          "column": 32,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/fall-event-route.ts",
+      "sha256": "ca7f599eca6367ad5e70056fb68d8f3428dadea73bd16368f5e3173f0ab1d191",
+      "gitBlobSha": "c6492b1b01185b935dd2c064e5b158e2f47e3bef",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/device-do.ts",
+        "src/device-ingest-rate.ts",
+        "src/device-json-security.ts",
+        "src/safety-event-write.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/fast-live.ts",
+      "sha256": "e9180b05e26d58f7a71619b1e2da5771ab0a323f18a539daa0c1640e5e596886",
+      "gitBlobSha": "4f7f6f952cc792f29951aab56be2848cc3f63467",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/device-do.ts",
+        "src/protocol.ts",
+        "src/route-constraint.ts"
+      ],
+      "sites": [
+        {
+          "line": 33,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/ground-receiver.ts",
+      "sha256": "fadf1a71ff6082cf7f6841120a92cfd199aebc1a25f0893fa0cfb301d78781c5",
+      "gitBlobSha": "45ecb82a679cbc79c35d9d4c4ad544bfad69fb32",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/phase5-evidence.ts"
+      ],
+      "sites": [
+        {
+          "line": 79,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 118,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 126,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 135,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 146,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/history-codec.ts",
+      "sha256": "397efeb641aac2373be9c764af4c58f9a81c666cec30fe950511354d17b183f5",
+      "gitBlobSha": "c710d6caa851f30de4e2ad85af55e8646759ffbc",
+      "imports": [
+        "src/protocol.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/history-store.ts",
+      "sha256": "13d3e10a9bbf7f649b8baa552d14517045fd79e9b56fba0233e5ddd4c5bef25b",
+      "gitBlobSha": "0fd7e4bc4f32594b5b30e1b527a89c302d5a2271",
+      "imports": [
+        "src/history-codec.ts",
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 227,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 232,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/index.ts",
+      "sha256": "f9d804b81e54feeb09ff09397416a5eb9d63a8b2f64c6584f353d17f34a6b1c8",
+      "gitBlobSha": "e85fa0076f69a7696180ef3fceba7b7705791fa0",
+      "imports": [
+        "src/crypto.ts",
+        "src/device-do.ts",
+        "src/history-store.ts",
+        "src/parent-v4.ts",
+        "src/phase4.ts",
+        "src/phase5-ops.ts",
+        "src/protocol.ts",
+        "src/safety-event-write.ts"
+      ],
+      "sites": [
+        {
+          "line": 86,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 91,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 109,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 119,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 125,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 127,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 141,
+          "column": 33,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 142,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 143,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 194,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 255,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 261,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 283,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/live-state-order.ts",
+      "sha256": "9ff9e7f19c4a4fcc000328dcbde14579b62f73682398b7a1e96579e03e98ddf1",
+      "gitBlobSha": "53c2801008be6d6c60aee8e3d8ed16e614cb93d0",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/location-ingest-v6.ts",
+      "sha256": "419ae8c0bbac67c834edf998f00b2f34c74f9a627448528513c85b76a02f3dba",
+      "gitBlobSha": "c2e4e98e9ac3af2f1f37744d5b02ebd646755d08",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/device-do.ts",
+        "src/phase5-refined-history.ts",
+        "src/protocol.ts",
+        "src/route-constraint.ts",
+        "src/safety-batch-v6.ts"
+      ],
+      "sites": [
+        {
+          "line": 35,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 100,
+          "column": 18,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 110,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 119,
+          "column": 46,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/maintenance-task.ts",
+      "sha256": "94a3316f7d3eb5af9407b5934ea18defe83f463b611eb58be15a6c8e6d5a6970",
+      "gitBlobSha": "677023fe3f813d3b56f28feffb8945fa72446336",
+      "imports": [],
+      "sites": [
+        {
+          "line": 7,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 12,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 17,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 23,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/onemap-client.ts",
+      "sha256": "a1e9242493dec0763065123d1717aaa774b52fa604d837db628b403a4c2278be",
+      "gitBlobSha": "f74b2b8bb77e593e8338e04754db7df2fc6934d5",
+      "imports": [],
+      "sites": [
+        {
+          "line": 37,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 46,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 57,
+          "column": 30,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/p8b-controls.ts",
+      "sha256": "ccc2b8906436bc93241b1996c47f409994ab38d4977634a3b517e18fd37d5ce6",
+      "gitBlobSha": "d192b9c7aac986feafe36f70936b45ee7acbb30a",
+      "imports": [
+        "src/bounded-body.ts"
+      ],
+      "sites": [
+        {
+          "line": 13,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 31,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 44,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 72,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 73,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 76,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 83,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 84,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 92,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 103,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 130,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 153,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 156,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 159,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 173,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/parent-beta.ts",
+      "sha256": "e17ba8c04535a86d8d9a7336a4351428bf31108cfab5edf069b1eb568acde911",
+      "gitBlobSha": "b7bd84e92eab654ecb47209a6800dad3f6a9a925",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/parent-p8b.ts",
+      "sha256": "79c2e76706d8437e62e90ef60d1526e9935f656d8ce71dfc3d203ffb79955df7",
+      "gitBlobSha": "f99b0003754277a9597e225b72703376fb7a9d97",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/parent-v4.ts",
+      "sha256": "ee35ce594b02da468e4e149ce266bd764be03918d590aa91951aa3c1c266a132",
+      "gitBlobSha": "81625095a8e7a9d5f2579e5616b4b21e0a8e9db3",
+      "imports": [
+        "src/parent-v5.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/parent-v5.ts",
+      "sha256": "7ab04cb3deafb2886ba6692cfaa786ba764233c3bd061c88564c63781b14138d",
+      "gitBlobSha": "c995673593fb75ed5f8f1a0cbe31e84ab4b33cd9",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/parent-v5b.ts",
+      "sha256": "d1d97ccb0ad687da68dc4fa93e48a4de0e963853615193a4d643b3592a23ae05",
+      "gitBlobSha": "e2d7c8ea832938e72be56deb10889c2de652333c",
+      "imports": [
+        "src/parent-v5.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/parent-v6.ts",
+      "sha256": "f29efea1c925202b370ca57a6e56e99293be9e2db8bd7b7d26f39f821737c8d3",
+      "gitBlobSha": "5c815a73ba30b6b14f999b359011fa0d1a3d764e",
+      "imports": [
+        "src/parent-v5b.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/parent-v8.ts",
+      "sha256": "8c8d2f896cb56da3807877b78c4db27d5b8b403276e31a66b5f32fa45b4a3e88",
+      "gitBlobSha": "4a5d8321d2e680b61e7dd6c723e77f4f13a0223e",
+      "imports": [
+        "src/parent-v6.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/phase4.ts",
+      "sha256": "bd4babd2e1950892bdabac312629c49eb903d512b5fe5574728d5fbc13cf264e",
+      "gitBlobSha": "348a6f317a4dc1760af4f5a91b72f5776c490ea5",
+      "imports": [
+        "src/history-codec.ts",
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 16,
+          "column": 402,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 48,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 52,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 54,
+          "column": 76,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 57,
+          "column": 43,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 58,
+          "column": 31,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 60,
+          "column": 278,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 60,
+          "column": 292,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 61,
+          "column": 15,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 65,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 95,
+          "column": 37,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 96,
+          "column": 8,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 99,
+          "column": 547,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 100,
+          "column": 82,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 101,
+          "column": 113,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 101,
+          "column": 961,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 101,
+          "column": 975,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 101,
+          "column": 1153,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 101,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 115,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 198,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 104,
+          "column": 103,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 104,
+          "column": 978,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 105,
+          "column": 123,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 105,
+          "column": 545,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 105,
+          "column": 559,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 106,
+          "column": 78,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 112,
+          "column": 83,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 113,
+          "column": 339,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 114,
+          "column": 85,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 114,
+          "column": 436,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 114,
+          "column": 619,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-coarse-network.ts",
+      "sha256": "e56e7fe73f4e063f435c9f63c5f295340fd165b06b7684651f382015938356cc",
+      "gitBlobSha": "98196c4007935a942ba7c4bd3a3f417da924a011",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/phase5-current-refinement.ts",
+      "sha256": "1e7e3640a1de9b248e11b6cf66ed689858937471105e649251a8ea4bba74aac6",
+      "gitBlobSha": "ddb4ba74e87b13d5a7359146c16b94935bfbf1d6",
+      "imports": [
+        "src/phase5-external-constraints.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/phase5-evidence.ts",
+      "sha256": "5fd38adc82b3816a3a4ab9b029cd72e2ef48b459f789d85d0e79b6a7a0d8dd68",
+      "gitBlobSha": "aaa97d216b720d837885a660ad9f90d34e2e0afd",
+      "imports": [
+        "src/evidence-protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 106,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 110,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 114,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 129,
+          "column": 28,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 140,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 148,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 158,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 177,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 184,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 194,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-external-constraints.ts",
+      "sha256": "8db6c6161b3559929ab9ac6baad936364bfcd1c3a10008561dd83b361ed5b073",
+      "gitBlobSha": "edcd232d29ce56a16dc6e62f2b31f08fdb85221d",
+      "imports": [],
+      "sites": [
+        {
+          "line": 66,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 73,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-maintenance.ts",
+      "sha256": "cf8a502ab10793ca5d74674ad80b301064edbd54e1a1a90fe5ff957b8cfcab8d",
+      "gitBlobSha": "194d3a1d2ea97fb55049342f8bb650b4620d62c2",
+      "imports": [
+        "src/phase5-evidence.ts"
+      ],
+      "sites": [
+        {
+          "line": 4,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "db",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-ops.ts",
+      "sha256": "47aa2a1fcd358188a3368fc110447a411de32bec081bf327b3f065b33e79e22e",
+      "gitBlobSha": "1b624d91ec0067176d8ce714adfb02f20fd03600",
+      "imports": [
+        "src/device-do.ts"
+      ],
+      "sites": [
+        {
+          "line": 90,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 95,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 108,
+          "column": 31,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 112,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 116,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 121,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 122,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 127,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 133,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 143,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 149,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 168,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 187,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 190,
+          "column": 31,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 220,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 224,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 229,
+          "column": 29,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 230,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 233,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 238,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 256,
+          "column": 30,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 257,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 259,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 267,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 268,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 269,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-places.ts",
+      "sha256": "45656a8cc605500a2c8f7eb13271834ce96538414d952c5bf69a2ce8bab08b11",
+      "gitBlobSha": "11cb1bedeaa1a851a80818d61c3111e265e4674e",
+      "imports": [],
+      "sites": [
+        {
+          "line": 39,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-refined-history.ts",
+      "sha256": "cf4a75ffa89c6029779c9f193c051d262b580960517f2d3a7c2df858da001a13",
+      "gitBlobSha": "cfc30fed3335d643f9403087843e34909dd0c3b9",
+      "imports": [
+        "src/d1-refined-retention.ts",
+        "src/evidence-protocol.ts",
+        "src/phase5-smoothing.ts",
+        "src/protocol.ts",
+        "src/refinement-work-state.ts"
+      ],
+      "sites": [
+        {
+          "line": 126,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 138,
+          "column": 20,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 142,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 146,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 159,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 253,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 258,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 265,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 270,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 284,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 315,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 318,
+          "column": 46,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 321,
+          "column": 33,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 324,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 327,
+          "column": 68,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "env.HISTORY",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 328,
+          "column": 44,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 330,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase5-smoothing.ts",
+      "sha256": "6f8746a73e8c4c34c897d8b3f1b020eedb78834048f814d7c8252a66f72a99d2",
+      "gitBlobSha": "f695d1438f129839c426c8bc1fba634b556f25bd",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/phase5c.ts",
+      "sha256": "04c5adcb322efe585099fba45008b0518269bc30fb91e1ba3e6e308bc3918d51",
+      "gitBlobSha": "e354213b0e6e5859f33d64bd4dbbf4d42c600c21",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 47,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 73,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 82,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 143,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 150,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 157,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 158,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 159,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase6-location-control.ts",
+      "sha256": "3d0f0abe4e5c4ae8cfbf94abe7fb90de9cce89326ec463cc94b6cd14e3756588",
+      "gitBlobSha": "3edf7f7cb3144a9382d1e2a203b1421099b5c86f",
+      "imports": [
+        "src/bounded-body.ts"
+      ],
+      "sites": [
+        {
+          "line": 45,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 52,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 68,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 75,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 84,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 112,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 121,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 156,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 160,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase7-health-presentation.ts",
+      "sha256": "714f6ca288b7fac5c628b90999dc816e7e777fcd5b76e887a35eff96fe931c69",
+      "gitBlobSha": "091990b4b4cbf23725c00b1ccc19a01a4603ee6e",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/phase7-parent-presentation.ts",
+      "sha256": "07194938b5f155fd4c18928825733c2107946c32a8adc2ba7762f0a5633d23a1",
+      "gitBlobSha": "5203048a09da3427cfc90cc6cc58548fcc96ab50",
+      "imports": [
+        "src/phase7-health-presentation.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/phase7-state-v2.ts",
+      "sha256": "c41e0c6cbb70e76c90aa328c0a6677919c4a5c147d6a3db1a8067a9aa2514608",
+      "gitBlobSha": "ccbc5f5bb18ca00df939188ad8c7abd0a3f1c058",
+      "imports": [
+        "src/phase7-health-presentation.ts",
+        "src/phase7-parent-presentation.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/phase8-device-identity.ts",
+      "sha256": "8447803d20eed0b7323faf33b91de5e3854c2ef0c14eb117c5ba34dd0ea9dae1",
+      "gitBlobSha": "311b75f0a7c8ade6b8db89e2cfdf0c7dbf7b819d",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 65,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/phase8-history-provenance.ts",
+      "sha256": "8615e2c898e2c0abb4885f144c1a97b60f1c0b8bbf5d6ab77be24abed416ef12",
+      "gitBlobSha": "6b2f2e172e3881f204a022dfcd3e07d79c6a4a52",
+      "imports": [
+        "src/history-codec.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/phase8-parent-truth.ts",
+      "sha256": "53c0feb2bafa0e14d1053e4254f2bc553f0bd3dca1212f5622eafba93b111cf3",
+      "gitBlobSha": "6a97a13c3c3619c646c09d627f90b7e16a83f8ae",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/pin-pairing.ts",
+      "sha256": "83bd2ba9848bc64223b961a8f51368ae19e5c05c3e73b5a90e3c6f72d2fdf3c5",
+      "gitBlobSha": "52427050085e06382918ac5d3fbf0aef5bbe8459",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts"
+      ],
+      "sites": [
+        {
+          "line": 71,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 91,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 101,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 113,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 126,
+          "column": 27,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 132,
+          "column": 27,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 135,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 140,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 142,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 172,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/private-map.ts",
+      "sha256": "9d40b1d1379daba631870cd2c9fbfc496e71ce07d3e1b4b5caef8bc16eaef2f0",
+      "gitBlobSha": "f284517263b4bd9110ac8f7a348d67f06b9c5199",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/protocol.ts",
+      "sha256": "b8b1868a983809b24e3c02cd9e759560150f483ba45786982be343deb3de09f7",
+      "gitBlobSha": "0fbc674be2e5684dce1a2673fec061efb89c90a2",
+      "imports": [],
+      "sites": []
+    },
+    {
+      "path": "src/queue-v6.ts",
+      "sha256": "b81a9a3fa5f836241be15a8c7ab5b0a8ae9860a1b01b0783e915371cbe549e65",
+      "gitBlobSha": "cee0089706b81f9b5c72830a3bc8d20ccc08e3c6",
+      "imports": [
+        "src/history-store.ts"
+      ],
+      "sites": [
+        {
+          "line": 38,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 63,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 67,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 70,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 74,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 78,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 82,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 28,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/refinement-scheduler.ts",
+      "sha256": "96aaf1c24b935fc942fb3ff2e502343a1b053aa6c89d3056edd0da2ab771722d",
+      "gitBlobSha": "fd6bce0d0a49ff7c51f9e7f04969845623b01296",
+      "imports": [],
+      "sites": [
+        {
+          "line": 5,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 9,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 16,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/refinement-work-state.ts",
+      "sha256": "02e35c8cbc695e7b39d955310eae6b1e998c0ff5a9aa74b21176f99e177c421b",
+      "gitBlobSha": "c738926d639ce3a36926ef917a2e7191b9dea3fb",
+      "imports": [],
+      "sites": [
+        {
+          "line": 23,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 28,
+          "column": 18,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 34,
+          "column": 90,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 42,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 54,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 66,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 74,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 79,
+          "column": 20,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/route-constraint.ts",
+      "sha256": "5284da3d1f4a78e4bf51d79cc78fa985bdd461b2ceca7a0a486226d38e06e57a",
+      "gitBlobSha": "5877a420ee674d70e5af05894b4280a08bd45342",
+      "imports": [
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 171,
+          "column": 5,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "roadCache",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 197,
+          "column": 41,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "roadCache",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 256,
+          "column": 60,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "archives",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/route-graph-data.ts",
+      "sha256": "96d1b18f40b97358e77729f60c2699c443ac69e88caa72950c546b8cebe4da12",
+      "gitBlobSha": "46e2fa13bc9110b98ea27f2d398ed5fe74f9df17",
+      "imports": [],
+      "sites": [
+        {
+          "line": 118,
+          "column": 5,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "tileCache",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 155,
+          "column": 5,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "tileCache",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/route-graph.ts",
+      "sha256": "94d203d9cb694521dab4f917020406debbe1243ea8e9d0251291061050519b74",
+      "gitBlobSha": "22670a3e817e3f9a1455347c71568b03847ebec2",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/evidence-route.ts",
+        "src/route-graph-data.ts"
+      ],
+      "sites": [
+        {
+          "line": 27,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/safety-batch-v6.ts",
+      "sha256": "4e7aa4a831655eb66f345fcb9f3ca0d232d7959a044812fb9659b63194589688",
+      "gitBlobSha": "3ef277d530adddf73bce4c0b3a19952b1ca0dcda",
+      "imports": [
+        "src/device-do.ts",
+        "src/protocol.ts"
+      ],
+      "sites": [
+        {
+          "line": 100,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 106,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 294,
+          "column": 12,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 302,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 310,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 317,
+          "column": 45,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 325,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/safety-event-write.ts",
+      "sha256": "f2913b3e1b4d59a9e323186e746a2cdc02feed71e31f3c53755866479c5ccad6",
+      "gitBlobSha": "740f6907c4905487322861571a7b7a88c0084dc7",
+      "imports": [],
+      "sites": [
+        {
+          "line": 28,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 31,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 40,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 45,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/screen-time-route.ts",
+      "sha256": "cd7182010a3e1aae997b59bddadae1debb7b0f27022de86987291d0581468d4d",
+      "gitBlobSha": "75ddb08a7825473ea3c07ff97594192c6885b23b",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/device-ingest-rate.ts"
+      ],
+      "sites": [
+        {
+          "line": 14,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 33,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 44,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 54,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/watchdog-work.ts",
+      "sha256": "d8958d5ffa30fc71ffee0b32afe9ebc44909a50a29a50ca2a4e8b2e85c5943d7",
+      "gitBlobSha": "6bfa22a75673f554651d70a1cb7197635d9dc0f4",
+      "imports": [
+        "src/device-do.ts"
+      ],
+      "sites": [
+        {
+          "line": 41,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 57,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 74,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 80,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 91,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 102,
+          "column": 28,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 107,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 112,
+          "column": 33,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 113,
+          "column": 29,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 114,
+          "column": 19,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "db",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 117,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 126,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 127,
+          "column": 33,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 135,
+          "column": 39,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 146,
+          "column": 19,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "db",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-beta-cardfree.ts",
+      "sha256": "11aca6fcf3b9ea5ce1c114bcd2a8c53df2e66d5b7f1a7f60903f28d3f0e0df59",
+      "gitBlobSha": "3f190cd9d69c716ec7f628b869bddd36c4e3c848",
+      "imports": [
+        "src/beta-api.ts",
+        "src/beta-device.ts",
+        "src/beta-release.ts",
+        "src/beta-scheduler.ts",
+        "src/bounded-body.ts",
+        "src/dev-free-runtime.ts",
+        "src/dev-maintenance.ts",
+        "src/dev-parent-auth.ts",
+        "src/maintenance-task.ts",
+        "src/watchdog-work.ts",
+        "src/worker-beta.ts"
+      ],
+      "sites": [
+        {
+          "line": 25,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 50,
+          "column": 100,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 57,
+          "column": 3,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "scoped",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 57,
+          "column": 63,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "scoped",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 67,
+          "column": 52,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 87,
+          "column": 11,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "r.HISTORY",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-beta.ts",
+      "sha256": "200b48d933a1cd4d8d193bf655734a54a4ad4059f929e05df321a29cdf60c41f",
+      "gitBlobSha": "b062b91d40dcd185d0811e342f46eb784dbdb5b1",
+      "imports": [
+        "src/access-auth.ts",
+        "src/beta-api.ts",
+        "src/beta-device.ts",
+        "src/beta-release.ts",
+        "src/parent-beta.ts",
+        "src/worker-p8b.ts"
+      ],
+      "sites": [
+        {
+          "line": 40,
+          "column": 120,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-p8b.ts",
+      "sha256": "fbe7554af7dcd6f12870ffbd2753f8dc682d196a1c0f536ec53be6cd726601a1",
+      "gitBlobSha": "1d976ebfb235a069cd65181a9ab4626f95f5047c",
+      "imports": [
+        "src/access-auth.ts",
+        "src/background-work.ts",
+        "src/commute-refresh-claim.ts",
+        "src/commute-scheduler.ts",
+        "src/commute-summary.ts",
+        "src/derived-work-dispatch.ts",
+        "src/fall-event-route.ts",
+        "src/onemap-client.ts",
+        "src/parent-p8b.ts",
+        "src/pin-pairing.ts",
+        "src/screen-time-route.ts",
+        "src/worker-v9.ts"
+      ],
+      "sites": [
+        {
+          "line": 145,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 176,
+          "column": 38,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-v5b.ts",
+      "sha256": "6b1c8f26675254f66fd9ecf677a479432662d2c2e5a1e410a382ef4fabe10ae0",
+      "gitBlobSha": "a9271292af4e37defb914a2e10335956f32e1a73",
+      "imports": [
+        "src/access-auth.ts",
+        "src/bounded-body.ts",
+        "src/crypto.ts",
+        "src/device-json-security.ts",
+        "src/index.ts",
+        "src/location-ingest-v6.ts",
+        "src/parent-v5b.ts",
+        "src/phase5c.ts",
+        "src/private-map.ts"
+      ],
+      "sites": [
+        {
+          "line": 65,
+          "column": 3,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "headers",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 130,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 141,
+          "column": 3,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "headers",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 185,
+          "column": 3,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 267,
+          "column": 25,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 270,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 294,
+          "column": 61,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 307,
+          "column": 43,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-v6.ts",
+      "sha256": "8c29c91b7325190614de11512123a118ce1cbe99284b54515e331bdd56577ff2",
+      "gitBlobSha": "1c47f438ffbe6a019e8921569450498efa7338e7",
+      "imports": [
+        "src/access-auth.ts",
+        "src/backup-v6.ts",
+        "src/battery-health.ts",
+        "src/ble-anchors.ts",
+        "src/derived-work-dispatch.ts",
+        "src/device-json-security.ts",
+        "src/parent-v6.ts",
+        "src/phase4.ts",
+        "src/phase5-ops.ts",
+        "src/phase5c.ts",
+        "src/phase6-location-control.ts",
+        "src/queue-v6.ts",
+        "src/worker-v5b.ts"
+      ],
+      "sites": [
+        {
+          "line": 59,
+          "column": 10,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 120,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 180,
+          "column": 15,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 181,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 182,
+          "column": 11,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 189,
+          "column": 11,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 192,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 204,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 212,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 219,
+          "column": 9,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 236,
+          "column": 43,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
+      "path": "src/worker-v7.ts",
+      "sha256": "3a7d36f77e37d6fb2861c9b6f55b28889d694e1fe36bedfc403588ac6a27cccc",
+      "gitBlobSha": "6777dc41532700eebeb966f9561d4167c6689f13",
+      "imports": [
+        "src/evidence-route.ts",
+        "src/worker-v6.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/worker-v8.ts",
+      "sha256": "b542a8dacaf9b8b82d51746d0ac84d33f8b12c8a12175ee6a777b867681be58e",
+      "gitBlobSha": "aebf3f1c274fb2c1a2f1c106d76751bd90ac3c28",
+      "imports": [
+        "src/evidence-route.ts",
+        "src/route-graph.ts",
+        "src/worker-v7.ts"
+      ],
+      "sites": []
+    },
+    {
+      "path": "src/worker-v9.ts",
+      "sha256": "dd5be2da86a8eacd43c4fa1a2c6177733fcbba87c779565cae318352293bc915",
+      "gitBlobSha": "a0eec69e03570ec05435edc0b0c69d8fa5609da1",
+      "imports": [
+        "src/access-auth.ts",
+        "src/background-work.ts",
+        "src/canary-route.ts",
+        "src/derived-work-dispatch.ts",
+        "src/fast-live.ts",
+        "src/ground-receiver.ts",
+        "src/p8b-controls.ts",
+        "src/parent-v8.ts",
+        "src/phase5-coarse-network.ts",
+        "src/phase5-current-refinement.ts",
+        "src/phase5-external-constraints.ts",
+        "src/phase5-maintenance.ts",
+        "src/phase5-places.ts",
+        "src/phase5-refined-history.ts",
+        "src/phase7-state-v2.ts",
+        "src/phase8-device-identity.ts",
+        "src/phase8-history-provenance.ts",
+        "src/phase8-parent-truth.ts",
+        "src/refinement-scheduler.ts",
+        "src/worker-v8.ts"
+      ],
+      "sites": [
+        {
+          "line": 89,
+          "column": 22,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 141,
+          "column": 24,
+          "kind": "DEFERRED_WORK_CANDIDATE",
+          "method": "waitUntil",
+          "receiver": "ctx",
+          "dynamicReceiver": false
+        }
+      ]
+    }
+  ]
+}

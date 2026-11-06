@@ -13,6 +13,8 @@ Read PROJECT_MEMORY.md before architecture, deployment or beta work.
 - Preserve Phase8D and concurrent APK safety work. Implement beta changes on their designated branches.
 
 ## Continuation execution
+- Current user-selected sequence: work on Group 1 (operational backup and recovery) only, one group at a time. A plain continue stays in Group 1 until it is actually closed or the user explicitly selects another group. Do not drift into Atlas, deployment/capacity qualification or final acceptance to fill a blocked live-access gap.
+- Within Group 1, distinguish staged admission/transport components and controlled native fixtures from installed runtime writer coverage, independent custody, scheduling and actual cloud recovery. Do not activate a partial writer fence or treat writer timeout/expiry as proof that work stopped.
 - A plain “continue” resumes the existing unresolved approved work. Read PROJECT_MEMORY.md, current refs, issue26 including comments and the formal audit handoff linked there.
 - Complete the largest practical substantive batch per prompt: reproduce/record, correct, verify, and persist evidence/next requirements. Move to independent useful work when a dependency is blocked.
 - Do not stop just to ask whether to continue. Stop for a concrete blocker, necessary missing input/decision, actual scope boundary or execution limit, after completing independent work.
