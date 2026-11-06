@@ -105,7 +105,7 @@ drawHistory=function(points){
 let betaLoading=false;
 async function betaLoad(){if(betaLoading||!currentDevice)return;const id=currentDevice;betaLoading=true;
  try{const r=await api('/parent/api/device/'+encodeURIComponent(id)+'/beta/status');if(currentDevice!==id)return;
- const release=document.getElementById('betaRelease');release.replaceChildren();if(r.release?.available){const a=document.createElement('a');a.href='/parent/beta/download/apk';a.textContent='Download current signed APK';release.append(a);}else release.textContent='APK safety update is awaiting validation. No current download is offered.';
+ const release=document.getElementById('betaRelease');release.replaceChildren();if(r.release?.available){const a=document.createElement('a');a.href='/parent/beta/download/apk';a.textContent='Download approved cloud APK ('+String(r.release?.versionName||'version unavailable')+'); check version before updating';release.append(a);}else release.textContent='APK safety update is awaiting validation. No current download is offered.';
  const root=document.getElementById('betaChecks');root.replaceChildren();
  document.getElementById('betaHeadline').textContent=r.latest?(r.latest.stale?'Phone readiness is stale. Rerun checks on the phone.':'Last phone check: '+new Date(r.latest.receivedAt).toLocaleString()):'No phone readiness received. Pair with this beta and run checks on the phone.';
  for(const c of [...(r.latest?.localChecks||[]),...(r.latest?.checks||[])]){const row=document.createElement('p');const title=document.createElement('strong');title.textContent=c.id+' · '+c.status+(c.required===false?' (optional)':'');row.append(title,document.createTextNode(' — '+(c.detail||c.detailCode||'Evidence unavailable')));root.append(row);}
