@@ -54,7 +54,8 @@ try{
   ['Place deletion guard','del.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
   ['Trips mutation guard','btn.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
   ['Health device guard','if(requestDevice!==currentDevice)return;'],
-  ['Phone-switch snapshot clear','snapshot=null;']
+  ['Phone-switch snapshot clear','snapshot=null;'],
+  ['Revoked-phone stale-state guard','if(currentDevice===id)renderSnapshot(revokedState)']
  ])assert.ok(html.includes(code),name+' must be isolated for the currently selected phone');
 
  for(const [name,code] of [
