@@ -44,6 +44,9 @@ try{
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
  const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+ assert.ok(html.includes('id="p2TrackingDiagnosis"'),'tracking-stage diagnosis should be visible in Health');
+ assert.ok(html.includes('function p2TrackingDiagnosis(x,now){'),'tracking-stage classifier must be present in portal');
+ assert.ok(html.includes('Phone health '),'diagnostics must show evidence ages and backlogs, not just a green badge');
 
  for(const [name,code] of [
   ['Safety Events',"async function loadEvents(){const requestDevice=currentDevice;"],
