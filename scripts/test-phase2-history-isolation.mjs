@@ -5,14 +5,16 @@ const source=readFileSync('src/parent-beta.ts','utf8');
 const start=source.indexOf('let p2HistoryRequest=0;');
 const end=source.indexOf('async function p2LoadObservationLogs()',start);
 assert(start>0&&end>start,'Phase2 history isolation must be injected into parent bundle');
-const pending=[],rendered=[],notes=[],seek={value:'4',max:'99'};
+const pending=[],rendered=[],notes=[],seek={value:'4',max:'99'},sources={};
 const ctx=vm.createContext({
  currentDevice:'phone-A',historyPoints:[{wallTimeMs:999}],displayPoints:[{}],playIndex:4,playMarker:null,
  stopCount:0,stopPlay:()=>{ctx.stopCount++;},
  selectDevice:async id=>{ctx.currentDevice=id;},
  drawHistory:points=>rendered.push({device:ctx.currentDevice,points}),
  renderTimeline:()=>{},
- map:{isStyleLoaded:()=>true,getSource:()=>null},
+ historyCoord:p=>p?.trustedLatE7==null||p?.trustedLonE7==null?null:[p.trustedLonE7/1e7,p.trustedLatE7/1e7],
+ maplibregl:{LngLatBounds:class{constructor(){}extend(){return this}}},
+ map:{isStyleLoaded:()=>true,getSource:id=>sources[id]||null,addSource:(id,source)=>{sources[id]={setData:data=>rendered.push({device:ctx.currentDevice,data})};rendered.push({device:ctx.currentDevice,data:source.data})},addLayer:()=>{},fitBounds:()=>{}},
  document:{getElementById:id=>id==='seek'?seek:null},
  text:(id,txt)=>notes.push([id,txt]),
  setPlayPoint:i=>{ctx.playIndex=i;},
@@ -31,11 +33,11 @@ assert(pending[1].url.includes('phone-B/history'));
 pending[0].resolve({points:[{recordId:'A',wallTimeMs:150}],summary:{}});
 await beginA;
 assert.equal(ctx.historyPoints.length,0,'late A response must never overwrite B');
-pending[1].resolve({points:[{recordId:'B',wallTimeMs:151}],displayPoints:[{recordId:'B',wallTimeMs:151}],summary:{}});
+pending[1].resolve({points:[{recordId:'B',wallTimeMs:151,trustedLatE7:13000000,trustedLonE7:1038000000},{recordId:'B2',wallTimeMs:152,trustedLatE7:13000100,trustedLonE7:1038000100}],summary:{}});
 await beginB;
 assert.equal(ctx.historyPoints[0].recordId,'B','B history must render for selected B only');
-assert(rendered.some(x=>x.device==='phone-B'&&x.points.some(p=>p.recordId==='B')),'route must use current device');
-assert(!rendered.some(x=>x.points.some(p=>p.recordId==='A')),'A path must never appear in B');
+assert(rendered.some(x=>x.device==='phone-B'&&x.data?.geometry?.coordinates?.some(c=>c.length===2)),'route must use current B device');
+assert(!rendered.some(x=>x.device==='phone-A'),'late A path must never appear after switching to B');
 const prior=ctx.fetchHistory(201,250),newer=ctx.fetchHistory(251,300);
 pending[2].resolve({points:[{recordId:'old',wallTimeMs:222}],summary:{}});
 await prior;

@@ -157,12 +157,44 @@ selectDevice=async function(id){
  }
  return p2OriginalSelectDevice(id);
 };
+// Never draw a false straight route across missing positions or an extended gap.
+// Use raw history instead of displayPoints because display simplification may
+// legitimately remove NULL-coordinate evidence and conceal a recording gap.
+function p2BuildHistoryGeometry(points){
+ const lines=[],all=[];let segment=[],lastTime=null,gaps=0;
+ const flush=()=>{if(segment.length>1)lines.push(segment);segment=[];lastTime=null};
+ for(const p of Array.isArray(points)?points:[]){
+  const c=p&&typeof p==='object'?historyCoord(p):null;
+  const valid=Array.isArray(c)&&c.length===2&&c.every(Number.isFinite)&&Math.abs(c[0])<=180&&Math.abs(c[1])<=90;
+  const time=Number.isSafeInteger(p?.wallTimeMs)?p.wallTimeMs:null;
+  if(!valid||time===null){if(segment.length){flush();gaps++}continue}
+  if(lastTime!==null&&(time<lastTime||time-lastTime>300000)){flush();gaps++}
+  segment.push(c);all.push(c);lastTime=time;
+ }
+ flush();
+ return {data:{type:'Feature',geometry:{type:'MultiLineString',coordinates:lines},properties:{}},all,gaps,segments:lines.length};
+}
+let p2HistoryRouteStats={gaps:0,segments:0};
+function p2DrawHistoryGeometry(parts){
+ const src=map.getSource('historyRoute');
+ if(src)src.setData(parts.data);
+ else{
+  map.addSource('historyRoute',{type:'geojson',data:parts.data});
+  map.addLayer({id:'historyRoute',type:'line',source:'historyRoute',paint:{'line-width':4,'line-opacity':.78}});
+ }
+ if(parts.all.length){
+  const bounds=parts.all.reduce((b,c)=>b.extend(c),new maplibregl.LngLatBounds(parts.all[0],parts.all[0]));
+  map.fitBounds(bounds,{padding:55,maxZoom:17});
+ }
+}
 // MapLibre may still be loading its style when evidence arrives.
 drawHistory=function(points){
  const id=currentDevice,request=p2HistoryRequest,copy=Array.isArray(points)?points.slice():[];
+ const parts=p2BuildHistoryGeometry(copy);
+ p2HistoryRouteStats={gaps:parts.gaps,segments:parts.segments};
  const apply=()=>{
   if(!p2HistoryResponseCurrent(id,request,currentDevice,p2HistoryRequest)||!map?.isStyleLoaded())return;
-  try{p2OriginalDrawHistory(copy)}
+  try{p2DrawHistoryGeometry(parts)}
   catch(error){text('#historyNote','Map route drawing failed: '+String(error?.message||'unknown'))}
  };
  if(map?.isStyleLoaded())apply();else if(map)map.once('style.load',apply);
@@ -184,7 +216,7 @@ fetchHistory=async function(from,to){
   const seek=document.getElementById('seek');
   if(seek)seek.max=String(Math.max(0,historyPoints.length-1));
   if(historyPoints.length)setPlayPoint(0);
-  drawHistory(displayPoints);
+  drawHistory(historyPoints);
   renderTimeline(historyPoints);
   const summary=result.summary||{};
   text('#sumDistance',summary.distanceM==null?'—':(summary.distanceM/1000).toFixed(summary.distanceM<10000?2:1)+' km');
@@ -193,7 +225,7 @@ fetchHistory=async function(from,to){
   text('#sumMax',summary.maxTrustedKph==null?'—':Number(summary.maxTrustedKph).toFixed(1)+' km/h');
   text('#sumModes',(summary.modes||[]).join(' → ')||'—');
   text('#sumStops',String((summary.stops||[]).length));
-  text('#historyNote',historyPoints.length+' evidence points'+(result.truncated?' · result truncated':'')+(historyPoints.length?'':' · no recorded journey in this range'));
+  text('#historyNote',historyPoints.length+' evidence points · '+p2HistoryRouteStats.segments+' drawn route segments'+(p2HistoryRouteStats.gaps?' · '+p2HistoryRouteStats.gaps+' data gaps (not connected)':'')+(result.truncated?' · result truncated':'')+(historyPoints.length?'':' · no recorded journey in this range'));
  }catch(error){
   if(!p2HistoryResponseCurrent(id,request,currentDevice,p2HistoryRequest))return;
   p2ClearHistoryView();
