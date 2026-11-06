@@ -154,6 +154,10 @@
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
     },
+    "scripts/test-phase8d-capture-broker.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic HMAC/replay client/server and native authority with ephemeral test keys and blocked outbound network; no production endpoint/key or provider qualification."
+    },
     "scripts/test-phase8d-cardfree-recovery.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."

@@ -1,0 +1,25 @@
+// Staged private capability transport; never imported by a production Worker.
+export type BrokerPin={sourceSha:string;resourceSetSha256:string;authorityEpoch:string};
+export type BrokerRole='capture'|'runtime-writer'|'external-writer';
+export type BrokerKey={id:string;role:BrokerRole;bytes:Uint8Array};
+export const REQUEST_LIMIT=32768,RESPONSE_LIMIT=4*1024*1024,TOKEN_LIFETIME=30000;
+const encoder=new TextEncoder(),decoder=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true});
+export const object=(v:unknown):v is Record<string,unknown>=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+export const exact=(v:unknown,keys:string[])=>object(v)&&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
+export const hex=(v:unknown,n:number):v is string=>typeof v==='string'&&new RegExp('^[a-f0-9]{'+n+'}$').test(v);
+export const integer=(v:unknown):v is number=>Number.isSafeInteger(v)&&Number(v)>0;
+export function validPin(p:unknown):p is BrokerPin{return exact(p,['sourceSha','resourceSetSha256','authorityEpoch'])&&object(p)&&hex(p.sourceSha,40)&&hex(p.resourceSetSha256,64)&&hex(p.authorityEpoch,32);}
+export function samePin(a:BrokerPin,b:BrokerPin){return a.sourceSha===b.sourceSha&&a.resourceSetSha256===b.resourceSetSha256&&a.authorityEpoch===b.authorityEpoch;}
+export function endpoint(value:string){const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash||u.pathname==='/')throw Error('BROKER_CONFIGURATION_INVALID');return u.href;}
+export async function importBrokerKey(key:BrokerKey){if(!/^[A-Za-z0-9_-]{1,48}$/.test(key.id)||!['capture','runtime-writer','external-writer'].includes(key.role)||!(key.bytes instanceof Uint8Array)||key.bytes.byteLength!==32)throw Error('BROKER_CONFIGURATION_INVALID');return crypto.subtle.importKey('raw',new Uint8Array(key.bytes),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
+const bytes=(prefix:string,body:string)=>encoder.encode(prefix+body);
+export const requestPrefix=(url:string)=>'BRICK_CAPTURE_REQUEST_V1\nPOST\n'+url+'\n';
+export const responsePrefix=(status:number)=>'BRICK_CAPTURE_RESPONSE_V1\n'+status+'\n';
+export async function sign(key:CryptoKey,prefix:string,body:string){return Array.from(new Uint8Array(await crypto.subtle.sign('HMAC',key,bytes(prefix,body))),x=>x.toString(16).padStart(2,'0')).join('');}
+export async function verify(key:CryptoKey,prefix:string,body:string,signature:string|null){if(!hex(signature,64))return false;const raw=Uint8Array.from(signature.match(/../g)!,x=>parseInt(x,16));return crypto.subtle.verify('HMAC',key,raw,bytes(prefix,body));}
+export async function digest(body:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(body))),x=>x.toString(16).padStart(2,'0')).join('');}
+export async function bounded<T>(work:Promise<T>,deadline:number):Promise<T>{let timer:ReturnType<typeof setTimeout>|undefined;const remaining=deadline-performance.now();if(remaining<=0){work.catch(()=>{});throw Error('BROKER_TIMEOUT');}try{const result=await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('BROKER_TIMEOUT')),remaining);})]);if(performance.now()>=deadline)throw Error('BROKER_TIMEOUT');return result;}finally{clearTimeout(timer);}}
+export async function readMessage(message:Pick<Request,'body'|'headers'>,limit:number,deadline:number){const declared=message.headers.get('Content-Length');if(declared!==null&&(!/^\d+$/.test(declared)||Number(declared)>limit))throw Error('BROKER_MESSAGE_REFUSED');const reader=message.body?.getReader();if(!reader)return '';const chunks:Uint8Array[]=[];let total=0,complete=false;try{for(;;){const next=await bounded(reader.read(),deadline);if(next.done){complete=true;break;}if(!(next.value instanceof Uint8Array)||total+next.value.byteLength>limit)throw Error('BROKER_MESSAGE_REFUSED');chunks.push(next.value);total+=next.value.byteLength;}const all=new Uint8Array(total);let offset=0;for(const chunk of chunks){all.set(chunk,offset);offset+=chunk.byteLength;}return decoder.decode(all);}finally{if(!complete)void reader.cancel().catch(()=>{});try{reader.releaseLock();}catch{}}}
+export function jsonBody(v:unknown,limit:number){const body=JSON.stringify(v);if(typeof body!=='string'||encoder.encode(body).byteLength>limit)throw Error('BROKER_MESSAGE_REFUSED');return body;}
+export type BrokerEnvelope=BrokerPin&{format:'brick-capture-request-v1';keyId:string;requestId:string;issuedAt:number;expiresAt:number;operation:string;payload:unknown};
+export function validEnvelope(v:unknown,pin:BrokerPin,now:number):v is BrokerEnvelope{return exact(v,['format','keyId','requestId','issuedAt','expiresAt','sourceSha','resourceSetSha256','authorityEpoch','operation','payload'])&&object(v)&&v.format==='brick-capture-request-v1'&&typeof v.keyId==='string'&&/^[A-Za-z0-9_-]{1,48}$/.test(v.keyId)&&hex(v.requestId,32)&&integer(v.issuedAt)&&integer(v.expiresAt)&&integer(now)&&v.issuedAt<=now+5000&&v.expiresAt>now&&v.expiresAt>v.issuedAt&&v.expiresAt<=v.issuedAt+TOKEN_LIFETIME&&samePin(v as BrokerEnvelope,pin)&&typeof v.operation==='string';}
