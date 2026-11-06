@@ -42,7 +42,9 @@ try{
  const login=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken,redirect:'manual'});assert.equal(login.status,303);cookie=login.headers.get('set-cookie').split(';')[0];
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
- const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
+ const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+ assert.ok(html.includes('data-tab="logs"'),'standalone Logs tab should be present');
+ assert.ok(html.includes('Android full diagnostic logs are not uploaded'),'Logs must label incomplete phone coverage truthfully');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
  for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))if(match[1].trim())await transform(match[1],{loader:'js'});
  assert.equal((await mf.dispatchFetch('http://localhost/parent/map/onemap/Default_HD/11/1614/1016.png')).status,401,'map tiles require parent auth');
  const tile=await parent('/parent/map/onemap/Default_HD/11/1614/1016.png');
@@ -90,6 +92,19 @@ try{
  assert.equal((await signed('/beta/observations',{...observations(),records:[{id:1,observation:{...observation,health:{lat:1.3}}}]})).status,400);
  assert.equal((await signed('/beta/observations',{...observations(),records:[{id:1,observation:{...observation,wallMs:observation.wallMs+1}}]})).status,409);
  assert.equal((await beta.prepare('SELECT COUNT(*) n FROM beta_records').first()).n,1);
+ const unauthOps=await mf.dispatchFetch('http://localhost/parent/api/device/'+DEVICE_A+'/ops-logs');
+ assert.equal(unauthOps.status,401,'operational logs are private');
+ const ops=await parent('/parent/api/device/'+DEVICE_A+'/ops-logs?limit=10');
+ assert.equal(ops.status,200,'signed beta observations must be readable');
+ const opsBody=await ops.json();assert.equal(opsBody.items.length,1);
+ assert.equal(opsBody.items[0].eventCode,'health_observation');
+ assert.equal(opsBody.items[0].detail.network,'wifi');
+ assert.equal(opsBody.androidDiagnosticStoreUploaded,false,'do not claim phone local logs were uploaded');
+ assert.equal(opsBody.timezone,'Asia/Singapore');
+ assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/ops-logs')).status,404,'no unrelated device records');
+ assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/ops-logs?limit=500')).status,400,'bound log pagination');
+ assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/ops-logs',{method:'POST'})).status,405,'logs read-only');
+ 
  const imported={format:'brick-beta-observations-v1',summary:{run,active:false,stopReason:'user_stopped_review_required',interventions:[{atMs:Date.now(),elapsedMs:2000,reason:'PLANNED_DEVICE_REBOOT'}]}};
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/import',{method:'POST',body:JSON.stringify(imported)})).status,200);
  const status=await (await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).json();assert.equal(status.evidence.run.runId,run.runId);assert.equal(status.evidence.review.interventions.length,1);assert.equal(status.evidence.assessment,'REVIEW_REQUIRED');
