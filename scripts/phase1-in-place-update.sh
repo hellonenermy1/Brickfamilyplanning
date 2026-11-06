@@ -54,7 +54,7 @@ OLD_CERT="$(cert "$tmp/installed.apk")"
 }
 
 OWNERS_BEFORE="$(adb -s "$SERIAL" shell dpm list-owners | tr -d '\r')"
-if ! grep -F 'com.brick.safety/.managed.BrickDeviceAdminReceiver' <<< "$OWNERS_BEFORE" >/dev/null; then
+if ! grep -Eq 'com[.]brick[.]safety/(com[.]brick[.]safety)?[.]managed[.]BrickDeviceAdminReceiver' <<< "$OWNERS_BEFORE" >/dev/null; then
   if [[ "$MODE" == "--apply" ]]; then
     echo "STOP: Brick Device Owner is not confirmed on this phone. Refusing update until verified." >&2
     exit 1
