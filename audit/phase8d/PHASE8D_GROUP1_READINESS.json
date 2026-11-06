@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "53d7e093fd52e11310608f8cf02cfe2d46c3c13c",
+  "sourceSha": "beaa99683d26948576bbc6deabf18e5dbdf0ab16",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -48,13 +48,24 @@
       "sessionsWrapped": true,
       "productionControllerInstallCalls": 0,
       "completeWriterCoverage": false
+    },
+    {
+      "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
+      "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
+      "selectedTrackedFiles": 257,
+      "explicitManagementClassifications": 63,
+      "knownBetaMutatorsUnfenced": 4,
+      "syntheticProfileCases": 17,
+      "unresolvedRelativeImportCandidates": 1,
+      "filesWithDynamicImportExpressions": 124,
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json"
     }
   ],
   "remaining": [
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "PARTIAL_INERT_ACTOR_AND_D1_ADAPTERS_ONLY",
-      "needed": "Finish raw/retained capabilities, exported helper paths, constructors/lifecycle/deferred escapes and operator/migration/publication external writer accounting. Current inactive adapters do not establish complete enforcement."
+      "needed": "Enforce maintenance/admission for four known beta management tools and all independent operators/credentials; retain raw/exported-helper/constructor/lifecycle/deferred/package coverage gaps.257-file source profile is not enforcement."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -94,21 +105,11 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_D1_BOUNDARY_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "runs": [
       {
-        "runId": 42176089762,
-        "event": "pull_request",
-        "reportedRunStatus": "completed",
-        "reportedRunConclusion": "success",
-        "reportedJobStatus": "completed",
-        "reportedJobConclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true
-      },
-      {
-        "runId": 42176089764,
+        "runId": 42178484495,
         "event": "pull_request",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",
@@ -118,7 +119,17 @@
         "allStepsCompletedSuccess": true
       },
       {
-        "runId": 42176082576,
+        "runId": 42178484531,
+        "event": "pull_request",
+        "reportedRunStatus": "completed",
+        "reportedRunConclusion": "success",
+        "reportedJobStatus": "completed",
+        "reportedJobConclusion": "success",
+        "steps": 33,
+        "allStepsCompletedSuccess": true
+      },
+      {
+        "runId": 42178477456,
         "event": "push",
         "reportedRunStatus": "completed",
         "reportedRunConclusion": "success",

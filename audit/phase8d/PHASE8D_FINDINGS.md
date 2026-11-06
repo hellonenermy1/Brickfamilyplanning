@@ -890,3 +890,8 @@ OPS-002 and OPS-003 gain scoped source/native proof only. Sixteen actor boundari
 ## P8D-002 — Group1 partial inactive D1 boundaries; still P1 OPEN
 
 OPS-002 and OPS-003 gain22 controlled adapter cases and exact-source/native D1 preemption/restore proof. Four env placements and89 source blobs do not establish complete external/raw writer accounting, urgent-outage fallback, transport/custody/schedule/PITR/cloud acceptance. See PHASE8D_GROUP1_D1_BOUNDARY_HOSTED_EVIDENCE.json, PHASE8D_GROUP1_D1_BOUNDARY_REQUIREMENT_SCOPE.json and PHASE8D_GROUP1_D1_BOUNDARIES.md. No controller activation or canonical acceptance.
+
+
+## P8D-002 — external management source profile; actual fencing remains P1 OPEN
+
+OPS-002 gains257-file exact-source profile and17 synthetic drift-guard cases. Four known beta external tools remain unfenced; source classifications, legacy refusals and reference graphs do not constrain direct credentials/operators or supply urgent-outage fallback, transport/custody/schedule/PITR/cloud recovery acceptance. See PHASE8D_GROUP1_EXTERNAL_WRITER_HOSTED_EVIDENCE.json and PHASE8D_GROUP1_EXTERNAL_WRITER_REQUIREMENT_SCOPE.json. OPS-003 and canonical acceptance unchanged.
