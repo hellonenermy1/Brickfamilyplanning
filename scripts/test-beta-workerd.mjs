@@ -30,7 +30,8 @@ const until=async(fn,label)=>{const end=Date.now()+15000;do{const v=await fn();i
 let socket;
 try{
  const db=await mf.getD1Database('DB'),beta=await mf.getD1Database('BETA_DB');
- const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
+ const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_phase2_parent_credentials.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));
+ for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
  for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();
  await db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(DEVICE_A,'Synthetic beta',key.spki,Date.now()).run();
  const loginDocument=await mf.dispatchFetch('http://localhost/parent/login');
@@ -42,8 +43,36 @@ try{
  const login=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken,redirect:'manual'});assert.equal(login.status,303);cookie=login.headers.get('set-cookie').split(';')[0];
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
- const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
+ const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+ assert.ok(html.includes('href="/parent/change-password"'),'private account settings link must appear');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
  for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))if(match[1].trim())await transform(match[1],{loader:'js'});
+
+ // End-to-end account rotation: existing bootstrap secret, wrong-current, CSRF,
+ // D1 PBKDF2 override, atomic revocation and new-login flow.
+
+ const accountPage=await parent('/parent/change-password');
+ assert.equal(accountPage.status,200);
+ assert.ok((await accountPage.text()).includes('name="confirm"'));
+ assert.equal((await mf.dispatchFetch('http://localhost/parent/change-password',{redirect:'manual'})).status,303);
+ const urlEncoded=(values)=>new URLSearchParams(values).toString();
+ const newPassphrase='ValidSecret_123'; // 15-character test-only fixture
+ const changeReq=(values,headers={})=>parent('/parent/change-password',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded',...headers},body:urlEncoded(values)});
+ assert.equal((await changeReq({current:'WrongSecret_123',next:newPassphrase,confirm:newPassphrase})).status,401);
+ assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:'DoesNotMatch123'})).status,400);
+ assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:newPassphrase},{Origin:'https://evil.invalid'})).status,403);
+ const changed=await changeReq({current:loginToken,next:newPassphrase,confirm:newPassphrase});
+ assert.equal(changed.status,303,'approved parent password rotation should succeed');
+ assert.equal(changed.headers.get('location'),'/parent/login?changed=1');
+ assert.equal((await parent('/parent/api/devices')).status,401,'old cookie invalidated on credential change');
+ const oldCredentialLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken});
+ assert.equal(oldCredentialLogin.status,401,'bootstrap secret no longer accepted after D1 rotation');
+ const privateLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+newPassphrase,redirect:'manual'});
+ assert.equal(privateLogin.status,303,'new 15-character passphrase must authenticate');
+ cookie=privateLogin.headers.get('set-cookie').split(';')[0];
+ assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,200,'new session accesses existing protected device data');
+ assert.equal((await parent('/parent')).status,200,'new session must access the parent portal');
+ assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM dev_parent_credentials WHERE id='primary'").first()).n,1);
+
  assert.equal((await mf.dispatchFetch('http://localhost/parent/map/onemap/Default_HD/11/1614/1016.png')).status,401,'map tiles require parent auth');
  const tile=await parent('/parent/map/onemap/Default_HD/11/1614/1016.png');
  assert.equal(tile.status,200,'same-origin OneMap tile proxy must respond');
