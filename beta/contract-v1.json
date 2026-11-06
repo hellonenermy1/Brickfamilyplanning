@@ -1,8 +1,8 @@
 {
   "format": "brick-beta-contract-v1",
-  "releaseId": "brick-beta-20261105-01",
+  "releaseId": "brick-phase1-20261106-01",
   "baseSha": "71f5460fa6dfb47e276121e6c69db98cdae4485a",
-  "apkBranch": "beta/apk",
+  "apkBranch": "fix/v1-p8d-phase1-android-20261106",
   "backendBranch": "beta/backend-portal",
   "protocol": 1,
   "readinessPath": "/api/device/{deviceId}/beta/readiness",
