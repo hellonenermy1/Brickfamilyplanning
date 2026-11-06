@@ -2,7 +2,7 @@ name: Brick Phase 2 — Isolated Parent Portal Verification
 
 on:
   push:
-    branches: [feat/v1-phase2-parent-20261106, fix/phase2-15char-passphrase-20261106, fix/phase2-preserve-parent-sessions-20261106 , feat/phase2-parent-selfservice-passphrase-20261106, fix/phase2-beta-fall-quarantine-20261106 , fix/phase2-parent-client-freshness-20261106 , fix/phase2-history-device-isolation-20261106, fix/phase2-health-evidence-tristate-20261106, fix/phase2-history-gap-truth-20261107, fix/phase2-device-tab-response-isolation-20261107, fix/phase2-events-device-fence-20261107]
+    branches: [feat/v1-phase2-parent-20261106, fix/phase2-15char-passphrase-20261106, fix/phase2-preserve-parent-sessions-20261106 , feat/phase2-parent-selfservice-passphrase-20261106, fix/phase2-beta-fall-quarantine-20261106 , fix/phase2-parent-client-freshness-20261106 , fix/phase2-history-device-isolation-20261106, fix/phase2-health-evidence-tristate-20261106, fix/phase2-history-gap-truth-20261107, fix/phase2-device-tab-response-isolation-20261107, fix/phase2-events-device-fence-20261107, feat/phase2-tracking-diagnostics-20261107]
   pull_request:
     branches: [beta/backend-portal]
   workflow_dispatch:
@@ -26,6 +26,7 @@ jobs:
           node scripts/test-phase2-parent-baseline.mjs
           node scripts/test-phase2-session-preservation.mjs
           node scripts/test-phase2-client-freshness.mjs
+          node scripts/test-phase2-tracking-diagnosis.mjs
           node scripts/test-phase2-history-isolation.mjs
           node scripts/test-phase2-history-gap-truth.mjs
           node scripts/test-phase2-health-tristate.mjs
