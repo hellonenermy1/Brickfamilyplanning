@@ -1,0 +1,258 @@
+{
+  "format": "brick-external-writer-policy-v1",
+  "scope": "SOURCE PROFILE ONLY; not independent approval, writer enforcement, target identity or release acceptance",
+  "entries": {
+    ".github/workflows/beta-backend.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/deploy-brick-development.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/deploy-brick.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/phase8d-cloudflare-readonly.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/v1-phase8b-remediation-cloud-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/v1-phase8d-backend-audit-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    "package.json": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    "scripts/audit-phase8d-contract.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/beta-cloud-preflight.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/beta-deployment-contract.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/cardfree-pitr-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/codespaces-check.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/ensure-beta-d1-columns.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/ensure-development-legacy-columns.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/install-beta-map.mjs": {
+      "classification": "SOURCE_DISABLED_LEGACY_BETA_TOOL",
+      "reason": "Current first executable statement throws the obsolete-R2 refusal. Historical body/import dependencies stay indexed; do not execute or reactivate for D1 beta."
+    },
+    "scripts/install-private-map-development.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/install-private-map.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8-cloud-usage-metrics.mjs": {
+      "classification": "READ_ONLY_QUERY_POST_SOURCE",
+      "reason": "POST submits a metrics GraphQL query; HTTP POST alone is not a D1/config mutation. Account and runtime state still require separate qualification."
+    },
+    "scripts/phase8-live-brick-backup-restore.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8-live-identity-preflight.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8d-cloudflare-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-d1-catalog-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-external-writer-inventory.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/phase8d-live-parent-denial.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-remediation-plan.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/publish-beta-d1-release.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/setup-beta-cloud.mjs": {
+      "classification": "SOURCE_DISABLED_LEGACY_BETA_TOOL",
+      "reason": "Current first executable statement throws the obsolete-R2 refusal. Historical body/import dependencies stay indexed; do not execute or reactivate for D1 beta."
+    },
+    "scripts/setup-beta-d1.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/setup-v1-phase6-development-cardfree-v2.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6-development-free.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6-development.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/source-inventory.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/test-beta-deployment.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-beta-workerd.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase6-deploy-contract.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-beta-config.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-cardfree-recovery.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-cloudflare-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-config-parity.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-d1-ack-faults.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-d1-catalog-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-deployment-workflow-safety.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-development-login-source.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-enrichment-failure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-external-writer-inventory.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic source-map tests contain management strings; no audited tool imported or cloud request performed by these tests."
+    },
+    "scripts/test-phase8d-full-store-recovery.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-maintenance-budget.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-maintenance-failure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-parent-expensive-route-rate.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-parent-read-rate.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-public-secret-exposure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-public-secret-surface.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-recovery-coverage.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-release-gates.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-route-live.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-watchdog.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-workerd-integration.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/verify-beta-live.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/verify-cloudflare-deployment.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-development-parent-live.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-phase7-development-browser.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-phase7-development-live.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    }
+  }
+}
