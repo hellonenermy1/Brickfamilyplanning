@@ -9,7 +9,7 @@ import { applyDevelopmentSchema16, revokePriorDevelopmentSessions } from './phas
 const API = 'https://api.cloudflare.com/client/v4';
 const WORKER_NAME = 'brick-family-beta';
 const D1_NAME = 'brick-family-beta';
-const CURRENT_APP_VERSION = '1.0.0-beta.1';
+const CURRENT_APP_VERSION = '1.0.0-beta.2';
 const TEMPLATE = 'wrangler.beta.template.jsonc';
 const GENERATED_CONFIG = 'wrangler.beta.jsonc';
 const STATE = 'beta-setup-state.json';
