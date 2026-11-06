@@ -35,6 +35,10 @@ jobs:
         run: npx --no-install tsc -p tsconfig.web.json --noEmit
       - name: Compile parent map assets
         run: npm run build:parent-assets
+      - name: Compile real composed parent page and verify guard installation
+        run: |
+          npx --no-install esbuild scripts/test-phase2-page-integration.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-phase2-page.mjs
+          node /tmp/brick-phase2-page.mjs
       - name: Beta parent auth and deployment contractual tests
         run: |
           node scripts/test-beta-deployment.mjs
