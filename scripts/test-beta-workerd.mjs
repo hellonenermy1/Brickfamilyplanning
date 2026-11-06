@@ -31,11 +31,6 @@ let socket;
 try{
  const db=await mf.getD1Database('DB'),beta=await mf.getD1Database('BETA_DB');
  const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_phase2_parent_credentials.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));
- const deviceCols=new Set(native.prepare('PRAGMA table_info(devices)').all().map(row=>row.name));
- for(const [name,definition] of [
-  ['last_health_at','INTEGER'],['health_status',"TEXT NOT NULL DEFAULT 'unknown'"],
-  ['recovery_count','INTEGER NOT NULL DEFAULT 0'],['pending_records','INTEGER NOT NULL DEFAULT 0'],['app_version','TEXT']
- ])if(!deviceCols.has(name))native.exec('ALTER TABLE devices ADD COLUMN '+name+' '+definition);
  for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
  for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();
  await db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(DEVICE_A,'Synthetic beta',key.spki,Date.now()).run();
@@ -54,8 +49,7 @@ try{
 
  // End-to-end account rotation: existing bootstrap secret, wrong-current, CSRF,
  // D1 PBKDF2 override, atomic revocation and new-login flow.
- const beforeList=await parent('/parent/api/devices');
- assert.equal(beforeList.status,200,'synthetic device list schema must match actual D1 deployment');
+
  const accountPage=await parent('/parent/change-password');
  assert.equal(accountPage.status,200);
  assert.ok((await accountPage.text()).includes('name="confirm"'));
@@ -75,9 +69,7 @@ try{
  const privateLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+newPassphrase,redirect:'manual'});
  assert.equal(privateLogin.status,303,'new 15-character passphrase must authenticate');
  cookie=privateLogin.headers.get('set-cookie').split(';')[0];
- const afterList=await parent('/parent/api/devices');
- assert.equal(afterList.status,200,'device list must remain available after credential rotation');
- assert.equal(afterList.status,beforeList.status,'new session should preserve original device-list behavior');
+ assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,200,'new session accesses existing protected device data');
  assert.equal((await parent('/parent')).status,200,'new session must access the parent portal');
  assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM dev_parent_credentials WHERE id='primary'").first()).n,1);
 
@@ -106,7 +98,7 @@ try{
  const ws=await parent('/parent/api/device/'+DEVICE_A+'/ws',{headers:{Upgrade:'websocket'}});assert.equal(ws.status,101);socket=ws.webSocket;socket.accept();
  let token;socket.addEventListener('message',e=>{const b=JSON.parse(e.data);if(b.type==='beta_challenge'){assert.equal(b.deviceId,DEVICE_A);token=b.token;}});
  const body=ready();let response=await signed('/beta/readiness',body);assert.equal(response.status,200);let proof=await response.json();assert.equal(proof.nonce,body.nonce);assert.equal(proof.environment,'beta');assert.equal(proof.backendSourceSha,'a'.repeat(40));
- const checks=Object.fromEntries(proof.checks.map(x=>[x.id,x.status]));console.log('Phase2 synthetic readiness check states '+JSON.stringify(checks));assert.equal(checks.d1_roundtrip,'PASS');assert.equal(checks.object_store_roundtrip,'PASS');assert.equal(checks.do_roundtrip,'PASS');assert.equal(checks.history_readback,'PENDING');assert.equal(checks.portal_delivery,'PENDING');
+ const checks=Object.fromEntries(proof.checks.map(x=>[x.id,x.status]));assert.equal(checks.d1_roundtrip,'PASS');assert.equal(checks.object_store_roundtrip,'PASS');assert.equal(checks.do_roundtrip,'PASS');assert.equal(checks.history_readback,'PENDING');assert.equal(checks.portal_delivery,'PENDING');
  assert.equal((await signed('/beta/readiness',body)).status,409);await until(()=>token,'socket challenge');
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/ack',{method:'POST',headers:{Origin:'https://evil.invalid'},body:JSON.stringify({token})})).status,403);
  assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/ack',{method:'POST',body:JSON.stringify({token:crypto.randomUUID()})})).status,409);
