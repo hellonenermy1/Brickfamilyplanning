@@ -79,6 +79,7 @@ class BrickLocationService : Service() {
     private val measuredGeneration = AtomicLong(0L)
     private val reacquisitionInProgress = AtomicBoolean(false)
     private val registrationInProgress = AtomicBoolean(false)
+    private val locationRegistrationGeneration = AtomicLong(0L)
 
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var journal: Journal
@@ -215,6 +216,7 @@ class BrickLocationService : Service() {
             return
         }
         if (!registrationInProgress.compareAndSet(false, true)) return
+        val generation = locationRegistrationGeneration.incrementAndGet()
         lastRegistrationAttemptElapsed = SystemClock.elapsedRealtime()
         // Play services replaces a previous registration for the same LocationCallback. Removing
         // it *before* the new request succeeds creates a location blackout if the update fails.
@@ -239,18 +241,22 @@ class BrickLocationService : Service() {
             }
             .getOrNull() ?: return
         registration.addOnSuccessListener {
-            registrationInProgress.set(false)
-            if (!mustQuiesceAsync()) {
-                trackingIntervalMs = intervalMs
-                locationSubscribed = true
+            if (locationRegistrationGeneration.get() == generation) {
+                registrationInProgress.set(false)
+                if (!mustQuiesceAsync()) {
+                    trackingIntervalMs = intervalMs
+                    locationSubscribed = true
+                }
             }
         }
         registration.addOnFailureListener {
-            registrationInProgress.set(false)
-            // Only the prior working request remains until a retry; do not falsely mark it dead.
-            trackingIntervalMs = previousInterval
-            locationSubscribed = previousSubscribed
-            noteTrackingDiagnostic("location_registration_failed", it.javaClass.simpleName)
+            if (locationRegistrationGeneration.get() == generation) {
+                registrationInProgress.set(false)
+                // Only the prior working request remains until a retry; do not mark it dead.
+                trackingIntervalMs = previousInterval
+                locationSubscribed = previousSubscribed
+                noteTrackingDiagnostic("location_registration_failed", it.javaClass.simpleName)
+            }
         }
     }
 
@@ -695,6 +701,14 @@ class BrickLocationService : Service() {
                 return@scheduleWithFixedDelay
             }
             val now = SystemClock.elapsedRealtime()
+            if (registrationInProgress.get() && lastRegistrationAttemptElapsed > 0L &&
+                now >= lastRegistrationAttemptElapsed &&
+                now - lastRegistrationAttemptElapsed >= 20_000L) {
+                // A Task that never completes cannot permanently block future registrations.
+                locationRegistrationGeneration.incrementAndGet()
+                registrationInProgress.set(false)
+                noteTrackingDiagnostic("location_registration_timed_out", "pendingOverMs=20000")
+            }
             val locationEnabled = androidLocationEnabled()
             if (!locationEnabled && locationSubscribed) {
                 runCatching { fused.removeLocationUpdates(callback) }
