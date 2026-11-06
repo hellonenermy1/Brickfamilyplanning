@@ -1,0 +1,10 @@
+{
+  "format": "brick-phase8d-pitr-hosted-fixture-adjustment-v1",
+  "initialSourceSha": "c0b33ce12f699d57f9378517e479b4fded931629",
+  "failedRunId": 42159687245,
+  "failedJobId": 127702143085,
+  "observation": "First healthy fixture asserted checksPassed=true but received false; suite exited at test-phase8d-pitr-lifecycle.mjs:14 after inherited PITR8 passed.",
+  "interpretation": "25ms normal fixture per-request budget is too tight for hosted cold startup (inference); parallel push passed this boundary. Explicit synchronous-late tests retain 10ms and aggregate test retains85ms total.",
+  "adjustment": "Normal synthetic fixture budget250ms, total2000ms; test watchdog4000ms. No production timeout, proof flags, network permission or runtime logic weakened.",
+  "finalQualification": "Fresh exact-source workflow required; initial failed run not counted as success."
+}
