@@ -10,7 +10,7 @@ export default {
   const u=new URL(req.url);
   const device=u.pathname.match(/^\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(readiness|observations)$/);
   if(device)return betaDevice(req,env,device[1],device[2]);
-  const parent=u.pathname.match(/^\/parent\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(status|ack|import)$/);
+  const parent=u.pathname.match(/^\/parent\/api\/device\/([A-Za-z0-9_-]{1,128})\/beta\/(status|ack|import|logs)$/);
   const download=u.pathname.match(/^\/parent\/beta\/download\/(apk|manifest|checksum)$/);
   if(parent||download){
    if(!await parentAuthorized(req,env))return unauthorizedParent(req);
