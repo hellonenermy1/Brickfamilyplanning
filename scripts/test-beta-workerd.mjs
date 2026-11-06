@@ -30,7 +30,13 @@ const until=async(fn,label)=>{const end=Date.now()+15000;do{const v=await fn();i
 let socket;
 try{
  const db=await mf.getD1Database('DB'),beta=await mf.getD1Database('BETA_DB');
- const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_phase2_parent_credentials.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
+ const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_phase2_parent_credentials.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));
+ const deviceCols=new Set(native.prepare('PRAGMA table_info(devices)').all().map(row=>row.name));
+ for(const [name,definition] of [
+  ['last_health_at','INTEGER'],['health_status',"TEXT NOT NULL DEFAULT 'unknown'"],
+  ['recovery_count','INTEGER NOT NULL DEFAULT 0'],['pending_records','INTEGER NOT NULL DEFAULT 0'],['app_version','TEXT']
+ ])if(!deviceCols.has(name))native.exec('ALTER TABLE devices ADD COLUMN '+name+' '+definition);
+ for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
  for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();
  await db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(DEVICE_A,'Synthetic beta',key.spki,Date.now()).run();
  const loginDocument=await mf.dispatchFetch('http://localhost/parent/login');
@@ -49,7 +55,7 @@ try{
  // End-to-end account rotation: existing bootstrap secret, wrong-current, CSRF,
  // D1 PBKDF2 override, atomic revocation and new-login flow.
  const beforeList=await parent('/parent/api/devices');
- console.log('Phase2 synthetic device list before password rotation: HTTP '+beforeList.status);
+ assert.equal(beforeList.status,200,'synthetic device list schema must match actual D1 deployment');
  const accountPage=await parent('/parent/change-password');
  assert.equal(accountPage.status,200);
  assert.ok((await accountPage.text()).includes('name="confirm"'));
@@ -70,7 +76,7 @@ try{
  assert.equal(privateLogin.status,303,'new 15-character passphrase must authenticate');
  cookie=privateLogin.headers.get('set-cookie').split(';')[0];
  const afterList=await parent('/parent/api/devices');
- console.log('Phase2 synthetic device list after password rotation: HTTP '+afterList.status+(afterList.status===500?' body '+(await afterList.clone().text()).slice(0,300):''));
+ assert.equal(afterList.status,200,'device list must remain available after credential rotation');
  assert.equal(afterList.status,beforeList.status,'new session should preserve original device-list behavior');
  assert.equal((await parent('/parent')).status,200,'new session must access the parent portal');
  assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM dev_parent_credentials WHERE id='primary'").first()).n,1);
