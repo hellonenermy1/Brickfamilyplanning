@@ -1,0 +1,16 @@
+{
+  "finding": "P8D-090",
+  "sourceSha": "0dd3e620baa1a1b9277804dda27dc5fd3ca94ff7",
+  "scope": "synthetic supplied HTTP body and actual local CLI FIFO only; no account or credentials",
+  "existingAbortSignalBudgetMs": 15000,
+  "observedAfterMs": 16117,
+  "signalAborted": true,
+  "calls": 1,
+  "settled": false,
+  "fifo": {
+    "timeoutMs": 1000,
+    "status": null,
+    "errorCode": "ETIMEDOUT",
+    "signal": "SIGTERM"
+  }
+}
