@@ -49,7 +49,7 @@ try{
   ['Safety Events',"async function loadEvents(){const requestDevice=currentDevice;"],
   ['Event map buttons','if(requestDevice===currentDevice)map.easeTo('],
   ['Battery status',"async function loadBatteryTrend(){const requestDevice=currentDevice;"],
-  ['GPS control status',"async function p7LoadLocationControl(){const requestDevice=currentDevice;"],
+  ['GPS control status',"async function loadLocationControl(){const requestDevice=currentDevice;"],
   ['Places mutation guard','toggle.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
   ['Place deletion guard','del.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
   ['Trips mutation guard','btn.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
