@@ -1,4 +1,4 @@
-import { PMTiles, type RangeResponse, type Source } from "pmtiles";
+import { PMTiles, SharedPromiseCache, Compression, type RangeResponse, type Source } from "pmtiles";
 import { VectorTile } from "@mapbox/vector-tile";
 import { PbfReader } from "pbf";
 import type { LivePacket, RouteCorridorCandidate } from "./protocol";
@@ -7,6 +7,10 @@ const MAP_KEY = "basemap/singapore.pmtiles";
 const DETAIL_ZOOM = 15;
 const ROUTE_SOURCE_CODE = 5;
 const MAX_CORRIDORS = 3;
+export const ROUTE_LOOKUP_BUDGET_MS = 250;
+const MAX_RANGE_BYTES = 2 * 1024 * 1024;
+const MAX_FEATURES = 4096;
+const MAX_SEGMENTS = 16384;
 
 type Coord = [number, number];
 export type RouteSegment = { a: Coord; b: Coord };
@@ -20,26 +24,59 @@ type SegmentMatch = {
 };
 
 class R2PmtilesSource implements Source {
-  constructor(private readonly bucket: R2Bucket, private readonly key = MAP_KEY) {}
+  constructor(private readonly bucket: R2Bucket, private readonly alive: () => boolean, private readonly key = MAP_KEY) {}
   getKey() { return `brick-r2:${this.key}`; }
-  async getBytes(offset: number, length: number): Promise<RangeResponse> {
+  async getBytes(offset: number, length: number, signal?: AbortSignal, expectedEtag?: string): Promise<RangeResponse> {
+    if (!this.alive() || signal?.aborted || !Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(length) || length < 1 || length > MAX_RANGE_BYTES) throw new Error('route range refused');
     const object = await this.bucket.get(this.key, { range: { offset, length } });
     if (!object || !("body" in object)) throw new Error("private PMTiles range unavailable");
-    return { data: await object.arrayBuffer(), etag: object.etag };
+    if (!this.alive() || signal?.aborted || (expectedEtag !== undefined && object.etag !== expectedEtag)) throw new Error('route generation changed');
+    const data = await object.arrayBuffer();
+    if (!this.alive() || signal?.aborted || data.byteLength > length || (data.byteLength !== length && !(offset === 0 && length === 16384 && data.byteLength >= 127))) throw new Error('route range invalid');
+    return { data, etag: object.etag };
   }
 }
 
-const archives = new WeakMap<object, PMTiles>();
-const roadCache = new Map<string, Promise<RouteSegment[]>>();
+type ArchiveState = { archive: PMTiles; roads: Map<string, Promise<RouteSegment[]>>; abandoned: boolean };
+const archives = new WeakMap<object, ArchiveState>();
+
+async function boundedDecompress(data: ArrayBuffer, compression: Compression, alive: () => boolean): Promise<ArrayBuffer> {
+  if (!alive() || data.byteLength > MAX_RANGE_BYTES) throw new Error('route compressed envelope');
+  if (compression === Compression.None || compression === Compression.Unknown) return data;
+  if (compression !== Compression.Gzip) throw new Error('route compression unsupported');
+  const reader = new Response(data).body!.pipeThrough(new DecompressionStream('gzip')).getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const item = await reader.read();
+      if (item.done) break;
+      size += item.value.byteLength;
+      if (!alive() || size > MAX_RANGE_BYTES) throw new Error('route decoded envelope');
+      parts.push(item.value);
+    }
+    const result = new Uint8Array(size);
+    let offset = 0;
+    for (const part of parts) { result.set(part, offset); offset += part.byteLength; }
+    return result.buffer;
+  } catch (error) {
+    void reader.cancel().catch(() => undefined);
+    throw error;
+  } finally { reader.releaseLock(); }
+}
 
 function archiveFor(bucket: R2Bucket) {
   const key = bucket as unknown as object;
-  let archive = archives.get(key);
-  if (!archive) {
-    archive = new PMTiles(new R2PmtilesSource(bucket));
-    archives.set(key, archive);
+  let state = archives.get(key);
+  if (!state) {
+    const created = { roads: new Map<string, Promise<RouteSegment[]>>(), abandoned: false } as ArchiveState;
+    const alive = () => !created.abandoned;
+    const decompress = (data: ArrayBuffer, compression: Compression) => boundedDecompress(data, compression, alive);
+    created.archive = new PMTiles(new R2PmtilesSource(bucket, alive), new SharedPromiseCache(100, false, decompress), decompress);
+    state = created;
+    archives.set(key, state);
   }
-  return archive;
+  return state;
 }
 
 function clampLatitude(lat: number) {
@@ -74,6 +111,7 @@ function segmentsFromGeometry(geometry: { type?: string; coordinates?: unknown }
   const addLine = (value: unknown) => {
     if (!Array.isArray(value)) return;
     const coords = value.filter(isCoord);
+    if (coords.length + out.length > MAX_SEGMENTS + 1) throw new Error('route geometry limit');
     for (let i = 1; i < coords.length; i++) out.push({ a: coords[i - 1], b: coords[i] });
   };
   if (geometry.type === "LineString") addLine(geometry.coordinates);
@@ -126,7 +164,7 @@ export function nearestRoutePoint(lon: number, lat: number, segments: RouteSegme
   return { lon: best.lon, lat: best.lat, distanceM: best.distanceM };
 }
 
-function trimCache() {
+function trimCache(roadCache: ArchiveState['roads']) {
   while (roadCache.size > 64) {
     const first = roadCache.keys().next().value as string | undefined;
     if (!first) break;
@@ -134,35 +172,39 @@ function trimCache() {
   }
 }
 
-async function decodeRoadSegments(archive: PMTiles, z: number, x: number, y: number): Promise<RouteSegment[]> {
+async function decodeRoadSegments(state: ArchiveState, z: number, x: number, y: number): Promise<RouteSegment[]> {
+  const roadCache = state.roads;
   const key = `${z}/${x}/${y}`;
   const cached = roadCache.get(key);
   if (cached) return cached;
   const pending = (async () => {
-    const response = await archive.getZxy(z, x, y);
+    const response = await state.archive.getZxy(z, x, y);
+    if (state.abandoned) throw new Error('route generation abandoned');
     if (!response) return [];
     const tile = new VectorTile(new PbfReader(new Uint8Array(response.data)));
     const layer = tile.layers.roads;
     if (!layer) return [];
+    if (layer.length > MAX_FEATURES) throw new Error('route feature limit');
     const out: RouteSegment[] = [];
     for (let i = 0; i < layer.length; i++) {
       const feature = layer.feature(i);
       const geo = feature.toGeoJSON(x, y, z) as unknown as { geometry?: { type?: string; coordinates?: unknown } };
       if (geo.geometry) out.push(...segmentsFromGeometry(geo.geometry));
+      if (out.length > MAX_SEGMENTS) throw new Error('route segment limit');
     }
     return out;
   })().catch(error => {
-    roadCache.delete(key);
+    if (roadCache.get(key) === pending) roadCache.delete(key);
     throw error;
   });
   roadCache.set(key, pending);
-  trimCache();
+  trimCache(roadCache);
   return pending;
 }
 
-async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
-  const archive = archiveFor(bucket);
-  const header = await archive.getHeader();
+async function nearbyRoads(state: ArchiveState, lon: number, lat: number) {
+  const header = await state.archive.getHeader();
+  if (state.abandoned) throw new Error('route generation abandoned');
   const z = Math.min(DETAIL_ZOOM, header.maxZoom);
   const center = tileFor(lon, lat, z);
   const n = 2 ** z;
@@ -171,7 +213,7 @@ async function nearbyRoads(bucket: R2Bucket, lon: number, lat: number) {
     for (let dx = -1; dx <= 1; dx++) {
       const x = center.x + dx;
       const y = center.y + dy;
-      if (x >= 0 && y >= 0 && x < n && y < n) jobs.push(decodeRoadSegments(archive, z, x, y));
+      if (x >= 0 && y >= 0 && x < n && y < n) jobs.push(decodeRoadSegments(state, z, x, y));
     }
   }
   return (await Promise.all(jobs)).flat();
@@ -204,8 +246,20 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
   const lon = packet.trustedLonE7 / 1e7;
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return packet;
 
+  const state = archiveFor(maps);
+  const started = performance.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const abandon = () => {
+    state.abandoned = true;
+    state.roads.clear();
+    // A late failure from an old generation must not evict a healthy replacement.
+    if (archives.get(maps as unknown as object) === state) archives.delete(maps as unknown as object);
+  };
   try {
-    const segments = await nearbyRoads(maps, lon, lat);
+    const segments = await Promise.race([nearbyRoads(state, lon, lat), new Promise<never>((_, reject) => {
+      timer = setTimeout(() => { abandon(); reject(new Error('route lookup deadline')); }, ROUTE_LOOKUP_BUDGET_MS);
+    })]);
+    if (state.abandoned || performance.now() - started >= ROUTE_LOOKUP_BUDGET_MS) { abandon(); return packet; }
     const bearingDeg = packet.bearingCdeg === null ? null : packet.bearingCdeg / 100;
     const maxByMode = packet.activity === 5 || packet.activity === 4 ? 60 : 35;
     const uncertaintyM = packet.uncertaintyCm / 100;
@@ -227,6 +281,7 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
       score: Math.round(match.score * 10) / 10
     }));
     const radiusM = Math.max(uncertaintyM, Math.max(...matches.map(match => match.distanceM)) + 12);
+    if (performance.now() - started >= ROUTE_LOOKUP_BUDGET_MS) { abandon(); return packet; }
     return {
       ...packet,
       uncertaintyCm: Math.max(packet.uncertaintyCm, Math.round(radiusM * 100)),
@@ -234,7 +289,10 @@ export async function constrainFallbackToRoute(packet: LivePacket, maps: R2Bucke
       routeCorridor: { center: [lon, lat], radiusM, candidates }
     };
   } catch {
+    abandon();
     // Private map absence/corruption must never invent a route or block location delivery.
     return packet;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }

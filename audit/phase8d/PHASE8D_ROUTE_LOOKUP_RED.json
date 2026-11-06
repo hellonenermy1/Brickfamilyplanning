@@ -1,0 +1,30 @@
+{
+  "source": "0e86e9d4e52b1287c9b024c2b6c3c37eca260607",
+  "scope": "Actual source with synthetic PMTiles v3/MVT and synthetic fetch only; no live maps/devices/cloud mutation",
+  "observations": [
+    {
+      "case": "warm mapA roads then empty mapB at identical coordinates",
+      "mapASource": 5,
+      "emptyMapBIncorrectSource": 5,
+      "mapBReads": 1,
+      "expectedEmptyMapBSource": 2
+    },
+    {
+      "case": "never-resolving map header",
+      "settledWithin600ms": false
+    },
+    {
+      "case": "first PMTiles header fails transiently then source healthy",
+      "firstSource": 2,
+      "secondSource": 2,
+      "sourceCalls": 1,
+      "expectedSecondSource": 5
+    },
+    {
+      "case": "actual D1-first metadata HEAD fails once",
+      "firstFailed": true,
+      "secondIncorrectlyFailed": true,
+      "fetchCalls": 1
+    }
+  ]
+}

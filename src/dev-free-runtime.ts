@@ -462,12 +462,12 @@ function remoteMeta(source: string, size: number, etag: string): StoredMeta {
 }
 
 async function remoteSize(source: string) {
-  const head = await fetch(source, { method: "HEAD", redirect: "follow" });
+  const head = await fetch(source, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (head.ok) {
     const n = Number(head.headers.get("Content-Length"));
     if (Number.isSafeInteger(n) && n > 0) return { size: n, etag: head.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${n}` };
   }
-  const probe = await fetch(source, { headers: { Range: "bytes=0-0" }, redirect: "follow" });
+  const probe = await fetch(source, { headers: { Range: "bytes=0-0" }, redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (!probe.ok && probe.status !== 206) throw new Error(`map source unavailable: HTTP ${probe.status}`);
   const contentRange = probe.headers.get("Content-Range") ?? "";
   const match = contentRange.match(/\/(\d+)$/);
@@ -477,11 +477,17 @@ async function remoteSize(source: string) {
 }
 
 class RemoteMapBucket {
-  private info: Promise<{ size: number; etag: string }> | null = null;
+  private info: { size: number; etag: string } | null = null;
   private readonly memory = new Map<string, ArrayBuffer>();
   constructor(private readonly source: string) {}
 
-  private sourceInfo() { return this.info ??= remoteSize(this.source); }
+  private async sourceInfo() {
+    if (this.info) return this.info;
+    // Cache resolved metadata only. A timed-out/ended request must not leave
+    // another request awaiting its abandoned fetch promise indefinitely.
+    const loaded = await remoteSize(this.source);
+    return this.info ??= loaded;
+  }
 
   async head(key: string) {
     if (key !== MAP_KEY) return null;
@@ -513,8 +519,10 @@ class RemoteMapBucket {
       return bodyObject(body, meta);
     }
     if (key !== MAP_KEY) return null;
-    const { size, etag } = await this.sourceInfo();
+    const generation = await this.sourceInfo();
+    const { size, etag } = generation;
     const range = parseRange(options.range, size);
+    if (this.info !== generation) throw new Error('map metadata changed');
     if (!range) throw new Error("development map proxy requires byte-range requests");
     const cacheKey = `${range.offset}:${range.length}:${etag}`;
     const cached = this.memory.get(cacheKey);
@@ -527,10 +535,19 @@ class RemoteMapBucket {
     const response = await fetch(this.source, {
       headers: { Range: `bytes=${range.offset}-${end}` },
       redirect: "follow",
+      signal: AbortSignal.timeout(12000),
       cf: { cacheEverything: true, cacheTtl: 86400 }
     });
     if (!(response.ok || response.status === 206)) throw new Error(`map range unavailable: HTTP ${response.status}`);
+    const actualEtag = response.headers.get('ETag')?.replace(/^W\//, '').replaceAll('"', '');
+    if (actualEtag && actualEtag !== etag) {
+      if (this.info === generation) { this.info = null; this.memory.clear(); }
+      void response.body?.cancel().catch(() => undefined);
+      throw new Error('map range version changed');
+    }
+    if (this.info !== generation) { void response.body?.cancel().catch(() => undefined); throw new Error('map metadata changed'); }
     const buffer = await response.arrayBuffer();
+    if (this.info !== generation) throw new Error('map metadata changed');
     if (buffer.byteLength !== range.length) throw new Error("map range length mismatch");
     this.memory.set(cacheKey, buffer.slice(0));
     while (this.memory.size > 128) this.memory.delete(this.memory.keys().next().value as string);

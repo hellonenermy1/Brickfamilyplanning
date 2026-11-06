@@ -30,6 +30,10 @@ jobs:
           node --check scripts/ensure-beta-d1-columns.mjs
           node --check scripts/beta-compat-columns.mjs
       - run: npm run build:parent-assets
+      - name: Optional route-map isolation deadlines and signed live recovery
+        run: |
+          node scripts/test-phase8d-route-lookup.mjs
+          node scripts/test-phase8d-route-live.mjs
       - name: Canonical acceptance worksheet and closure inventory guards
         run: |
           node scripts/test-phase8d-release-acceptance.mjs
