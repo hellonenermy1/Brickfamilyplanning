@@ -150,7 +150,7 @@ try{
  assert.equal((await signed('/event',forged,await ecdsa())).status,401,'quarantine must never bypass device signature verification');
  const sos={eventId:crypto.randomUUID(),eventSequence:900,createdAtMs:Date.now(),kind:'sos_started',latitude:null,longitude:null,accuracyM:null,detail:{source:'manual_test'}};
  const sosResponse=await signed('/event',sos);
- assert.equal(sosResponse.status,200,'manual SOS must not be silenced by automatic fall quarantine');
+ assert.equal(sosResponse.status,200,'manual SOS must not be silenced by automatic fall quarantine: '+(await sosResponse.clone().text()).slice(0,320));
  const sosRow=await db.prepare("SELECT id FROM safety_events WHERE device_id=?1 AND id=?2 AND kind='sos_started'").bind(DEVICE_A,sos.eventId).first();
  assert.equal(sosRow?.id,sos.eventId,'manual SOS must remain durable and visible');
  console.log('PASS beta fall quarantine: signed-only quiet ACK, no false fall rows, unaffected manual SOS');
