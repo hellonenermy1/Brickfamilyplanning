@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+// Exercise the exact browser-side helper in its emitted source, not a copy.
+const source=readFileSync('src/parent-beta.ts','utf8');
+const start=source.indexOf('function p2ClampSnapshot(x,now){');
+const end=source.indexOf('const p2OriginalRenderSnapshot=renderSnapshot;',start);
+assert(start>0&&end>start,'Phase2 client freshness guard must remain installed');
+const scope=vm.createContext({});
+vm.runInContext(source.slice(start,end),scope,{timeout:1000});
+const clamp=scope.p2ClampSnapshot;
+const now=Date.UTC(2026,10,6,15,0,0);
+const fresh=(last,health,interval=30000)=>({latest:{wallTimeMs:last,receivedAt:last},health:{receivedAt:health,trackingIntervalMs:interval},derived:{deviceStatus:'healthy',positionStatus:'fresh'}});
+const recent=clamp(fresh(now-2000,now-1000),now);
+assert.equal(recent.derived.positionStatus,'fresh');
+assert.equal(recent.derived.deviceStatus,'healthy');
+const outdated=fresh(now-130000,now-1000);
+outdated.latest.receivedAt=now-1000; // delayed offline backlog can arrive just now
+assert.equal(clamp(outdated,now).derived.positionStatus,'stale','backlog receipt must not reset capture age');
+const boundary=fresh(now-50500,now-1000);
+assert.equal(clamp(boundary,now).derived.positionStatus,'stale','30s cadence fresh threshold must expire conservatively');
+const healthExpired=fresh(now-1000,now-76000);
+const verdict=clamp(healthExpired,now);
+assert.equal(verdict.derived.deviceStatus,'offline','old heartbeat cannot remain healthy');
+assert.equal(verdict.derived.positionStatus,'stale','an offline phone must not be labelled position-fresh');
+assert.equal(healthExpired.derived.positionStatus,'fresh','the signed/source snapshot must remain unmodified');
+assert.equal(clamp({health:{},latest:{},derived:{positionStatus:'fresh',deviceStatus:'unknown'}},now).derived.positionStatus,'unavailable');
+assert.equal(clamp(fresh(now+240000,now-1000),now).derived.positionStatus,'stale','future capture time is not proof of freshness');
+const neverPromote=fresh(now-1000,now-1000);neverPromote.derived.positionStatus='stale';
+assert.equal(clamp(neverPromote,now).derived.positionStatus,'stale');
+assert.equal(clamp(fresh(now-95000,now-1000,1000),now).derived.positionStatus,'stale');
+assert.equal(clamp(null,now),null);
+console.log('PASS Phase2 browser freshness: backlog, 30s cadence expiry, heartbeat offline, no false promotions or source mutation');
