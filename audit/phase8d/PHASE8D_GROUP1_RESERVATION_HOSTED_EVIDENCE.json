@@ -1,0 +1,125 @@
+{
+  "format": "brick-phase8d-group1-reservation-hosted-v1",
+  "sourceSha": "854628b22f1935e203fed5e1b47e3f7fdf05eadc",
+  "batchParentSha": "f3038fd1cd98d33a81bdf1ca8d82ad1a567a7c08",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_RESERVE_START_CANCEL_NATIVE_AND_FULL_RESTORE_CI_VERIFIED_NOT_INSTALLED",
+  "protocol": "V2 request/response formats and purpose prefixes; V1 refused before authority dispatch",
+  "nativeReservationCases": 23,
+  "nativeBrokerClientCases": 43,
+  "runtimeHelperCases": 29,
+  "legacyNativeAuthorityCases": 34,
+  "d1AdapterCases": 22,
+  "legacyExternalHelperAndCliCases": 21,
+  "newCasesThisBatch": 37,
+  "reservationSemantics": "Durable RESERVED ownership, confirmed STARTED acknowledgement before work, kind/epoch-bound cancel only before start; cancellation-before-admission persists permanent tombstone",
+  "legacyMigration": "Format1 atomically upgraded preserving implicit started legacy writers; format2 missing/corrupt cancellation state refuses rather than resetting",
+  "uncertainOutcomes": "STARTED/legacy/error outcomes retained; no automatic work replay or ownership expiry; urgent overflow stays permanently quarantined",
+  "nativeFullRestore": "Actual41+4/deviceDO encrypted source-destruction/fresh restore with signed capture transport, exact bytes/state/credential exclusions, interruption/restart and max5 source SQL/call retained",
+  "inventories": {
+    "matchedRuntimeGitBlobs": 89,
+    "runtimeSourceSetSha256": "3bdac81b0df8db967e21e28af3641d72cd38cadbf0d2db54c22859d3a7d63fcc",
+    "matchedExternalGitBlobs": 261,
+    "externalSourceSetSha256": "e63536c4b3c5a62bbb234d337b8b128f92fca85b845c14dd755433cfa834393d",
+    "externalSummary": {
+      "selectedFiles": 261,
+      "filesWithManagementSignals": 64,
+      "explicitClassifications": 66,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 1,
+      "unresolvedDynamicImports": 126
+    },
+    "brokerImportedByProductionGraph": false,
+    "productionControllerInstallCalls": 0
+  },
+  "prCheckout": {
+    "sha": "b28d628f8735917b7a312afebdea425854484995",
+    "verifiedParents": [
+      "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+      "854628b22f1935e203fed5e1b47e3f7fdf05eadc"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42199007771,
+      "jobId": 127829353102,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "b28d628f8735917b7a312afebdea425854484995",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42199007879,
+      "jobId": 127829353706,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "b28d628f8735917b7a312afebdea425854484995",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T09:58:39.9247218Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T09:58:41.8082805Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-06T09:58:42.8131474Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T09:58:44.7576085Z {\"suite\":\"capture-broker-native\",\"passed\":43,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T09:58:44.9426881Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T09:58:45.0675578Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T10:00:28.9996940Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T10:00:40.8247646Z PASS signed source/resource/epoch-pinned broker carries capture acquire, held checks, page/device reads and release with native durable replay; production route/key remains absent",
+        "2026-11-06T10:00:40.8618534Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T10:00:57.2864393Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    },
+    {
+      "runId": 42199000899,
+      "jobId": 127829331619,
+      "event": "push",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "854628b22f1935e203fed5e1b47e3f7fdf05eadc",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T09:58:32.8671250Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T09:58:34.9118970Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-06T09:58:35.9743604Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T09:58:38.0581634Z {\"suite\":\"capture-broker-native\",\"passed\":43,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T09:58:38.2348136Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T09:58:38.3696675Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T10:00:22.7371463Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T10:00:30.9401471Z PASS signed source/resource/epoch-pinned broker carries capture acquire, held checks, page/device reads and release with native durable replay; production route/key remains absent",
+        "2026-11-06T10:00:30.9840159Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T10:00:47.7390795Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "limits": [
+    "All controllers, broker routes, credentials and authority bindings remain uninstalled. Native/local fixtures use synthetic writers, targets and ephemeral keys; no live TLS/provider/fleet/rate/key-custody qualification.",
+    "Only provably RESERVED ownership can be cancelled. Lost START acknowledgement after commit, STARTED/legacy unknown outcomes, rejected primary/deferred/tool work and untracked urgent overflow are never automatically purged or expired.",
+    "Permanent cancellation tombstones cap128; overflow preempts capture and quarantines without eviction/reset. Schema/deployment quarantine persists after cancellation. These bounds are safety controls, not production availability/capacity acceptance.",
+    "Full actual41+4/deviceDO destruction/fresh restore still uses trusted fixture controls/bootstrap and a synthetic outer writer envelope for otherwise unaccounted paths. Complete raw/operator/credential/lifecycle/deferred/process-tree coverage remains open.",
+    "Urgent authority/storage/transport-outage fallback remains NOT_IMPLEMENTED. Independent private card-free destination, separate key/context custody, scheduling/readback/age/failure monitoring, usable least-privilege current PITR and isolated live-cloud restore/interruption/rollback/RTO/RPO remain unqualified.",
+    "Existing Miniflare RPC-stub disposal warning remains. Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. No other group, canonical criteria/status/owners/reviews/dispositions, live-family schema/data/credentials, APK/UI/phone, R2/card/billing, merge or deployment change.",
+    "Only OPS-002/OPS-003 receive partial supporting evidence. Current repo ledger/Group1 plan is used; the user-referenced document tab has not been identified/reconciled."
+  ]
+}

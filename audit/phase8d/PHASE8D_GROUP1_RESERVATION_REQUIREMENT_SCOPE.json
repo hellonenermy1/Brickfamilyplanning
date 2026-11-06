@@ -1,0 +1,33 @@
+{
+  "format": "brick-phase8d-group1-reservation-scope-v1",
+  "sourceSha": "854628b22f1935e203fed5e1b47e3f7fdf05eadc",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Staged reserve/start/cancel protocol V2 recovers lost admission replies only for provably unstarted writers. Native tombstones prevent delayed re-admission; started/legacy/error outcomes remain counted.23 native reservation,43 broker and29 helper cases pass. No production activation or urgent-outage fallback acceptance.",
+      "remaining": "Complete operator/raw/credential/lifecycle/deferred/process-tree coverage, reconciliation of started/legacy unknown outcomes, trusted endpoint/bootstrap/key-custody/rate qualification and urgent-outage fallback; independent destination/key/schedule/current PITR and isolated cloud recovery remain.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "classification": "MANDATORY",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Exact-source inherited actual41+4/deviceDO encrypted source-destruction/fresh restore passes with signed capture transport and max5 source SQL/call. New writer reservation safety is qualified in separate native and broker suites; the restore fixture retains its legacy outer synthetic writer envelope. No isolated live-cloud restore/RTO/RPO acceptance.",
+      "remaining": "Complete operator/raw/credential/lifecycle/deferred/process-tree coverage, reconciliation of started/legacy unknown outcomes, trusted endpoint/bootstrap/key-custody/rate qualification and urgent-outage fallback; independent destination/key/schedule/current PITR and isolated cloud recovery remain.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only OPS-002/OPS-003 receive partial supporting evidence. Current repo ledger/Group1 plan is used; the user-referenced document tab has not been identified/reconciled."
+}
