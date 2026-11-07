@@ -74,6 +74,10 @@
       "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
       "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
     },
+    "scripts/external-process-completion.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Awaited subprocess output-pipe closure with redacted failure status; no production writer bootstrap, detached-descendant or remote rollback proof."
+    },
     "scripts/install-beta-map.mjs": {
       "classification": "SOURCE_DISABLED_LEGACY_BETA_TOOL",
       "reason": "Current first executable statement throws the obsolete-R2 refusal. Historical body/import dependencies stay indexed; do not execute or reactivate for D1 beta."
@@ -249,6 +253,10 @@
     "scripts/test-phase8d-parent-read-rate.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-process-completion.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual disposable local child and inherited-pipe descendants with synthetic staged writer ownership; no management/network/provider calls or complete process-tree qualification."
     },
     "scripts/test-phase8d-public-secret-exposure.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",

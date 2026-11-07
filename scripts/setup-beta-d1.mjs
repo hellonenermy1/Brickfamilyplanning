@@ -1,7 +1,7 @@
 import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import {validateBetaConfig} from './beta-deployment-contract.mjs';
 import fs from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import {runExternalProcess as run} from './external-process-completion.mjs';
 import { createHash,pbkdf2Sync,randomBytes,publicEncrypt,createPublicKey } from 'node:crypto';
 import os from 'node:os';
 import pathModule from 'node:path';
@@ -113,22 +113,6 @@ async function d1Query(d1Id, sql, params = []) {
   });
 }
 
-function run(cmd, args, { capture = false } = {}) {
-  return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, {
-      shell: process.platform === 'win32',
-      env: { ...process.env },
-      stdio: capture ? ['inherit', 'pipe', 'pipe'] : 'inherit'
-    });
-    let out = '', err = '';
-    if (capture) {
-      p.stdout.on('data', d => { out += d; process.stdout.write(d); });
-      p.stderr.on('data', d => { err += d; process.stderr.write(d); });
-    }
-    p.on('error', reject);
-    p.on('exit', code => code === 0 ? resolve(out + err) : reject(new Error(`${cmd} exited ${code}${err ? `: ${err.slice(-1600)}` : ''}`)));
-  });
-}
 
 function ymd(date) { return date.toISOString().slice(0, 10).replaceAll('-', ''); }
 async function findMapSource() {
@@ -233,16 +217,7 @@ const loginHash = generatedLogin
     const digest=pbkdf2Sync(devAccessToken,salt,240000,32,'sha256');
     return 'pbkdf2-sha256:240000:'+salt.toString('base64url')+':'+digest.toString('base64url');
    })();
-await new Promise((resolve, reject) => {
-  const child = spawn(npx, ['wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH', '--config', GENERATED_CONFIG], {
-    shell: process.platform === 'win32',
-    env: { ...process.env },
-    stdio: ['pipe', 'ignore', 'ignore']
-  });
-  child.on('error', reject);
-  child.on('exit', code => code === 0 ? resolve() : reject(new Error('Unable to configure private development login secret')));
-  child.stdin.end(loginHash + '\n');
-});
+await run(npx, ['wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH', '--config', GENERATED_CONFIG], {input:loginHash+'\n',quiet:true});
 // The new verifier is active: expire previous sessions and live login cookies now.
 await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
 

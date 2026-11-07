@@ -1,13 +1,13 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "b1db1b2d7b64a39209d187901c72f2871d3bec24",
+  "basisCommitSha": "91d3c679cf04f887253bbb0ec65ddf587c468bb8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "e64a9061d203fc104254c9c739c33c78663a2e6518d60b986ce86b89893f6a2a",
+  "policySha256": "c0adca0c6753827003234d76fc06a243d3b26cde1b5ce7e5bd69d91da26d2545",
   "summary": {
-    "selectedFiles": 288,
+    "selectedFiles": 290,
     "filesWithManagementSignals": 72,
-    "explicitClassifications": 74,
+    "explicitClassifications": 76,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 130
   },
-  "sourceSetSha256": "9a6b9ab51859dec4a12133fd470e00130a4d21a9e629235a1c28ea2cb0ce3b41",
+  "sourceSetSha256": "20def6f671dfd448ed812c68ca62d904d50ec94cc6498cf127985d7902d1d4a0",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -763,6 +763,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-private-archive-files.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-process-completion.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1837,6 +1842,11 @@
     },
     {
       "from": "scripts/setup-beta-d1.mjs",
+      "to": "scripts/external-process-completion.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/setup-beta-d1.mjs",
       "to": "scripts/phase8d-development-schema16.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
@@ -2342,6 +2352,11 @@
     },
     {
       "from": "scripts/test-phase8d-external-writer.mjs",
+      "to": "scripts/external-process-completion.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-external-writer.mjs",
       "to": "scripts/publish-beta-d1-release.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
@@ -2453,6 +2468,21 @@
     {
       "from": "scripts/test-phase8d-private-archive-files.mjs",
       "to": "scripts/phase8d-protected-backup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-process-completion.mjs",
+      "to": "scripts/external-process-completion.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-process-completion.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-process-completion.mjs",
+      "to": "scripts/setup-beta-d1.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2959,8 +2989,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "f44f1c69fdf3cc9b84e4e2cb2925cb223ce56090d932c8e4f4b8df5f3416a14b",
-      "gitBlobSha": "f745d84763efe2d1dc269f339755a212aa609e82",
+      "sha256": "452691e9795687c1071c9c85e8a74377b189dd3ad771fab353d631b7f740396c",
+      "gitBlobSha": "e7c78a4d9092707c207bdb20af16863a40251f32",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3015,6 +3045,7 @@
         "scripts/test-phase8d-parent-credential-recovery.mjs",
         "scripts/test-phase8d-pitr-lifecycle.mjs",
         "scripts/test-phase8d-private-archive-files.mjs",
+        "scripts/test-phase8d-process-completion.mjs",
         "scripts/test-phase8d-protected-backup.mjs",
         "scripts/test-phase8d-refinement-corruption.mjs",
         "scripts/test-phase8d-refinement-lifecycle.mjs",
@@ -4167,6 +4198,21 @@
       "npmScriptReferences": []
     },
     {
+      "path": "scripts/external-process-completion.mjs",
+      "sha256": "5600f1b7c11b9f771bf4490336dce6c9e7ef8a3324b76e2388452b9bef41bca5",
+      "gitBlobSha": "dfde4e7dc41b00459be5d5ae6f7248a6be15391f",
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Awaited subprocess output-pipe closure with redacted failure status; no production writer bootstrap, detached-descendant or remote rollback proof.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:child_process"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
       "path": "scripts/gate-beta-apk-currency.mjs",
       "sha256": "0814f051101c4428265c333774e02ce451859400849cf601372bec6f65275215",
       "gitBlobSha": "a16764845f996094e2ab32e404f800b4674d6b7f",
@@ -5127,8 +5173,8 @@
     },
     {
       "path": "scripts/setup-beta-d1.mjs",
-      "sha256": "ef80f6f56b814b87e70cb789d66679c72dadf35cdbc33d2b86377d28d7a19ccd",
-      "gitBlobSha": "1067e4da8ce454f06d64c9001d930932d3d73890",
+      "sha256": "cbd484848518ff6169eee065ba693963060625ca4031c3583cfb82a48e0a777f",
+      "gitBlobSha": "193339ffba1f4753ec55c65ae557f0c6f56d6c05",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
@@ -5157,27 +5203,27 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 158,
+          "line": 142,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 158,
+          "line": 142,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 209,
+          "line": 193,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 209,
+          "line": 193,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 219,
+          "line": 203,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 237,
+          "line": 220,
           "kind": "WRANGLER_LITERAL"
         }
       ],
@@ -5190,9 +5236,9 @@
       "stagedExternalControllerInstallCalls": [],
       "imports": [
         "./beta-deployment-contract.mjs",
+        "./external-process-completion.mjs",
         "./phase8d-development-schema16.mjs",
         "./staged-external-writer.mjs",
-        "node:child_process",
         "node:crypto",
         "node:fs/promises",
         "node:os",
@@ -7920,60 +7966,56 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer.mjs",
-      "sha256": "21355a105eb7f5d534d6a8e7327aef8a37426622eeee289ed666d40dee8071e7",
-      "gitBlobSha": "3668fe52d94494cd44e9de5d868df611335117da",
+      "sha256": "cbe4f6bc241ea808e084250c6f44f2353260cbefab53a8f1631bf85bba562ade",
+      "gitBlobSha": "9bd5f4ee21e4522ba0158b7b3373f60b687984fd",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
       "signals": [
         {
-          "line": 30,
+          "line": 31,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 33,
+          "line": 51,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 34,
+          "line": 52,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 37,
+          "line": 55,
           "kind": "MANAGEMENT_API_LITERAL"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 11,
+          "line": 12,
           "operation": "unused"
         },
         {
-          "line": 11,
+          "line": 12,
           "operation": "unused"
         },
         {
-          "line": 13,
+          "line": 14,
           "operation": "<DYNAMIC>"
-        },
-        {
-          "line": 14,
-          "operation": "probe"
-        },
-        {
-          "line": 14,
-          "operation": "unknown"
         },
         {
           "line": 15,
           "operation": "probe"
         },
         {
+          "line": 15,
+          "operation": "unknown"
+        },
+        {
           "line": 16,
-          "operation": "schema"
+          "operation": "probe"
         },
         {
           "line": 17,
-          "operation": "probe"
+          "operation": "schema"
         },
         {
           "line": 18,
@@ -7990,23 +8032,36 @@
         {
           "line": 21,
           "operation": "probe"
+        },
+        {
+          "line": 22,
+          "operation": "probe"
+        },
+        {
+          "line": 38,
+          "operation": "probe"
+        },
+        {
+          "line": 46,
+          "operation": "probe"
         }
       ],
       "stagedExternalControllerInstallCalls": [
         {
-          "line": 9
+          "line": 10
         },
         {
-          "line": 12
+          "line": 13
         },
         {
-          "line": 12
+          "line": 13
         },
         {
-          "line": 29
+          "line": 30
         }
       ],
       "imports": [
+        "./external-process-completion.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "esbuild",
         "miniflare",
@@ -8656,6 +8711,41 @@
       ],
       "referencedScriptCandidates": [
         "scripts/phase8d-protected-backup.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-process-completion.mjs",
+      "sha256": "7e10a9befa34c77c399947cefc236509644df0e840c6c50a76d96694beecc430",
+      "gitBlobSha": "62ffea2a57c692ec1e0c1ae583d315d07fb42cd7",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual disposable local child and inherited-pipe descendants with synthetic staged writer ownership; no management/network/provider calls or complete process-tree qualification.",
+      "signals": [],
+      "stagedExternalWriterCalls": [
+        {
+          "line": 34,
+          "operation": "probe"
+        },
+        {
+          "line": 43,
+          "operation": "probe"
+        }
+      ],
+      "stagedExternalControllerInstallCalls": [
+        {
+          "line": 12
+        }
+      ],
+      "imports": [
+        "./external-process-completion.mjs",
+        "./staged-external-writer.mjs",
+        "node:assert/strict",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/setup-beta-d1.mjs"
       ],
       "npmScriptReferences": []
     },
