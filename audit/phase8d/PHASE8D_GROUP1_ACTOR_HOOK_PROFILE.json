@@ -1,16 +1,36 @@
 {
   "format": "brick-group1-actor-hook-profile-v1",
   "activation": "NOT_READY",
-  "hookedMutationBoundaries": 16,
+  "hookedMutationBoundaries": 18,
   "reviewedMethods": 41,
-  "databaseAdapterBoundarySites": [
+  "workerEntryBoundaries": [
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 71
+      "method": "fetch",
+      "operation": "worker.fetch",
+      "priority": "urgent",
+      "line": 71,
+      "bodySha256": "be0089621e76a107b84f0f747fbc8aa08a15f79a36220fe1c9c3f683ff177c2d",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     },
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 97
+      "method": "scheduled",
+      "operation": "worker.scheduled",
+      "priority": "urgent",
+      "line": 100,
+      "bodySha256": "ed85f00bcee36e65e6095174177755d3ca92fcf48e39c1260b33121991f6696d",
+      "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
+    }
+  ],
+  "databaseAdapterBoundarySites": [
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "line": 73
+    },
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "line": 100
     },
     {
       "file": "src/beta-device.ts",
@@ -21,7 +41,7 @@
       "line": 15
     }
   ],
-  "notice": "Current actor surface and source bodies only. Production controller installs remain zero. Worker/D1/external writers, urgent-outage fallback, authenticated transport and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
+  "notice": "Current actor/Worker entry surface and source bodies only. Production controller installs remain zero. Complete raw/operator/lifecycle/deferred coverage, urgent-outage fallback, transport/bootstrap/custody and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
   "methods": [
     {
       "file": "src/device-do.ts",

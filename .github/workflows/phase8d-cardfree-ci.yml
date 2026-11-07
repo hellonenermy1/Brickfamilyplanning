@@ -44,11 +44,12 @@ jobs:
           node scripts/test-phase8d-acceptance-worksheet.mjs
           node scripts/test-phase8d-closure-inventory.mjs
           node scripts/test-phase8d-external-writer-inventory.mjs
-          node scripts/phase8d-external-writer-inventory.mjs 91d3c679cf04f887253bbb0ec65ddf587c468bb8 > /tmp/group1-external-writer-inventory.json
+          node scripts/phase8d-external-writer-inventory.mjs df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f > /tmp/group1-external-writer-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json /tmp/group1-external-writer-inventory.json
           node scripts/audit-phase8d-requirements.mjs
       - name: Bounded coherent capture source and encrypted coordinator
         run: |
+          node scripts/test-phase8d-worker-entry.mjs
           node scripts/test-phase8d-capture-admission.mjs
           node scripts/test-phase8d-parent-credential-recovery.mjs
           node scripts/test-phase8d-capture-reservations.mjs
@@ -58,7 +59,7 @@ jobs:
           node scripts/test-phase8d-edge-client.mjs
           node scripts/test-phase8d-capture-writer-boundary.mjs
           node scripts/test-phase8d-capture-d1-boundary.mjs
-          node scripts/phase8d-capture-write-inventory.mjs 91d3c679cf04f887253bbb0ec65ddf587c468bb8 > /tmp/group1-write-inventory.json
+          node scripts/phase8d-capture-write-inventory.mjs df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f > /tmp/group1-write-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
           node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
           cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json

@@ -282,6 +282,10 @@
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
     },
+    "scripts/test-phase8d-worker-entry.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual composed Worker and signed SQLite authority with controlled scheduler capabilities and native deferred D1 witness writes; no provider credentials, outbound calls or complete writer/operational qualification."
+    },
     "scripts/test-phase8d-workerd-integration.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."

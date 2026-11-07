@@ -1,13 +1,13 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "91d3c679cf04f887253bbb0ec65ddf587c468bb8",
+  "basisCommitSha": "df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "c0adca0c6753827003234d76fc06a243d3b26cde1b5ce7e5bd69d91da26d2545",
+  "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
   "summary": {
-    "selectedFiles": 290,
+    "selectedFiles": 291,
     "filesWithManagementSignals": 72,
-    "explicitClassifications": 76,
+    "explicitClassifications": 77,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 130
   },
-  "sourceSetSha256": "20def6f671dfd448ed812c68ca62d904d50ec94cc6498cf127985d7902d1d4a0",
+  "sourceSetSha256": "546b9e8f4532045fb52467ff4850de592bb976b217e35d2ce184f60f78f0ef52",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -813,6 +813,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-watchdog.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-worker-entry.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2641,6 +2646,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-worker-entry.mjs",
+      "to": "scripts/phase8d-signed-writer-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-workerd-integration.mjs",
       "to": "scripts/phase8d-do-state-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2989,8 +2999,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "452691e9795687c1071c9c85e8a74377b189dd3ad771fab353d631b7f740396c",
-      "gitBlobSha": "e7c78a4d9092707c207bdb20af16863a40251f32",
+      "sha256": "c5ab930473fa96fd61d076ca9855634851578521cf2a91b36c83a6b5829b0bd7",
+      "gitBlobSha": "f601d5a7dbdd2eb89db86a04271517925ba6519f",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3055,6 +3065,7 @@
         "scripts/test-phase8d-route-lookup.mjs",
         "scripts/test-phase8d-watchdog-state.mjs",
         "scripts/test-phase8d-watchdog.mjs",
+        "scripts/test-phase8d-worker-entry.mjs",
         "scripts/test-phase8d-workerd-integration.mjs"
       ],
       "npmScriptReferences": [
@@ -4629,8 +4640,8 @@
     },
     {
       "path": "scripts/phase8d-capture-hook-profile.mjs",
-      "sha256": "8667fa28952c7be63f15d6a107bf6c1c5fe756de83db5f41d255391f0c0cd729",
-      "gitBlobSha": "daea49c4eeb824b6236a27232d802969b2465bbe",
+      "sha256": "79e8f158fe36a306009956d60559a8b5f046c70d0d3ee8881ea0974ec8a8332b",
+      "gitBlobSha": "544e4b1e291b4aa09fbbe07c70609a7c9187b5ed",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7192,8 +7203,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "23558548950bff2583cab05de98d168673b09e8c895d932d929efedcade3bc3d",
-      "gitBlobSha": "2d73567bf84c16d303f37e38db27739fd69c7800",
+      "sha256": "af81eee82714c354ce495b2015d63acf68a62d4dda218dcdc59f33d76db8ab1b",
+      "gitBlobSha": "cd7870bcafc1cb900b1319c67116760b46608dea",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -9328,6 +9339,28 @@
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
         "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-worker-entry.mjs",
+      "sha256": "899d285b7747768344d1a1ee61ee794002035df755bbe80199b5339f0e66b81b",
+      "gitBlobSha": "a9feb557a9927a16c6bf45da743ef4e3e0735f9c",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual composed Worker and signed SQLite authority with controlled scheduler capabilities and native deferred D1 witness writes; no provider credentials, outbound calls or complete writer/operational qualification.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-signed-writer-fixture.mjs",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "91d3c679cf04f887253bbb0ec65ddf587c468bb8",
+  "basisCommitSha": "df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
@@ -13,9 +13,19 @@
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "598b853278f78a064e75898da6c28bf0eda8325186e7b60f3fb6e60112fa15d5",
+  "runtimeSourceSetSha256": "6bc5f32951b0fd6b07936f073650fca55e5b8aa9e88588935707d85960caad9e",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "line": 72,
+      "column": 10
+    },
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "line": 100,
+      "column": 87
+    },
     {
       "file": "src/capture-d1-boundary.ts",
       "line": 10,
@@ -4369,8 +4379,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "841f3fe580819d868530f698cd9f0fcd4db039c652f633e55a6338f7f4b00d9b",
-      "gitBlobSha": "6fb48802f97ab3870fa0f464104de6f319b1dae8",
+      "sha256": "c3c8ba75cdfb962e07af86ed805fb608dd08a1b8237ae0b8e655f930ae8a4b94",
+      "gitBlobSha": "082d68d6334e3fb6ef4b843ac74f7221ac189b0f",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",
@@ -4378,6 +4388,7 @@
         "src/beta-scheduler.ts",
         "src/bounded-body.ts",
         "src/capture-d1-boundary.ts",
+        "src/capture-writer-boundary.ts",
         "src/dev-free-runtime.ts",
         "src/dev-maintenance.ts",
         "src/dev-parent-auth.ts",
@@ -4387,7 +4398,7 @@
       ],
       "sites": [
         {
-          "line": 26,
+          "line": 27,
           "column": 11,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -4396,7 +4407,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 51,
+          "line": 52,
           "column": 100,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -4405,7 +4416,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 58,
+          "line": 59,
           "column": 3,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4413,7 +4424,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 58,
+          "line": 59,
           "column": 63,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4421,7 +4432,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 68,
+          "line": 69,
           "column": 52,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4429,7 +4440,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 89,
+          "line": 91,
           "column": 11,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "put",
