@@ -2,7 +2,7 @@
 import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';import {pathToFileURL} from 'node:url';import ts from 'typescript';
 const hash=(algorithm,bytes)=>createHash(algorithm).update(bytes).digest('hex');
 export const selectedPath=p=>typeof p==='string'&&!p.includes('\\')&&!p.split('/').some(s=>s==='..'||s==='')&&(p==='package.json'||/^(?:scripts|tools)\/.*\.(?:mjs|cjs|js|ts|sh|py|ps1|bat)$/.test(p)||/^\.github\/workflows\/.*\.ya?ml$/.test(p));
-const patterns=[['MANAGEMENT_API_LITERAL',/api\.cloudflare\.com/],['CLOUDFLARE_TOKEN_REFERENCE',/CLOUDFLARE_API_TOKEN/],['WRANGLER_LITERAL',/\bwrangler\b/],['D1_MANAGEMENT_QUERY_LITERAL',/\/d1\/database\//],['REMOTE_FLAG_LITERAL',/--remote\b/],['B2_NATIVE_API_LITERAL',/\/b2api\/v4\//],['B2_DESTINATION_CAPABILITY',/createStagedB2ArchiveDestination/],['STAGED_BACKUP_MONITOR_CAPABILITY',/openStagedBackupMonitor/]];
+const patterns=[['MANAGEMENT_API_LITERAL',/api\.cloudflare\.com/],['CLOUDFLARE_TOKEN_REFERENCE',/CLOUDFLARE_API_TOKEN/],['WRANGLER_LITERAL',/\bwrangler\b/],['D1_MANAGEMENT_QUERY_LITERAL',/\/d1\/database\//],['REMOTE_FLAG_LITERAL',/--remote\b/],['B2_NATIVE_API_LITERAL',/\/b2api\/v4\//],['B2_DESTINATION_CAPABILITY',/createStagedB2ArchiveDestination/],['STAGED_BACKUP_MONITOR_CAPABILITY',/openStagedBackupMonitor/],['BACKUP_ALERT_RECEIPT_CAPABILITY',/verifyBackupAlertDeliveredReceipt|backupAlertReceiptSigningBytes/]];
 export function externalWriterInventory(files,policy,basisCommitSha){
  if(!/^[a-f0-9]{40}$/.test(basisCommitSha))throw Error('Exact basis SHA required');
  if(policy?.format!=='brick-external-writer-policy-v1'||!policy.entries||Array.isArray(policy.entries))throw Error('Invalid source policy');

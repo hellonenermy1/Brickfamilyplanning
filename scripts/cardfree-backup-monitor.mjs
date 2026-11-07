@@ -6,6 +6,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {createHash,randomBytes} from 'node:crypto';
 import {validateBackupHealthPolicy,checkProtectedBackupHealth} from './cardfree-backup-health.mjs';
 import {validateB2ArchiveReceipt} from './cardfree-b2-destination.mjs';
+import {validateBackupAlertReceiptPin,backupMonitorAlertDigest,verifyBackupAlertDeliveredReceipt} from './cardfree-backup-alert-receipt.mjs';
 const TABLE='CREATE TABLE monitor_state(id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL, digest TEXT NOT NULL)';
 const exact=(v,keys)=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===[...keys].sort().join(',');
 const hash=v=>createHash('sha256').update(v).digest('hex');
@@ -22,8 +23,10 @@ function target(input){
  return{policy:{...policy,context:Object.fromEntries(['deployment','sourceSha','backupId','capturedAt','keyId'].map(k=>[k,policy.context[k]]))},receipt};
 }
 export function openStagedBackupMonitor({directory,config:input,target:initial,clock=Date.now}={}){
- if(typeof directory!=='string'||!directory||typeof clock!=='function'||!exact(input,['format','monitorId','intervalMs','retryBaseMs','retryMaxMs'])||input.format!=='brick-backup-monitor-config-v1'||!hex(input.monitorId,32)||!Number.isSafeInteger(input.intervalMs)||input.intervalMs<60000||input.intervalMs>86400000||!Number.isSafeInteger(input.retryBaseMs)||input.retryBaseMs<1000||!Number.isSafeInteger(input.retryMaxMs)||input.retryMaxMs<input.retryBaseMs||input.retryMaxMs>input.intervalMs)refuse();
- const config=Object.fromEntries(['format','monitorId','intervalMs','retryBaseMs','retryMaxMs'].map(k=>[k,input[k]])),configSha256=hash(JSON.stringify(config)),root=path.resolve(directory),file=path.join(root,'backup-monitor.sqlite');
+ const receiptEnabled=input?.format==='brick-backup-monitor-config-v2';
+ if(typeof directory!=='string'||!directory||typeof clock!=='function'||!exact(input,['format','monitorId','intervalMs','retryBaseMs','retryMaxMs',...(receiptEnabled?['deliveryReceiptPin']:[])])||!['brick-backup-monitor-config-v1','brick-backup-monitor-config-v2'].includes(input.format)||!hex(input.monitorId,32)||!Number.isSafeInteger(input.intervalMs)||input.intervalMs<60000||input.intervalMs>86400000||!Number.isSafeInteger(input.retryBaseMs)||input.retryBaseMs<1000||!Number.isSafeInteger(input.retryMaxMs)||input.retryMaxMs<input.retryBaseMs||input.retryMaxMs>input.intervalMs)refuse();
+ let receiptPin;try{receiptPin=receiptEnabled?validateBackupAlertReceiptPin(input.deliveryReceiptPin):null;}catch{refuse();}
+ const config={...Object.fromEntries(['format','monitorId','intervalMs','retryBaseMs','retryMaxMs'].map(k=>[k,input[k]])),...(receiptEnabled?{deliveryReceiptPin:receiptPin}:{})},configSha256=hash(JSON.stringify(config)),root=path.resolve(directory),file=path.join(root,'backup-monitor.sqlite');
  let db,closed=false,identity;
  function privateStat(p,directory=false){const s=fs.lstatSync(p);if(s.isSymbolicLink()||!(directory?s.isDirectory():s.isFile())||(s.mode&0o077)||!directory&&s.nlink!==1||typeof process.getuid==='function'&&s.uid!==process.getuid())refuse();return s;}
  function checkPath(){if(closed)refuse();privateStat(root,true);const s=privateStat(file);if(identity&&(s.dev!==identity.dev||s.ino!==identity.ino))refuse();for(const suffix of ['-journal','-wal','-shm']){try{privateStat(file+suffix);}catch(e){if(e.code!=='ENOENT')throw e;}}}
@@ -34,7 +37,13 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
   if(v.lastResult!==null&&(!exact(v.lastResult,['status','code','checkedAt','capturedAt','ageMs'])||!['FRESH','STALE','UNVERIFIED'].includes(v.lastResult.status)||!resultCodes.has(v.lastResult.code)||!positive(v.lastResult.checkedAt)||v.lastResult.checkedAt>v.lastClockAt||v.lastResult.capturedAt!==v.target.policy.context.capturedAt||v.lastResult.ageMs!==null&&(!Number.isSafeInteger(v.lastResult.ageMs)||v.lastResult.ageMs<0)||v.lastResult.status==='FRESH'&&(v.lastResult.code!=='AUTHENTICATED_READBACK_CURRENT'||v.lastSuccessAt!==v.lastResult.checkedAt)||v.lastResult.status==='STALE'&&v.lastResult.code!=='ARCHIVE_TOO_OLD'||v.lastResult.status==='UNVERIFIED'&&(!v.lastResult.code.startsWith('HEALTH_')||v.lastResult.ageMs!==null)||v.lastResult.status!=='UNVERIFIED'&&(v.lastResult.ageMs!==v.lastResult.checkedAt-v.lastResult.capturedAt||v.lastResult.status==='FRESH'&&v.lastResult.ageMs>v.target.policy.maxAgeMs||v.lastResult.status==='STALE'&&v.lastResult.ageMs<=v.target.policy.maxAgeMs)))refuse();
   if(v.incident!==null&&(!exact(v.incident,['id','openedAt','code'])||!hex(v.incident.id,32)||!positive(v.incident.openedAt)||v.incident.openedAt>v.lastClockAt||!resultCodes.has(v.incident.code)))refuse();
   if(!Array.isArray(v.outbox)||v.outbox.length>64)refuse();const ids=new Set();
-  for(const row of v.outbox){const m=row?.message;if(!exact(row,['message','state','deliveredAt'])||!['PENDING','STARTED','DELIVERED','UNCERTAIN'].includes(row.state)||!exact(m,['format','eventId','monitorId','incidentId','kind','observedAt','capturedAt','code'])||m.format!=='brick-backup-monitor-alert-v1'||!hex(m.eventId,32)||ids.has(m.eventId)||m.monitorId!==config.monitorId||!hex(m.incidentId,32)||!['BACKUP_UNVERIFIED','BACKUP_STALE','BACKUP_RECOVERED'].includes(m.kind)||!positive(m.observedAt)||m.observedAt>v.lastClockAt||!positive(m.capturedAt)||!resultCodes.has(m.code)||row.state==='DELIVERED'&&(!positive(row.deliveredAt)||row.deliveredAt>v.lastClockAt)||row.state!=='DELIVERED'&&row.deliveredAt!==null)refuse();ids.add(m.eventId);}
+  for(const row of v.outbox){const m=row?.message;if(!(exact(row,['message','state','deliveredAt'])||receiptEnabled&&exact(row,['message','state','deliveredAt','deliveryReceipt']))||!['PENDING','STARTED','DELIVERED','UNCERTAIN'].includes(row.state)||!exact(m,['format','eventId','monitorId','incidentId','kind','observedAt','capturedAt','code'])||m.format!=='brick-backup-monitor-alert-v1'||!hex(m.eventId,32)||ids.has(m.eventId)||m.monitorId!==config.monitorId||!hex(m.incidentId,32)||!['BACKUP_UNVERIFIED','BACKUP_STALE','BACKUP_RECOVERED'].includes(m.kind)||!positive(m.observedAt)||m.observedAt>v.lastClockAt||!positive(m.capturedAt)||!resultCodes.has(m.code)||row.state==='DELIVERED'&&(!positive(row.deliveredAt)||row.deliveredAt>v.lastClockAt)||row.state!=='DELIVERED'&&row.deliveredAt!==null)refuse();
+   if(Object.hasOwn(row,'deliveryReceipt')){
+    const proof=row.deliveryReceipt;if(!receiptEnabled||row.state!=='DELIVERED'||!exact(proof,['envelope','sha256','verifiedAt'])||!hex(proof.sha256,64)||!positive(proof.verifiedAt)||proof.verifiedAt>v.lastClockAt)refuse();
+    const checked=verifyBackupAlertDeliveredReceipt(proof.envelope,receiptPin,{monitorId:config.monitorId,configSha256,eventId:m.eventId,messageSha256:backupMonitorAlertDigest(m),observedAt:m.observedAt,now:proof.verifiedAt});
+    if(checked.sha256!==proof.sha256||row.deliveredAt!==checked.envelope.payload.deliveredAt)refuse();
+   }
+   ids.add(m.eventId);}
  }
  function now(min){const n=clock();if(!positive(n)||n<min||n>Number.MAX_SAFE_INTEGER-86400001)refuse();return n;}
  function write(v){validate(v);const body=JSON.stringify(v);if(body.length>65536)refuse();if(db.prepare('UPDATE monitor_state SET body=?,digest=? WHERE id=1').run(body,hash(body)).changes!==1)refuse();}
@@ -68,14 +77,26 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
     else{v.failures=Math.min(v.failures+1,32);v.nextCheckAt=n+Math.min(config.retryMaxMs,config.retryBaseMs*2**Math.min(v.failures-1,16));if(!v.incident){v.incident={id:nonce(),openedAt:n,code:result.code};queue(v,n,v.incident,result.status==='STALE'?'BACKUP_STALE':'BACKUP_UNVERIFIED',result.code);}else v.incident.code=result.code;}
     return true;});return{applied,code:applied?'CHECK_RECORDED':'SUPERSEDED',snapshot:api.snapshot()};
   },
+  deliveryChallenges(){
+   try{if(!receiptEnabled)refuse();const v=read();now(v.lastClockAt);return v.outbox.filter(r=>['STARTED','UNCERTAIN'].includes(r.state)).map(r=>({monitorId:config.monitorId,configSha256,authorityEpoch:receiptPin.authorityEpoch,recipientSha256:receiptPin.recipientSha256,eventId:r.message.eventId,messageSha256:backupMonitorAlertDigest(r.message),observedAt:r.message.observedAt}));}catch{refuse();}
+  },
+  reconcileDelivered(envelope){
+   if(!receiptEnabled)refuse();let captured;try{captured=clone(envelope);}catch{refuse();}
+   const result=change((v,n)=>{
+    const row=v.outbox.find(r=>r.message.eventId===captured?.payload?.eventId);if(!row||!['STARTED','UNCERTAIN','DELIVERED'].includes(row.state))refuse();
+    const proof=verifyBackupAlertDeliveredReceipt(captured,receiptPin,{monitorId:config.monitorId,configSha256,eventId:row.message.eventId,messageSha256:backupMonitorAlertDigest(row.message),observedAt:row.message.observedAt,now:n});
+    if(row.state==='DELIVERED'){if(!row.deliveryReceipt||row.deliveryReceipt.sha256!==proof.sha256)refuse();return{reconciled:true,alreadyRecorded:true};}
+    row.state='DELIVERED';row.deliveredAt=proof.envelope.payload.deliveredAt;row.deliveryReceipt=proof;return{reconciled:true,alreadyRecorded:false};
+   });return{...result,snapshot:api.snapshot()};
+  },
   async deliverNext({send,timeoutMs=15000}={}){
    if(typeof send!=='function'||!Number.isSafeInteger(timeoutMs)||timeoutMs<5||timeoutMs>30000)refuse();
    const message=change(v=>{const row=v.outbox.find(r=>r.state==='PENDING');if(!row)return null;row.state='STARTED';return clone(row.message);});
    if(!message)return{status:'NO_PENDING',snapshot:api.snapshot()};
    const abort=new AbortController();let timer,ack,success=false;
    try{const deadline=performance.now()+timeoutMs;ack=await Promise.race([Promise.resolve().then(()=>send({message:clone(message),signal:abort.signal})),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('timeout')),timeoutMs);})]);success=performance.now()<deadline&&exact(ack,['delivered','eventId'])&&ack.delivered===true&&ack.eventId===message.eventId;}catch{}finally{clearTimeout(timer);abort.abort();}
-   change((v,n)=>{const row=v.outbox.find(r=>r.message.eventId===message.eventId);if(!row||row.state!=='STARTED')refuse();row.state=success?'DELIVERED':'UNCERTAIN';row.deliveredAt=success?n:null;});
-   return{status:success?'DELIVERED':'UNCERTAIN',snapshot:api.snapshot()};
+   change((v,n)=>{const row=v.outbox.find(r=>r.message.eventId===message.eventId);if(!row)refuse();if(row.state==='DELIVERED'&&row.deliveryReceipt)return;if(row.state!=='STARTED')refuse();row.state=success?'DELIVERED':'UNCERTAIN';row.deliveredAt=success?n:null;});
+   const snapshot=api.snapshot();const state=read().outbox.find(r=>r.message.eventId===message.eventId);return{status:state?.state==='DELIVERED'?'DELIVERED':success?'DELIVERED':'UNCERTAIN',snapshot};
   },
   close(){if(!closed){closed=true;db.close();}}
  };
