@@ -1,23 +1,10 @@
+import {readPrivateBackupFile as readBounded} from './cardfree-private-file.mjs';
 // Explicit off-platform packaging/verification only. Never captures live stores.
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {sealBackup,openBackup,MAX_PACKAGE_BYTES} from './cardfree-backup-package.mjs';
 
-function readBounded(file,limit) {
-  if(typeof fs.constants.O_NOFOLLOW!=='number'||typeof fs.constants.O_NONBLOCK!=='number')throw Error('private read unsupported');
-  const fd=fs.openSync(file,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);
-  try {
-    const stat=fs.fstatSync(fd);
-    if (!stat.isFile() || stat.size > limit || (stat.mode&0o077)!==0) throw Error('private input file required');
-    const buffer=Buffer.alloc(stat.size);let offset=0;
-    while (offset < buffer.length) { const n=fs.readSync(fd,buffer,offset,buffer.length-offset,null);if (!n) throw Error('incomplete input file');offset+=n; }
-    if (fs.readSync(fd,Buffer.alloc(1),0,1,null)) throw Error('input file changed during read');
-    const after=fs.fstatSync(fd);
-    if(after.size!==stat.size||after.mtimeMs!==stat.mtimeMs||after.ctimeMs!==stat.ctimeMs)throw Error('input file changed during read');
-    return buffer;
-  } finally { fs.closeSync(fd); }
-}
 function publishExclusive(output,bytes) {
   const parent=path.dirname(path.resolve(output)),directory=fs.lstatSync(parent);
   if(!directory.isDirectory()||directory.isSymbolicLink()||(directory.mode&0o077)!==0)throw Error('private destination directory required');

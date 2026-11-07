@@ -44,7 +44,7 @@ jobs:
           node scripts/test-phase8d-acceptance-worksheet.mjs
           node scripts/test-phase8d-closure-inventory.mjs
           node scripts/test-phase8d-external-writer-inventory.mjs
-          node scripts/phase8d-external-writer-inventory.mjs 50c0fc8886985817b525e31e40d7594b1b6688ab > /tmp/group1-external-writer-inventory.json
+          node scripts/phase8d-external-writer-inventory.mjs 1d1730d12eaacb63e96ed5c16765a983ca8dd52e > /tmp/group1-external-writer-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json /tmp/group1-external-writer-inventory.json
           node scripts/audit-phase8d-requirements.mjs
       - name: Bounded coherent capture source and encrypted coordinator
@@ -56,7 +56,7 @@ jobs:
           node scripts/test-phase8d-edge-client.mjs
           node scripts/test-phase8d-capture-writer-boundary.mjs
           node scripts/test-phase8d-capture-d1-boundary.mjs
-          node scripts/phase8d-capture-write-inventory.mjs 50c0fc8886985817b525e31e40d7594b1b6688ab > /tmp/group1-write-inventory.json
+          node scripts/phase8d-capture-write-inventory.mjs 1d1730d12eaacb63e96ed5c16765a983ca8dd52e > /tmp/group1-write-inventory.json
           cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
           node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
           cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json
@@ -80,6 +80,7 @@ jobs:
         run: |
           node scripts/test-phase8d-protected-backup.mjs
           node scripts/test-phase8d-private-archive-files.mjs
+          node scripts/test-phase8d-backup-health.mjs
       - name: Destroy source and recover both D1 stores and beta DO from encrypted package
         run: node scripts/test-phase8d-cardfree-recovery.mjs
       - name: Signed D1 history ACK partial-batch retry and exact revoke race

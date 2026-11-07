@@ -1,3 +1,5 @@
+import {checkProtectedBackupHealth} from './cardfree-backup-health.mjs';
+import {readPrivateBackupFile} from './cardfree-private-file.mjs';
 import {seedRecoveryRelations,assertRecoveryRelations,relationTables,seedRecoveryActions,assertRetiredRecoveryActions} from './phase8d-recovery-relations-fixture.mjs';
 import {signedWriterFixture} from './phase8d-signed-writer-fixture.mjs';
 import {captureProtectedBackup,privateCaptureJournal} from './cardfree-capture-coordinator.mjs';
@@ -139,6 +141,7 @@ try{
  new Uint8Array(backup.body).fill(0);backup=null;doSnapshots=[];
  await close(source);assert(fs.readdirSync(source.persist,{recursive:true}).some(x=>x.endsWith('.sqlite')));fs.rmSync(source.persist,{recursive:true,force:true});assert(!fs.existsSync(source.persist));source=null;
  console.log('PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs');
+ const healthPolicy={format:'brick-backup-health-policy-v1',context:trustedContext,archiveSha256:sha(fs.readFileSync(protectedFile)),maxAgeMs:60000};const readArchive=({maxBytes})=>readPrivateBackupFile(protectedFile,maxBytes);const freshHealth=await checkProtectedBackupHealth({policy:healthPolicy,key:encryptionKey,readArchive});assert.equal(freshHealth.status,'FRESH');assert.equal(freshHealth.restorabilityVerified,false);const staleHealth=await checkProtectedBackupHealth({policy:healthPolicy,key:encryptionKey,readArchive,clock:()=>trustedContext.capturedAt+60001});assert.equal(staleHealth.status,'STALE');const wrongHealth=await checkProtectedBackupHealth({policy:healthPolicy,key:randomBytes(32).toString('base64'),readArchive});assert.equal(wrongHealth.status,'UNVERIFIED');console.log('PASS actual encrypted41+4/deviceDO private archive is authenticated/read back after source destruction; captured-time stale and wrong-key health refuse fresh status');
  const restoredPackage=openBackup(fs.readFileSync(protectedFile),encryptionKey,trustedContext);
  backup={body:restoredPackage.body.buffer.slice(restoredPackage.body.byteOffset,restoredPackage.body.byteOffset+restoredPackage.body.byteLength),sha256:restoredPackage.sha256};doSnapshots=restoredPackage.doSnapshots;
  assert.equal(doSnapshots.length,2);
