@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+  "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -178,6 +178,15 @@
       "externalSuiteCases": 29,
       "detachedDescendantsOrRemoteSuccessQualified": false,
       "productionInstalled": false
+    },
+    {
+      "id": "WORKER_FETCH_AND_SCHEDULED_ENTRY_OWNERSHIP",
+      "state": "ACTUAL_WORKER_SIGNED_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "nativeCases": 12,
+      "workerBoundaries": 2,
+      "actorBoundariesPreserved": 16,
+      "productionInstalled": false,
+      "completeWriterCoverageOrOutageFallbackQualified": false
     }
   ],
   "remaining": [
@@ -188,8 +197,8 @@
     },
     {
       "id": "COMPLETE_WRITER_HOOKS",
-      "state": "PARTIAL_INERT_ACTOR_AND_D1_ADAPTERS_ONLY",
-      "needed": "Complete operator/raw/credential/lifecycle/deferred/process-tree coverage, reconciliation of started/legacy unknown outcomes, trusted endpoint/bootstrap/key-custody/rate qualification and urgent-outage fallback; independent destination/key/schedule/current PITR and isolated cloud recovery remain. No partial fence activation; schema/deployment quarantine cannot reset."
+      "state": "PARTIAL_INERT_WORKER_ACTOR_AND_D1_BOUNDARIES",
+      "needed": "Actual Worker fetch/scheduled plus16 actor hooks and4 D1 placements have scoped native proof. Complete raw/operator/credential/lifecycle/deferred/process-tree accounting, started/legacy reconciliation, trusted production bootstrap/transport/key custody and urgent-outage fallback remain. No partial fence activation."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -204,7 +213,7 @@
     {
       "id": "PRIVATE_INDEPENDENT_DESTINATION",
       "state": "B2_ADAPTER_STAGED_SYNTHETIC_PROVIDER_NATIVE_CI_VERIFIED_REAL_DESTINATION_UNQUALIFIED",
-      "needed": "Staged restricted encrypted upload/exact-version readback now verified against synthetic provider; actual private card-free bucket, independent key/context, real readback/custody remain unqualified. Fresh read-only plugin inspection confirms connected and zero visible buckets; no live storage changes here."
+      "needed": "Fresh batch read-only B2 status/list succeeds but shows zero visible buckets and permissions broader than staged restricted allowlist. Prepared private bucket plus encrypted synthetic provider drill requires explicit authorization. Actual card-free destination, restricted runtime key, independent encryption-key/context custody and readback remain unqualified."
     },
     {
       "id": "SEPARATE_KEY_CONTEXT_CUSTODY",
@@ -229,96 +238,114 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROCESS_COMPLETION_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_ENTRY_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42358486270,
-        "jobId": 128361650440,
-        "event": "pull_request",
-        "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42358486270",
-        "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
-        "status": "completed",
-        "conclusion": "success",
-        "steps": 10,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "16b4a470b0ef712fc4ab55dd30fbf407f5d9124e",
-        "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": false,
-        "capturedLogSha256": "0057d4d9957a79df14babc9c6bdb7dfa02b43dab94e05c3af1f8e5cfc574abf6"
-      },
-      {
-        "runId": 42358486290,
-        "jobId": 128361650320,
+        "runId": 42381182667,
+        "jobId": 128428933171,
         "event": "pull_request",
         "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42358486290",
-        "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182667",
+        "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
         "status": "completed",
         "conclusion": "success",
         "steps": 14,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "16b4a470b0ef712fc4ab55dd30fbf407f5d9124e",
+        "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": false,
-        "capturedLogSha256": "86ba390a96345b9a264b6eae2e1a7b63b2845f98948f5a9c54c0df23fc234394"
+        "capturedLogSha256": "64ac15bd5adceeb20828035493c3f21802dd0f459eae60dea8facb8eb1887f04"
       },
       {
-        "runId": 42358486273,
-        "jobId": 128361650487,
+        "runId": 42381182627,
+        "jobId": 128428932986,
+        "event": "pull_request",
+        "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182627",
+        "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": 10,
+        "allStepsCompletedSuccess": true,
+        "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
+        "errorMarkers": 0,
+        "existingMiniflareRpcDisposalWarning": false,
+        "capturedLogSha256": "18a9dcf3ad3c0c759676deba0b730868ff12cfcd865a725dafff806594824512"
+      },
+      {
+        "runId": 42381182628,
+        "jobId": 128428932672,
         "event": "pull_request",
         "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42358486273",
-        "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182628",
+        "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
         "status": "completed",
         "conclusion": "success",
         "steps": 33,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "16b4a470b0ef712fc4ab55dd30fbf407f5d9124e",
+        "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": true,
-        "capturedLogSha256": "79e4e6950a50e6cc645f437db68553edecd0dbf7852461b6f41797b643531e67"
+        "capturedLogSha256": "b8c28937f9308505175e49f807aabdc5ee0047fe6e1789b3e26093bc3c0c5421"
       },
       {
-        "runId": 42358481409,
-        "jobId": 128361636045,
+        "runId": 42381173949,
+        "jobId": 128428907860,
         "event": "push",
         "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42358481409",
-        "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381173949",
+        "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
         "status": "completed",
         "conclusion": "success",
         "steps": 33,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+        "checkoutSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": true,
-        "capturedLogSha256": "304c4bc9c73c1d0f2c8f7292a9a24afb708aa25dfd9a99f9a16402288513f02a"
+        "capturedLogSha256": "d4677c9ffb8a24380b742d7273bd36db2feb7edbbc822e46cbe3ae16cf886cf8"
       }
     ],
     "scope": "Current two audit jobs and current separate Phase2/map-portal preservation; no deployment/field, actual delivery or final acceptance."
   },
-  "lastHostedQualifiedSourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROCESS_COMPLETION_HOSTED_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_POPULATED_RESTORE_LOCAL_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_ENTRY_HOSTED_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_ENTRY_HOSTED_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+  "lastMergeQualifiedSourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
-  ]
+  ],
+  "executionForecast": {
+    "target": "FOUR_ACTIVE_WORKDAYS",
+    "state": "AT_RISK",
+    "reasons": [
+      "No verified usable independent private destination or separate key/context custody.",
+      "No new authenticated Cloudflare/PITR/isolated recovery path established.",
+      "Complete writer coverage/urgent-outage behavior and genuine acceptance review remain incomplete."
+    ],
+    "nextPreparedProviderAction": {
+      "operation": "b2_create_bucket",
+      "parameters": {
+        "bucketName": "brick-recovery-jayvian-20261107",
+        "bucketType": "allPrivate"
+      },
+      "authorization": "NOT_YET_GIVEN",
+      "followOn": "Bounded encrypted synthetic archive upload/exact-version download/authentication only; no family data, sharing, deletion or retention policy change."
+    }
+  }
 }
