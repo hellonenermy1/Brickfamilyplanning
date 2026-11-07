@@ -45,7 +45,7 @@ export function createStagedB2ArchiveDestination({pin:input,authorization,fetche
   }
   return{json,privateBucket,download,close(){clearTimeout(timer);abort.abort();}};
  }
- function validateReceipt(r){if(!exact(r,['format','pinSha256','fileId','fileName','bytes','archiveSha256','contentSha1'])||r.format!=='brick-b2-archive-receipt-v1'||r.pinSha256!==pinSha256||!id(r.fileId)||!hash(r.archiveSha256)||typeof r.contentSha1!=='string'||!/^[a-f0-9]{40}$/.test(r.contentSha1)||!Number.isSafeInteger(r.bytes)||r.bytes<=36||r.bytes>MAX_PACKAGE_BYTES||typeof r.fileName!=='string'||!new RegExp('^brick-recovery/[a-f0-9]{32}-'+r.archiveSha256+'\\.brick$').test(r.fileName))fail('B2_RECEIPT_INVALID');return {...r};}
+ const validateReceipt=r=>validateB2ArchiveReceipt(r,pinSha256);
  return Object.freeze({
   async inspect(){const op=operation();try{await op.privateBucket();return{format:'brick-b2-inspection-v1',privateBucketObserved:true,destinationQualified:false,cardOrFreeTierVerified:false};}catch{fail('B2_INSPECTION_UNVERIFIED');}finally{op.close();}},
   async publish({archive,key,context}={}){
@@ -71,3 +71,5 @@ export function createStagedB2ArchiveDestination({pin:input,authorization,fetche
   async readVerified(input){const receipt=validateReceipt(input),op=operation();try{await op.privateBucket();const b=await op.download(receipt);try{await op.privateBucket();return b;}catch{b.fill(0);fail('B2_READ_UNVERIFIED');}}catch{fail('B2_READ_UNVERIFIED');}finally{op.close();}}
  });
 }
+
+export function validateB2ArchiveReceipt(r,pinSha256){if(!hash(pinSha256)||!exact(r,['format','pinSha256','fileId','fileName','bytes','archiveSha256','contentSha1'])||r.format!=='brick-b2-archive-receipt-v1'||r.pinSha256!==pinSha256||!id(r.fileId)||!hash(r.archiveSha256)||typeof r.contentSha1!=='string'||!/^[a-f0-9]{40}$/.test(r.contentSha1)||!Number.isSafeInteger(r.bytes)||r.bytes<=36||r.bytes>MAX_PACKAGE_BYTES||typeof r.fileName!=='string'||!new RegExp('^brick-recovery/[a-f0-9]{32}-'+r.archiveSha256+'\\.brick$').test(r.fileName))fail('B2_RECEIPT_INVALID');return Object.fromEntries(['format','pinSha256','fileId','fileName','bytes','archiveSha256','contentSha1'].map(k=>[k,r[k]]));}
