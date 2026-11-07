@@ -13,7 +13,7 @@
     "unresolvedRelativeImportCandidates": 1,
     "unresolvedDynamicImports": 126
   },
-  "sourceSetSha256": "d08d2cac3dce85847995d4ded05a832fa23c3f84e3f53844f7b24cfcbf7e5ab5",
+  "sourceSetSha256": "3a881302bd82b8a7098ace0a9a13b6961b87a3c0bb557d33e11c64f36a9279db",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -6394,8 +6394,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "080c5966fafb9ca7da0d1986b46d7ff1d8f2eb159dfaaad552ee7589dc453642",
-      "gitBlobSha": "148c6101780645b6acbec19e86d511898ab25366",
+      "sha256": "4088d2752bb8d3ef7bfb64e2130d724735776b6e9b2138ca4cf7a7f6ef8034e2",
+      "gitBlobSha": "4606f0ae2fc084e646f05cf498cbcfe9d2de8cfa",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
