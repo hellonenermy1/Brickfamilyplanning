@@ -46,6 +46,10 @@
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
     },
+    "scripts/cardfree-b2-destination.mjs": {
+      "classification": "STAGED_OFF_PLATFORM_DESTINATION",
+      "reason": "Injected capability can upload authenticated ciphertext and read back exact file version; no CLI/default fetch, production controller, provider credentials, bucket creation or automatic retries. Not installed or independently qualified."
+    },
     "scripts/cardfree-pitr-readonly.mjs": {
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
@@ -85,6 +89,10 @@
     "scripts/phase8-live-identity-preflight.mjs": {
       "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
       "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8d-b2-fixture.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Explicit synthetic B2 Fetch capability and local ciphertext only. Never imports real provider credentials or defaults to network; test name is not independent safety exclusion."
     },
     "scripts/phase8d-cloudflare-readonly.mjs": {
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
@@ -153,6 +161,10 @@
     "scripts/test-phase6-deploy-contract.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-b2-destination.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Explicit synthetic B2 Fetch capability and local ciphertext only. Never imports real provider credentials or defaults to network; test name is not independent safety exclusion."
     },
     "scripts/test-phase8d-beta-config.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
