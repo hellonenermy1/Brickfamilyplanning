@@ -1,19 +1,19 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "1d1730d12eaacb63e96ed5c16765a983ca8dd52e",
+  "basisCommitSha": "2069e3373663c99b4d9d9cd93ac919610758b958",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
   "summary": {
     "sourceFiles": 89,
-    "sqlPrepareCandidates": 299,
-    "sqlWriteOrUnknown": 170,
-    "mutationOrWrapperCandidates": 71,
+    "sqlPrepareCandidates": 304,
+    "sqlWriteOrUnknown": 173,
+    "mutationOrWrapperCandidates": 73,
     "deferredWorkCandidates": 21,
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "3bdac81b0df8db967e21e28af3641d72cd38cadbf0d2db54c22859d3a7d63fcc",
+  "runtimeSourceSetSha256": "598b853278f78a064e75898da6c28bf0eda8325186e7b60f3fb6e60112fa15d5",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -457,8 +457,8 @@
     },
     {
       "path": "src/beta-api.ts",
-      "sha256": "495e9521e85c90ed4024a140ceb93f492f4c9bed9564fd2e81aab264619fb0aa",
-      "gitBlobSha": "0b33567f3c9a372ae6ec8b8f6956b2d953b760b6",
+      "sha256": "e8792fc1b659701f203f0c3a70ac6171fd42f748b8dcb04b2fd821dfed9c3c05",
+      "gitBlobSha": "c4224ad112b5421011a693917ea99dd4a00cda60",
       "imports": [
         "src/background-work.ts",
         "src/beta-release.ts",
@@ -637,7 +637,16 @@
           "dynamicReceiver": false
         },
         {
-          "line": 108,
+          "line": 113,
+          "column": 17,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.BETA_DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 126,
           "column": 22,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -646,7 +655,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 109,
+          "line": 127,
           "column": 20,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -655,7 +664,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 111,
+          "line": 129,
           "column": 31,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -664,7 +673,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 111,
+          "line": 129,
           "column": 244,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -673,7 +682,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 111,
+          "line": 129,
           "column": 434,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -682,7 +691,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 119,
+          "line": 137,
           "column": 17,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -691,7 +700,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 123,
+          "line": 141,
           "column": 212,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -700,7 +709,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 125,
+          "line": 143,
           "column": 10,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -709,7 +718,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 132,
+          "line": 150,
           "column": 219,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -743,8 +752,8 @@
     },
     {
       "path": "src/beta-release.ts",
-      "sha256": "13082689db5b1558ac7f3bb5dc975f89916a8e3f127290e78f62b4a1ff340202",
-      "gitBlobSha": "23fd144dd1dbfdb5b424db38c3d3aa93a3a9ca4c",
+      "sha256": "e2324830e49f80b074009df7cb295b53b28c068f01ac6436bbbae95c4058c8fe",
+      "gitBlobSha": "10ad162163b62707d02daf3116a4eeff5ad7b082",
       "imports": [],
       "sites": []
     },
@@ -1473,29 +1482,12 @@
     },
     {
       "path": "src/dev-parent-auth.ts",
-      "sha256": "1b3ee6cdb43da41357885a568145033cf75395095952769e7b17d79712baf1cf",
-      "gitBlobSha": "6b2efbad52d3df6c5002633307751ec9ef867487",
+      "sha256": "8b041067d323c7f009ed57bc507cf3d049fa6ca473b6b524cd42e03980255f12",
+      "gitBlobSha": "40e608baffd18a455c7cffe457c772563d49b244",
       "imports": [],
       "sites": [
         {
-          "line": 113,
-          "column": 9,
-          "kind": "SQL_PREPARE_CANDIDATE",
-          "method": "prepare",
-          "receiver": "env.DB",
-          "sqlKind": "WRITE_OR_UNKNOWN",
-          "dynamicReceiver": false
-        },
-        {
-          "line": 121,
-          "column": 3,
-          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
-          "method": "delete",
-          "receiver": "headers",
-          "dynamicReceiver": false
-        },
-        {
-          "line": 129,
+          "line": 115,
           "column": 21,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -1504,8 +1496,16 @@
           "dynamicReceiver": false
         },
         {
-          "line": 183,
-          "column": 13,
+          "line": 128,
+          "column": 17,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "exec",
+          "receiver": "SLOW_VERIFIER_RE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 204,
+          "column": 7,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
           "receiver": "env.DB",
@@ -1513,15 +1513,24 @@
           "dynamicReceiver": false
         },
         {
-          "line": 192,
-          "column": 9,
+          "line": 205,
+          "column": 7,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 206,
+          "column": 25,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "batch",
           "receiver": "env.DB",
           "dynamicReceiver": false
         },
         {
-          "line": 193,
+          "line": 208,
           "column": 5,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -1530,7 +1539,59 @@
           "dynamicReceiver": false
         },
         {
-          "line": 194,
+          "line": 217,
+          "column": 9,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 225,
+          "column": 3,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "delete",
+          "receiver": "headers",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 233,
+          "column": 21,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 289,
+          "column": 13,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 298,
+          "column": 9,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "batch",
+          "receiver": "env.DB",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 299,
+          "column": 5,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 300,
           "column": 5,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -1859,8 +1920,8 @@
     },
     {
       "path": "src/fall-event-route.ts",
-      "sha256": "ca7f599eca6367ad5e70056fb68d8f3428dadea73bd16368f5e3173f0ab1d191",
-      "gitBlobSha": "c6492b1b01185b935dd2c064e5b158e2f47e3bef",
+      "sha256": "d55db56277749e7b4f0833362dded8e103a8f5c435c0a1baf5ec3dbc5fd051c6",
+      "gitBlobSha": "044932ec31a2728a07f8f43fe3b33590d9caeb98",
       "imports": [
         "src/bounded-body.ts",
         "src/device-do.ts",
@@ -2429,8 +2490,8 @@
     },
     {
       "path": "src/parent-beta.ts",
-      "sha256": "e17ba8c04535a86d8d9a7336a4351428bf31108cfab5edf069b1eb568acde911",
-      "gitBlobSha": "b7bd84e92eab654ecb47209a6800dad3f6a9a925",
+      "sha256": "62dcd6d9dbb9e88e8d2054070239755e7150285bdae7b1d28cf524e268166f7f",
+      "gitBlobSha": "130dabb1d75cb73bc5a10db9ba1cba9a20d5083d",
       "imports": [],
       "sites": []
     },
@@ -2452,8 +2513,8 @@
     },
     {
       "path": "src/parent-v5.ts",
-      "sha256": "7ab04cb3deafb2886ba6692cfaa786ba764233c3bd061c88564c63781b14138d",
-      "gitBlobSha": "c995673593fb75ed5f8f1a0cbe31e84ab4b33cd9",
+      "sha256": "83d1564f6bada423901b0a42a679326b57efa4afdb9ad1c877b1fa4c6803b8cd",
+      "gitBlobSha": "33db3af06bd391748a8e77bd054af7ea4311e188",
       "imports": [],
       "sites": []
     },
@@ -4308,8 +4369,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "1f9f2a51e66f8e78216749db9170067b5562225889bb1dcf8236831ccc74b2fa",
-      "gitBlobSha": "64448e73732f6cb825449df23c88b76b7a7d205e",
+      "sha256": "841f3fe580819d868530f698cd9f0fcd4db039c652f633e55a6338f7f4b00d9b",
+      "gitBlobSha": "6fb48802f97ab3870fa0f464104de6f319b1dae8",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",
@@ -4379,8 +4440,8 @@
     },
     {
       "path": "src/worker-beta.ts",
-      "sha256": "200b48d933a1cd4d8d193bf655734a54a4ad4059f929e05df321a29cdf60c41f",
-      "gitBlobSha": "b062b91d40dcd185d0811e342f46eb784dbdb5b1",
+      "sha256": "edaa078c990b4318367c4d032f70973f0964bf006cbf278af4530a08f0230279",
+      "gitBlobSha": "f4cd6a63e4cb7de40cd253cbec7b71d3fc7babcd",
       "imports": [
         "src/access-auth.ts",
         "src/beta-api.ts",

@@ -3,7 +3,8 @@ const INTERNAL_HEADER = "X-Brick-Dev-Parent-Verified";
 const INTERNAL_VALUE = "session-v1";
 const SESSION_MS = 30 * 86_400_000;
 const MAX_SESSION_CHARS = 128;
-const LOGIN_TOKEN_RE = /^[A-Za-z0-9_-]{43,128}$/;
+const LOGIN_TOKEN_RE = /^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{15,128}$/;
+const SLOW_VERIFIER_RE = /^pbkdf2-sha256:(\d{6}):([A-Za-z0-9_-]{22,64}):([A-Za-z0-9_-]{43})$/;
 const TOKEN_HASH_RE = /^[0-9a-f]{64}$/i;
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -77,14 +78,14 @@ export function devParentOriginAllowed(req: Request) {
 function loginPage(message = "") {
   const safe = message.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Brick Parent Beta Login</title><style>
-  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter the private, randomly generated development access token. Keep it outside GitHub.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Development access token</label><input id="token" name="token" type="password" autocomplete="current-password" pattern="[A-Za-z0-9_-]{43,128}" minlength="43" maxlength="128" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
+  body{margin:0;background:#0b0d10;color:#f5f7fa;font:15px system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}.box{width:min(440px,calc(100% - 32px));background:#15181d;border:1px solid #2b3038;border-radius:18px;padding:24px;box-sizing:border-box}h1{font-size:22px;margin:0 0 8px}.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;background:#5b3710;color:#ffd898;padding:5px 8px;border-radius:999px;margin-bottom:16px}.muted{color:#aeb6c2;line-height:1.5}.msg{margin:14px 0;padding:10px 12px;border-radius:10px;background:#2a1d13;color:#ffd4ad}label{display:block;margin:18px 0 7px;font-weight:650}input{width:100%;box-sizing:border-box;background:#0e1115;color:white;border:1px solid #39414d;border-radius:10px;padding:12px;font:inherit;letter-spacing:.12em}button{margin-top:12px;width:100%;border:0;border-radius:10px;padding:12px;font-weight:750;background:#f4f6f8;color:#111;cursor:pointer}</style></head><body><main class="box"><div class="tag">DEVELOPMENT BETA</div><h1>Brick Parent</h1><p class="muted">Enter your private parent passphrase. Keep it out of public repositories and messages.</p>${safe ? `<div class="msg">${safe}</div>` : ""}<form method="post" action="/parent/login"><label for="token">Parent passphrase</label><input id="token" name="token" type="password" autocomplete="current-password" minlength="15" maxlength="128" required><button type="submit">Sign in to beta</button></form></main></body></html>`;
 }
 
 async function readFormToken(req: Request) {
   const type = (req.headers.get("Content-Type") ?? "").toLowerCase();
   if (!type.startsWith("application/x-www-form-urlencoded")) return null;
   const text = await req.text();
-  if (text.length > 200) return null;
+  if (text.length > 400) return null;
   const value = new URLSearchParams(text).get("token")?.trim() ?? "";
   return LOGIN_TOKEN_RE.test(value) ? value : null;
 }
@@ -100,11 +101,114 @@ async function loginRateAllowed(req: Request, env: DevParentAuthEnv) {
   return result.success;
 }
 
+function fromBase64url(encoded: string) {
+  const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "="));
+  return Uint8Array.from(raw, char => char.charCodeAt(0));
+}
+
+type ParentVerifier = { verifier: string; d1Credential: boolean };
+
+// D1 verifier supersedes the bootstrap Worker secret once a parent has rotated it.
+// A malformed D1 verifier fails closed instead of falling back to the old secret.
+async function activeParentVerifier(env: DevParentAuthEnv): Promise<ParentVerifier> {
+  const row = await env.DB.prepare(
+    "SELECT verifier FROM dev_parent_credentials WHERE id='primary' LIMIT 1"
+  ).first<{ verifier: string }>();
+  return row
+    ? { verifier: row.verifier, d1Credential: true }
+    : { verifier: env.DEV_PARENT_LOGIN_HASH?.trim() ?? "", d1Credential: false };
+}
+
+async function verifyParentVerifier(expected: string, code: string) {
+  if (TOKEN_HASH_RE.test(expected)) {
+    const actual = await sha256Hex(code);
+    return constantTimeEqual(actual, expected.toLowerCase());
+  }
+  const parts = SLOW_VERIFIER_RE.exec(expected);
+  if (!parts) return false;
+  const iterations = Number(parts[1]);
+  if (iterations < 200000 || iterations > 600000) return false;
+  const salt = fromBase64url(parts[2]);
+  const digest = fromBase64url(parts[3]);
+  if (salt.length < 16 || digest.length !== 32) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
+  const derived = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt, iterations}, key, 256));
+  let diff = 0;
+  for (let i = 0; i < 32; i++) diff |= derived[i] ^ digest[i];
+  return diff === 0;
+}
+
 async function loginTokenValid(env: DevParentAuthEnv, code: string) {
-  const expected = env.DEV_PARENT_LOGIN_HASH?.trim().toLowerCase() ?? "";
-  if (!TOKEN_HASH_RE.test(expected)) return false;
-  const actual = await sha256Hex(code);
-  return constantTimeEqual(actual, expected);
+  const current = await activeParentVerifier(env);
+  return verifyParentVerifier(current.verifier, code);
+}
+
+async function createSlowParentVerifier(code: string) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
+  const derived = new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt, iterations:240000}, key, 256));
+  const base64url = (input: Uint8Array) => {
+    let binary = "";
+    for (const byte of input) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+  return "pbkdf2-sha256:240000:" + base64url(salt) + ":" + base64url(derived);
+}
+
+function changePage(message = "") {
+  // Reuse the CSP-protected static login shell: no scripts, third-party resources, or secret in URL.
+  const original = loginPage(message);
+  const form = '<form method="post" action="/parent/change-password">' +
+    '<label for="current">Current parent token or passphrase</label><input id="current" name="current" type="password" autocomplete="current-password" required maxlength="128">' +
+    '<label for="next">New private passphrase (15–128 characters)</label><input id="next" name="next" type="password" autocomplete="new-password" required minlength="15" maxlength="128">' +
+    '<label for="confirm">Confirm new passphrase</label><input id="confirm" name="confirm" type="password" autocomplete="new-password" required minlength="15" maxlength="128">' +
+    '<button type="submit">Change passphrase and sign out all sessions</button></form><p class="muted"><a href="/parent">Back to parent dashboard</a>. This changes portal access only, never device pairing or Device Owner.</p>';
+  return original
+    .replace("Brick Parent Beta Login", "Brick Parent — Change passphrase")
+    .replace("<h1>Brick Parent</h1>", "<h1>Change parent passphrase</h1>")
+    .replace("Enter your private parent passphrase. Keep it out of public repositories and messages.", "Enter the current credential and a new unique passphrase. All parent sessions are revoked after a successful change.")
+    .replace(/<form method="post" action="\/parent\/login">[\s\S]*?<\/form>/, form);
+}
+
+async function readChangeForm(req: Request) {
+  if (!(req.headers.get("Content-Type") ?? "").toLowerCase().startsWith("application/x-www-form-urlencoded")) return null;
+  const body = await req.text();
+  if (body.length > 1200) return null;
+  const data = new URLSearchParams(body);
+  const current = data.get("current"), next = data.get("next"), confirm = data.get("confirm");
+  if (!current || !next || !confirm || !LOGIN_TOKEN_RE.test(current) || !LOGIN_TOKEN_RE.test(next) || confirm !== next || current === next) return null;
+  return { current, next };
+}
+
+async function changeParentPassphrase(req: Request, env: DevParentAuthEnv): Promise<Response> {
+  if (!(await devParentSessionValid(req, env))) {
+    if (req.method === "GET") return new Response(null, { status: 303, headers: { Location: "/parent/login", "Cache-Control": "no-store" } });
+    return devParentUnauthorized(req);
+  }
+  if (req.method === "GET") return new Response(changePage(), { headers: baseHeaders() });
+  if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "GET, POST", "Cache-Control": "no-store" } });
+  if (!(await loginRateAllowed(req, env))) return new Response(changePage("Too many attempts. Try again in about a minute."), { status: 429, headers: { ...baseHeaders(), "Retry-After": "60" } });
+  const form = await readChangeForm(req);
+  if (!form) return new Response(changePage("Enter valid, matching credentials. The new passphrase must contain at least 15 supported characters."), { status: 400, headers: baseHeaders() });
+
+  const previous = await activeParentVerifier(env);
+  if (!(await verifyParentVerifier(previous.verifier, form.current))) {
+    return new Response(changePage("Current credential is incorrect."), { status: 401, headers: baseHeaders() });
+  }
+  const fresh = await createSlowParentVerifier(form.next);
+  const now = Date.now();
+  // D1 batch is atomic: concurrent rotations cannot overwrite another choice,
+  // and old sessions are revoked ONLY when the newly verified credential commits.
+  const statement = previous.d1Credential
+    ? env.DB.prepare("UPDATE dev_parent_credentials SET verifier=?1,rotated_at=?2 WHERE id='primary' AND verifier=?3").bind(fresh, now, previous.verifier)
+    : env.DB.prepare("INSERT OR IGNORE INTO dev_parent_credentials(id,verifier,rotated_at) VALUES('primary',?1,?2)").bind(fresh, now);
+  const results = await env.DB.batch([
+    statement,
+    env.DB.prepare("UPDATE dev_parent_sessions SET revoked_at=?1 WHERE revoked_at IS NULL AND EXISTS (SELECT 1 FROM dev_parent_credentials WHERE id='primary' AND verifier=?2)").bind(now, fresh)
+  ]);
+  if (results[0]?.meta?.changes !== 1) return new Response(changePage("Credential changed in another session. Sign in again before retrying."), { status: 409, headers: baseHeaders() });
+  return new Response(null, { status: 303, headers: { Location: "/parent/login?changed=1", "Set-Cookie": clearCookie(), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
 }
 
 async function createSession(env: DevParentAuthEnv, now: number) {
@@ -158,7 +262,7 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
   }
 
   if (url.pathname === "/parent/login" && req.method === "GET") {
-    return new Response(loginPage(), { status: 200, headers: baseHeaders() });
+    return new Response(loginPage(url.searchParams.get("changed") === "1" ? "Passphrase changed. Sign in again with the new credential." : ""), { status: 200, headers: baseHeaders() });
   }
 
   if (url.pathname === "/parent/login" && req.method === "POST") {
@@ -175,6 +279,8 @@ export async function handleDevParentAuthRoute(req: Request, env: DevParentAuthE
     const session = await createSession(env, now);
     return new Response(null, { status: 303, headers: { Location: "/parent", "Set-Cookie": sessionCookie(session), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
   }
+
+  if (url.pathname === "/parent/change-password") return changeParentPassphrase(req, env);
 
   if (url.pathname === "/parent/logout" && req.method === "POST") {
     const value = cookieValue(req);

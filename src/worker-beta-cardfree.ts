@@ -73,9 +73,9 @@ export default {
   const clean=stripDevParentInternalHeader(req),u=new URL(clean.url),r=cardfreeRuntime(env);maintenance(env,ctx);
   if(u.pathname==='/parent'||u.pathname.startsWith('/parent/')){
    const auth={DB:env.DB,PARENT_LOGIN_RATE:env.PARENT_LOGIN_RATE,DEV_PARENT_LOGIN_HASH:env.DEV_PARENT_LOGIN_HASH};
-   const logout=clean.method==='POST'&&u.pathname==='/parent/logout'&&await devParentSessionValid(clean,auth);
+   const invalidateParentSockets=clean.method==='POST'&&(u.pathname==='/parent/logout'||u.pathname==='/parent/change-password')&&await devParentSessionValid(clean,auth);
    const authResponse=await handleDevParentAuthRoute(clean,auth);
-   if(authResponse){if(logout&&authResponse.status===303){try{await closeSockets(env);}catch{return betaJson({error:'session_revoked_streams_expire_within_30s'},503);}}return authResponse;}
+   if(authResponse){if(invalidateParentSockets&&authResponse.status===303){try{await closeSockets(env);}catch{return betaJson({error:'session_revoked_streams_expire_within_30s'},503);}}return authResponse;}
    const authorized=await authorizeDevParentRequest(clean,auth);if(!authorized)return devParentUnauthorized(clean);
    if(u.pathname.startsWith('/parent/map/onemap/')){
     if(clean.method!=='GET')return betaJson({error:'method_not_allowed'},405);

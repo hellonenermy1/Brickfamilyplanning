@@ -1,19 +1,19 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "1d1730d12eaacb63e96ed5c16765a983ca8dd52e",
+  "basisCommitSha": "2069e3373663c99b4d9d9cd93ac919610758b958",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "a94cb5657f9446290c103dd4441588c8735d0f32d2df16644ac05db06b0cfe0e",
+  "policySha256": "62ec4eee24b807f3a365f2ac77239b5869225540a063fa0248f8b6c4b8b7129f",
   "summary": {
-    "selectedFiles": 268,
-    "filesWithManagementSignals": 64,
-    "explicitClassifications": 66,
+    "selectedFiles": 281,
+    "filesWithManagementSignals": 65,
+    "explicitClassifications": 67,
     "betaMutatorsUnfenced": 4,
     "legacyMutatorsNotBetaApproved": 13,
-    "unresolvedRelativeImportCandidates": 1,
-    "unresolvedDynamicImports": 126
+    "unresolvedRelativeImportCandidates": 4,
+    "unresolvedDynamicImports": 130
   },
-  "sourceSetSha256": "3a881302bd82b8a7098ace0a9a13b6961b87a3c0bb557d33e11c64f36a9279db",
+  "sourceSetSha256": "8c6406feda1fea5261a3325b8787b5acad3ef279bdb289a9bdb3dad4795d9386",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -39,7 +39,7 @@
       "path": "scripts/setup-beta-d1.mjs",
       "calls": [
         {
-          "line": 83,
+          "line": 84,
           "operation": "deployment"
         }
       ],
@@ -113,6 +113,17 @@
         "scripts/setup-v1-phase6.mjs",
         "scripts/test-phase6-deploy-contract.mjs",
         "scripts/verify-cloudflare-deployment.mjs"
+      ]
+    },
+    {
+      "entry": ".github/workflows/phase2-parent-ci.yml",
+      "reachableClassifiedManagementCandidates": [
+        ".github/workflows/phase2-parent-ci.yml",
+        "scripts/beta-deployment-contract.mjs",
+        "scripts/ensure-beta-d1-columns.mjs",
+        "scripts/setup-beta-d1.mjs",
+        "scripts/test-beta-deployment.mjs",
+        "scripts/test-beta-workerd.mjs"
       ]
     },
     {
@@ -290,6 +301,18 @@
     {
       "from": "scripts/install-private-map-development.mjs",
       "specifier": "./.install-private-map-development.generated.mjs"
+    },
+    {
+      "from": "scripts/test-phase2-page-integration.ts",
+      "specifier": "../src/parent-beta"
+    },
+    {
+      "from": "scripts/test-phase2-page-integration.ts",
+      "specifier": "../src/parent-p8b"
+    },
+    {
+      "from": "scripts/test-phase2-page-integration.ts",
+      "specifier": "../src/parent-v8"
     }
   ],
   "edges": [
@@ -421,6 +444,81 @@
     {
       "from": ".github/workflows/deploy-brick.yml",
       "to": "scripts/setup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-beta-deployment.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-beta-workerd.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-beta-client-compat.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-client-freshness.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-health-tristate.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-history-gap-truth.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-history-isolation.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-observation-logs.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-page-integration.ts",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-parent-baseline.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-parent-passphrase.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-session-preservation.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase2-tracking-diagnosis.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/test-phase8d-development-login.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase2-parent-ci.yml",
+      "to": "scripts/build-parent-assets.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -626,6 +724,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-maintenance-leases.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-parent-credential-recovery.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1764,6 +1867,16 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase2-parent-baseline.mjs",
+      "to": "scripts/setup-beta-d1.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase2-session-preservation.mjs",
+      "to": "scripts/setup-beta-d1.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase5-ops.mjs",
       "to": "scripts/test-phase5-ops.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
@@ -2189,6 +2302,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-parent-credential-recovery.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-parent-query-inputs.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2397,8 +2515,8 @@
   "files": [
     {
       "path": ".github/workflows/beta-backend.yml",
-      "sha256": "9fbcc1cca0608deee2a732337d6c42571f35a476d9190462d3b99793d7bbb194",
-      "gitBlobSha": "53264b4db7fe399aca910854819942193e44ac8e",
+      "sha256": "6b8c42b9135eac7e34ffacc6af8b6539133854b2feadd2da335359ba09a95b02",
+      "gitBlobSha": "06f290cbf5f069cfb58183268bb60dc077c4e90c",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion.",
       "signals": [
@@ -2415,11 +2533,11 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 66,
+          "line": 67,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 87,
+          "line": 88,
           "kind": "WRANGLER_LITERAL"
         }
       ],
@@ -2668,9 +2786,57 @@
       ]
     },
     {
+      "path": ".github/workflows/phase2-parent-ci.yml",
+      "sha256": "255b95053b8cad424efdc62df163d2b29ea1a668639691115507f80f55bb9398",
+      "gitBlobSha": "7267c74007827323454324c5732d5c8743f9cc89",
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Inherited Phase2 test/build workflow includes a Wrangler dry-run source command. Indexed for drift; this is not independent safety exclusion, complete writer accounting or permission/credential qualification.",
+      "signals": [
+        {
+          "line": 55,
+          "kind": "WRANGLER_LITERAL"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [],
+      "referencedScriptCandidates": [
+        "scripts/test-beta-deployment.mjs",
+        "scripts/test-beta-workerd.mjs",
+        "scripts/test-phase2-beta-client-compat.mjs",
+        "scripts/test-phase2-client-freshness.mjs",
+        "scripts/test-phase2-health-tristate.mjs",
+        "scripts/test-phase2-history-gap-truth.mjs",
+        "scripts/test-phase2-history-isolation.mjs",
+        "scripts/test-phase2-observation-logs.mjs",
+        "scripts/test-phase2-page-integration.ts",
+        "scripts/test-phase2-parent-baseline.mjs",
+        "scripts/test-phase2-parent-passphrase.mjs",
+        "scripts/test-phase2-session-preservation.mjs",
+        "scripts/test-phase2-tracking-diagnosis.mjs",
+        "scripts/test-phase8d-development-login.mjs"
+      ],
+      "npmScriptReferences": [
+        {
+          "name": "build:parent-assets",
+          "known": true,
+          "scriptCandidates": [
+            "scripts/build-parent-assets.mjs"
+          ],
+          "inlineManagementCommand": false
+        },
+        {
+          "name": "typecheck",
+          "known": true,
+          "scriptCandidates": [],
+          "inlineManagementCommand": false
+        }
+      ]
+    },
+    {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "74c36693b570e5bd44aca2612d206b1081e6a926033bfcb8359c07c60ec17c92",
-      "gitBlobSha": "065e393925f5f26c1e022601114afbbc01d89aff",
+      "sha256": "7f934fa12b34a789cfa3f0e7d3271b577c0a96a0406c1d6d37d822d0aad290b1",
+      "gitBlobSha": "24affb07001bca988eb46dffe415c189c0a39fb0",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -2719,6 +2885,7 @@
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
         "scripts/test-phase8d-maintenance-leases.mjs",
+        "scripts/test-phase8d-parent-credential-recovery.mjs",
         "scripts/test-phase8d-pitr-lifecycle.mjs",
         "scripts/test-phase8d-private-archive-files.mjs",
         "scripts/test-phase8d-protected-backup.mjs",
@@ -3352,8 +3519,8 @@
     },
     {
       "path": "scripts/beta-cloud-preflight.mjs",
-      "sha256": "8f071167c1e590dbcdd0ef444b5ee64672091393530f2bdd565c9d8a98602180",
-      "gitBlobSha": "3c4713f250c96d0540004a7ce78e2251bc96d52b",
+      "sha256": "75299018188d6da8b56173730fb3983c3f4ce92aa0754115821f1670e99ea432",
+      "gitBlobSha": "3dbc90386adc3a4ef817bc60480338047dfd895a",
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only.",
       "signals": [
@@ -4372,8 +4539,8 @@
     },
     {
       "path": "scripts/phase8d-native-fixture.mjs",
-      "sha256": "017cfd7346975961ba2d1fa9399d05233a985d41e8d1726b1e6b4ea1ecf46b84",
-      "gitBlobSha": "8cb7b45f1013b62e3b65850d0d37f5b24d47d061",
+      "sha256": "16166ac9d9bcb1b5140f244a90f015aba4982e9a7f7e2a51b98e86d5596cf3e0",
+      "gitBlobSha": "2947c23e6582192a8efd40f211bfa9e58badab45",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -4683,8 +4850,8 @@
     },
     {
       "path": "scripts/setup-beta-d1.mjs",
-      "sha256": "d22d593e88982b3899fd5d36ba6eb16a8c9cb7b83758e03ad089f31a0a62544f",
-      "gitBlobSha": "50d4facad06bf97e93910920c98c50297e3c226d",
+      "sha256": "ef80f6f56b814b87e70cb789d66679c72dadf35cdbc33d2b86377d28d7a19ccd",
+      "gitBlobSha": "1067e4da8ce454f06d64c9001d930932d3d73890",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
@@ -4701,31 +4868,31 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 42,
+          "line": 43,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 44,
+          "line": 45,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 110,
+          "line": 111,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 157,
+          "line": 158,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 157,
+          "line": 158,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 208,
+          "line": 209,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 208,
+          "line": 209,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
@@ -4733,13 +4900,13 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 229,
+          "line": 237,
           "kind": "WRANGLER_LITERAL"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 83,
+          "line": 84,
           "operation": "deployment"
         }
       ],
@@ -5111,8 +5278,8 @@
     },
     {
       "path": "scripts/test-beta-workerd.mjs",
-      "sha256": "bf693b67fe5c58b0cdcb511565e77ffff48397fb72a2581923104de0b0821f80",
-      "gitBlobSha": "d3793f3101749deceb078f01775cdead5034d24a",
+      "sha256": "149ab11d73efa735887ddbfc0fc07078ab84bb6e0ce7109975b938d9e9ca9571",
+      "gitBlobSha": "0590bc38c4eb6e2c39863a0b32b285bc40b6e5fb",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -5202,6 +5369,40 @@
       "npmScriptReferences": []
     },
     {
+      "path": "scripts/test-phase2-beta-client-compat.mjs",
+      "sha256": "94cb727a025bad3e5b0cb6e84fcb3d66d91cd6d80cc5b6b9690c6bfa43a9707d",
+      "gitBlobSha": "30263618caf69651d875ddb6a7353d59e749d62f",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "node:assert/strict",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-client-freshness.mjs",
+      "sha256": "06f12e6775eab3fbeaa0a3d51e501520e286b41b491beba1d2039655085df4ec",
+      "gitBlobSha": "e9de91ca9e11ed59346d6bbdaef2f9be494e4671",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs",
+        "node:vm"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
       "path": "scripts/test-phase2-evidence-link-integrity.mjs",
       "sha256": "b72fa312a32dcb83a01398789007e11ef4d61a2b27939880a94741b800b06979",
       "gitBlobSha": "78bea5036c2a1de305a7d37fbc8464e6313776f1",
@@ -5257,6 +5458,165 @@
         "node:fs",
         "node:sqlite",
         "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-health-tristate.mjs",
+      "sha256": "c4aad1d7be29cc1a1d32468ce29ee9ee980488d7a01579360ffee249e2e97a9b",
+      "gitBlobSha": "739b9f7a2352d2eb9670b3d4326ac3d9e5fb3559",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs",
+        "node:vm"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-history-gap-truth.mjs",
+      "sha256": "4e676bc5ce2d1e59c3cdd3bcf8e9d502a7014a79b9e60d67aae87cffc2375cc4",
+      "gitBlobSha": "eb4c7a2be8ba309c5794bcdb68b8c1f2a8fbff97",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs",
+        "node:vm"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-history-isolation.mjs",
+      "sha256": "7e572c45ef71a6492662f44c3599a148d28dc5d68c480aad16264622bc4e6832",
+      "gitBlobSha": "990cf6cf802ae15e36d1f5ac3d63ba28018d9139",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs",
+        "node:vm"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-observation-logs.mjs",
+      "sha256": "bc5fb2ecb422d083c47ccb3b67553f825c17d1fec66c067509d36b35f5e5c2b7",
+      "gitBlobSha": "73b73a425af45dd4667b4f1443ea7aebb164d960",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "node:assert/strict",
+        "node:crypto",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-page-integration.ts",
+      "sha256": "a6a2d10588c9fa318a11c4b08fdf3da4d164cd9ebd10b063d8a87b6b69e75503",
+      "gitBlobSha": "8c7bf80549ae1ef34c23dfaae23176356f4d498c",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "../src/parent-beta",
+        "../src/parent-p8b",
+        "../src/parent-v8"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-parent-baseline.mjs",
+      "sha256": "86a7715c8f4eb67d62778b929f8d889dc367a95bcdc568b53c58f570481d06c6",
+      "gitBlobSha": "2bc9091736d901df93d1a3e1fe43dc0447bed55b",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:vm"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/setup-beta-d1.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-parent-passphrase.mjs",
+      "sha256": "ff324fa8560aeff91a134a90d5025ca72e3681048ea16e32932cf641f5accdc8",
+      "gitBlobSha": "842ee8b565b357cf48869b6fc9b982a0eb5ad348",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "node:assert/strict",
+        "node:crypto",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-session-preservation.mjs",
+      "sha256": "decebb452883d9d2c0dede0c353f838890fef505e1c919856ea1f16f7e6fa7cc",
+      "gitBlobSha": "ac976d211a437c855d23665a216f98f62871b3ca",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/setup-beta-d1.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase2-tracking-diagnosis.mjs",
+      "sha256": "eaf1f4d6df7b97c5d14eeb38c8b10a86d489a8cf2df51af9be45324aec00998f",
+      "gitBlobSha": "293a0f58dde96f17c6ac12a23cf6fdc0ed61c9c2",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs",
+        "node:vm"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -6262,8 +6622,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-coordinator.mjs",
-      "sha256": "ae837f3286f29e64206efa12af66989840151f89acd1623287fd6fe9300d216f",
-      "gitBlobSha": "0d1d6fe6f9d935b2af31c0609a5aae8ba5ab59d7",
+      "sha256": "d183ebc63dfa53aedf992ce17876929630f828ed8621188c14a6bddf5b8216ce",
+      "gitBlobSha": "9f881235eafb1db0d0ffbcbc932bbe1a414812fd",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -6394,8 +6754,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "4088d2752bb8d3ef7bfb64e2130d724735776b6e9b2138ca4cf7a7f6ef8034e2",
-      "gitBlobSha": "4606f0ae2fc084e646f05cf498cbcfe9d2de8cfa",
+      "sha256": "a3fc2b511e9b6338afed1a4206ade4a35deffb0014cf3cc817ae4412f55c58c2",
+      "gitBlobSha": "f3ae87a61411e4f9bd853b1bfff629b626ff9cfc",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -6871,8 +7231,8 @@
     },
     {
       "path": "scripts/test-phase8d-development-login.mjs",
-      "sha256": "85a87e46d1c0829c2c87154112cd1550cc3c9e370d847050ed3daf7b155a17ea",
-      "gitBlobSha": "5f13b213dc138bbf70b4a10129d58269082e081b",
+      "sha256": "b5d4ee9ed88d7a6d75727be637c23012e2e6777da3d70eb0b37928a4dffe8086",
+      "gitBlobSha": "3d373fe9520ebead11e3a0074357473151dfdb06",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7127,8 +7487,8 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer.mjs",
-      "sha256": "08f1173910df4831eddc239b59628fd2b7ad45cab4bcd551b0dab8e16eb1e783",
-      "gitBlobSha": "2ce31310ca9fc8009050c2649ab77c69e964e81e",
+      "sha256": "21355a105eb7f5d534d6a8e7327aef8a37426622eeee289ed666d40dee8071e7",
+      "gitBlobSha": "3668fe52d94494cd44e9de5d868df611335117da",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
       "signals": [
@@ -7669,6 +8029,30 @@
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-parent-credential-recovery.mjs",
+      "sha256": "3b9d876f92aa2b20868e79fda68a2ad24f3d34087c1ecf8da5b3f8356ea0f0d8",
+      "gitBlobSha": "29e3413e71015130e7e6e24292d45f7d1c2f3b57",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
         "node:url"
       ],
       "referencedScriptCandidates": [],
@@ -8542,21 +8926,21 @@
     },
     {
       "path": "scripts/verify-beta-live.mjs",
-      "sha256": "687086d00ed6db08b5497862974e2714a4ded0de185d4f5d404da5e1b6ea1842",
-      "gitBlobSha": "707ff7791e870d49b0c8798e31271d81862fe202",
+      "sha256": "ca64e38dbbf0b81d265fc7ed62eab1615c6b60243db55f09d5dc972be5b1a0fb",
+      "gitBlobSha": "15886cc7c0fb289016907c1c156de46d043bc351",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 14,
+          "line": 17,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 14,
+          "line": 17,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 14,
+          "line": 17,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],

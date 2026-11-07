@@ -2,7 +2,7 @@ import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import {validateBetaConfig} from './beta-deployment-contract.mjs';
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { createHash,randomBytes,publicEncrypt,createPublicKey } from 'node:crypto';
+import { createHash,pbkdf2Sync,randomBytes,publicEncrypt,createPublicKey } from 'node:crypto';
 import os from 'node:os';
 import pathModule from 'node:path';
 import { applyDevelopmentSchema16, revokePriorDevelopmentSessions } from './phase8d-development-schema16.mjs';
@@ -34,7 +34,8 @@ const SCHEMAS = [
   'schema/019_cardfree_retention.sql',
   'schema/020_commute_paging.sql',
   'schema/021_cardfree_cleanup.sql',
-  'schema/022_cardfree_watchdog.sql'
+  'schema/022_cardfree_watchdog.sql',
+  'schema/019_phase2_parent_credentials.sql'
 ];
 
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||!/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA??''))throw Error('Exact beta branch/source required');
@@ -46,8 +47,8 @@ if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
 let devAccessToken = process.env.BRICK_DEV_PARENT_ACCESS_TOKEN || '';
 let provisionLogin=!!devAccessToken;let generatedLogin=false;
 const parentPublicKey=createPublicKey({key:JSON.parse(await fs.readFile('beta/parent-login-public-key.json','utf8')),format:'jwk'});
-if (devAccessToken && !/^[A-Za-z0-9_-]{43,128}$/.test(devAccessToken)) {
-  throw new Error('BRICK_DEV_PARENT_ACCESS_TOKEN must be a securely generated base64url token (at least 32 random bytes); no six-digit beta PIN.');
+if (devAccessToken && !/^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{15,128}$/.test(devAccessToken)) {
+  throw new Error('Parent passphrase must contain 15–128 supported characters; refuse weak short PINs.');
 }
 
 async function cf(path, init = {}) {
@@ -210,9 +211,8 @@ await run(process.execPath, ['scripts/ensure-beta-d1-columns.mjs']);
 
 console.log('[card-free dev 4/6] Removing obsolete one-time parent bootstrap tokens…');
 await d1Query(d1Id, 'DELETE FROM dev_parent_login_tokens');
-// A new login verifier does not revoke cookies issued under the old verifier.
-// End prior sessions durably before deploying the new authentication boundary.
-await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
+// Existing parent sessions must survive routine deployments when the credential is unchanged.
+// Revoke them only AFTER a newly provisioned Worker verifier was installed successfully.
 
 console.log('[card-free dev 5/6] Deploying isolated worker-v10…');
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -224,7 +224,15 @@ const workerHost = hostMatch[1];
 // Provision the hash as a private Worker secret, never as a public Wrangler var.
 // If secret provisioning fails, the new login route fails closed.
 if(provisionLogin){
-const loginHash = createHash('sha256').update(devAccessToken, 'utf8').digest('hex');
+// PBKDF2 is required for human-chosen passphrases. 32-byte randomly generated
+// bootstrap tokens still use the legacy SHA-256 verifier only for compatibility.
+const loginHash = generatedLogin
+ ? createHash('sha256').update(devAccessToken, 'utf8').digest('hex')
+ : (() => {
+    const salt=randomBytes(16);
+    const digest=pbkdf2Sync(devAccessToken,salt,240000,32,'sha256');
+    return 'pbkdf2-sha256:240000:'+salt.toString('base64url')+':'+digest.toString('base64url');
+   })();
 await new Promise((resolve, reject) => {
   const child = spawn(npx, ['wrangler', 'secret', 'put', 'DEV_PARENT_LOGIN_HASH', '--config', GENERATED_CONFIG], {
     shell: process.platform === 'win32',
@@ -235,6 +243,8 @@ await new Promise((resolve, reject) => {
   child.on('exit', code => code === 0 ? resolve() : reject(new Error('Unable to configure private development login secret')));
   child.stdin.end(loginHash + '\n');
 });
+// The new verifier is active: expire previous sessions and live login cookies now.
+await revokePriorDevelopmentSessions((sql, params) => d1Query(d1Id, sql, params));
 
 
 }
@@ -248,14 +258,14 @@ const state = {
   workerName: WORKER_NAME,
   workerHost,
   currentAppVersion: CURRENT_APP_VERSION,
-  schemaVersion: 18,
+  schemaVersion: 19,
   appliedSchemas: SCHEMAS,
   storageMode: 'd1-chunked-no-r2',
   queueMode: 'direct-synchronous-no-cloudflare-queue',
   parentAuthMode: 'd1-session-v1-no-zero-trust',
-  parentLoginMode: 'private-high-entropy-token-v2',
+  parentLoginMode: 'worker-secret-pbkdf2-or-legacy-generated-token',
   parentCredential:generatedLogin?'GENERATED_ENCRYPTED_FOR_USER':provisionLogin?'CONFIGURED_ACTIONS_SECRET':'PRESERVED_WORKER_SECRET',
-  priorSessionsRevoked: true,
+  priorSessionsRevoked: provisionLogin,
   schedulerMode: 'sqlite-do-alarm-with-d1-lease-and-request-fallback',
   mapMode: 'same-origin-worker-range-proxy',
   mapSource,

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const mod=process.argv[2];if(!mod)throw Error('Provide compiled beta release module');
+const {BETA_RELEASE,findCompatibleBetaClient,BETA_COMPATIBLE_CLIENTS}=await import(pathToFileURL(mod).href);
+assert.equal(BETA_COMPATIBLE_CLIENTS.length,2,'Only the two exact signed clients may send beta diagnostic evidence');
+assert(findCompatibleBetaClient(BETA_RELEASE.releaseId,BETA_RELEASE.apkSourceSha),'Beta 1 remains compatible');
+const v12=findCompatibleBetaClient('brick-phase1-20261106-01','dda193f79598fec0d814883b13fb3c16f5021817');
+assert.equal(v12?.versionName,'1.0.0-beta.2','approved exact SHA for physically installed v12');
+assert.equal(findCompatibleBetaClient('brick-phase1-20261106-01',BETA_RELEASE.apkSourceSha),undefined,'mix-and-match release identity denied');
+assert.equal(findCompatibleBetaClient('brick-phase1-20261106-01','0'.repeat(40)),undefined,'unknown APK SHA denied');
+assert.equal(findCompatibleBetaClient('unapproved',v12.apkSourceSha),undefined,'unapproved release denied');
+assert.equal(BETA_RELEASE.versionCode,11,'diagnostic acceptance must not silently promote unsafe beta2 as public download');
+console.log('PASS phase2 exact dual-release diagnostics protocol, no wildcard and safe download pin');

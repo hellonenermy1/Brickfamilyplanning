@@ -82,6 +82,7 @@ try{
  await source.beta.prepare('INSERT INTO beta_latest VALUES(?1,?2,?3)').bind(DEVICE_A,'{"status":"PENDING"}',now).run();
  await source.beta.prepare('INSERT INTO beta_requests VALUES(?1,?2,?3)').bind('synthetic-nonce',DEVICE_A,now+60000).run();
  await source.db.prepare('INSERT INTO dev_parent_sessions(session_hash,created_at,expires_at) VALUES(?1,?2,?3)').bind('0'.repeat(64),now,now+60000).run();
+ const syntheticVerifier='SYNTHETIC_NOT_A_REAL_PARENT_VERIFIER_'.repeat(3);await source.db.prepare("INSERT INTO dev_parent_credentials VALUES('primary',?,?)").bind(syntheticVerifier,now).run();
  // Probe adds an ephemeral betaDiagnostic DO key absent from the production8D snapshot inventory.
  const token=crypto.randomUUID();const probeResponse=await source.stub(DEVICE_A).fetch('https://internal/beta/probe',{method:'POST',body:JSON.stringify({deviceId:DEVICE_A,token,expiresAt:now+60000})});assert.equal(probeResponse.status,200);await probeResponse.text();
  await rpc(source,DEVICE_A,'seedSyntheticState',['futureUnknown',{unexpected:true}]);assert.equal((await rpc(source,DEVICE_A,'exportRecoveryState',[DEVICE_A])).ok,false,'unknown durable state must still fail closed');await rpc(source,DEVICE_A,'seedSyntheticState',['futureUnknown',null]);
@@ -105,7 +106,7 @@ try{
  let backup=await recovery.exportCardfreeD1(source.env,true);
  const expected=JSON.parse(new TextDecoder().decode(backup.body));
  assert.equal(expected.primary.tables.dev_object_store.length,3,'prior backup excluded to avoid recursive archives');
- for(const table of relationTables)assert.deepEqual(expected.primary.tables[table].slice().sort((a,b)=>JSON.stringify(Object.keys(a).sort().map(k=>a[k])).localeCompare(JSON.stringify(Object.keys(b).sort().map(k=>b[k])))),relations[table]);assert.equal(expected.primary.tables.dev_location_history.length,1);assert.equal(expected.primary.tables.provider_cache,undefined,'operational retry metadata is NOT archived');
+ for(const table of relationTables)assert.deepEqual(expected.primary.tables[table].slice().sort((a,b)=>JSON.stringify(Object.keys(a).sort().map(k=>a[k])).localeCompare(JSON.stringify(Object.keys(b).sort().map(k=>b[k])))),relations[table]);assert.equal(expected.primary.tables.dev_location_history.length,1);assert.equal(expected.primary.tables.dev_parent_credentials,undefined);assert(!new TextDecoder().decode(backup.body).includes(syntheticVerifier));assert.equal(expected.primary.tables.provider_cache,undefined,'operational retry metadata is NOT archived');
  console.log('PASS signed capture package retains all33 populated place/config/relationship rows and every captured column');
  const trustedContext={deployment:'synthetic-cardfree-drill',sourceSha:'a'.repeat(40),backupId:randomBytes(16).toString('hex'),capturedAt:backup.createdAt,keyId:'synthetic-ephemeral'};
  const encryptionKey=randomBytes(32).toString('base64'),protectedFile=path.join(dir,'recovery.brickbackup');
@@ -167,6 +168,7 @@ try{
  assert.deepEqual(await counts(target.beta,recovery.CARDFREE_DIAGNOSTIC_TABLES),Object.fromEntries(Object.entries(expected.diagnostics.tables).map(([k,v])=>[k,v.length])));
  assert.equal((await target.db.prepare('SELECT status FROM device_commands').first()).status,'expired');
  for(const table of recovery.CARDFREE_PRIMARY_EXCLUDED)assert.equal((await target.db.prepare('SELECT COUNT(*) n FROM '+table).first()).n,0);
+ console.log('PASS current parent credential verifier is excluded from capture and remains absent from fresh restored target');
  for(const table of recovery.CARDFREE_DIAGNOSTIC_EXCLUDED)assert.equal((await target.beta.prepare('SELECT COUNT(*) n FROM '+table).first()).n,0);
  const restoredActions=await assertRetiredRecoveryActions(target.db,actionFixture,restoreStartedAt);console.log('PASS populated pending location/live controls retire safely while completed controls retain exact prior results and timestamps');const relationSummary=await assertRecoveryRelations(target.db,relations);console.log('PASS populated places/config/relationships survive signed encrypted source destruction and fresh restore '+JSON.stringify(relationSummary));
  const restoredStore=new D1ObjectBucket(target.db),restored=await restoredStore.get(original.key);assert.deepEqual(new Uint8Array(await restored.arrayBuffer()),objectBytes);assert.equal(restored.etag,original.etag);assert.equal(restored.uploaded.getTime(),original.uploaded.getTime());assert.deepEqual(restored.customMetadata,original.customMetadata);

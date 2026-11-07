@@ -30,7 +30,8 @@ const until=async(fn,label)=>{const end=Date.now()+15000;do{const v=await fn();i
 let socket;
 try{
  const db=await mf.getD1Database('DB'),beta=await mf.getD1Database('BETA_DB');
- const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
+ const native=newDatabase();for(const f of ['012_phase6c_free_runtime.sql','013_phase6c_request_maintenance.sql','014_phase6c_virtual_history.sql','019_phase2_parent_credentials.sql'])native.exec(fs.readFileSync('schema/'+f,'utf8'));
+ for(const row of native.prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' ORDER BY rowid").all())await db.prepare(row.sql).run();native.close();
  for(const sql of fs.readFileSync('schema/beta_diagnostics.sql','utf8').replace(/--[^\n]*/g,'').split(';').filter(x=>x.trim()))await beta.prepare(sql).run();
  await db.prepare('INSERT INTO devices(id,name,public_key_spki_b64,created_at) VALUES(?1,?2,?3,?4)').bind(DEVICE_A,'Synthetic beta',key.spki,Date.now()).run();
  const loginDocument=await mf.dispatchFetch('http://localhost/parent/login');
@@ -42,8 +43,64 @@ try{
  const login=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken,redirect:'manual'});assert.equal(login.status,303);cookie=login.headers.get('set-cookie').split(';')[0];
  for(const route of ['/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/device/'+DEVICE_A+'/beta/status'])assert.equal((await mf.dispatchFetch('http://localhost'+route)).status,401);
  assert.equal((await parent('/parent/api/device/'+DEVICE_B+'/beta/status')).status,404);
- const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
+ const page=await parent('/parent');assert.equal(page.status,200);assert.match(page.headers.get('Content-Security-Policy'),/nonce-/);const html=await page.text();assert.match(html,/BETA · Test centre/);assert.match(html,/beta_challenge/);assert.match(html,/p8bLiveOn/);assert.ok(html.includes('brickBetaCompactMap'),'beta compact map CSS not injected');
+ assert.ok(html.includes('id="p2TrackingDiagnosis"'),'tracking-stage diagnosis should be visible in Health');
+ assert.ok(html.includes('function p2TrackingDiagnosis(x,now){'),'tracking-stage classifier must be present in portal');
+ assert.ok(html.includes('Phone health '),'diagnostics must show evidence ages and backlogs, not just a green badge');
+
+ for(const [name,code] of [
+  ['Safety Events',"async function loadEvents(){const requestDevice=currentDevice;"],
+  ['Event map buttons','if(requestDevice===currentDevice)map.easeTo('],
+  ['Battery status',"async function loadBatteryTrend(){const requestDevice=currentDevice;"],
+  ['GPS control status',"async function loadLocationControl(){const requestDevice=currentDevice;"],
+  ['Places mutation guard','toggle.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Place deletion guard','del.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Trips mutation guard','btn.onclick=async()=>{if(requestDevice!==currentDevice)return;'],
+  ['Health device guard','if(requestDevice!==currentDevice)return;'],
+  ['Phone-switch snapshot clear','snapshot=null;'],
+  ['Revoked-phone stale-state guard','if(currentDevice===id)renderSnapshot(revokedState)']
+ ])assert.ok(html.includes(code),name+' must be isolated for the currently selected phone');
+
+ for(const [name,code] of [
+  ['WebSocket stale-device guard','client.onmessage=e=>{if(ws!==client||currentDevice!==id)return;'],
+  ['Places stale-response guard',"async function loadPlaces(){const requestDevice=currentDevice;"],
+  ['Trips stale-response guard',"async function loadTrips(){const requestDevice=currentDevice;"],
+  ['Health stale-response guard',"async function loadHealthOps(){const requestDevice=currentDevice;"],
+  ['Retention stale-response guard',"async function loadRetention(){const requestDevice=currentDevice;"],
+  ['Crash diagnostics stale-response guard',"async function loadPhase5C(){const requestDevice=currentDevice;"],
+  ['Device identity validation',"if(requestDevice!==currentDevice)return;"]
+ ])assert.ok(html.includes(code),name+' must reject stale device data');
+ assert.ok(!html.includes("ws.onmessage=e=>{try{wsMessage"),'old device socket message handler must be gone');
+
+ assert.ok(html.includes('href="/parent/change-password"'),'private account settings link must appear');assert.ok(html.includes('92vh'),'desktop map must be near double prior height');assert.ok(html.includes('70vh'),'mobile map must be taller');assert.ok(html.includes('/brick-map.mjs?v=beta-parent-recovery-20261105'),'portal must bust legacy immutable map bundle cache');assert.ok(!html.includes('getPrivateMapStatus, switchToStandardOneMap'),'portal must retain original four-export map API');assert.ok(!html.includes('brickMapDeliveryStatus'),'optional diagnostics must not block dashboard startup');assert.ok(html.includes("loadDevices().catch("),'device list must load even if map never fires load');assert.ok(html.includes("map.on('error'"),'map failures must provide a user-visible status');
  for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))if(match[1].trim())await transform(match[1],{loader:'js'});
+
+ // End-to-end account rotation: existing bootstrap secret, wrong-current, CSRF,
+ // D1 PBKDF2 override, atomic revocation and new-login flow.
+
+ const accountPage=await parent('/parent/change-password');
+ assert.equal(accountPage.status,200);
+ assert.ok((await accountPage.text()).includes('name="confirm"'));
+ assert.equal((await mf.dispatchFetch('http://localhost/parent/change-password',{redirect:'manual'})).status,303);
+ const urlEncoded=(values)=>new URLSearchParams(values).toString();
+ const newPassphrase='ValidSecret_123'; // 15-character test-only fixture
+ const changeReq=(values,headers={})=>parent('/parent/change-password',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/x-www-form-urlencoded',...headers},body:urlEncoded(values)});
+ assert.equal((await changeReq({current:'WrongSecret_123',next:newPassphrase,confirm:newPassphrase})).status,401);
+ assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:'DoesNotMatch123'})).status,400);
+ assert.equal((await changeReq({current:loginToken,next:newPassphrase,confirm:newPassphrase},{Origin:'https://evil.invalid'})).status,403);
+ const changed=await changeReq({current:loginToken,next:newPassphrase,confirm:newPassphrase});
+ assert.equal(changed.status,303,'approved parent password rotation should succeed');
+ assert.equal(changed.headers.get('location'),'/parent/login?changed=1');
+ assert.equal((await parent('/parent/api/devices')).status,401,'old cookie invalidated on credential change');
+ const oldCredentialLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+loginToken});
+ assert.equal(oldCredentialLogin.status,401,'bootstrap secret no longer accepted after D1 rotation');
+ const privateLogin=await mf.dispatchFetch('http://localhost/parent/login',{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/x-www-form-urlencoded'},body:'token='+newPassphrase,redirect:'manual'});
+ assert.equal(privateLogin.status,303,'new 15-character passphrase must authenticate');
+ cookie=privateLogin.headers.get('set-cookie').split(';')[0];
+ assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,200,'new session accesses existing protected device data');
+ assert.equal((await parent('/parent')).status,200,'new session must access the parent portal');
+ assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM dev_parent_credentials WHERE id='primary'").first()).n,1);
+
  assert.equal((await mf.dispatchFetch('http://localhost/parent/map/onemap/Default_HD/11/1614/1016.png')).status,401,'map tiles require parent auth');
  const tile=await parent('/parent/map/onemap/Default_HD/11/1614/1016.png');
  assert.equal(tile.status,200,'same-origin OneMap tile proxy must respond');
@@ -104,6 +161,28 @@ try{
   console.log('PASS actual permanent-signed APK D1 multi-chunk authenticated publication/readback; missing chunk refuses download; transactional replacement repairs it');
  }
  await db.prepare('INSERT INTO dev_object_store(key,size,etag,uploaded_at) VALUES(?1,?2,?3,?4)').bind('beta/releases/'+releaseId+'/Brick.apk',0,'wrong',Date.now()).run();assert.equal((await parent('/parent/beta/download/apk')).status,503);
+ // Field safety: signed uncalibrated automatic falls are ACKed quietly in isolated beta.
+ // No new D1 safety rows, realtime alerts, or changes to SOS.
+ const beforeFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
+ for(let i=0;i<3;i++){
+  const payload={protocol:1,eventId:crypto.randomUUID(),eventSequence:700+i,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,accuracyM:null,detail:{confidence:i===0?'high':'low',impactG:4.2}};
+  const quiet=await signed('/event',payload);
+  assert.equal(quiet.status,200,'signed beta fall must ACK, never queue retries indefinitely');
+  const body=await quiet.json();
+  assert.equal(body.disabledByPolicy,true,'automatic fall emergency classification disabled in beta');
+  assert.equal(body.eventId,payload.eventId,'ACK identity must match signed event');
+ }
+ const afterFalls=(await db.prepare("SELECT COUNT(*) AS n FROM safety_events WHERE device_id=?1 AND kind='fall_detected'").bind(DEVICE_A).first()).n;
+ assert.equal(afterFalls,beforeFalls,'automatic beta fall alerts must never create new safety rows');
+ const forged={protocol:1,eventId:crypto.randomUUID(),eventSequence:799,createdAtMs:Date.now(),kind:'fall_detected',latitude:null,longitude:null,detail:{confidence:'high'}};
+ assert.equal((await signed('/event',forged,await ecdsa())).status,401,'quarantine must never bypass device signature verification');
+ const sos={protocol:1,eventId:crypto.randomUUID(),eventSequence:900,createdAtMs:Date.now(),kind:'sos_started',latitude:null,longitude:null,accuracyM:null,detail:{source:'manual_test'}};
+ const sosResponse=await signed('/event',sos);
+ assert.equal(sosResponse.status,200,'manual SOS must not be silenced by automatic fall quarantine: '+(await sosResponse.clone().text()).slice(0,320));
+ const sosRow=await db.prepare("SELECT id FROM safety_events WHERE device_id=?1 AND id=?2 AND kind='sos_started'").bind(DEVICE_A,sos.eventId).first();
+ assert.equal(sosRow?.id,sos.eventId,'manual SOS must remain durable and visible');
+ console.log('PASS beta fall quarantine: signed-only quiet ACK, no false fall rows, unaffected manual SOS');
+
  await db.prepare('UPDATE devices SET revoked_at=?1 WHERE id=?2').bind(Date.now(),DEVICE_A).run();assert.equal((await signed('/beta/readiness',ready())).status,401);assert.equal((await parent('/parent/api/device/'+DEVICE_A+'/beta/status')).status,404);
  assert.equal((await parent('/parent/logout',{method:'POST',redirect:'manual'})).status,303);assert.equal((await parent('/parent/api/devices')).status,401);
  console.log('PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation');

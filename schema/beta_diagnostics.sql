@@ -8,3 +8,4 @@ CREATE TABLE IF NOT EXISTS beta_records(device_id TEXT NOT NULL, run_id TEXT NOT
 CREATE TABLE IF NOT EXISTS beta_reviews(device_id TEXT NOT NULL, run_id TEXT NOT NULL, payload TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(device_id,run_id));
 CREATE INDEX IF NOT EXISTS beta_records_retention ON beta_records(received_at);
 CREATE INDEX IF NOT EXISTS beta_requests_expiry ON beta_requests(expires_at);
+CREATE INDEX IF NOT EXISTS beta_records_device_time ON beta_records(device_id,received_at DESC,record_id DESC);

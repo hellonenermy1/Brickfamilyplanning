@@ -14,6 +14,10 @@
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
     },
+    ".github/workflows/phase2-parent-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Inherited Phase2 test/build workflow includes a Wrangler dry-run source command. Indexed for drift; this is not independent safety exclusion, complete writer accounting or permission/credential qualification."
+    },
     ".github/workflows/phase8d-cloudflare-readonly.yml": {
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."

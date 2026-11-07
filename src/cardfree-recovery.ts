@@ -6,7 +6,7 @@ import { CHUNK_BYTES, MAX_OBJECT_BYTES } from './dev-free-runtime';
 // live configuration enables restore. The operator must independently quiesce
 // BOTH D1 databases and all device DOs; D1 batch is atomic within one database only.
 export const CARDFREE_PRIMARY_TABLES = [...BACKUP_TABLES, 'dev_location_history', 'dev_object_store', 'dev_object_chunks'] as const;
-export const CARDFREE_PRIMARY_EXCLUDED = [...TRANSIENT_RECOVERY_TABLES, 'dev_parent_login_tokens', 'dev_parent_sessions', 'dev_maintenance_state'] as const;
+export const CARDFREE_PRIMARY_EXCLUDED = [...TRANSIENT_RECOVERY_TABLES, 'dev_parent_login_tokens', 'dev_parent_sessions', 'dev_parent_credentials', 'dev_maintenance_state'] as const;
 export const CARDFREE_DIAGNOSTIC_TABLES = ['beta_latest', 'beta_runs', 'beta_records', 'beta_reviews'] as const;
 export const CARDFREE_DIAGNOSTIC_EXCLUDED = ['beta_requests', 'beta_challenges'] as const;
 const MAX_ROWS = 100_000;

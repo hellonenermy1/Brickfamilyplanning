@@ -11,7 +11,7 @@ let account=process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if(!account){const accounts=await get('/accounts?per_page=50');if(accounts.length!==1)throw Error('Set CLOUDFLARE_ACCOUNT_ID: account selection is ambiguous');account=accounts[0].id;}
 if(!/^[a-f0-9]{32}$/i.test(account))throw Error('Invalid account ID');
 const checks=[];
-if(!/^[A-Za-z0-9_-]{43,128}$/.test(process.env.BRICK_DEV_PARENT_ACCESS_TOKEN??''))checks.push({name:'parent_secret',status:'GENERATE_OR_PRESERVE_PRIVATE',detail:'Encrypted first-run credential; existing Worker secret preserved'});else checks.push({name:'parent_secret',status:'CONFIGURED'});
+if(!/^[A-Za-z0-9!@#$%^&*()_+={}\[\]:;,.?~-]{15,128}$/.test(process.env.BRICK_DEV_PARENT_ACCESS_TOKEN??''))checks.push({name:'parent_secret',status:'GENERATE_OR_PRESERVE_PRIVATE',detail:'Encrypted first-run credential; existing Worker secret preserved'});else checks.push({name:'parent_secret',status:'CONFIGURED'});
 for(const [name,path] of [['workers','workers/subdomain'],['d1','d1/database?per_page=100']]){
  try {const result=await get('/accounts/'+account+'/'+path);if(name==='workers'&&!result?.subdomain)throw Error('Workers subdomain unavailable');checks.push({name,status:'READABLE'});}
  catch(e){checks.push({name,status:'BLOCKED',detail:e.message});}
