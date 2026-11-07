@@ -1,0 +1,369 @@
+{
+  "format": "brick-phase8d-group1-current-base-hosted-v1",
+  "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71",
+  "sourceParents": [
+    "2069e3373663c99b4d9d9cd93ac919610758b958",
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
+  ],
+  "historicalFrozenBaseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_PUSH_CURRENT_BASE_PR_PHASE2_AND_PORTAL_CI_VERIFIED_CANDIDATE_NOT_PR_MERGED_OR_DEPLOYED",
+  "preservation": {
+    "portalOnlyFiles": [
+      {
+        "path": ".github/workflows/beta-backend.yml",
+        "gitBlobSha": "06f290cbf5f069cfb58183268bb60dc077c4e90c"
+      },
+      {
+        "path": "schema/beta_diagnostics.sql",
+        "gitBlobSha": "ec0ce2e7be395fdde73526c6083a1bedf9d1de98"
+      },
+      {
+        "path": "scripts/beta-cloud-preflight.mjs",
+        "gitBlobSha": "3dbc90386adc3a4ef817bc60480338047dfd895a"
+      },
+      {
+        "path": "scripts/test-phase8d-development-login.mjs",
+        "gitBlobSha": "3d373fe9520ebead11e3a0074357473151dfdb06"
+      },
+      {
+        "path": "src/beta-release.ts",
+        "gitBlobSha": "10ad162163b62707d02daf3116a4eeff5ad7b082"
+      },
+      {
+        "path": "src/fall-event-route.ts",
+        "gitBlobSha": "044932ec31a2728a07f8f43fe3b33590d9caeb98"
+      },
+      {
+        "path": "src/parent-beta.ts",
+        "gitBlobSha": "130dabb1d75cb73bc5a10db9ba1cba9a20d5083d"
+      },
+      {
+        "path": "src/parent-v5.ts",
+        "gitBlobSha": "33db3af06bd391748a8e77bd054af7ea4311e188"
+      },
+      {
+        "path": "src/parent-v7.ts",
+        "gitBlobSha": "a40e0e279d74099656efa20403a29161369eb5a2"
+      },
+      {
+        "path": "src/worker-beta.ts",
+        "gitBlobSha": "f4cd6a63e4cb7de40cd253cbec7b71d3fc7babcd"
+      },
+      {
+        "path": ".github/workflows/phase2-parent-ci.yml",
+        "gitBlobSha": "7267c74007827323454324c5732d5c8743f9cc89"
+      },
+      {
+        "path": "audit/phase2/EXECUTION_STATUS_2026-11-06.md",
+        "gitBlobSha": "fdeb27c0a6f4f4fd66c0d6038810ee89c42e8f81"
+      },
+      {
+        "path": "schema/019_phase2_parent_credentials.sql",
+        "gitBlobSha": "d8c60906ec759f3b4df93636ae9078ceddf6e6f9"
+      },
+      {
+        "path": "scripts/test-phase2-beta-client-compat.mjs",
+        "gitBlobSha": "30263618caf69651d875ddb6a7353d59e749d62f"
+      },
+      {
+        "path": "scripts/test-phase2-client-freshness.mjs",
+        "gitBlobSha": "e9de91ca9e11ed59346d6bbdaef2f9be494e4671"
+      },
+      {
+        "path": "scripts/test-phase2-health-tristate.mjs",
+        "gitBlobSha": "739b9f7a2352d2eb9670b3d4326ac3d9e5fb3559"
+      },
+      {
+        "path": "scripts/test-phase2-history-gap-truth.mjs",
+        "gitBlobSha": "eb4c7a2be8ba309c5794bcdb68b8c1f2a8fbff97"
+      },
+      {
+        "path": "scripts/test-phase2-history-isolation.mjs",
+        "gitBlobSha": "990cf6cf802ae15e36d1f5ac3d63ba28018d9139"
+      },
+      {
+        "path": "scripts/test-phase2-observation-logs.mjs",
+        "gitBlobSha": "73b73a425af45dd4667b4f1443ea7aebb164d960"
+      },
+      {
+        "path": "scripts/test-phase2-page-integration.ts",
+        "gitBlobSha": "8c7bf80549ae1ef34c23dfaae23176356f4d498c"
+      },
+      {
+        "path": "scripts/test-phase2-parent-baseline.mjs",
+        "gitBlobSha": "2bc9091736d901df93d1a3e1fe43dc0447bed55b"
+      },
+      {
+        "path": "scripts/test-phase2-parent-passphrase.mjs",
+        "gitBlobSha": "842ee8b565b357cf48869b6fc9b982a0eb5ad348"
+      },
+      {
+        "path": "scripts/test-phase2-session-preservation.mjs",
+        "gitBlobSha": "ac976d211a437c855d23665a216f98f62871b3ca"
+      },
+      {
+        "path": "scripts/test-phase2-tracking-diagnosis.mjs",
+        "gitBlobSha": "293a0f58dde96f17c6ac12a23cf6fdc0ed61c9c2"
+      }
+    ],
+    "overlappingFiles": [
+      {
+        "path": "scripts/setup-beta-d1.mjs",
+        "baselineSha": "f085209c6ef7236aac4515290193deb194008f33",
+        "portalSha": "5911dd5f4b24616db924d53e2b60c7b4eb4e23ef",
+        "candidateBeforeSha": "50d4facad06bf97e93910920c98c50297e3c226d",
+        "mergedSha": "1067e4da8ce454f06d64c9001d930932d3d73890"
+      },
+      {
+        "path": "scripts/test-beta-workerd.mjs",
+        "baselineSha": "84193e345bd827084fe3841915db77364e1beb7d",
+        "portalSha": "79d347b1d681802f1e3a6d3e3480a115167347aa",
+        "candidateBeforeSha": "d3793f3101749deceb078f01775cdead5034d24a",
+        "mergedSha": "0590bc38c4eb6e2c39863a0b32b285bc40b6e5fb"
+      },
+      {
+        "path": "scripts/verify-beta-live.mjs",
+        "baselineSha": "7bb021a0775afc791435126f913fba55c4be0946",
+        "portalSha": "6535aeee8ea0b16e8efac900ac716cbba080435f",
+        "candidateBeforeSha": "707ff7791e870d49b0c8798e31271d81862fe202",
+        "mergedSha": "15886cc7c0fb289016907c1c156de46d043bc351"
+      },
+      {
+        "path": "src/beta-api.ts",
+        "baselineSha": "4cb1ded4f6cc142557fcd63b7985cef58dba4850",
+        "portalSha": "fd413516e38d03b04c68a5f285d0faf76ba78ea9",
+        "candidateBeforeSha": "0b33567f3c9a372ae6ec8b8f6956b2d953b760b6",
+        "mergedSha": "c4224ad112b5421011a693917ea99dd4a00cda60"
+      },
+      {
+        "path": "src/dev-parent-auth.ts",
+        "baselineSha": "354c311e3a12c699d2a19636fa837ad15fd92239",
+        "portalSha": "dd9b18d57246b7c6bb8902a2cf81e33d2eeca983",
+        "candidateBeforeSha": "6b2efbad52d3df6c5002633307751ec9ef867487",
+        "mergedSha": "40e608baffd18a455c7cffe457c772563d49b244"
+      },
+      {
+        "path": "src/worker-beta-cardfree.ts",
+        "baselineSha": "0ac400e56be21bfbd039a6c17749cb798b25c593",
+        "portalSha": "b6d0e3796add47d596491e72a55afb085d9d8bfa",
+        "candidateBeforeSha": "64448e73732f6cb825449df23c88b76b7a7d205e",
+        "mergedSha": "6fb48802f97ab3870fa0f464104de6f319b1dae8"
+      }
+    ],
+    "textualConflict": {
+      "path": "scripts/setup-beta-d1.mjs",
+      "resolution": "retain both migration branches"
+    },
+    "sourceParents": [
+      "2069e3373663c99b4d9d9cd93ac919610758b958",
+      "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
+    ]
+  },
+  "credentialSchemaRedEvidence": {
+    "path": "audit/phase8d/PHASE8D_GROUP1_PARENT_CREDENTIAL_SCHEMA_RED.json",
+    "sha256": "129e785fdca0ea7551edfa93ebf365eca1bb84002e88269f350f4f3fd6881e5d"
+  },
+  "credentialCases": 6,
+  "credentialPolicy": "Known parent-verifier table excluded from backups/restores; source unchanged by capture; injected archive table and occupied-target credentials refuse; no old verifier revival; unknown lookalike schema fails closed",
+  "nativeFullRestore": "Current schema with synthetic credential row; signed encrypted41+4/deviceDO source destruction/fresh restore/restart retains33 populated stable rows, four one-shot controls, credential exclusion, archive health and max5 source SQL/call",
+  "b2ReadOnlyAssessment": {
+    "connected": true,
+    "visibleBucketCount": 0,
+    "calls": [
+      "connection_status",
+      "list_buckets"
+    ],
+    "destinationQualified": false,
+    "cardOrFreeTierVerified": false,
+    "keyCustodyVerified": false,
+    "bucketOrFileOrSettingChanged": false
+  },
+  "inventories": {
+    "matchedRuntimeGitBlobs": 89,
+    "runtimeSourceSetSha256": "598b853278f78a064e75898da6c28bf0eda8325186e7b60f3fb6e60112fa15d5",
+    "runtimeSummary": {
+      "sourceFiles": 89,
+      "sqlPrepareCandidates": 304,
+      "sqlWriteOrUnknown": 173,
+      "mutationOrWrapperCandidates": 73,
+      "deferredWorkCandidates": 21,
+      "actorClasses": 3,
+      "unresolvedLocalImports": 0
+    },
+    "matchedExternalGitBlobs": 281,
+    "externalSourceSetSha256": "8c6406feda1fea5261a3325b8787b5acad3ef279bdb289a9bdb3dad4795d9386",
+    "externalSummary": {
+      "selectedFiles": 281,
+      "filesWithManagementSignals": 65,
+      "explicitClassifications": 67,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 4,
+      "unresolvedDynamicImports": 130
+    },
+    "productionControllerInstalls": 0
+  },
+  "prCheckout": {
+    "sha": "d6e21b48c6a53dab3275cea18da8b84931e23be5",
+    "verifiedParents": [
+      "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "abfc3f412ab865d93441dbe2342f9b1c9d47ae71"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42330784268,
+      "jobId": 128276572542,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42330784268",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "d6e21b48c6a53dab3275cea18da8b84931e23be5",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "suiteSummaries": [],
+      "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71"
+    },
+    {
+      "runId": 42330784357,
+      "jobId": 128276572173,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42330784357",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "d6e21b48c6a53dab3275cea18da8b84931e23be5",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "suiteSummaries": [],
+      "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71"
+    },
+    {
+      "runId": 42330784337,
+      "jobId": 128276572461,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42330784337",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "d6e21b48c6a53dab3275cea18da8b84931e23be5",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "suiteSummaries": [
+        "2026-11-07T02:45:38.6020320Z {\"suite\":\"beta-config-isolation\",\"passed\":56,\"failed\":0,\"scope\":\"actual validator and actual setup early refusal using synthetic configs and blocked capabilities; no Wrangler/provider/deployment/schema/APK/UI mutation or active configuration proof\"}",
+        "2026-11-07T02:45:40.6105673Z {\"suite\":\"route-lookup\",\"passed\":32,\"failed\":0,\"scope\":\"actual synthetic PMTiles/MVT and D1-first map adapter; deadlines stop waiting, do not preempt JS/remote effects; no live map/latency/provider/fleet qualification\"}",
+        "2026-11-07T02:45:42.8642804Z {\"suite\":\"route-live\",\"passed\":7,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1, signed beta route and durable DO state; no physical phone, browser draw, live provider or latency/fleet acceptance\"}",
+        "2026-11-07T02:45:45.7527061Z {\"suite\":\"acceptance-worksheet\",\"passed\":42,\"failed\":0,\"realLedgerUnchanged\":true,\"scope\":\"synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics\"}",
+        "2026-11-07T02:45:46.0098645Z {\"suite\":\"closure-inventory\",\"passed\":14,\"failed\":0,\"scope\":\"deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim\"}",
+        "2026-11-07T02:45:46.2992492Z {\"suite\":\"external-writer-inventory\",\"passed\":17,\"failed\":0,\"scope\":\"synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance\"}",
+        "2026-11-07T02:45:49.0804879Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-07T02:45:53.5041325Z {\"suite\":\"parent-credential-recovery\",\"passed\":6,\"failed\":0,\"scope\":\"actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance\"}",
+        "2026-11-07T02:45:55.2216379Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-07T02:45:56.5734739Z {\"suite\":\"external-writer\",\"passed\":27,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-07T02:45:58.4515024Z {\"suite\":\"capture-broker-native\",\"passed\":45,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-07T02:45:59.0550690Z {\"suite\":\"edge-client-compatibility\",\"passed\":3,\"failed\":0,\"scope\":\"actual workerd Request/WebCrypto client with synthetic response capabilities and forbidden outbound network; native authority/full restore qualified separately; no real endpoint or production activation\"}",
+        "2026-11-07T02:45:59.2415300Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-07T02:45:59.3668792Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-07T02:46:41.0642466Z {\"suite\":\"capture-coordinator\",\"passed\":22,\"failed\":0,\"maxSourceStatements\":5,\"scope\":\"actual synthetic Miniflare D1/BLOB; supplied external fence capability and encrypted private file journal; not live writer-fence installation, cloud capture/PITR or destination/key independence proof\"}",
+        "2026-11-07T02:46:42.9322417Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-07T02:46:43.1359764Z {\"suite\":\"private-journal-files\",\"passed\":16,\"failed\":0,\"scope\":\"actual Linux private files/FIFO and injected I/O faults; actual coordinator with synthetic runtime/authority for refusal/release, not real writer fencing or cloud recovery\"}",
+        "2026-11-07T02:46:43.2113292Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-07T02:46:46.7939074Z {\"suite\":\"pitr-readonly-lifecycle\",\"passed\":34,\"failed\":0,\"scope\":\"synthetic HTTP capabilities and actual local CLI files; no live identity, retention, provider, restore or browser acceptance\"}",
+        "2026-11-07T02:47:07.6639832Z {\"suite\":\"watchdog\",\"passed\":6,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance\"}",
+        "2026-11-07T02:47:11.6704741Z {\"suite\":\"watchdog-state\",\"passed\":23,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1; races thresholds durable retry and redacted status, not end-user notification or live latency proof\"}",
+        "2026-11-07T02:47:16.6573789Z {\"suite\":\"cleanup-backlog\",\"passed\":20,\"failed\":0,\"scope\":\"hosted actual Miniflare D1; synthetic backlog and statement bounds, not cloud CPU/day qualification\"}",
+        "2026-11-07T02:47:23.6820258Z {\"suite\":\"commute-paging\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes\"}",
+        "2026-11-07T02:47:28.6127834Z {\"suite\":\"phase8d-d1-object-integrity\",\"passed\":12,\"failed\":0,\"scope\":\"actual local Miniflare D1; synthetic objects only\"}",
+        "2026-11-07T02:47:30.1284455Z {\"suite\":\"private-archive-files\",\"passed\":22,\"failed\":0,\"scope\":\"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification\"}",
+        "2026-11-07T02:47:30.6151423Z {\"suite\":\"backup-health\",\"passed\":40,\"failed\":0,\"scope\":\"actual authenticated package checks, private files and CLI plus synthetic read/clock faults; no installed schedule, production archive/key, independent custody, full schema/restore or cloud recovery acceptance\"}",
+        "2026-11-07T02:47:36.9248434Z {\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+        "2026-11-07T02:48:00.7192335Z {\"suite\":\"populated-recovery-relations\",\"passed\":7,\"failed\":0,\"tables\":16,\"rows\":33,\"joinedPlaces\":2,\"joinedSchedules\":2,\"joinedEvidence\":2,\"joinedWitnesses\":2,\"scope\":\"synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance\"}",
+        "2026-11-07T02:48:10.1348148Z {\"suite\":\"d1-retention\",\"passed\":10,\"failed\":0,\"scope\":\"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim\"}",
+        "2026-11-07T02:48:12.1608579Z {\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+        "2026-11-07T02:48:13.2069460Z {\"suite\":\"maintenance-leases\",\"passed\":7,\"failed\":0,\"scope\":\"actual local D1; synthetic tasks and controlled clock only\"}",
+        "2026-11-07T02:48:15.8845030Z {\"suite\":\"background-receipts\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1, synthetic tasks and controlled clock; no cloud data\"}",
+        "2026-11-07T02:48:18.7783587Z {\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}",
+        "2026-11-07T02:48:21.1933515Z {\"suite\":\"refinement-corruption\",\"passed\":5,\"failed\":0,\"scope\":\"actual local D1/object adapter; synthetic frames only\"}",
+        "2026-11-07T02:48:27.4004861Z {\"suite\":\"refinement-lifecycle\",\"passed\":8,\"failed\":0,\"scope\":\"actual local D1/object adapter; synthetic frames only\"}",
+        "2026-11-07T02:48:29.1294475Z {\"suite\":\"d1-work-budget\",\"passed\":6,\"failed\":0,\"scope\":\"actual local D1; conservative statement guard, not live CPU or daily quota acceptance\"}",
+        "2026-11-07T02:48:32.0105923Z {\"suite\":\"maintenance-invocation-budget\",\"passed\":4,\"failed\":0,\"scope\":\"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU\"}"
+      ],
+      "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71"
+    },
+    {
+      "runId": 42330778537,
+      "jobId": 128276554924,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42330778537",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "suiteSummaries": [
+        "2026-11-07T02:45:33.6735124Z {\"suite\":\"beta-config-isolation\",\"passed\":56,\"failed\":0,\"scope\":\"actual validator and actual setup early refusal using synthetic configs and blocked capabilities; no Wrangler/provider/deployment/schema/APK/UI mutation or active configuration proof\"}",
+        "2026-11-07T02:45:35.6320502Z {\"suite\":\"route-lookup\",\"passed\":32,\"failed\":0,\"scope\":\"actual synthetic PMTiles/MVT and D1-first map adapter; deadlines stop waiting, do not preempt JS/remote effects; no live map/latency/provider/fleet qualification\"}",
+        "2026-11-07T02:45:37.9348806Z {\"suite\":\"route-live\",\"passed\":7,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1, signed beta route and durable DO state; no physical phone, browser draw, live provider or latency/fleet acceptance\"}",
+        "2026-11-07T02:45:40.9037534Z {\"suite\":\"acceptance-worksheet\",\"passed\":42,\"failed\":0,\"realLedgerUnchanged\":true,\"scope\":\"synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics\"}",
+        "2026-11-07T02:45:41.1793674Z {\"suite\":\"closure-inventory\",\"passed\":14,\"failed\":0,\"scope\":\"deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim\"}",
+        "2026-11-07T02:45:41.4960328Z {\"suite\":\"external-writer-inventory\",\"passed\":17,\"failed\":0,\"scope\":\"synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance\"}",
+        "2026-11-07T02:45:44.2296047Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-07T02:45:48.7511114Z {\"suite\":\"parent-credential-recovery\",\"passed\":6,\"failed\":0,\"scope\":\"actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance\"}",
+        "2026-11-07T02:45:50.4025160Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-07T02:45:51.8331339Z {\"suite\":\"external-writer\",\"passed\":27,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-07T02:45:53.7315752Z {\"suite\":\"capture-broker-native\",\"passed\":45,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-07T02:45:54.3273522Z {\"suite\":\"edge-client-compatibility\",\"passed\":3,\"failed\":0,\"scope\":\"actual workerd Request/WebCrypto client with synthetic response capabilities and forbidden outbound network; native authority/full restore qualified separately; no real endpoint or production activation\"}",
+        "2026-11-07T02:45:54.5168266Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-07T02:45:54.6469999Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-07T02:46:37.5688200Z {\"suite\":\"capture-coordinator\",\"passed\":22,\"failed\":0,\"maxSourceStatements\":5,\"scope\":\"actual synthetic Miniflare D1/BLOB; supplied external fence capability and encrypted private file journal; not live writer-fence installation, cloud capture/PITR or destination/key independence proof\"}",
+        "2026-11-07T02:46:39.4228510Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-07T02:46:39.6361944Z {\"suite\":\"private-journal-files\",\"passed\":16,\"failed\":0,\"scope\":\"actual Linux private files/FIFO and injected I/O faults; actual coordinator with synthetic runtime/authority for refusal/release, not real writer fencing or cloud recovery\"}",
+        "2026-11-07T02:46:39.7156260Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-07T02:46:43.3216036Z {\"suite\":\"pitr-readonly-lifecycle\",\"passed\":34,\"failed\":0,\"scope\":\"synthetic HTTP capabilities and actual local CLI files; no live identity, retention, provider, restore or browser acceptance\"}",
+        "2026-11-07T02:47:03.8285235Z {\"suite\":\"watchdog\",\"passed\":6,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance\"}",
+        "2026-11-07T02:47:07.7941725Z {\"suite\":\"watchdog-state\",\"passed\":23,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1; races thresholds durable retry and redacted status, not end-user notification or live latency proof\"}",
+        "2026-11-07T02:47:12.6128311Z {\"suite\":\"cleanup-backlog\",\"passed\":20,\"failed\":0,\"scope\":\"hosted actual Miniflare D1; synthetic backlog and statement bounds, not cloud CPU/day qualification\"}",
+        "2026-11-07T02:47:19.5776483Z {\"suite\":\"commute-paging\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes\"}",
+        "2026-11-07T02:47:25.0729928Z {\"suite\":\"phase8d-d1-object-integrity\",\"passed\":12,\"failed\":0,\"scope\":\"actual local Miniflare D1; synthetic objects only\"}",
+        "2026-11-07T02:47:26.6428229Z {\"suite\":\"private-archive-files\",\"passed\":22,\"failed\":0,\"scope\":\"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification\"}",
+        "2026-11-07T02:47:27.1484271Z {\"suite\":\"backup-health\",\"passed\":40,\"failed\":0,\"scope\":\"actual authenticated package checks, private files and CLI plus synthetic read/clock faults; no installed schedule, production archive/key, independent custody, full schema/restore or cloud recovery acceptance\"}",
+        "2026-11-07T02:47:33.3692205Z {\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+        "2026-11-07T02:47:57.0826558Z {\"suite\":\"populated-recovery-relations\",\"passed\":7,\"failed\":0,\"tables\":16,\"rows\":33,\"joinedPlaces\":2,\"joinedSchedules\":2,\"joinedEvidence\":2,\"joinedWitnesses\":2,\"scope\":\"synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance\"}",
+        "2026-11-07T02:48:07.1364081Z {\"suite\":\"d1-retention\",\"passed\":10,\"failed\":0,\"scope\":\"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim\"}",
+        "2026-11-07T02:48:09.2917614Z {\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+        "2026-11-07T02:48:10.4022756Z {\"suite\":\"maintenance-leases\",\"passed\":7,\"failed\":0,\"scope\":\"actual local D1; synthetic tasks and controlled clock only\"}",
+        "2026-11-07T02:48:13.4175085Z {\"suite\":\"background-receipts\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1, synthetic tasks and controlled clock; no cloud data\"}",
+        "2026-11-07T02:48:16.3755671Z {\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}",
+        "2026-11-07T02:48:18.7225670Z {\"suite\":\"refinement-corruption\",\"passed\":5,\"failed\":0,\"scope\":\"actual local D1/object adapter; synthetic frames only\"}",
+        "2026-11-07T02:48:25.2668869Z {\"suite\":\"refinement-lifecycle\",\"passed\":8,\"failed\":0,\"scope\":\"actual local D1/object adapter; synthetic frames only\"}",
+        "2026-11-07T02:48:26.9768842Z {\"suite\":\"d1-work-budget\",\"passed\":6,\"failed\":0,\"scope\":\"actual local D1; conservative statement guard, not live CPU or daily quota acceptance\"}",
+        "2026-11-07T02:48:30.0151058Z {\"suite\":\"maintenance-invocation-budget\",\"passed\":4,\"failed\":0,\"scope\":\"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU\"}"
+      ],
+      "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71"
+    }
+  ],
+  "limits": [
+    "This is integration into the audit candidate, not merging PR32 into beta/backend-portal or deploying. All24 portal-only files are byte-identical to the observed target and six overlaps preserve reviewed changes; source/VM/native regressions do not close browser/OPPO/72h field issues or accept another audit group.",
+    "Parent verifier tests use explicitly synthetic non-secret values. No real credential/password was read, rotated, restored, deleted or provisioned, and no real database migration ran. The known new verifier table is explicitly excluded; unknown tables still fail closed and occupied isolated targets refuse.",
+    "Production controllers, authority keys/bindings/routes, source capture schedule and monitoring service remain uninstalled. Native full41+4/deviceDO drill retains trusted fixture bootstrap/controls, legacy outer writer envelope and paused scheduler. Complete raw/operator/credential/lifecycle/deferred/process-tree coverage and started/legacy reconciliation remain; urgent-outage fallback NOT_IMPLEMENTED.",
+    "B2 connection/bucket listing was read-only: connected and no visible buckets at inspection. No bucket/file/key/permissions/sharing/lifecycle/retention/encryption/billing was changed. Connection is not destination, card/free-tier, key custody or encrypted cloud readback qualification; account identifiers/credentials are omitted.",
+    "Actual independent private card-free destination/separate key/context, schedule/readback/age/failure/alert proof, current least-privilege PITR and isolated live-cloud restore/interruption/rollback/RTO/RPO remain open. Existing denied Cloudflare login/read boundaries not retried.",
+    "Existing Miniflare RPC-stub disposal warnings remain; inherited local R2-emulator labels do not prove real R2 service or billing use. Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. Only OPS-002/OPS-003 gain partial evidence; all canonical criteria/status/owner/review/disposition fields unchanged.",
+    "Separate user-referenced Yes tab remains unidentified/unreconciled. No live family data, permission/credential mutation, APK/phone change, R2/card/billing, deployment or final acceptance. Newer portal code is preserved through integration; no portal redesign performed."
+  ]
+}
