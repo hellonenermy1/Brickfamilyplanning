@@ -1,8 +1,8 @@
 {
   "format": "brick-phase8d-closure-inventory-summary-v1",
-  "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
+  "sourceSha": "953ca9dc243f43ef781788c23d5f0f8ea8bf035e",
   "baselineSha256": "1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228",
-  "ledgerSha256": "ad1840dbe28d1278172da9f088d2ba1fad7863efaa5ee353f01e5afa7fd7596f",
+  "ledgerSha256": "1706d5e19fa01ab81affa8fb969de8e5dd8f291d437d790e1c588dde6f1b89a2",
   "reviewedSourceSha": null,
   "notice": "Read-only worksheet inventory; evidence references are not functional proof, applicability is not acceptance, missing owners are not assignments. No fixed remaining test total can be derived. Final release status must be decided by the separate acceptance gate and independent review.",
   "remainingProductTestCount": null,
@@ -21,8 +21,8 @@
     "criteriaSlotsWithGaps": 2100,
     "rowsWithWorksheetGaps": 525
   },
-  "fullInventoryCommand": "node scripts/phase8d-closure-inventory.mjs b14e54089d9a172f47445e767885eca07156f954",
-  "fullInventorySha256": "e6a8af21f764adbfa0408e17b306a82611d37b4b0ac8724fc0be4f02c272e19c",
+  "fullInventoryCommand": "node scripts/phase8d-closure-inventory.mjs 953ca9dc243f43ef781788c23d5f0f8ea8bf035e",
+  "fullInventorySha256": "f99814a91cb3fa2fcbb792965b33c70f73298350baaff7f3e7288b7115e3355a",
   "allCanonicalIds": [
     "GOV-001",
     "GOV-002",

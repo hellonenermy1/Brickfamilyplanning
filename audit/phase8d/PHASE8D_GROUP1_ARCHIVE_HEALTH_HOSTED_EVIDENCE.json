@@ -1,0 +1,150 @@
+{
+  "format": "brick-phase8d-group1-archive-health-hosted-v1",
+  "sourceSha": "953ca9dc243f43ef781788c23d5f0f8ea8bf035e",
+  "batchParentSha": "1d1730d12eaacb63e96ed5c16765a983ca8dd52e",
+  "frozenBaseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "observedCurrentPortalBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_PUSH_CI_VERIFIED_READ_ONLY_ARCHIVE_HEALTH_NATIVE_RESTORE_NOT_INSTALLED_PR_INTEGRATION_BLOCKED",
+  "healthCases": 40,
+  "brokerClientCases": 45,
+  "delayedPositiveBrokerRegressionCasesAdded": 1,
+  "nativeHealthIntegrationGroupsAdded": 1,
+  "privateFileCases": 22,
+  "packageRegressionCases": 13,
+  "populatedRecoveryGroups": 7,
+  "newVerificationGroups": 42,
+  "selectedVerificationGroupsTotal": 236,
+  "healthProperties": "Exact trusted context/ciphertext hash; bounded stable private reads; package authentication; second exact readback; authenticated capture-time age/future/regression; redacted FRESH/STALE/UNVERIFIED; no mutation or schedule; restorabilityVerified=false",
+  "nativeIntegration": "Actual encrypted41+4/deviceDO private archive verified after source persistence destruction using pre-publication receipt digest; valid FRESH, injected-age STALE, wrong key UNVERIFIED; all populated33-row/16-table and safe-action restore/restart parity retained, max5 source SQL/call",
+  "testTiming": "Normal native broker fixtures use5s; deliberate hang/late-write faults retain100ms;150ms delayed-positive case passes. Prior push failure is compatible with the old100ms fixture sensitivity, but its exact cause is not asserted and no production deadline changed.",
+  "inventories": {
+    "matchedRuntimeGitBlobs": 89,
+    "runtimeSourceSetSha256": "3bdac81b0df8db967e21e28af3641d72cd38cadbf0d2db54c22859d3a7d63fcc",
+    "matchedExternalGitBlobs": 268,
+    "externalSourceSetSha256": "3a881302bd82b8a7098ace0a9a13b6961b87a3c0bb557d33e11c64f36a9279db",
+    "externalSummary": {
+      "selectedFiles": 268,
+      "filesWithManagementSignals": 64,
+      "explicitClassifications": 66,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 1,
+      "unresolvedDynamicImports": 126
+    },
+    "productionControllerInstalls": 0
+  },
+  "runs": [
+    {
+      "runId": 42325282296,
+      "jobId": 128259427837,
+      "event": "push",
+      "attempt": 1,
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "953ca9dc243f43ef781788c23d5f0f8ea8bf035e",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-07T01:41:57.6440494Z {\"suite\":\"capture-broker-native\",\"passed\":45,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-07T01:43:31.8873642Z Protected backup suite: 13 passed, 0 failed (synthetic/off-platform; no live capture or cloud qualification)",
+        "2026-11-07T01:43:33.0722117Z {\"suite\":\"private-archive-files\",\"passed\":22,\"failed\":0,\"scope\":\"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification\"}",
+        "2026-11-07T01:43:33.5423269Z {\"suite\":\"backup-health\",\"passed\":40,\"failed\":0,\"scope\":\"actual authenticated package checks, private files and CLI plus synthetic read/clock faults; no installed schedule, production archive/key, independent custody, full schema/restore or cloud recovery acceptance\"}",
+        "2026-11-07T01:43:40.0245523Z {\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+        "2026-11-07T01:43:42.5005241Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-07T01:43:50.7643534Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-07T01:43:50.8620315Z PASS actual encrypted41+4/deviceDO private archive is authenticated/read back after source destruction; captured-time stale and wrong-key health refuse fresh status",
+        "2026-11-07T01:44:04.3359112Z {\"suite\":\"populated-recovery-relations\",\"passed\":7,\"failed\":0,\"tables\":16,\"rows\":33,\"joinedPlaces\":2,\"joinedSchedules\":2,\"joinedEvidence\":2,\"joinedWitnesses\":2,\"scope\":\"synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance\"}",
+        "2026-11-07T01:44:09.1451549Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "priorSourceRecoveryNotUsedToQualifyCurrentSource": {
+    "runs": [
+      {
+        "id": 42208343601,
+        "attempt": 3,
+        "status": "completed",
+        "conclusion": "failure",
+        "head": "b14e54089d9a172f47445e767885eca07156f954",
+        "jobId": 128256822712,
+        "reportedJobConclusion": "failure",
+        "steps": 33,
+        "allStepsSuccess": false,
+        "usedToQualifyCurrentSource": false
+      },
+      {
+        "id": 42208349603,
+        "attempt": 2,
+        "status": "completed",
+        "conclusion": "success",
+        "head": "b14e54089d9a172f47445e767885eca07156f954",
+        "jobId": 128256826054,
+        "reportedJobConclusion": "success",
+        "steps": 33,
+        "allStepsSuccess": true,
+        "usedToQualifyCurrentSource": false
+      },
+      {
+        "id": 42208349586,
+        "attempt": 2,
+        "status": "completed",
+        "conclusion": "success",
+        "head": "b14e54089d9a172f47445e767885eca07156f954",
+        "jobId": 128256830603,
+        "reportedJobConclusion": "success",
+        "steps": 10,
+        "allStepsSuccess": true,
+        "usedToQualifyCurrentSource": false
+      }
+    ],
+    "pushFailureExtract": [
+      "2026-11-07T01:32:39.9915796Z PASS actual verify-beta-live.mjs lost signed START ACK starts no cloud work and retains STARTED ownership",
+      "2026-11-07T01:32:40.0148142Z PASS actual ensure-beta-d1-columns.mjs lost signed START ACK starts no cloud work and retains STARTED ownership",
+      "2026-11-07T01:32:40.0518510Z PASS actual setup-beta-d1.mjs lost signed START ACK starts no cloud work and retains STARTED ownership",
+      "2026-11-07T01:32:40.0521321Z {\"suite\":\"external-writer\",\"passed\":27,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+      "2026-11-07T01:32:40.5919129Z PASS native signed capture acquire/held/page/device/release works",
+      "2026-11-07T01:32:40.6242119Z PASS runtime-writer key admits/exits without read permission",
+      "2026-11-07T01:32:40.7836823Z file:///tmp/brick-capture-broker-tp6AYE/client.mjs:126",
+      "2026-11-07T01:32:40.7837560Z       throw Error(\"BROKER_OPERATION_UNCONFIRMED\");",
+      "2026-11-07T01:32:40.7837860Z             ^",
+      "2026-11-07T01:32:40.7837975Z ",
+      "2026-11-07T01:32:40.7838124Z Error: BROKER_OPERATION_UNCONFIRMED",
+      "2026-11-07T01:32:40.7838533Z     at Object.call (file:///tmp/brick-capture-broker-tp6AYE/client.mjs:126:13)",
+      "2026-11-07T01:32:40.7839201Z     at async file:///home/runner/work/Brickfamilyplanning/Brickfamilyplanning/scripts/test-phase8d-capture-broker.mjs:18:464",
+      "2026-11-07T01:32:40.7840057Z     at async test (file:///home/runner/work/Brickfamilyplanning/Brickfamilyplanning/scripts/test-phase8d-capture-broker.mjs:10:31)",
+      "2026-11-07T01:32:40.7840844Z     at async file:///home/runner/work/Brickfamilyplanning/Brickfamilyplanning/scripts/test-phase8d-capture-broker.mjs:18:2",
+      "2026-11-07T01:32:40.7841262Z ",
+      "2026-11-07T01:32:40.7841340Z Node.js v24.22.2",
+      "2026-11-07T01:32:40.7992218Z ##[error]Process completed with exit code 1."
+    ],
+    "exactCause": "UNKNOWN; prior100ms fixture timing is a compatible explanation, not proven source of original hosted failure",
+    "interimSource": "6a51b2d258cca4b13dcbac825852c8eb758d9d3d",
+    "interimSourceNotUsedToQualifyFinal": true
+  },
+  "integrationGate": {
+    "pr": 32,
+    "mergeable": false,
+    "state": "dirty",
+    "frozenQualificationBase": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+    "observedTargetBranchSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "currentPrMergeCheckoutVerified": false
+  },
+  "limits": [
+    "Exact-source push CI verifies the frozen candidate only. Concurrent beta/backend-portal advanced; PR32 is mergeable=false/dirty and has no current merge checkout. Current observed target141cbf42 must not be overwritten; separate reviewed integration is required before PR merge qualification. No merge/deployment performed.",
+    "New health tool is explicit read-only off-platform checking, not an installed schedule, daemon, alert delivery, production archive/provider, independent destination or separate key-custody qualification. FRESH means authenticated expected bytes/readback and bounded capture age at that check; restorabilityVerified=false.",
+    "Policy context and ciphertext digest must come from a trusted publication receipt/context, not be rediscovered from the archive. Native integration pins the digest before publication. Key/context/archive fixtures are synthetic; no production credential generated or installed.",
+    "Waiting is cooperative and AbortSignal best effort; synchronous JS/crypto/OS stalls cannot be hard-preempted. Final-component nofollow/private files do not replace trusted-parent/same-user isolation. Plaintext is authenticated temporarily in memory; immutable-string erasure is not claimed.",
+    "Full41+4/deviceDO native signed encrypted destruction/fresh restore retains trusted fixture bootstrap/controls, legacy outer synthetic writer envelope and paused scheduler. Complete raw/operator/credential/lifecycle/deferred/process-tree coverage and started/legacy reconciliation remain; urgent authority/storage/transport-outage fallback remains NOT_IMPLEMENTED.",
+    "Actual independent private card-free destination/separate key/context, schedule/readback/age/failure/alert monitoring, current least-privilege PITR and isolated live-cloud restore/interruption/rollback/RTO/RPO remain unqualified. Failed Cloudflare login/denied-read boundaries were not retried.",
+    "Existing Miniflare RPC-stub disposal warnings remain; inherited legacy R2-emulator tests are not real R2 service or billing qualification. Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN; only OPS-002/OPS-003 gain partial evidence. All canonical criteria/statuses/owners/reviews/dispositions unchanged.",
+    "The separate user-referenced Yes tab remains unidentified/unreconciled. Concurrent portal/APK work is untouched. No live family-data/schema/permissions/credentials, APK/UI/phone, R2/card/billing, other group, merge or deployment change."
+  ]
+}
