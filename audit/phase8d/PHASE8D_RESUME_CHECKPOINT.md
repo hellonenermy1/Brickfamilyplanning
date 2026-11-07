@@ -1,5 +1,7 @@
 # Brick V1 — Phase 8D durable continuation checkpoint
 
+> **Current execution plan — 7 November 2026:** read `PHASE8D_FOUR_DAY_CLOSURE_PLAN.md` and the current PROJECT_MEMORY direction before older chronological entries. The user requested all four groups be replanned for a four-active-day target, with conditional Day10 contingency. Early dependency checks, shared evidence assembly and unblocked approved source tasks replace an unconditional Group1-only stall. No group is thereby closed, no live mutation is authorized, and no date is guaranteed while access/authority/BE-019/review dependencies remain unresolved. Preserve tested executable7988b780 and evidence575e8125; Phase8D remains NOT PASS.
+
 > Latest source-job verified executable: **f87a0be0bdaf320752d747ae2a39da01ee0a1ece**, CI41956379795 attempt1 overall completed SUCCESS, source job68/68 steps SUCCESS. One deployment-contract job API status remains in_progress despite success conclusion/7 successful steps; final gate correctly refuses that inconsistent metadata. P8D-067 canonical per-ID gate and full525 scope inventory added; no real per-ID acceptance inferred. Read current operational queue and PHASE8D_REQUIREMENT_RECONCILIATION_2026-11-05.md. Existing58285064 recovery evidence preserved; live/cloud/owners/acceptance gaps remain. No Android/runtime/deploy changes; Phase8D NOT PASS.
 
 **Current state:** Phase 8D STARTED, NOT PASS, opened 2026-11-04. Created branch `v1-p8d-backend-deep-audit` from `v1-p8c-android-deep-audit` at SHA `70a3c287425e9276585fbff85909dcf699dcf2f2`.

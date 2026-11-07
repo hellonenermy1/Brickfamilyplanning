@@ -1,5 +1,13 @@
 # Brick project memory
 
+## Current execution direction — 7 November 2026 four-group replan
+
+The user's latest instruction is to replan all four remaining Phase8D groups for efficiency, target four active workdays and less than two weeks, and stop small incremental batches. Follow `audit/phase8d/PHASE8D_FOUR_DAY_CLOSURE_PLAN.md`; it supersedes older unconditional Group1-only scheduling to permit early shared dependency/evidence work and the next unblocked approved source task when a group is externally blocked. It does not close Group1 or authorize live mutation/deployment. The preserved groups are recovery, Atlas/learning, exact backend release qualification and canonical acceptance.
+
+Four days is an aggressive conditional target, not a high-confidence completion promise. Provisional Days1–4 are8–11November; Day10 contingency is17November. The first batch must establish actual cloud metadata/PITR access, independent private card-free backup/key/context custody, named isolated operational authorization, BE-019 authority/placement/missing scope and genuine owner/reviewer availability. If unavailable, mark the date AT RISK immediately and report exact blocker/action; do not repeat unchanged denials or silently extend the schedule. No unattended daily execution is implied by this planning request.
+
+Recovery gets Days1–2; Atlas and backend qualification Days2–3; evidence assembly starts immediately and final exact-candidate verification/review is Day4. No equal-effort assumption. Reuse the tested7988b780 source and575e8125 evidence. Preserve all19 sections and525 canonical IDs with the reviewed214/311 scope boundary. Source/operational/accepted states remain separate; no arbitrary implementation percentage, invented owners/reviewer/waivers, or old phone/browser/endurance requirements automatically blocking backend8D. Each continue advances the largest practical connected implementation/verification/persistence batch, stopping only for an actual blocker/authority boundary or execution limit. No extra staged abstractions unless they directly resolve a named exit defect; no repeat full suite without a change/failure/qualification reason. This replan changes documentation and scheduling only; all current verdicts remain NOT PASS/OPEN.
+
 ## 2026-11-05 — mandatory no-card architecture
 
 Jayvian explicitly reconfirmed that he has no credit card, cannot use R2, has repeated this constraint several times, and wants D1 substituted for R2. This is a hard project requirement, not an optional optimisation.
