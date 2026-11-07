@@ -1,0 +1,23 @@
+{
+  "format": "brick-phase8d-group1-b2-scope-v1",
+  "sourceSha": "53d27f9924ee77976699922b86d0f92c8980ed59",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Staged restricted B2 capability authenticates local ciphertext before upload, checks private bucket and pinned one-bucket/prefix least-privilege scope, validates upload grant/ack, reads exact version and authenticates/hash-checks readback, rechecks privacy, and retains uncertain upload outcomes without retries/deletion.91 actual adapter/crypto/stream adversarial cases and exact-source/current-base PR CI pass; no real provider/keys/schedule/custody qualification.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Actual signed41+4/deviceDO encrypted archive is uploaded/read back through staged B2 adapter against separate synthetic disk provider, source persistence and original local archive are deleted, transport is recreated, exact version is read/authenticated and health verified before actual fresh native D1/DO restore/restart. Existing33-row/16-table relation/credential/revocation/interruption checks pass; not isolated live-cloud recovery or RTO/RPO acceptance.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only partial staged-source/synthetic-native/CI support; no installed destination, real provider, custody, schedule, other-group or formal acceptance."
+}

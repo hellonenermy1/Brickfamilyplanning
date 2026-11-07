@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-progress-snapshot-v1",
-  "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71",
-  "ledgerSha256": "579e675c5238c6fa4891df2eed4c40c71e91e65035cd162d6ac7bd5132c85ffb",
+  "sourceSha": "53d27f9924ee77976699922b86d0f92c8980ed59",
+  "ledgerSha256": "4fbe80b2a630aecad5a422a87c75587713a8c8ce2f8babbb1345eddaee4debf9",
   "overallImplementationCompletionPercent": null,
   "reason": "No validated implementation-completion weighting/denominator exists. Passing tests, source support and draft worksheet gaps cannot be converted to an app-build percentage.",
   "formalWorksheet": {
