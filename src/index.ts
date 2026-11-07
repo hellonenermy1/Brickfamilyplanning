@@ -30,6 +30,7 @@ export { BrickDevice };
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 type Env = {
   DB: D1Database;
+  WATCHDOG_MANAGED_BY_ROOT?: boolean;
   HISTORY: R2Bucket;
   EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
@@ -277,6 +278,7 @@ async function parentDeviceProxy(req: Request, env: Env, id: string, kind: "stat
 }
 
 async function runOpsWatchdog(env: Env) {
+  if(env.WATCHDOG_MANAGED_BY_ROOT)return; // Card-free root owns bounded, isolated watchdog RPCs.
   const now = Date.now();
   const devices = await env.DB.prepare("SELECT id,created_at,last_health_at FROM devices WHERE revoked_at IS NULL").all<{ id: string; created_at: number; last_health_at: number | null }>();
   for (const device of devices.results) {

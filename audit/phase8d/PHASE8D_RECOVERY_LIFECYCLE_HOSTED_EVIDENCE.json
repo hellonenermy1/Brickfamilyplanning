@@ -1,0 +1,84 @@
+{
+  "format": "brick-phase8d-recovery-lifecycle-hosted-v1",
+  "sourceSha": "0dd3e620baa1a1b9277804dda27dc5fd3ca94ff7",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newCases": {
+    "captureLifecycle": 35,
+    "privateArchiveFiles": 22,
+    "total": 57
+  },
+  "runs": [
+    {
+      "runId": 42154900137,
+      "jobId": 127686594929,
+      "event": "pull_request",
+      "steps": 33,
+      "conclusion": "success",
+      "checkoutSha": "7ec592ea8442e8e901bb87556d07880cc7aeb564",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T03:11:31.8530209Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T03:12:11.1305256Z {\"suite\":\"private-archive-files\",\"passed\":22,\"failed\":0,\"scope\":\"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification\"}",
+        "2026-11-06T03:12:13.4832175Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T03:12:18.9451491Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T03:12:18.9766191Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T03:12:19.0053678Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    },
+    {
+      "runId": 42154900117,
+      "jobId": 127686594762,
+      "event": "pull_request",
+      "steps": 10,
+      "conclusion": "success",
+      "checkoutSha": "7ec592ea8442e8e901bb87556d07880cc7aeb564",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42154895070,
+      "jobId": 127686579336,
+      "event": "push",
+      "steps": 33,
+      "conclusion": "success",
+      "checkoutSha": "0dd3e620baa1a1b9277804dda27dc5fd3ca94ff7",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T03:11:22.8769526Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T03:11:56.7494617Z {\"suite\":\"private-archive-files\",\"passed\":22,\"failed\":0,\"scope\":\"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification\"}",
+        "2026-11-06T03:11:58.7212883Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T03:12:02.9403369Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T03:12:02.9921178Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T03:12:02.9992081Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    }
+  ],
+  "providerAccess": {
+    "integrationLookup": {
+      "query": "Cloudflare",
+      "matches": 0,
+      "exhaustive": false
+    },
+    "browserObservation": {
+      "date": "2026-11-06",
+      "url": "https://dash.cloudflare.com/login",
+      "heading": "Sign in to Cloudflare",
+      "authenticatedAccountVisible": false,
+      "credentialsEntered": false,
+      "resourcesRead": false
+    },
+    "historicalD1Audit": {
+      "runId": 41839919454,
+      "jobId": 126994211457,
+      "status": 401,
+      "retriedThisTurn": false
+    },
+    "scope": "Browser-session observation only, not a claim about the user's other browsers or absence of existing configuration."
+  },
+  "scope": "Source/SQLite/crypto/local filesystem and actual inherited synthetic native D1/DO source destruction-and-restore only. Trusted external authority/transport, real independent destination/key/PITR/cloud recovery/OS power loss and genuine approval are not established. Existing Miniflare restore RPC disposal warning persists."
+}

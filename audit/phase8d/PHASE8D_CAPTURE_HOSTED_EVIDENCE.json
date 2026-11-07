@@ -1,0 +1,60 @@
+{
+  "format": "brick-phase8d-capture-source-evidence-v1",
+  "sourceSha": "c2ecb88c9d34a429512de28d9a6aeedd3063b650",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newIndependentCases": 30,
+  "scope": "22 paged capture/encrypted journal tests and 8 synthetic GET-only PITR contract tests; enhanced existing actual synthetic D1/DO destruction-and-restore drill; no live writer fencing/transport, independent destination/key custody, cloud recovery or retention-window acceptance",
+  "runs": [
+    {
+      "runId": 42140420515,
+      "jobId": 127639070387,
+      "event": "push",
+      "sourceSha": "c2ecb88c9d34a429512de28d9a6aeedd3063b650",
+      "checkoutSha": "c2ecb88c9d34a429512de28d9a6aeedd3063b650",
+      "conclusion": "success",
+      "steps": 31,
+      "allStepsSuccess": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T00:57:48.3663576Z {\"suite\":\"capture-coordinator\",\"passed\":22,\"failed\":0,\"maxSourceStatements\":5,\"scope\":\"actual synthetic Miniflare D1/BLOB; supplied external fence capability and encrypted private file journal; not live writer-fence installation, cloud capture/PITR or destination/key independence proof\"}",
+        "2026-11-06T00:57:48.5940782Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-06T00:58:32.8932878Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T00:58:38.3251335Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T00:58:38.3849971Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    },
+    {
+      "runId": 42140428207,
+      "jobId": 127639093975,
+      "event": "pull_request",
+      "sourceSha": "c2ecb88c9d34a429512de28d9a6aeedd3063b650",
+      "checkoutSha": "d84b17bf8a92274ccea06961e9e50dcd42ba3738",
+      "conclusion": "success",
+      "steps": 31,
+      "allStepsSuccess": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T00:57:37.4656549Z {\"suite\":\"capture-coordinator\",\"passed\":22,\"failed\":0,\"maxSourceStatements\":5,\"scope\":\"actual synthetic Miniflare D1/BLOB; supplied external fence capability and encrypted private file journal; not live writer-fence installation, cloud capture/PITR or destination/key independence proof\"}",
+        "2026-11-06T00:57:37.6857838Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-06T00:58:15.6891038Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T00:58:20.9475612Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T00:58:21.0222632Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    },
+    {
+      "runId": 42140428364,
+      "jobId": 127639094770,
+      "event": "pull_request",
+      "sourceSha": "c2ecb88c9d34a429512de28d9a6aeedd3063b650",
+      "checkoutSha": "d84b17bf8a92274ccea06961e9e50dcd42ba3738",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsSuccess": true,
+      "errorMarkers": 0,
+      "extract": []
+    }
+  ],
+  "limitation": "Miniflare recovery RPC disposal warning remains. Source protocol trusts supplied authority. Historical deployment artifact is not a current provider attestation. All525 final dispositions unchanged."
+}

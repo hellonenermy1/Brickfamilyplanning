@@ -265,7 +265,7 @@ export async function alertPersistentIncidents(env: OpsEnv, now = Date.now()): P
 
 export async function cleanupOps(env: OpsEnv, now = Date.now()) {
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM device_health_samples WHERE received_at<?1").bind(now - 35 * 86_400_000),
-    env.DB.prepare("DELETE FROM health_incidents WHERE ended_at IS NOT NULL AND ended_at<?1").bind(now - 365 * 86_400_000)
+    env.DB.prepare("DELETE FROM device_health_samples WHERE rowid IN(SELECT rowid FROM device_health_samples WHERE received_at<?1 ORDER BY received_at,rowid LIMIT 200)").bind(now - 35 * 86_400_000),
+    env.DB.prepare("DELETE FROM health_incidents WHERE rowid IN(SELECT rowid FROM health_incidents WHERE ended_at IS NOT NULL AND ended_at<?1 ORDER BY ended_at,rowid LIMIT 200)").bind(now - 365 * 86_400_000)
   ]);
 }

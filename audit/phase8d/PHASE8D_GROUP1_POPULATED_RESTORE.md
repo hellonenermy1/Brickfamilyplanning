@@ -1,0 +1,21 @@
+# Group1 — populated configuration and relationship recovery
+
+Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. This closes a specific local/native coverage gap in the signed card-free recovery drill, not production recovery acceptance. Production code, schemas, controllers, keys, routes and configuration are unchanged by this batch.
+
+The approved PDF section8D.16/page52 requires an actual isolated restore and verification of schema, devices, history, places/config and relationships. Previous41-table counts could include empty configuration/relationship tables. The full signed native drill now seeds33 synthetic rows across16 such tables, plus four rows in two one-shot control tables. The same source is encrypted, destroyed, restored into fresh native stores and restarted. Existing device/history/object/security/interruption checks remain.
+
+| Graph | Populated tables | Verification |
+| --- | --- | --- |
+| Places | geofences, geofence_state, ble_anchors, learned_place_models | Exact columns, enabled flags, state/counters/timestamps, nullable fields and device/place joins |
+| Configuration | retention_settings, device_wifi_schedules, device_wifi_schedule_result, device_capability_profile | Exact schedules, flags, results, nullable actual-state/details, Unicode/quoted JSON; same schedule ID on two devices stays device-scoped |
+| Witness and receivers | witness_authorizations, ground_receivers, witness_aliases, witness_sightings, ground_sightings | Exact directional authorization flags, aliases, receiver/sighting links and unresolved nullable identity |
+| Composite evidence | evidence_batches, evidence_records, evidence_batch_records | Shared record/batch IDs across devices, exact values and joins including device/record/epoch/sequence |
+| One-shot controls | device_location_control, device_live_track_control | Pending controls expire with cancellation reason and bounded new completion time; completed controls keep original values/results/timestamps, including after restart |
+
+The fixture first asserts that inserted values actually exist and match the captured package. After source destruction, every column in the16-table graph is compared with that independently retained expected graph. Place, schedule, witness and composite evidence joins are checked explicitly. Both raw value parity and joined links are rechecked after native persistence restart. The expected graph is test-only retained knowledge; restoration input still comes solely from the authenticated encrypted package plus separately retained synthetic key/context, as in the existing drill.
+
+Negative checks change a restored place's device to another valid existing device, alter a schedule value, alter witness enabled state and alter a composite evidence-record value. These SQL-valid changes preserve row counts; foreign-key checks alone cannot prove the original data was restored. Exact parity must reject each drift. The target is repaired only within this synthetic test; no live data is changed. A diagnostics-store interruption also confirms primary configuration/relationships can already be present in a partial isolated target, while the overall restore fails and in-place retry is refused.
+
+Seven new native verification groups cover capture-package contents, fresh restore, restart, same-count relationship/configuration drift, witness flag drift, composite record drift and safe retirement of populated one-shot controls. This is a coverage addition, not a newly reproduced production defect. The schema's historical r2_key column in evidence metadata stores a D1 object key here; no R2 service or provider operation is used.
+
+Remaining: the separate user-referenced Yes tab is not identified/reconciled; this is not a complete review of every PDF point. Full production/operator/raw/credential/lifecycle/deferred/process-tree writer coverage, started/legacy outcome reconciliation, trusted endpoint/bootstrap/key-custody/rate review and safe urgent authority/storage/transport-outage fallback remain. Independent private card-free destination/separate key/context, scheduling/readback/age/failure monitoring, current least-privilege PITR and isolated live-cloud recovery/interruption/rollback/RTO/RPO remain unqualified. No controller, production key or partial fence is installed. Existing Miniflare RPC-stub disposal warnings remain.

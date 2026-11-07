@@ -5,6 +5,7 @@ import { getRetention, history, listGeofences, listTrips } from "./phase4";
 import { listHealthIncidents, reliability } from "./phase5-ops";
 import { batteryDrainTrend } from "./battery-health";
 import { snapshotD1ToR2 } from "./backup-v6";
+import type {BackgroundDispatchEnv} from './derived-work-dispatch';
 import { recordAudit } from "./phase5c";
 import { listBleAnchors, parentListBleAnchors, parentRemoveBleAnchor, parentSetBleAnchor } from "./ble-anchors";
 import { validateSafetyReplayWindow } from "./device-json-security";
@@ -13,7 +14,7 @@ import { augmentHealthWithLocationControl, noteLocationControlHealth, parentGetL
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
-type Env = AccessAuthEnv & {
+type Env = AccessAuthEnv & BackgroundDispatchEnv & {
   DB: D1Database;
   HISTORY: R2Bucket;
   MAPS: R2Bucket;
@@ -232,6 +233,6 @@ export default {
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     if (base.scheduled) await base.scheduled(controller, env, ctx);
-    if (controller.cron === "17 3 * * *") ctx.waitUntil(snapshotD1ToR2(env));
+    if (controller.cron === "17 3 * * *") ctx.waitUntil(env.BACKGROUND_WORK?env.BACKGROUND_WORK.backup():snapshotD1ToR2(env));
   }
 } satisfies ExportedHandler<Env>;

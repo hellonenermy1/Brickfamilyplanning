@@ -66,6 +66,16 @@ function validateHypothesis(h: StoredHypothesis) {
   if (typeof h.source !== "string" || h.source.length < 1 || h.source.length > 64) throw new Error("invalid smoothing source");
 }
 
+// Shared validation lets one corrupt stored frame fail independently before a
+// multi-frame interval is evaluated. Endpoint/order constraints stay below.
+export function validateSmoothingFrame(frame: SmoothingFrame) {
+  if (!Number.isSafeInteger(frame.wallTimeMs) || frame.wallTimeMs <= 0) throw Error('invalid smoothing frame time');
+  if (!Number.isFinite(frame.maxSpeedMps) || frame.maxSpeedMps <= 0 || frame.maxSpeedMps > 120) throw Error('invalid smoothing speed envelope');
+  if (frame.originalRealtimeHypothesisId !== null && (typeof frame.originalRealtimeHypothesisId !== 'string' || !ID_RE.test(frame.originalRealtimeHypothesisId))) throw Error('invalid original hypothesis id');
+  if (!Array.isArray(frame.hypotheses) || frame.hypotheses.length > 128) throw Error('invalid smoothing hypothesis count');
+  for (const h of frame.hypotheses) validateHypothesis(h);
+}
+
 /**
  * Endpoint compatibility is a reachability constraint, not a straight-line interpolation score.
  * A candidate inside the physically plausible envelope is not rewarded for lying on the geodesic
@@ -110,15 +120,12 @@ export function refineHypothesisInterval(
     }
     if (frame.wallTimeMs <= previousTime) throw new Error("smoothing frames out of order");
     previousTime = frame.wallTimeMs;
-    if (!Number.isFinite(frame.maxSpeedMps) || frame.maxSpeedMps <= 0 || frame.maxSpeedMps > 120) throw new Error("invalid smoothing speed envelope");
-    if (frame.originalRealtimeHypothesisId !== null && !ID_RE.test(frame.originalRealtimeHypothesisId)) throw new Error("invalid original hypothesis id");
-    if (!Array.isArray(frame.hypotheses) || frame.hypotheses.length > 128) throw new Error("invalid smoothing hypothesis count");
+    validateSmoothingFrame(frame);
 
     const fromStartSec = (frame.wallTimeMs - start.wallTimeMs) / 1000;
     const toEndSec = (end.wallTimeMs - frame.wallTimeMs) / 1000;
     let best: { h: StoredHypothesis; score: number } | null = null;
     for (const h of frame.hypotheses) {
-      validateHypothesis(h);
       const startFit = endpointCompatibility(start, h, fromStartSec, frame.maxSpeedMps);
       const endFit = endpointCompatibility(end, h, toEndSec, frame.maxSpeedMps);
       // Both endpoints matter. A candidate physically impossible from either side is strongly

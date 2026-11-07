@@ -1,0 +1,9 @@
+An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.
+PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge
+PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs
+PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context
+PASS wrong key, tampered ciphertext and unexpected backup ID rejected with both fresh target stores untouched
+PASS encrypted disaster restore excludes operational quarantine/cursors, retains pending inputs and reconstructs failure from those inputs; prior attempt history is not restored
+PASS corrupt/missing stores, malformed late rows/BLOBs, hash and bounds fail before writes; interrupted target is explicitly partial and rejects in-place retry
+PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed
+LIMIT local quiesced synthetic drill, 16MiB archive envelope; not scheduled/off-platform production backup, cloud drill, interrupted recovery, scale or RTO/RPO acceptance

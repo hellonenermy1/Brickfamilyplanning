@@ -1,0 +1,13 @@
+PASS same-size concurrent replacement cannot combine old metadata with new bytes
+PASS same-length stored chunk corruption is refused
+PASS missing and noncontiguous chunk indices are refused
+PASS conditional create cannot overwrite an existing object
+PASS stale conditional update preserves original bytes and metadata
+PASS two concurrent same-ETag writers have exactly one winner
+PASS conditional writes do not swallow unrelated database failures
+PASS Headers create-only and quoted ETag conditions are honored
+PASS unknown or empty condition forms are rejected before any overwrite
+PASS empty objects retain correct hash and no chunks
+PASS invalid object size refuses allocation
+PASS multi-chunk bytes, metadata and boundary range survive readback
+{"suite":"phase8d-d1-object-integrity","passed":12,"failed":0,"scope":"actual local Miniflare D1; synthetic objects only"}

@@ -1,0 +1,64 @@
+// Inert until a trusted in-isolate bootstrap explicitly installs a controller.
+// No production bootstrap, env flag, binding, HTTP/RPC activation or urgent-outage
+// bypass is provided. Partial hook coverage must never enable source capture.
+type Ticket={authorityEpoch:string;writerId:string;tracked:boolean};
+export type CaptureWriterPriority='ordinary'|'urgent';
+export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED'|'RESERVATION_CANCELLED'|'CANCELLATION_UNCERTAIN'|'START_UNCERTAIN';
+export type CaptureWriterController={
+ enterWriter(writerId:string,priority:CaptureWriterPriority):Promise<{admitted:boolean;ticket?:Ticket;requiresStart?:boolean}>;
+ startWriter?(ticket:Ticket,priority:CaptureWriterPriority):Promise<{started:boolean}>;
+ cancelReservation?(writerId:string,priority:CaptureWriterPriority):Promise<{cancelled:boolean}>;
+ exitWriter(ticket:Ticket):Promise<{released:boolean}>;
+ notice(code:CaptureWriterNotice,operation:string):unknown;
+ timeoutMs?:number;
+};
+type Context=Pick<ExecutionContext,'waitUntil'> & Partial<Pick<ExecutionContext,'passThroughOnException'>>;
+type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number;start?:CaptureWriterController['startWriter'];cancel?:CaptureWriterController['cancelReservation']};
+const controllers=new WeakMap<object,Installed>();
+// Internal adapter discovery only; this does not install or activate a controller.
+export function stagedCaptureWriterConfigured(owner:object){return controllers.has(owner);}
+const hex32=(x:unknown)=>typeof x==='string'&&/^[a-f0-9]{32}$/.test(x);
+function validTicket(x:unknown,writerId:string):x is Ticket{return x!==null&&typeof x==='object'&&Object.keys(x).sort().join(',')==='authorityEpoch,tracked,writerId'&&hex32((x as Ticket).authorityEpoch)&&(x as Ticket).writerId===writerId&&typeof (x as Ticket).tracked==='boolean';}
+export function installStagedCaptureWriterController(owner:object,controller:CaptureWriterController){
+ const timeout=controller?.timeoutMs??1000;
+ if(!owner||typeof owner!=='object'||controllers.has(owner)||typeof controller?.enterWriter!=='function'||typeof controller.exitWriter!=='function'||typeof controller.notice!=='function'||!Number.isSafeInteger(timeout)||timeout<5||timeout>15000)throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ if((controller.startWriter!==undefined||controller.cancelReservation!==undefined)&&(typeof controller.startWriter!=='function'||typeof controller.cancelReservation!=='function'))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
+}
+function report(c:Installed,code:CaptureWriterNotice,operation:string){try{Promise.resolve(c.notice(code,operation)).catch(()=>{});}catch{} }
+async function bounded<T>(p:Promise<T>,ms:number){let timer:ReturnType<typeof setTimeout>|undefined;const deadline=performance.now()+ms;try{const result=await Promise.race([p,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT')),ms);})]);if(performance.now()>=deadline)throw Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT');return result;}finally{clearTimeout(timer);}}
+function schedule(parent:Context,promise:Promise<unknown>,c:Installed,operation:string){const safe=promise.catch(()=>{report(c,'RELEASE_UNCERTAIN',operation);});try{parent.waitUntil(safe);}catch{report(c,'CONTEXT_REJECTED',operation);} }
+async function cancelUnstarted(c:Installed,writerId:string,priority:CaptureWriterPriority,operation:string){try{const result=await bounded(Promise.resolve().then(()=>c.cancel!(writerId,priority)),c.timeoutMs);if(result?.cancelled!==true)throw Error('uncertain cancellation');report(c,'RESERVATION_CANCELLED',operation);}catch{report(c,'CANCELLATION_UNCERTAIN',operation);}}
+export async function runCaptureWriter<T>(owner:object,operation:string,priority:CaptureWriterPriority,parent:Context,work:(scoped:ExecutionContext)=>Promise<T>):Promise<T>{
+ const installed=controllers.get(owner);if(!installed)return work(parent as ExecutionContext);const c=installed;
+ if(!/^[a-z][a-z0-9.-]{0,79}$/.test(operation)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_OPERATION_INVALID');
+ const writerId=crypto.randomUUID().replaceAll('-','');
+ const request=Promise.resolve().then(()=>c.enter(writerId,priority));let admission;
+ try{admission=await bounded(request,c.timeoutMs);}catch{
+  report(c,'ADMISSION_UNCERTAIN',operation);
+  // A lost/late reply can leave a durable ticket. Work has NOT started. Clean up
+  // only the correctly bound late ticket; never erase unknown ownership on timeout.
+  schedule(parent,c.cancel?cancelUnstarted(c,writerId,priority,operation):request.then(async late=>{if(late?.admitted===true&&validTicket(late.ticket,writerId)&&late.requiresStart!==true){const r=await bounded(Promise.resolve().then(()=>c.exit(late.ticket!)),c.timeoutMs);if(r?.released!==true)throw Error('late release uncertain');report(c,'LATE_ADMISSION_CLEANUP',operation);}}),c,operation);
+  throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');
+ }
+ if(admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
+ if(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||(admission.requiresStart===true)!==Boolean(c.start)){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
+ const ticket={...admission.ticket};
+ if(c.start){try{const result=await bounded(Promise.resolve().then(()=>c.start!({...ticket},priority)),c.timeoutMs);if(result?.started!==true)throw Error('start unconfirmed');}catch{report(c,'START_UNCERTAIN',operation);schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_START_UNCERTAIN');}}
+ let closed=false,workRejected=false,deferredRejected=false;const pending:Promise<boolean>[]=[];
+ const waitUntil=(value:Promise<unknown>)=>{const observed=Promise.resolve(value).then(()=>true,()=>{deferredRejected=true;report(c,'DEFERRED_REJECTED',operation);return false;});if(closed){report(c,'LATE_WORK_UNACCOUNTED',operation);throw Error('CAPTURE_WRITER_SCOPE_CLOSED');}pending.push(observed);};
+ const scoped=new Proxy(parent,{get(target,key){if(key==='waitUntil')return waitUntil;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}}) as ExecutionContext;
+ async function finish(){
+  for(let next=0;next<pending.length;){const batch=pending.slice(next);next=pending.length;await Promise.all(batch);}
+  closed=true;
+  // Promise rejection is not proof that a remote write stopped/rolled back.
+  // Even after registered descendants settle, retain uncertain durable ownership.
+  if(workRejected||deferredRejected){report(c,'WORK_OUTCOME_UNCERTAIN',operation);return;}
+  // Do not put a timeout on work/deferred settlement and then release ownership.
+  // A permanently unresolved task leaves its writer durable and blocks capture.
+  const result=await bounded(Promise.resolve().then(()=>c.exit(ticket)),c.timeoutMs);
+  if(result?.released!==true)throw Error('capture writer release uncertain');
+ }
+ try{return await work(scoped);}catch(error){workRejected=true;report(c,'WORK_REJECTED',operation);throw error;}
+ finally{schedule(parent,finish(),c,operation);}
+}

@@ -1,0 +1,121 @@
+name: Phase 8D D1 storage and recovery audit (no cloud writes)
+on:
+  push:
+    branches: [audit/phase8d-d1-qualification]
+    paths: ['src/**', 'scripts/**', 'schema/**', '.github/workflows/phase8d-cardfree-ci.yml']
+  pull_request:
+    branches: [beta/backend-portal]
+    paths: ['src/**', 'scripts/**', 'schema/**', '.github/workflows/phase8d-cardfree-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: phase8d-cardfree-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  d1-storage-and-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Beta provisioner and shared compatibility schema syntax
+        run: |
+          node --check scripts/setup-beta-d1.mjs
+          node --check scripts/ensure-beta-d1-columns.mjs
+          node --check scripts/beta-compat-columns.mjs
+          node --check scripts/beta-deployment-contract.mjs
+          node scripts/test-beta-deployment.mjs
+          node scripts/test-phase8d-beta-config.mjs
+      - run: npm run build:parent-assets
+      - name: Optional route-map isolation deadlines and signed live recovery
+        run: |
+          node scripts/test-phase8d-route-lookup.mjs
+          node scripts/test-phase8d-route-live.mjs
+      - name: Canonical acceptance worksheet and closure inventory guards
+        run: |
+          node scripts/test-phase8d-release-acceptance.mjs
+          node scripts/test-phase8d-requirements-ledger.mjs
+          node scripts/test-phase8d-acceptance-worksheet.mjs
+          node scripts/test-phase8d-closure-inventory.mjs
+          node scripts/test-phase8d-external-writer-inventory.mjs
+          node scripts/phase8d-external-writer-inventory.mjs df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f > /tmp/group1-external-writer-inventory.json
+          cmp audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json /tmp/group1-external-writer-inventory.json
+          node scripts/audit-phase8d-requirements.mjs
+      - name: Bounded coherent capture source and encrypted coordinator
+        run: |
+          node scripts/test-phase8d-worker-entry.mjs
+          node scripts/test-phase8d-capture-admission.mjs
+          node scripts/test-phase8d-parent-credential-recovery.mjs
+          node scripts/test-phase8d-capture-reservations.mjs
+          node scripts/test-phase8d-process-completion.mjs
+          node scripts/test-phase8d-external-writer.mjs
+          node scripts/test-phase8d-capture-broker.mjs
+          node scripts/test-phase8d-edge-client.mjs
+          node scripts/test-phase8d-capture-writer-boundary.mjs
+          node scripts/test-phase8d-capture-d1-boundary.mjs
+          node scripts/phase8d-capture-write-inventory.mjs df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f > /tmp/group1-write-inventory.json
+          cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
+          node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
+          cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json
+          node scripts/test-phase8d-capture-baseline.mjs
+          node scripts/test-phase8d-capture-coordinator.mjs
+          node scripts/test-phase8d-capture-lifecycle.mjs
+          node scripts/test-phase8d-journal-files.mjs
+          node scripts/test-phase8d-cardfree-pitr.mjs
+          node scripts/test-phase8d-pitr-lifecycle.mjs
+      - name: Watchdog bounded fleet RPC delivery retry and state races
+        run: |
+          node scripts/test-phase8d-watchdog.mjs
+          node scripts/test-phase8d-watchdog-state.mjs
+      - name: Bounded cleanup backlog progress and policy regressions
+        run: node scripts/test-phase8d-cleanup-backlog.mjs
+      - name: Resumable D1 commute history paging regression
+        run: node scripts/test-phase8d-commute-paging.mjs
+      - name: D1 object read integrity and atomic conditional-write regressions
+        run: node scripts/test-phase8d-d1-object-integrity.mjs
+      - name: Protected off-platform archive authentication identity and CLI
+        run: |
+          node scripts/test-phase8d-protected-backup.mjs
+          node scripts/test-phase8d-private-archive-files.mjs
+          node scripts/test-phase8d-backup-health.mjs
+          node scripts/test-phase8d-b2-destination.mjs
+          node scripts/test-phase8d-backup-monitor.mjs
+          node scripts/test-phase8d-backup-alert-receipt.mjs
+      - name: Destroy source and recover both D1 stores and beta DO from encrypted package
+        run: node scripts/test-phase8d-cardfree-recovery.mjs
+      - name: Signed D1 history ACK partial-batch retry and exact revoke race
+        run: node scripts/test-phase8d-d1-ack-faults.mjs
+      - name: Receipt-age retention cleanup race and bounded statement envelope
+        run: node scripts/test-phase8d-d1-retention.mjs
+      - name: Scheduler delayed failure and automatic retry
+        run: node scripts/test-phase8d-maintenance-failure.mjs
+      - name: Versioned leases nested work and release-outage recovery
+        run: node scripts/test-phase8d-maintenance-leases.mjs
+      - name: Durable derived-work leases backoff privacy and fair device rotation
+        run: node scripts/test-phase8d-background-receipts.mjs
+      - name: Real scheduler enrichment failure isolation and durable evidence ACK
+        run: node scripts/test-phase8d-enrichment-failure.mjs
+      - name: Corrupt refinement input and healthy peer isolation
+        run: node scripts/test-phase8d-refinement-corruption.mjs
+      - name: Rotating poison input quarantine repair and operational reconstruction
+        run: node scripts/test-phase8d-refinement-lifecycle.mjs
+      - name: Conservative D1 computation guard and durable failure reserve
+        run: node scripts/test-phase8d-d1-work-budget.mjs
+      - name: Populated maintenance RPC statement envelope and alarm isolation
+        run: node scripts/test-phase8d-maintenance-budget.mjs
+      - name: Original refined history against actual production-migration SQLite
+        run: |
+          node_modules/.bin/esbuild src/phase5-refined-history.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-refined-existing.mjs
+          node scripts/test-phase5-refined-history.mjs /tmp/brick-refined-existing.mjs
+      - name: Existing beta auth history map and WebSocket regressions
+        run: node scripts/test-beta-workerd.mjs
+      - name: Original production DO and multi-store recovery regressions
+        run: node scripts/test-phase8d-full-store-recovery.mjs
+      - name: Existing native production trust-boundary regressions
+        run: node scripts/test-phase8d-workerd-integration.mjs

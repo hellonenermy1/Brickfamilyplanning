@@ -1,0 +1,21 @@
+{
+  "format": "brick-phase8d-group1-populated-restore-scope-v1",
+  "sourceSha": "b14e54089d9a172f47445e767885eca07156f954",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-003",
+      "classification": "MANDATORY",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Synthetic populated signed-native encrypted recovery now verifies33 rows across16 place/config/relationship tables and four one-shot controls, exact captured/restored/restarted values and joined links; SQL-valid same-count drift refuses parity. Seven new native groups and all26 available local workflow run groups pass. Current hosted jobs did not start; no current-source CI or live-cloud acceptance.",
+      "remaining": "Successful current-source hosted verification; complete production writer/credential/lifecycle/deferred/operator/process coverage and started/legacy reconciliation; urgent-outage fallback; independent destination/key/schedule/current PITR and isolated cloud recovery/RTO/RPO.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Local/native partial proof only; hosted not started; no canonical acceptance or other requirement updates."
+}

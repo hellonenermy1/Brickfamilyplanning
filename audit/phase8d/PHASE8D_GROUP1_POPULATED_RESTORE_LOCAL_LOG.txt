@@ -1,0 +1,753 @@
+LOCAL_AUDIT_STEP 1 npm run typechecknnpm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> typecheck
+> tsc --noEmit
+
+LOCAL_AUDIT_STEP 2 Beta provisioner and shared compatibility schema syntaxnPASS beta deployment rejects production worker, R2, Queues, unapproved cron, wrong D1/DO and rate bindings and database aliasing
+PASS checked-in template and synthetic rendered config remain accepted without mutation
+PASS binding, rate and object-key order do not affect identity checks
+PASS distinct uppercase UUIDs remain valid
+PASS destructive class deletion refuses in template and rendered preflight
+PASS class transfer refuses in template and rendered preflight
+PASS class rename refuses in template and rendered preflight
+PASS migration tag drift refuses in template and rendered preflight
+PASS migration order drift refuses in template and rendered preflight
+PASS extra migration refuses in template and rendered preflight
+PASS alternate route refuses in template and rendered preflight
+PASS nested environment with R2 refuses in template and rendered preflight
+PASS extra KV binding refuses in template and rendered preflight
+PASS service binding refuses in template and rendered preflight
+PASS R2 binding refuses in template and rendered preflight
+PASS Queue binding refuses in template and rendered preflight
+PASS asset handler override refuses in template and rendered preflight
+PASS asset path drift refuses in template and rendered preflight
+PASS asset binding drift refuses in template and rendered preflight
+PASS observability enablement refuses in template and rendered preflight
+PASS observability logging override refuses in template and rendered preflight
+PASS runtime date drift refuses in template and rendered preflight
+PASS runtime flag drift refuses in template and rendered preflight
+PASS workers.dev disabled refuses in template and rendered preflight
+PASS schema URL drift refuses in template and rendered preflight
+PASS extra var with secret-like lowercase name refuses in template and rendered preflight
+PASS local login mode drift refuses in template and rendered preflight
+PASS unapproved cron refuses in template and rendered preflight
+PASS additional trigger option refuses in template and rendered preflight
+PASS remote DO script refuses in template and rendered preflight
+PASS DO environment drift refuses in template and rendered preflight
+PASS duplicate DO binding refuses in template and rendered preflight
+PASS extra DO namespace option refuses in template and rendered preflight
+PASS duplicate D1 binding refuses in template and rendered preflight
+PASS D1 preview alias refuses in template and rendered preflight
+PASS D1 remote flag override refuses in template and rendered preflight
+PASS database name drift refuses in template and rendered preflight
+PASS rate binding name drift refuses in template and rendered preflight
+PASS rate namespace swap refuses in template and rendered preflight
+PASS login quota weakening refuses in template and rendered preflight
+PASS quota type drift refuses in template and rendered preflight
+PASS quota period drift refuses in template and rendered preflight
+PASS duplicate rate binding refuses in template and rendered preflight
+PASS extra quota field refuses in template and rendered preflight
+PASS malformed UUID and non-string database IDs refuse
+PASS case-insensitive database alias refuses even with bindings reversed
+PASS wrong template placeholders refuse before account selection
+PASS rendered placeholders, invalid SHA and off-origin/query map URLs refuse
+PASS malformed roots and missing/nonnormal nested structures refuse generically
+PASS sparse migration class arrays cannot skip expected class validation
+PASS actual setup refuses destructive class deletion before token/network/process use
+PASS actual setup refuses class transfer before token/network/process use
+PASS actual setup refuses alternate route before token/network/process use
+PASS actual setup refuses nested environment with R2 before token/network/process use
+PASS actual setup refuses rate namespace swap before token/network/process use
+PASS actual setup refuses login quota weakening before token/network/process use
+PASS actual setup accepts existing template preflight then stops at missing credential gate
+{"suite":"beta-config-isolation","passed":56,"failed":0,"scope":"actual validator and actual setup early refusal using synthetic configs and blocked capabilities; no Wrangler/provider/deployment/schema/APK/UI mutation or active configuration proof"}
+LOCAL_AUDIT_STEP 3 npm run build:parent-assetsnnpm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> build:parent-assets
+> node scripts/build-parent-assets.mjs
+
+Built OneMap-first parent map, private fallback and pairing assets in public/
+LOCAL_AUDIT_STEP 4 Optional route-map isolation deadlines and signed live recoverynPASS separate map identities cannot share warm road corridors
+PASS healthy same-map warm lookup reuses actual decoded tiles
+PASS distinct map road geometries stay separate
+PASS transient header rejection retries automatically
+PASS corrupt header rejection does not poison the next lookup
+PASS hung header releases fallback without relabelling source
+PASS hung tile read releases fallback
+PASS hung object body releases fallback
+PASS late header completion cannot fan out more tile requests
+PASS late failed generation cannot evict a newer healthy generation
+PASS concurrent same-map lookups share safe pending tile reads
+PASS overlarge road-feature collection refuses enrichment
+PASS declared tile range over2MiB refused before body access
+PASS truncated tile body cannot create a corridor
+PASS header and tile ETag change is refused then retried fresh
+PASS missing map preserves exact input
+PASS throwing body permits later automatic recovery
+PASS successful corridor preserves center, uncertainty floor and immutable packet
+PASS far roads do not fabricate a match
+PASS gzip directory and tile remain compatible with bounded decoding
+PASS gzip expansion beyond2MiB is refused before vector parsing
+PASS fused fix never enters optional map path
+PASS last-known fix never enters optional map path
+PASS non-inertial quality never enters optional map path
+PASS stationary packet never enters optional map path
+PASS missing trusted coordinate never enters optional map path
+PASS D1-first map metadata retries after rejected HEAD
+PASS D1-first failed probe does not persist rejected metadata
+PASS changed range ETag clears stale metadata and retries without reopening
+PASS size-only metadata adopts actual range ETag without breaking PMTiles
+PASS origin without any ETags remains usable without version-attestation claim
+PASS late old range cannot repopulate cache after metadata replacement
+{"suite":"route-lookup","passed":32,"failed":0,"scope":"actual synthetic PMTiles/MVT and D1-first map adapter; deadlines stop waiting, do not preempt JS/remote effects; no live map/latency/provider/fleet qualification"}
+PASS signed fallback advances actual DO while map HEAD is delayed
+PASS late header cannot start tiles or overwrite newer fused live state
+PASS later healthy request restores actual route enrichment automatically
+PASS bad signature cannot consume map work or advance DO
+PASS old signed packet cannot consume map work or replace current state
+PASS durable DO revocation remains authoritative after map enrichment
+PASS D1 revocation remains authoritative for the full signed path
+{"suite":"route-live","passed":7,"failed":0,"scope":"actual synthetic Miniflare D1, signed beta route and durable DO state; no physical phone, browser draw, live provider or latency/fleet acceptance"}
+LOCAL_AUDIT_STEP 5 Canonical acceptance worksheet and closure inventory guardsnPASS P8D-063 39 release acceptance cases: structured19-section evidence, unchanged tested source, real CI identity/attempt/jobs, negative/quoted PASS and fail-closed API boundaries (synthetic only)
+PASS P8D-067 61 per-ID acceptance cases: exact canonical525, owners/reviews/evidence/classes/scope, optional/cross-phase/prohibition rules, missing/tampered/circular proof rejected before network; synthetic only
+PASS criteria missing
+PASS criteria all unreviewed
+PASS one criterion missing
+PASS invented criterion
+PASS criteria array
+PASS criterion array
+PASS criterion failed
+PASS criterion pending
+PASS unrecognized status
+PASS unreviewed rationale
+PASS short rationale
+PASS missing proof refs
+PASS empty proof refs
+PASS out of range proof
+PASS negative proof
+PASS fractional proof
+PASS string proof
+PASS duplicate proof
+PASS unbounded proof refs
+PASS scope-only PASS
+PASS not applicable without scope
+PASS all not applicable
+PASS mandatory criterion unsupported
+PASS accepted criterion deferred
+PASS unexpected criterion fields
+PASS reviewer is implementer
+PASS reviewer is tester
+PASS normalized reviewer same
+PASS unicode-width reviewer same
+PASS review source absent
+PASS review source stale
+PASS impossible review calendar
+PASS deferral still claims PASS
+PASS criterion targets other phase
+PASS criterion target missing
+PASS deferred criterion no plan proof
+PASS optional unsupported still claims PASS
+{"suite":"acceptance-worksheet","passed":42,"failed":0,"realLedgerUnchanged":true,"scope":"synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics"}
+{"suite":"closure-inventory","passed":14,"failed":0,"scope":"deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim"}
+PASS source is inspected without executing a tool
+PASS new unreviewed management capability refuses
+PASS explicit mutator classification never becomes enforcement
+PASS HTTP POST alone is not falsely declared a management write
+PASS source changes with unchanged signals alter content identity
+PASS comment/literal management references remain candidates without execution claim
+PASS literal import and file URL links are resolved conservatively
+PASS out-of-index imports stay unresolved instead of being called covered
+PASS dynamic import expressions remain visibly unresolved
+PASS npm run reference reaches only the referenced package script file
+PASS unknown npm script is reported without invented target
+PASS missing reviewed source refuses stale policy
+PASS unknown classification refuses
+PASS invalid basis refuses instead of guessing a source
+PASS file-map insertion order does not affect deterministic inventory
+PASS selection includes commands/workflows and excludes runtime and artifacts
+PASS selection includes non-JS operator scripts and refuses path traversal
+{"suite":"external-writer-inventory","passed":17,"failed":0,"scope":"synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance"}
+PASS inventory structure only: {"total":525,"unmapped":0,"unverifiedTotal":525,"unassignedOwners":525,"unresolvedDispositions":525,"phase8dScope":214,"crossPhaseScope":311,"withCandidateFindings":30,"withRecordedEvidence":17,"unreviewedAcceptance":525}
+OPEN acceptance: inventory integrity and candidate references do not close scope/owner/evidence gaps or qualify release
+LOCAL_AUDIT_STEP 6 Bounded coherent capture source and encrypted coordinatornPASS uninitialized durable authority refuses status and capture
+PASS initialization is idempotent and pins exact source/resource identity
+PASS empty declared writer set drains and ordinary admission waits for release
+PASS active writer remains counted until explicit completion then drains
+PASS urgent admission preempts DRAINING without waiting for capture release
+PASS urgent admission preempts DRAINED without waiting for capture release
+PASS urgent preemption after last held check cannot acknowledge a valid commit boundary
+PASS expiry after last held check cannot acknowledge a valid commit boundary
+PASS duplicate writer retry returns same ticket without double counting
+PASS unknown, forged epoch and malformed tickets cannot remove a live writer
+PASS concurrent ordinary admissions and exits are durably serialized
+PASS capture expiry never expires an unresolved writer even after one hour
+PASS expired drained capture cannot attest while new writers are admitted
+PASS stale release confirms its known closure without releasing a newer capture
+PASS capture retries are idempotent and most recent closed identity cannot resurrect
+PASS wrong source/resource or malformed request refuses without capture state
+PASS transaction rollback cannot acknowledge a writer admission
+PASS transaction rollback leaves incomplete writer visible until confirmed completion
+PASS failed urgent preemption transaction produces no admission receipt or false closure
+PASS clock regression fails closed without discarding writer ownership
+PASS malformed persisted state refuses initialization rather than silently resetting
+PASS normal status exposes counts without writer identifiers or device data
+PASS native persistence restart retains unresolved writer and draining generation
+PASS ordinary capacity refuses without evicting any unresolved writer
+PASS urgent overflow is admitted only after durable permanent capture quarantine
+PASS quarantine survives native persistence restart and has no automatic reset
+PASS external publication owns capture until explicit completion
+PASS external probe owns capture until explicit completion
+PASS held capture refuses every external operation without quarantine
+PASS external schema durably quarantines before admission and never auto-resets
+PASS external deployment durably quarantines before admission and never auto-resets
+PASS external operation identity and ticket kind cannot be substituted
+PASS external quarantine admission rollback acknowledges no ticket or quarantine
+PASS external ownership and quarantine survive native restart and completion
+{"suite":"capture-admission-native","passed":34,"failed":0,"scope":"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance"}
+PASS reservation is counted and cannot exit before start
+PASS confirmed start is idempotent and explicit successful completion drains
+PASS cancellation removes only reserved ownership and drains pending capture
+PASS cancellation before delayed admission leaves durable denial tombstone
+PASS start wins cancellation race without losing live ownership
+PASS cancellation wins start race and no late start is accepted
+PASS wrong epoch, kind or priority cannot start or cancel another reservation
+PASS legacy direct admissions remain noncancellable implicit started work
+PASS old format upgrades atomically without erasing legacy ownership
+PASS missing tombstones in format2 fail closed rather than masquerading as legacy
+PASS format1 cannot carry new phase or cancellation data
+PASS start transaction rollback leaves cancellable unstarted reservation
+PASS cancellation rollback cannot acknowledge deletion or tombstone
+PASS external probe uses matching start/cancellation and preserves quarantine
+PASS external publication uses matching start/cancellation and preserves quarantine
+PASS external schema uses matching start/cancellation and preserves quarantine
+PASS external deployment uses matching start/cancellation and preserves quarantine
+PASS started external work cannot be cancelled
+PASS native persistence restart retains all three phases and tombstone binding
+PASS elapsed time never expires started ownership or cancellation tombstones
+PASS tombstone capacity quarantines rather than evicting or erasing a writer
+PASS urgent capacity overflow stays quarantined and cannot claim unstarted cancellation
+PASS cancelled IDs cannot change role, operation or priority
+{"suite":"capture-reservations-native","passed":23,"failed":0,"scope":"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation"}
+PASS unconfigured helper preserves results/errors without scope validation or transport
+PASS one-time controller install and malformed pin refusal
+PASS external publication enters before work and exits after awaited cleanup
+PASS external probe enters before work and exits after awaited cleanup
+PASS external schema enters before work and exits after awaited cleanup
+PASS external deployment enters before work and exits after awaited cleanup
+PASS wrong source/account/database/host/worker or unknown operation refuses before admission
+PASS busy admission starts no tool work
+PASS schema/deployment cannot run on an unconfirmed quarantine receipt
+PASS malformed/foreign ticket starts no work and cannot erase ownership
+PASS uncertain tool error retains writer instead of assuming remote rollback
+PASS hung work never expires its writer on the transport deadline
+PASS uncertain release preserves completed tool result without replay
+PASS late correctly bound admission is cleaned only because work never started
+PASS actual publish-beta-d1-release.mjs refuses under held capture before management writes/Worker traffic
+PASS actual verify-beta-live.mjs refuses under held capture before management writes/Worker traffic
+PASS actual ensure-beta-d1-columns.mjs refuses under held capture before management writes/Worker traffic
+PASS actual setup-beta-d1.mjs refuses under held capture before management writes/Worker traffic
+PASS exact signed APK published and read back through private D1 chunk storage; no R2
+PASS actual publish-beta-d1-release.mjs retains native ownership through readback and final session cleanup
+Verified private card-free beta portal: https://brick-family-beta.fixture.workers.dev/parent
+PASS actual verify-beta-live.mjs retains native ownership through readback and final session cleanup
+PASS exact signed APK published and read back through private D1 chunk storage; no R2
+PASS actual publication lost cleanup result leaves native capture draining for reconciliation
+PASS exact signed APK published and read back through private D1 chunk storage; no R2
+PASS actual publish-beta-d1-release.mjs lost signed reservation ACK cancels unstarted work and permits fresh retry
+Verified private card-free beta portal: https://brick-family-beta.fixture.workers.dev/parent
+PASS actual verify-beta-live.mjs lost signed reservation ACK cancels unstarted work and permits fresh retry
+PASS actual publish-beta-d1-release.mjs lost signed START ACK starts no cloud work and retains STARTED ownership
+PASS actual verify-beta-live.mjs lost signed START ACK starts no cloud work and retains STARTED ownership
+PASS actual ensure-beta-d1-columns.mjs lost signed START ACK starts no cloud work and retains STARTED ownership
+PASS actual setup-beta-d1.mjs lost signed START ACK starts no cloud work and retains STARTED ownership
+{"suite":"external-writer","passed":27,"failed":0,"scope":"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification"}
+PASS native signed capture acquire/held/page/device/release works
+PASS runtime-writer key admits/exits without read permission
+PASS external key pins actual target and retains schema quarantine
+PASS role capture refuses runtime.enter before authority dispatch
+PASS role external-writer refuses capture.acquire before authority dispatch
+PASS role runtime-writer refuses external.enter before authority dispatch
+PASS wrong sourceSha refuses without dispatch
+PASS wrong resourceSetSha256 refuses without dispatch
+PASS wrong authorityEpoch refuses without dispatch
+PASS tampered request and wrong HMAC refuse before dispatch
+PASS expired/future request windows refuse before dispatch
+PASS exact request replay is durably refused with no second dispatch
+PASS replay records survive native process persistence restart
+PASS replay storage loss is refused and never auto-initialized
+PASS corrupt replay state refuses instead of resetting
+PASS recreated authority epoch refuses even with an old valid signed envelope
+PASS replay capacity refuses instead of evicting unexpired tokens
+PASS clock regression refuses replay consumption
+PASS changed external account/database/host refuses before authority dispatch
+PASS malformed operation payloads/unknown methods cannot reach authority
+PASS source throw returns generic authenticated uncertainty
+PASS source hang returns generic authenticated uncertainty
+PASS source oversize returns generic authenticated uncertainty
+PASS tampered signed reply refuses without automatic retry
+PASS valid earlier response cannot authorize a different request
+PASS HTTP status tampering invalidates a signed response
+PASS unsigned proxy response is never treated as authenticated failure/success
+PASS hung response body is bounded/cancelled and aborts the request
+PASS oversized client request refuses before transport
+PASS verified broker client drives existing staged external controller without bypass
+PASS lost authenticated admission reply cancels only reserved ownership and starts no tool
+PASS timed-out native admission reply safely cancels reservation and starts no runtime work
+PASS validly signed wrong-epoch receipt cannot authorize runtime work
+PASS hung incoming body is bounded and cancelled without touching authority
+PASS server request shape/path/body bounds reject without dispatch
+PASS cross-role key material reuse and weak/plaintext configuration refuse
+PASS v1 request protocol is rejected before authority dispatch
+PASS runtime adapter confirms start before work and only successful work exits
+PASS lost runtime-writer start acknowledgement retains started ownership and starts no work
+PASS lost external-writer start acknowledgement retains started ownership and starts no work
+PASS lost cancellation reply cannot resurrect delayed reservation
+PASS rejected actual work retains started writer and never auto-cancels
+PASS cross-role start/cancel permissions refuse before authority dispatch
+PASS manual redirect mode refuses 3xx without following Location or reading a hanging body
+{"suite":"capture-broker-native","passed":44,"failed":0,"scope":"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance"}
+EDGE_CLIENT_OBSERVATION {"mode":"unsigned","calls":1,"constructed":1,"cancelled":0,"redirect":"manual","requestError":null,"ok":false,"result":null}
+PASS actual edge unsigned response uses compatible manual redirect policy and verified client outcome
+EDGE_CLIENT_OBSERVATION {"mode":"redirect","calls":1,"constructed":1,"cancelled":1,"redirect":"manual","requestError":null,"ok":false,"result":null}
+PASS actual edge redirect response uses compatible manual redirect policy and verified client outcome
+EDGE_CLIENT_OBSERVATION {"mode":"signed","calls":1,"constructed":1,"cancelled":0,"redirect":"manual","requestError":null,"ok":true,"result":{"admitted":true,"requiresStart":true,"ticket":{"authorityEpoch":"cccccccccccccccccccccccccccccccc","writerId":"dddddddddddddddddddddddddddddddd","tracked":true}}}
+PASS actual edge signed response uses compatible manual redirect policy and verified client outcome
+{"suite":"edge-client-compatibility","passed":3,"failed":0,"scope":"actual workerd Request/WebCrypto client with synthetic response capabilities and forbidden outbound network; native authority/full restore qualified separately; no real endpoint or production activation"}
+PASS unconfigured owner preserves original context/result with no waitUntil or gate
+PASS controller validation and duplicate installation refuse before work
+OUTCOME_OBSERVATION {"activeWriters":1,"exits":0,"remoteEffectPending":true}
+PASS lost remote result cannot declare quiescence before a delayed side effect
+PASS ordinary busy admission never invokes work or completion
+PASS urgent priority reaches admission before actual work
+PASS completed reply is returned while deferred writer remains active
+PASS nested waitUntil descendants retain ownership until the final task settles
+PASS original work error is preserved while uncertain ownership survives descendant settlement
+PASS rejected deferred work is observed but all other descendants must settle
+PASS unresolved deferred task is not timed out and ownership is not expired
+PASS release failure keeps completed result and reports generic uncertainty
+PASS release rejection acknowledgement is not silently accepted
+PASS hung release is bounded while unresolved ownership remains explicit
+PASS admission exception refuses urgent work instead of faking an outage bypass
+PASS late admission after timeout is cleaned only after a correctly bound reply
+PASS malformed admission reply reports uncertainty instead of ordinary busy
+PASS malformed or foreign admission tickets cannot authorize work or erase ownership
+PASS late malformed ticket is not passed to arbitrary cleanup
+PASS context fields and native-style method receiver are preserved by proxy
+PASS late registration refuses and explicitly reports unaccounted work
+PASS throwing waitUntil registration cannot convert a completed reply to failure
+PASS synchronously late admission cannot beat its queued deadline
+PASS partial start/cancel controller pairs are rejected
+PASS v2 reservation confirms start before work and completion
+PASS v2 uncertain admission attempts cancellation without work or normal exit
+PASS v2 unconfirmed start cancels only through dedicated reservation capability
+PASS v2 cancellation refusal retains ownership and reports uncertainty
+PASS v2 work rejection never invokes reservation cancellation
+PASS reservation marker requires matched controller version in both directions
+{"suite":"capture-writer-boundary","passed":29,"failed":0,"scope":"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed"}
+PASS unconfigured database and environment retain exact identity and inherited APIs
+PASS mutation via run admits before native execution and retains options
+PASS mutation via first admits before native execution and retains options
+PASS mutation via all admits before native execution and retains options
+PASS mutation via raw admits before native execution and retains options
+PASS plain SELECT execution does not acquire or preempt
+PASS unknown SQL form conservatively acquires: WITH
+PASS unknown SQL form conservatively acquires: PRAGMA
+PASS unknown SQL form conservatively acquires: /*review*/
+PASS unknown SQL form conservatively acquires: SELECT
+PASS unknown SQL form conservatively acquires: EXPLAIN
+PASS write batch unwraps native statements and uses one ownership envelope
+PASS all-read batch and empty batch preserve native call without admission
+PASS foreign raw or cross-database statements refuse before execution
+PASS sessions retain constraint/bookmark/receiver and own their mutations
+PASS exec is always owned and dump retains native read semantics
+PASS denied admission invokes no D1 write method
+PASS uncertain admission does not bypass into urgent D1 work
+PASS query rejection preserves original error and retains uncertain ownership
+PASS hung native query keeps ownership beyond admission transport timeout
+PASS uncertain release preserves successful write result and reports uncertainty
+PASS environment wraps both stores independently and does not double-wrap adapters
+{"suite":"capture-d1-boundary","passed":22,"failed":0,"scope":"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback"}
+{"observation":"legacy-monolithic-export-does-not-fit44-statement-source-invocation","executedBeforeRejection":43,"scope":"empty actual synthetic Miniflare D1; legacy off-platform API unchanged; new bounded source path required, not a deployed incident"}
+PASS complete41+4 capture preserves paged rows BLOB bytes revoked coverage and excludes transient/recursive state
+PASS row pagination advances at64 without omissions or duplicates
+PASS BLOB page sizing bounds bytes before materializing64 chunks
+PASS excluded authentication/cache tables and invalid cursors refuse
+PASS active writers or expired fence refuse before any source rows are returned
+PASS fence loss between metadata and body refuses collected data
+PASS schema fingerprint mismatch refuses a later page
+PASS journal is private encrypted immutable and contains no plaintext device key
+PASS bounded transient read retries retain fence then succeed
+PASS exhausted transport retry returns redacted failure and releases writers
+PASS failed release is explicit and a new coordinator can reuse encrypted progress only while same fence remains held
+PASS wrong journal key cannot resume or publish an archive
+PASS journal corruption fails authentication before archive return
+PASS new capture or fence identity cannot reuse old encrypted journal
+PASS foreign DO identity or incomplete device transport refuses complete archive
+PASS unknown DO durable state is refused by protected package validation
+PASS page tamper or fake complete table cannot bypass final inventory validation
+PASS nonprivate directory traversal and symlink journal access are refused
+PASS stalled source capability times out after bounded retries and releases the fence
+PASS stalled release never returns a successful archive
+PASS safe control-character TEXT byte sizing and oversized first row refusal are explicit
+PASS new staged source schema data cannot silently change the next-page contract
+{"suite":"capture-coordinator","passed":22,"failed":0,"maxSourceStatements":5,"scope":"actual synthetic Miniflare D1/BLOB; supplied external fence capability and encrypted private file journal; not live writer-fence installation, cloud capture/PITR or destination/key independence proof"}
+PASS healthy41+4 capture retains both device identities and revoked state
+PASS initial journal read hang reaches release
+PASS journal publication hang reaches release
+PASS journal publication readback hang reaches release
+PASS final validation hang reaches release
+PASS retry-backoff capability hang reaches release
+PASS hung source page remains bounded
+PASS hung device snapshot remains bounded
+PASS capture deadline bounds repeated otherwise timely pages
+PASS global deadline also bounds a stalled journal with longer per-call timeout
+PASS already-aborted capture still releases without starting reads
+PASS abort during authority stops capture and releases
+PASS abort during read stops capture and releases
+PASS abort during create stops capture and releases
+PASS abort during readback stops capture and releases
+PASS abort during page stops capture and releases
+PASS abort during device stops capture and releases
+PASS abort during finalize stops capture and releases
+PASS abort during pause stops capture and releases
+PASS abort while release is pending cannot return successful archive
+PASS release still runs independently after capture deadline
+PASS failed release remains higher-priority than cancellation
+PASS hung release remains bounded even with aborted signal
+PASS late journal completion cannot turn failure into success or cross a new fence
+PASS cooperative slow finalizer cannot publish after total deadline
+PASS synchronous late journal result cannot outrun its queued timeout
+PASS synchronous late release acknowledgement is not reported successful
+PASS private on-disk journal is encrypted and source states stay unchanged
+PASS invalid global budget 0 refuses before capabilities
+PASS invalid global budget -1 refuses before capabilities
+PASS invalid global budget 4 refuses before capabilities
+PASS invalid global budget 240001 refuses before capabilities
+PASS invalid global budget NaN refuses before capabilities
+PASS invalid global budget 1.5 refuses before capabilities
+PASS invalid cancellation capability refuses configuration
+{"suite":"capture-lifecycle","passed":35,"failed":0,"scope":"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance"}
+PASS missing private journal entry returns null
+PASS exclusive private publication reads exact bytes and cannot replace existing progress
+PASS maximum permitted file reads exactly and oversized publication refuses
+PASS FIFO journal read refuses without opening a writer
+PASS symlink journal entry refuses before data return
+PASS directory journal entry refuses before data return
+PASS nonprivate journal entry refuses before data return
+PASS oversized journal entry refuses before data return
+PASS unsafe journal names refuse without path traversal
+PASS partial synchronous reads reconstruct exact file without unbounded readFileSync
+PASS growth after initial stat is refused after at most initial size plus one byte
+PASS truncation after stat refuses incomplete entry
+PASS same-size rewrite during read is refused by post-read metadata check
+PASS read exception closes the journal descriptor without deleting progress
+PASS actual coordinator reaches successful release after FIFO refusal
+PASS actual coordinator reaches failed release after FIFO refusal
+{"suite":"private-journal-files","passed":16,"failed":0,"scope":"actual Linux private files/FIFO and injected I/O faults; actual coordinator with synthetic runtime/authority for refusal/release, not real writer fencing or cloud recovery"}
+PASS missing dedicated token and invalid pinned IDs make no requests
+PASS both pinned resource identities and current bookmarks use only4 bounded GET requests
+PASS historical bookmarks use documented timestamp parameter with at most6 requests
+PASS history before database creation is not mislabelled missing PITR
+PASS future or outside card-free check window targets refuse without calls
+PASS 401 and403 fail once without retries or alternative credentials/resources
+PASS wrong identity and oversized metadata fail before bookmark or other-resource reads
+PASS empty bookmark and network exception remain redacted BLOCKED results
+{"suite":"cardfree-pitr-readonly","passed":8,"failed":0,"scope":"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof"}
+PASS healthy body chunks are copied and all four GETs complete
+PASS noncooperative transport is bounded and receives abort
+PASS noncooperative stream read and cancel cannot block timeout
+PASS real stalled ReadableStream is cancelled and its lock released
+PASS aggregate deadline stops a sequence of individually timely calls
+PASS pre-aborted signal makes zero requests
+PASS abort during request stops later account reads
+PASS abort during body stops later account reads
+PASS late transport response is cancelled and never promotes proof
+PASS late stream read cannot promote proof and releases lock
+PASS synchronously late transport cannot beat a queued timeout
+PASS synchronously late final read cannot beat a queued timeout
+PASS success and failure remove external abort listeners
+PASS invalid timeout and signal configurations refuse before transport
+PASS 401 cancels unread body without waiting or exposing errors
+PASS 403 cancels unread body without waiting or exposing errors
+PASS malformed UTF8 refuses without copying provider contents into receipt
+PASS empty and non-byte body chunks fail closed
+PASS oversized streaming response cancels and refuses after byte limit
+PASS timeout at historical read 1 preserves only earlier completed checks
+PASS timeout at historical read 2 preserves only earlier completed checks
+PASS timeout at historical read 3 preserves only earlier completed checks
+PASS timeout at historical read 4 preserves only earlier completed checks
+PASS timeout at historical read 5 preserves only earlier completed checks
+PASS timeout at historical read 6 preserves only earlier completed checks
+PASS caller plan mutation cannot retarget later account or resource reads
+PASS reused mutable stream buffers cannot rewrite earlier received chunks
+PASS private regular CLI plan reaches no-token refusal without network
+PASS FIFO CLI plan refuses promptly without a writer
+PASS symlink CLI plan is refused
+PASS nonprivate CLI plan is refused
+PASS directory and oversized CLI plans are refused
+PASS malformed UTF8 CLI plan is refused
+PASS plan metadata change during read refuses before networking
+{"suite":"pitr-readonly-lifecycle","passed":34,"failed":0,"scope":"synthetic HTTP capabilities and actual local CLI files; no live identity, retention, provider, restore or browser acceptance"}
+LOCAL_AUDIT_STEP 7 Watchdog bounded fleet RPC delivery retry and state racesnPASS 64-device offline sweep advances across bounded invocations without exceeding50 statements
+PASS one failed notification retains retry and does not stop healthy peers
+PASS failed push retries existing durable event after automatic retry interval
+PASS simultaneous root starts share one maintenance tick and alarm decision
+PASS real Miniflare root alarms finish a pending64-device scan without manual ticks
+PASS slow live push cannot hold up independent daily backup or hide a timed-out notification
+{"suite":"watchdog","passed":6,"failed":0,"scope":"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance"}
+PASS original90s offline threshold and60s incident-age threshold are unchanged
+PASS heartbeat racing offline insertion prevents stale offline incident
+PASS revoked device cannot create incidents or push old pending alerts
+PASS false delivery acknowledgement retains durable event and pending incident
+PASS acknowledgement-write outage retries the same durable event without duplicate D1 rows
+PASS one bad incident delivery does not stop other due incidents on the same device
+PASS per-device due-alert page processes4 and leaves explicit pending work
+PASS closed incidents and young incidents never produce a new event
+PASS foreign-device event-ID collision fails instead of claiming completion
+PASS malformed durable event payload cannot be relayed as an incident notification
+PASS malformed checkpoint fails before dispatch and status exposes no raw content
+PASS completed cycle cooldown avoids repeating device work until60s
+PASS checkpoint CAS rejects another owner and cannot overwrite its state
+PASS watchdog receipt failures use60s retry and redacted authenticated status
+PASS watchdog RUNNING lease write outage can recover after60s
+WATCHDOG_DEVICE_STATEMENTS 16
+PASS four notifications plus offline incident remain below44 computation statements
+PASS coordinator dispatch failures are visible and checkpoint loss reconstructs from durable devices
+PASS active-device and due-incident seeks use the card-free watchdog indexes
+PASS frozen row watermark and saved key cursor cover late insert on the next cycle
+PASS cache reconstruction does not resend an already acknowledged durable incident
+PASS failed early device does not prevent later page progress and next cycle clears failure
+PASS bounded waits return fixed timeout and consume a later private rejection safely
+PASS successful watchdog receipt does not skip a device moved earlier in the next scan
+{"suite":"watchdog-state","passed":23,"failed":0,"scope":"actual synthetic Miniflare D1; races thresholds durable retry and redacted status, not end-user notification or live latency proof"}
+LOCAL_AUDIT_STEP 8 Bounded cleanup backlog progress and policy regressionsnPASS populated refined cleanup makes bounded progress under44 statements
+PASS expired endpoint sweep leaves backlog after at most256 rows
+PASS audit90-day cleanup is bounded to200 without changing retention
+PASS expired parent session cleanup is bounded to200
+PASS safety cleanup bounds eligible rows and preserves custom365-day policy
+CLEANUP_MAX_STATEMENTS 7
+PASS successive bounded slices drain retained backlog and object chunks without duplicate work
+PASS mid-transaction SQL fault rolls back rows and chunks and allows retry
+PASS refresh after selection preserves changed source and changed object version
+PASS object-only refresh after selection survives stale object deletion
+PASS composite device identity and shared referenced object survive peer cleanup
+PASS missing objects and null refined key do not block expired index progress
+PASS retention receipt stays PENDING until real backlog completion
+PASS recent active and recently revoked sessions survive old-session pruning
+PASS crash365 and audit90-day boundaries remain unchanged
+PASS health35-day and closed-incident365-day backlogs are bounded and open incidents retained
+PASS indexed oldest-first refinement candidate seeks are present
+PASS invalid bounds or unrelated object reference fail closed without deletions
+PASS pairing grace and device-event30-day sweeps bound701 rows and retain boundary/new rows
+PASS deprecated bootstrap-token purge is bounded without inventing a new token TTL
+PASS safety expiry preserves180-day boundary and30-day device-created guard
+{"suite":"cleanup-backlog","passed":20,"failed":0,"scope":"hosted actual Miniflare D1; synthetic backlog and statement bounds, not cloud CPU/day qualification"}
+LOCAL_AUDIT_STEP 9 Resumable D1 commute history paging regressionnPASS more than44 virtual history segments completes without repeatedly exhausting one computation
+PASS independent slices resume durable512-point checkpoint and publish only after complete
+PASS streamed trip geometry matches legacy trusted-history calculation across pages
+PASS entire22001-point window is processed beyond the history API20000 cap
+PASS failed atomic publication preserves prior cached generation and checkpoint for retry
+PASS late inserted trusted point is excluded by watermark then included next generation
+PASS stale checkpoint CAS aborts publication transaction and retains old summaries
+PASS revocation prevents checkpoint creation and corrupt state leaves cached response readable
+PASS partial work receipt is PENDING with no fabricated successful completion
+PASS stationary8-minute and15-minute gap boundaries match legacy across pages
+PASS checkpoint loss safely reconstructs summaries from retained trusted rows
+PASS malformed trusted packet cannot advance saved cursor or replace cached generation
+{"suite":"commute-paging","passed":12,"failed":0,"scope":"actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes"}
+LOCAL_AUDIT_STEP 10 D1 object read integrity and atomic conditional-write regressionsnPASS same-size concurrent replacement cannot combine old metadata with new bytes
+PASS same-length stored chunk corruption is refused
+PASS missing and noncontiguous chunk indices are refused
+PASS conditional create cannot overwrite an existing object
+PASS stale conditional update preserves original bytes and metadata
+PASS two concurrent same-ETag writers have exactly one winner
+PASS conditional writes do not swallow unrelated database failures
+PASS Headers create-only and quoted ETag conditions are honored
+PASS unknown or empty condition forms are rejected before any overwrite
+PASS empty objects retain correct hash and no chunks
+PASS invalid object size refuses allocation
+PASS multi-chunk bytes, metadata and boundary range survive readback
+{"suite":"phase8d-d1-object-integrity","passed":12,"failed":0,"scope":"actual local Miniflare D1; synthetic objects only"}
+LOCAL_AUDIT_STEP 11 Protected off-platform archive authentication identity and CLInPASS round trip preserves exact D1 and DO bytes and their hashes
+PASS fresh nonce changes ciphertext and plaintext markers are absent
+PASS wrong key and each binary region tamper reject before plaintext is returned
+PASS truncation extension empty and oversized envelopes reject
+PASS every expected context field is pinned; older or other-environment archive rejected
+PASS strict key encoding rejects whitespace noncanonical padding and short keys
+PASS capture requires all devices and each snapshot hash
+PASS authenticated payload missing duplicate or extra component fails
+PASS authenticated component hash length or noncanonical base64 fails
+PASS D1 timestamp duplicate identity and invalid curve fail
+PASS DO foreign device key unknown state bad marker and nested state fail
+PASS seal enforces D1 and per-device bounds and immutable input
+PASS CLI uses private exclusive output and metadata-only verification with redacted failure
+Protected backup suite: 13 passed, 0 failed (synthetic/off-platform; no live capture or cloud qualification)
+PASS private CLI seal authenticates published file and verifies without plaintext output
+PASS symlink spec input is refused before publication
+PASS symlink d1 input is refused before publication
+PASS symlink device input is refused before publication
+PASS nonprivate spec file is refused
+PASS nonprivate d1 file is refused
+PASS nonprivate device file is refused
+PASS symlink verification archive is refused
+PASS symlink verification context is refused
+PASS nonprivate verification archive is refused
+PASS nonprivate verification context is refused
+PASS directory capture input is refused
+PASS FIFO input refuses without waiting for a writer
+PASS nonprivate output parent is refused
+PASS symlink output parent is refused
+PASS existing destination is never overwritten
+PASS existing destination symlink cannot overwrite its target
+PASS file and destination-directory fsync are both executed
+PASS directory fsync failure cannot print successful publication
+PASS temporary write corruption is detected before linking destination
+PASS post-link byte change cannot print SEALED
+PASS input metadata change during read is refused
+{"suite":"private-archive-files","passed":22,"failed":0,"scope":"actual local CLI/crypto/filesystem plus injected I/O faults; Linux nofollow/nonblocking/modes/fsync/readback, not power-loss, independent custody, source capture or cloud recovery qualification"}
+LOCAL_AUDIT_STEP 12 Destroy source and recover both D1 stores and beta DO from encrypted packagensynthetic writer notice ADMISSION_UNCERTAIN
+synthetic writer notice RESERVATION_CANCELLED
+PASS actual signed device runtime.enter lost ACK starts no state write; unstarted reservation cancels and fresh retry succeeds
+synthetic writer notice START_UNCERTAIN
+synthetic writer notice CANCELLATION_UNCERTAIN
+PASS actual signed device runtime.start lost ACK starts no state write; STARTED ownership survives cancellation and capture stays DRAINING
+synthetic writer notice START_UNCERTAIN
+synthetic writer notice CANCELLATION_UNCERTAIN
+PASS actual signed D1 adapter lost START ACK refuses UPDATE RETURNING before mutation and retains STARTED ownership
+synthetic writer notice START_UNCERTAIN
+synthetic writer notice CANCELLATION_UNCERTAIN
+PASS actual signed scheduler retention lost START ACK starts no background receipt or cleanup and retains ordinary STARTED ownership
+synthetic writer notice WORK_REJECTED
+synthetic writer notice WORK_OUTCOME_UNCERTAIN
+PASS actual signed device restore rejection retains STARTED ownership without cancellation, replay or false completion
+{"suite":"signed-writer-native-integration","passed":5,"failed":0,"scope":"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback"}
+An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.
+PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge
+PASS signed capture package retains all33 populated place/config/relationship rows and every captured column
+PASS actual hooked scheduler retention refuses before work under a held capture and preserves the drained generation
+PASS native D1 RETURNING execution preempts held capture without actor admission; plain SELECT preserves it and updated rows survive exact restore
+PASS actual hooked device health write preempts capture after final held-check, preserves state/ACK and refuses sealed capture
+PASS actual device/D1/scheduler controllers reserve and confirm STARTED through signed V2 broker/native replay before source writes
+PASS signed source/resource/epoch-pinned broker carries capture acquire, held checks, page/device reads and release with native durable replay; production route/key remains absent
+PASS durable admission authority controls the declared source-writer envelope and fixture-enabled actor hooks; production controller/complete coverage are not activated
+PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call
+PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs
+PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context
+PASS wrong key, tampered ciphertext and unexpected backup ID rejected with both fresh target stores untouched
+PASS populated pending location/live controls retire safely while completed controls retain exact prior results and timestamps
+PASS populated places/config/relationships survive signed encrypted source destruction and fresh restore {"tables":16,"rows":33,"joinedPlaces":2,"joinedSchedules":2,"joinedEvidence":2,"joinedWitnesses":2}
+PASS actual hooked restore RPC retains exact archived device state including post-preemption health and revocation
+PASS populated places/config/relationships retain exact values and joined links after native persistence restart
+PASS parity checks reject same-count valid-FK relationship rewiring and configuration value drift
+PASS parity checks reject witness authorization flag drift without relying on row counts
+PASS parity checks reject composite evidence-record value drift with device-scoped duplicate IDs
+{"suite":"populated-recovery-relations","passed":7,"failed":0,"tables":16,"rows":33,"joinedPlaces":2,"joinedSchedules":2,"joinedEvidence":2,"joinedWitnesses":2,"scope":"synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"}
+PASS encrypted disaster restore excludes operational quarantine/cursors, retains pending inputs and reconstructs failure from those inputs; prior attempt history is not restored
+PASS corrupt/missing stores, malformed late rows/BLOBs, hash and bounds fail before writes; interrupted target is explicitly partial and rejects in-place retry
+PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed
+LIMIT local quiesced synthetic drill, 16MiB archive envelope; not scheduled/off-platform production backup, cloud drill, interrupted recovery, scale or RTO/RPO acceptance
+LOCAL_AUDIT_STEP 13 Signed D1 history ACK partial-batch retry and exact revoke racenPASS no ACK when direct D1 history persistence fails after durable device-event insert
+PASS retry/response loss converges on exactly one immutable history row
+PASS interrupted second D1 history group has no range ACK; full retry fills holes without duplicating committed rows
+PASS transactional revoke fence prevents direct-history write in the exact revocation interleaving
+LIMIT local signed Worker/native D1/DO fault injection; no cloud timing, physical phone retry or latency qualification
+LOCAL_AUDIT_STEP 14 Receipt-age retention cleanup race and bounded statement envelopenPASS trusted40-day history remains readable before and after cleanup
+PASS expired raw is unavailable even before cleanup and not listed
+PASS expired trusted is unavailable before cleanup
+PASS raw expiry scrubs raw copy and embedded raw coordinates while preserving trusted delta
+PASS retention age uses original first receipt rather than delayed capture time
+PASS hypotheses30/refined90/backup30 match existing authoritative policies
+PASS cleanup cannot delete a refreshed object selected under an old age
+PASS exact30/90-day receipt boundaries remain available until expiry
+PASS generic listing supports long literal prefixes and wildcard characters
+OBSERVED cleanup statements: 8
+PASS bulk cleanup uses bounded statement count and cascades chunk deletion
+{"suite":"d1-retention","passed":10,"failed":0,"scope":"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim"}
+LOCAL_AUDIT_STEP 15 Scheduler delayed failure and automatic retrynPASS deferred scheduled backup failure rejects maintenance instead of succeeding early
+PASS failed daily claim is released for automatic next-tick retry
+PASS successful daily work is not repeated by another immediate tick
+PASS an outstanding lease is PENDING rather than a fresh success
+PASS request kick records background failure inside scheduler ownership
+{"suite":"maintenance-failure","passed":5,"failed":0,"scope":"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup"}
+LOCAL_AUDIT_STEP 16 Versioned leases nested work and release-outage recoverynPASS nested waitUntil work drains before completion and rejection is propagated
+PASS failed work releases its own claim for immediate automatic retry
+PASS concurrent claimant is BUSY and does not duplicate active work
+PASS failed old owner cannot delete a newer task owner
+PASS failed release-write does not suppress daily retry until tomorrow
+PASS interval starts at confirmed completion, not initial claim
+PASS unversioned task names cannot mix old lease protocols
+{"suite":"maintenance-leases","passed":7,"failed":0,"scope":"actual local D1; synthetic tasks and controlled clock only"}
+LOCAL_AUDIT_STEP 17 Durable derived-work leases backoff privacy and fair device rotationnPASS success receipt cooldown redacted status and30-day expiry
+PASS failure stores fixed code with backoff and never raw provider errors
+PASS retry failure increases capped delay; eventual success clears streak retains attempts
+PASS concurrent claim runs one worker and retains winner
+PASS expired lease takeover cannot be overwritten by stale completion or failure
+PASS receipt write outage stays RUNNING until bounded lease expires then recovers
+PASS malformed receipt and unavailable D1 refuse before expensive work
+PASS revoked device cannot claim derived work; global cleanup still works
+PASS failure after earlier success preserves last success without misreporting new success
+PASS pending refinement rotation reaches devices beyond first20 and skips revoked
+PASS missing endpoints is explicit WAITING without a fabricated last success
+PASS non-OK history response is failed refresh rather than created-zero success
+{"suite":"background-receipts","passed":12,"failed":0,"scope":"actual local D1, synthetic tasks and controlled clock; no cloud data"}
+LOCAL_AUDIT_STEP 18 Real scheduler enrichment failure isolation and durable evidence ACKnPASS semantic failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS refinement failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS cleanup failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS commute failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS signed durable hypothesis ACK survives optional refinement outage
+PASS cached parent commute response survives refresh failure with durable retry receipt
+PASS background task status is authenticated per-device and redacts lease/provider details
+{"suite":"enrichment-failure","passed":7,"failed":0,"scope":"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes"}
+LOCAL_AUDIT_STEP 19 Corrupt refinement input and healthy peer isolationnPASS missing is failed work while healthy peer still refines
+PASS malformed-json is failed work while healthy peer still refines
+PASS wrong-envelope is failed work while healthy peer still refines
+PASS invalid-hypotheses is failed work while healthy peer still refines
+PASS no endpoints remains intentional pending rather than failed or fabricated completion
+{"suite":"refinement-corruption","passed":5,"failed":0,"scope":"actual local D1/object adapter; synthetic frames only"}
+LOCAL_AUDIT_STEP 20 Rotating poison input quarantine repair and operational reconstructionnPASS persistent bad first100 frames cannot starve valid frame101
+PASS persistent corrupt frame is quarantined after3 reads instead of retried forever
+PASS verified normalized replay repairs corrupt storage and clears quarantine without changing first receipt age
+PASS expired normalized inputs are not resurrected by replay and are not selected
+PASS cache loss reconstructs failure from retained pending input rather than pretending history was restored
+PASS stale failure writer cannot recreate state after a trusted repair cleared it
+PASS healthy frame in selected page proceeds even if an earlier frame has no bounding endpoints
+PASS quarantine status is bounded metadata without record keys object paths or raw exception content
+{"suite":"refinement-lifecycle","passed":8,"failed":0,"scope":"actual local D1/object adapter; synthetic frames only"}
+LOCAL_AUDIT_STEP 21 Conservative D1 computation guard and durable failure reservenPASS preparation/bind costs zero; first/all/raw/run and each batch statement count execution
+PASS an over-budget batch is refused before any write executes
+PASS failed queries consume budget and batch transaction rollback is preserved
+PASS foreign statements and unbounded execution/session/dump cannot bypass the guard
+PASS reserved raw receipt queries record a computation budget failure and retain retry
+PASS degraded input rotates every minute without per-device exponential delay or fabricated success
+{"suite":"d1-work-budget","passed":6,"failed":0,"scope":"actual local D1; conservative statement guard, not live CPU or daily quota acceptance"}
+LOCAL_AUDIT_STEP 22 Populated maintenance RPC statement envelope and alarm isolationnMEASURE {"f4b9736f9e404691baf90183b6e602f1bb2451b3c7a2cdeba82a779dec6aed48":26,"be753d8337c2662187446f0eddfde2139dc9475a17fbd4b734abb9f4c18d9140":25,"3159e5afa0e68daf6e2502aa40591bb20b0765810e1190822933a08f0d5e6eef":4,"0aeae8aad4368e0c3487f30b420aa3ed02501cd894515faf8cf83644bafeec9a":5,"a1f3a31fbb3ffa58dc948a405e637e6709e648a22e3c38652af4f1992c7431f1":5,"e1630392e549f2b24a68a81e6a93cde7a25321bbbc7f6f18a0879818de80b119":5,"12ff8bcbfa2d8f60c987809c2cd991968dfab03d4e8ab22c916640f43ece93e4":5,"2da4ed83b46ac1c7a9ab69808fe9e52a1cc8ca89008296cfbde4d00cfc5f7d30":42,"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef":48,"16986e857917ed7fc7e5dec5fcdbfa047b2516abfff737684c69e93981f592bf":48,"db895f68a3dc5537996986a17c723765ab3c377f85dacc62e413ca19f800ecc7":48,"14c06a7e4dd4fda42f365214d77e753b28f54590b5f01bf1878c964a6e117d4e":48,"da24c16b8d99d4fe2bfb2ff8d96a0bb6b5a73fbabcb9a0e45b1a28eaf43055e0":10,"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01":1}
+PASS bounded populated maintenance keeps every DO invocation within Free50-statement envelope
+PASS internal job objects never share or create device/root scheduling alarms
+GUARD {"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef":47}
+PASS actual RPC computation stops at44 plus receipt reserve and records failure for retry
+RETENTION_RPC {"da24c16b8d99d4fe2bfb2ff8d96a0bb6b5a73fbabcb9a0e45b1a28eaf43055e0":10,"f4b9736f9e404691baf90183b6e602f1bb2451b3c7a2cdeba82a779dec6aed48":2,"be753d8337c2662187446f0eddfde2139dc9475a17fbd4b734abb9f4c18d9140":2,"3159e5afa0e68daf6e2502aa40591bb20b0765810e1190822933a08f0d5e6eef":1,"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01":1}
+PASS populated retention RPC preserves root PENDING and drains across guarded independent invocations
+{"suite":"maintenance-invocation-budget","passed":4,"failed":0,"scope":"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU"}
+LOCAL_AUDIT_STEP 23 Original refined history against actual production-migration SQLiten
+  ../../../../tmp/brick-refined-existing.mjs  29.4kb
+
+⚡ Done in 4ms
+PHASE5_REFINED_HISTORY_PASS (actual production-migration SQLite; object fixture)
+LOCAL_AUDIT_STEP 24 Existing beta auth history map and WebSocket regressionsnPASS beta portal preserves existing UI, CSP and authenticated private downloads; generated scripts parse
+PASS native signed D1 primary/chunked-object readback, D1 direct event persistence, real device DO/current state, normal location history and selected-device WebSocket ACK; no canned PASS
+PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation
+LOCAL_AUDIT_STEP 25 Original production DO and multi-store recovery regressionsnPASS destroyed actual source D1/R2/DO persistence after quiesced snapshot; recovery uses only saved backup objects and DO snapshots
+PASS fresh local D1 38-table row/FK reconciliation, pending command expiry, R2 HISTORY/MAPS exact bytes and metadata; missing/corrupt R2 fail before writes
+PASS DO restore preserves all eight supported key classes across active/revoked identities, timestamps, sequence/health ordering and reconstructed revocation fence; bad digest/key and occupied target refused
+PASS ordinary Worker environment refuses DO recovery; no HTTP restore endpoint, production configuration or cloud mutation
+PASS restored D1 revocation overrides active snapshot; legacy unpadded identity normalization, unknown state, invalid markers and oversized snapshots checked
+PASS native DO export rejects nonfinite/oversized state, restore refuses a target with an attached WebSocket/alarm
+LIMIT local synthetic evidence only: cloud destructive recovery, cross-store snapshot consistency under traffic, original R2 retention age, scale, RTO/RPO and operator orchestration remain OPEN
+LOCAL_AUDIT_STEP 26 Existing native production trust-boundary regressionsnPASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT
+PASS native workerd signed safety route rejects asymmetric coordinates, retains valid0,0 and acknowledges actual own duplicate
+PASS native workerd internal RPC health ordering and three concurrent monotonic markers
+PASS native workerd DO WebSocket survives hibernation/reconstruction and expires through idle storage alarm
+PASS native workerd revoked/reconstructed DO rejects all six telemetry/marker writes and safety evaluation
+PASS native workerd revoked D1 identity, DO fence reconstruction, archived current state and denied subscription
+PASS native workerd D1/R2 actual v3 snapshot and fresh 38-table restore with retained revocation and accepted sequence index; full live DO disaster recovery remains OPEN
+LOCAL_AUDIT_COMPLETED 26 executable test/build groups; existing dependencies; explicit source index; no CI attestationn

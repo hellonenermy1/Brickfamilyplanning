@@ -31,7 +31,7 @@ export function inspectInventory(ledger,baseline){
   requireValue(row.title===original.title&&row.classification===original.classification&&row.profile===original.profile&&row.requirementSha256===requirementDigest(original),'canonical drift '+row.id);
   requireValue(allowedStatuses.has(row.status),'invalid status '+row.id);
   requireValue(['UNRECONCILED','VERIFIED_FOR_8D','CARRIED_FORWARD','DEFERRED'].includes(row.disposition),'invalid disposition '+row.id);
-  requireValue(row.criteria&&['C1','C2','C3','C4'].every(k=>typeof row.criteria[k]==='string')&&typeof row.blockerReason==='string'&&typeof row.remediation==='string'&&typeof row.severity==='string','missing audit worksheet fields '+row.id);
+  requireValue(row.criteria&&['C1','C2','C3','C4'].every(k=>typeof row.criteria[k]==='string'||row.criteria[k]!==null&&typeof row.criteria[k]==='object'&&!Array.isArray(row.criteria[k]))&&typeof row.blockerReason==='string'&&typeof row.remediation==='string'&&typeof row.severity==='string','missing audit worksheet fields '+row.id);
   requireValue(['UNRECONCILED','PHASE8D','CROSS_PHASE'].includes(row.scope),'invalid scope '+row.id);
   requireValue(Array.isArray(row.sections)&&row.sections.every(x=>/^8D\.([1-9]|1[0-9])$/.test(x))&&new Set(row.sections).size===row.sections.length,'invalid sections '+row.id);
   requireValue(Array.isArray(row.evidence)&&Array.isArray(row.candidateFindings)&&row.candidateFindings.every(x=>/^P8D-\d{3}$/.test(x)),'invalid evidence/navigation arrays '+row.id);

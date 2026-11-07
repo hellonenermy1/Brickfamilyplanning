@@ -1,0 +1,6 @@
+MEASURE {"f4b9736f9e404691baf90183b6e602f1bb2451b3c7a2cdeba82a779dec6aed48":34,"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef":45,"16986e857917ed7fc7e5dec5fcdbfa047b2516abfff737684c69e93981f592bf":45,"db895f68a3dc5537996986a17c723765ab3c377f85dacc62e413ca19f800ecc7":45,"14c06a7e4dd4fda42f365214d77e753b28f54590b5f01bf1878c964a6e117d4e":45,"be753d8337c2662187446f0eddfde2139dc9475a17fbd4b734abb9f4c18d9140":27,"2da4ed83b46ac1c7a9ab69808fe9e52a1cc8ca89008296cfbde4d00cfc5f7d30":42}
+PASS bounded populated maintenance keeps every DO invocation within Free50-statement envelope
+PASS internal job objects never share or create device/root scheduling alarms
+GUARD {"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef":47}
+PASS actual RPC computation stops at44 plus receipt reserve and records failure for retry
+{"suite":"maintenance-invocation-budget","passed":3,"failed":0,"scope":"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU"}

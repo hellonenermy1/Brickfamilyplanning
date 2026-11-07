@@ -1,0 +1,22 @@
+{
+  "format": "brick-phase8d-writer-outcome-red-v1",
+  "finding": "P8D-093",
+  "baselineCommitSha": "a3917dee247f2ae9a405bd6dab08c712b6d2b072",
+  "baselineSourcePath": "src/capture-writer-boundary.ts",
+  "baselineSourceSha256": "cc178efc5b700e15687d7fcb4f7ee6f84b2f31ece7582b1e28b49a9cbd216464",
+  "reproduction": "Actual compiled prior TS helper with controlled admission and a lost response while a remote side-effect promise can still settle. Original error is retained; delayed effect is subsequently completed.",
+  "baselineObservation": {
+    "activeWriters": 0,
+    "exits": 1,
+    "remoteEffectPending": true
+  },
+  "correctedObservation": {
+    "activeWriters": 1,
+    "exits": 0,
+    "remoteEffectPending": true
+  },
+  "baselineExitCode": 1,
+  "correctedSuiteExitCode": 0,
+  "correctedHelperCases": 22,
+  "limits": "Controlled remote-capability counterexample, not live RPC/provider behaviour or an actual production SEALED archive. Source is inactive without controller. Native external-tool ownership/cleanup and full destruction/restore are verified separately."
+}

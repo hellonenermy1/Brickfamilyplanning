@@ -1,0 +1,293 @@
+{
+  "format": "brick-phase8d-d1-hosted-source-evidence-v1",
+  "candidateSourceSha": "a51d4d96a2888004025e7b0ffb7df4f6d31e9f06",
+  "repository": "hellonenermy1/Brickfamilyplanning",
+  "branch": "audit/phase8d-d1-qualification",
+  "pullRequest": 32,
+  "jobs": [
+    {
+      "run": 42008010567,
+      "jobs": [
+        {
+          "id": 127179573784,
+          "name": "d1-storage-and-recovery",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "D1 object read integrity and atomic conditional-write regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Destroy source and recover primary D1 diagnostics D1 and beta DO",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Existing beta auth history map and WebSocket regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Original production DO and multi-store recovery regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Existing native production trust-boundary regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 42008019532,
+      "jobs": [
+        {
+          "id": 127179602878,
+          "name": "d1-storage-and-recovery",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "D1 object read integrity and atomic conditional-write regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Destroy source and recover primary D1 diagnostics D1 and beta DO",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Existing beta auth history map and WebSocket regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Original production DO and multi-store recovery regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Existing native production trust-boundary regressions",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 42008019430,
+      "jobs": [
+        {
+          "id": 127179603484,
+          "name": "map-and-parent-regression",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "MapLibre PMTiles ranges and portal device-list independence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "observations": [
+    "2026-11-05T10:07:12.9471997Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a51d4d96a2888004025e7b0ffb7df4f6d31e9f06:refs/remotes/origin/audit/phase8d-d1-qualification",
+    "2026-11-05T10:07:13.4352627Z  * [new ref]         a51d4d96a2888004025e7b0ffb7df4f6d31e9f06 -> origin/audit/phase8d-d1-qualification",
+    "2026-11-05T10:07:13.5157046Z a51d4d96a2888004025e7b0ffb7df4f6d31e9f06",
+    "2026-11-05T10:07:25.5092268Z PASS same-size concurrent replacement cannot combine old metadata with new bytes",
+    "2026-11-05T10:07:25.5535646Z PASS same-length stored chunk corruption is refused",
+    "2026-11-05T10:07:26.5101394Z PASS missing and noncontiguous chunk indices are refused",
+    "2026-11-05T10:07:26.5741671Z PASS conditional create cannot overwrite an existing object",
+    "2026-11-05T10:07:26.6417023Z PASS stale conditional update preserves original bytes and metadata",
+    "2026-11-05T10:07:26.6987812Z PASS two concurrent same-ETag writers have exactly one winner",
+    "2026-11-05T10:07:26.7203401Z PASS conditional writes do not swallow unrelated database failures",
+    "2026-11-05T10:07:26.8077082Z PASS Headers create-only and quoted ETag conditions are honored",
+    "2026-11-05T10:07:26.8356276Z PASS unknown or empty condition forms are rejected before any overwrite",
+    "2026-11-05T10:07:26.8683209Z PASS empty objects retain correct hash and no chunks",
+    "2026-11-05T10:07:26.9070444Z PASS invalid object size refuses allocation",
+    "2026-11-05T10:07:30.3326524Z PASS multi-chunk bytes, metadata and boundary range survive readback",
+    "2026-11-05T10:07:33.0465823Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+    "2026-11-05T10:07:34.3922689Z PASS actual beta DO recovery exports durable telemetry/revocation after readiness probe without replaying diagnostic challenge",
+    "2026-11-05T10:07:36.4569938Z PASS captured both D1 stores plus separate DO snapshots, then destroyed actual source persistence",
+    "2026-11-05T10:07:55.0286323Z PASS corrupt/missing stores, malformed late rows/BLOBs, hash and bounds fail before writes; interrupted target is explicitly partial and rejects in-place retry",
+    "2026-11-05T10:07:55.0310458Z LIMIT local quiesced synthetic drill, 16MiB archive envelope; not scheduled/off-platform production backup, cloud drill, interrupted recovery, scale or RTO/RPO acceptance",
+    "2026-11-05T10:07:57.1143663Z PASS no ACK when direct D1 history persistence fails after durable device-event insert",
+    "2026-11-05T10:07:57.1883807Z PASS retry/response loss converges on exactly one immutable history row",
+    "2026-11-05T10:07:57.2432574Z PASS interrupted second D1 history group has no range ACK; full retry fills holes without duplicating committed rows",
+    "2026-11-05T10:07:57.2891942Z PASS transactional revoke fence prevents direct-history write in the exact revocation interleaving",
+    "2026-11-05T10:07:57.2893820Z LIMIT local signed Worker/native D1/DO fault injection; no cloud timing, physical phone retry or latency qualification",
+    "2026-11-05T10:08:02.7613584Z PASS beta portal preserves existing UI, CSP and authenticated private downloads; generated scripts parse",
+    "2026-11-05T10:08:02.9563875Z PASS native signed D1 primary/chunked-object readback, D1 direct event persistence, real device DO/current state, normal location history and selected-device WebSocket ACK; no canned PASS",
+    "2026-11-05T10:08:03.1274391Z PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation",
+    "2026-11-05T10:08:05.7534329Z PASS destroyed actual source D1/R2/DO persistence after quiesced snapshot; recovery uses only saved backup objects and DO snapshots",
+    "2026-11-05T10:08:07.6648404Z PASS fresh local D1 38-table row/FK reconciliation, pending command expiry, R2 HISTORY/MAPS exact bytes and metadata; missing/corrupt R2 fail before writes",
+    "2026-11-05T10:08:08.2556508Z PASS DO restore preserves all eight supported key classes across active/revoked identities, timestamps, sequence/health ordering and reconstructed revocation fence; bad digest/key and occupied target refused",
+    "2026-11-05T10:08:09.3292418Z PASS ordinary Worker environment refuses DO recovery; no HTTP restore endpoint, production configuration or cloud mutation",
+    "2026-11-05T10:08:10.4636502Z PASS restored D1 revocation overrides active snapshot; legacy unpadded identity normalization, unknown state, invalid markers and oversized snapshots checked",
+    "2026-11-05T10:08:10.5132180Z PASS native DO export rejects nonfinite/oversized state, restore refuses a target with an attached WebSocket/alarm",
+    "2026-11-05T10:08:10.5156608Z LIMIT local synthetic evidence only: cloud destructive recovery, cross-store snapshot consistency under traffic, original R2 retention age, scale, RTO/RPO and operator orchestration remain OPEN",
+    "2026-11-05T10:08:13.1001814Z PASS native workerd production entry: signed D1 -> Queue -> R2 + DO current state, duplicate idempotency, Access denial/valid synthetic JWT",
+    "2026-11-05T10:08:13.1566226Z PASS native workerd signed safety route rejects asymmetric coordinates, retains valid0,0 and acknowledges actual own duplicate",
+    "2026-11-05T10:08:13.2122955Z PASS native workerd internal RPC health ordering and three concurrent monotonic markers",
+    "2026-11-05T10:08:26.2258995Z PASS native workerd DO WebSocket survives hibernation/reconstruction and expires through idle storage alarm",
+    "2026-11-05T10:08:26.3278385Z PASS native workerd revoked/reconstructed DO rejects all six telemetry/marker writes and safety evaluation",
+    "2026-11-05T10:08:26.3352112Z PASS native workerd revoked D1 identity, DO fence reconstruction, archived current state and denied subscription",
+    "2026-11-05T10:08:27.0266536Z PASS native workerd D1/R2 actual v3 snapshot and fresh 38-table restore with retained revocation and accepted sequence index; full live DO disaster recovery remains OPEN"
+  ],
+  "scope": "SOURCE/CI VERIFIED; local workerd services only; no Cloudflare deployment or Phase8D acceptance; PASS lines are summaries, not an independent test count"
+}

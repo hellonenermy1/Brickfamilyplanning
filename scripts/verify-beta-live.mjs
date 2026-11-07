@@ -1,8 +1,10 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import fs from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 const state=JSON.parse(await fs.readFile('beta-setup-state.json','utf8'));
 if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9-]{36}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
 if(state.sourceGitSha!==process.env.GITHUB_SHA||state.resources.DB!=='brick-family-beta'||state.storageMode!=='d1-chunked-no-r2'||!/^brick-family-beta\.[a-z0-9-]+\.workers\.dev$/.test(state.workerHost))throw Error('Card-free beta deployment provenance mismatch');
+await runStagedExternalWriter('probe',{sourceSha:state.sourceGitSha,accountId:state.accountId,databaseId:state.d1Id,workerName:'brick-family-beta',workerHost:state.workerHost},async()=>{
 const origin='https://'+state.workerHost,checks=[];
 for(const route of ['/parent','/parent/change-password','/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/devices']){
  const r=await fetch(origin+route,{headers:{'X-Brick-Dev-Parent-Verified':'session-v1'},redirect:'manual',signal:AbortSignal.timeout(20000)});
@@ -37,3 +39,4 @@ try{
 const r=await fetch(origin+'/api/device/beta-unpaired/beta/readiness',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});if(r.status!==401)throw Error('Unsigned beta device request not denied: '+r.status);
 await fs.writeFile('beta-live-verification.json',JSON.stringify({sourceSha:process.env.GITHUB_SHA,origin,storage:'D1',queues:'NONE',access:'D1_PARENT_SESSION',checks,actualParentBrowser:'PENDING',realPhoneReadiness:'PENDING',endurance72h:'NOT_STARTED'},null,2));
 console.log('Verified private card-free beta portal: '+origin+'/parent');
+});

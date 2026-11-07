@@ -1,3 +1,5 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
+import {BETA_COMPAT_COLUMNS} from './beta-compat-columns.mjs';
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-beta';
 
@@ -38,6 +40,7 @@ const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
 const db = Array.isArray(databases) ? databases.find(x => x.name === D1_NAME) : null;
 if (!db?.uuid) throw new Error(`${D1_NAME} D1 database not found.`);
 
+await runStagedExternalWriter('schema',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:db.uuid,workerName:'brick-family-beta',workerHost:null},async()=>{
 async function d1Query(sql, params = []) {
   return cf(`/accounts/${accountId}/d1/database/${db.uuid}/query`, {
     method: 'POST',
@@ -63,31 +66,8 @@ async function ensureColumns(table, columns) {
   return added;
 }
 
-const added = [
-  ...await ensureColumns('devices', [
-    ['last_health_at', 'INTEGER'],
-    ['health_status', "TEXT NOT NULL DEFAULT 'unknown'"],
-    ['recovery_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['pending_records', 'INTEGER NOT NULL DEFAULT 0'],
-    ['app_version', 'TEXT']
-  ]),
-  ...await ensureColumns('geofence_state', [
-    ['last_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_sequence', 'INTEGER NOT NULL DEFAULT 0']
-  ]),
-  ...await ensureColumns('trips', [
-    ['destination_radius_m', 'REAL NOT NULL DEFAULT 120'],
-    ['arrival_candidate_since', 'INTEGER'],
-    ['arrival_candidate_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_alert_at', 'INTEGER'],
-    ['stationary_since', 'INTEGER'],
-    ['last_stop_alert_at', 'INTEGER'],
-    ['last_eval_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_eval_sequence', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_distance_to_destination_m', 'REAL'],
-    ['last_location_at', 'INTEGER']
-  ])
-];
+const added = [];
+for(const [table, columns] of Object.entries(BETA_COMPAT_COLUMNS)) added.push(...await ensureColumns(table, columns));
 
 const verify = await d1Query('PRAGMA table_info(devices)');
 const deviceColumns = new Set((verify?.[0]?.results || []).map(row => row.name));
@@ -96,3 +76,4 @@ for (const required of ['last_health_at','health_status','recovery_count','pendi
 }
 
 console.log(added.length ? `Development D1 compatibility columns added: ${added.join(', ')}` : 'Development D1 compatibility columns already present.');
+});

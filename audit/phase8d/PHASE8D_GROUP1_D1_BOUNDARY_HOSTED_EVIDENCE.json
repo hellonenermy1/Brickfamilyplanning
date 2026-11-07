@@ -1,0 +1,120 @@
+{
+  "format": "brick-phase8d-group1-d1-boundary-hosted-v1",
+  "sourceSha": "53d7e093fd52e11310608f8cf02cfe2d46c3c13c",
+  "parentSha": "53a70a572986a5421b396b9179863655a14c4b99",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_PUSH_AND_PR_CI_VERIFIED_NOT_ACTIVATED",
+  "newControlledAdapterCases": 22,
+  "inheritedHelperCases": 21,
+  "inheritedNativeAuthorityCases": 26,
+  "inheritedLifecycleCases": 35,
+  "databaseEnvironmentPlacementSites": 4,
+  "profiledActorMethods": 41,
+  "actorHookBoundaries": 16,
+  "genericD1ExecutorCallSites": 1,
+  "inventory": {
+    "matchedExactSourceRuntimeGitBlobs": 89,
+    "summary": {
+      "sourceFiles": 89,
+      "sqlPrepareCandidates": 299,
+      "sqlWriteOrUnknown": 170,
+      "mutationOrWrapperCandidates": 71,
+      "deferredWorkCandidates": 21,
+      "actorClasses": 3,
+      "unresolvedLocalImports": 0
+    },
+    "runtimeSourceSetSha256": "9bed56742053d39510cccb918df9520916bd250bd698bfb688f83a4c1f3e5610",
+    "basisCommitSha": "53a70a572986a5421b396b9179863655a14c4b99",
+    "productionControllerInstallCalls": 0,
+    "stagedAuthorityImportedByProduction": false
+  },
+  "prCheckout": {
+    "sha": "876a4da9e9bd1a3bbf8eb341d9bf86f8e15b7b2f",
+    "verifiedParents": [
+      "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+      "53d7e093fd52e11310608f8cf02cfe2d46c3c13c"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42176089762,
+      "jobId": 127754771349,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "876a4da9e9bd1a3bbf8eb341d9bf86f8e15b7b2f",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T06:42:26.4023173Z {\"suite\":\"capture-admission-native\",\"passed\":26,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T06:42:26.5883845Z {\"suite\":\"capture-writer-boundary\",\"passed\":21,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T06:42:26.7308568Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T06:43:21.7507029Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T06:44:20.4259543Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T06:44:24.2482723Z PASS actual hooked scheduler retention refuses before work under a held capture and preserves the drained generation",
+        "2026-11-06T06:44:24.2682479Z PASS native D1 RETURNING execution preempts held capture without actor admission; plain SELECT preserves it and updated rows survive exact restore",
+        "2026-11-06T06:44:28.5153018Z PASS actual hooked device health write preempts capture after final held-check, preserves state/ACK and refuses sealed capture",
+        "2026-11-06T06:44:44.2459788Z PASS actual hooked restore RPC retains exact archived device state including post-preemption health and revocation",
+        "2026-11-06T06:44:52.7162623Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    },
+    {
+      "runId": 42176089764,
+      "jobId": 127754771427,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "876a4da9e9bd1a3bbf8eb341d9bf86f8e15b7b2f",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42176082576,
+      "jobId": 127754748513,
+      "event": "push",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "53d7e093fd52e11310608f8cf02cfe2d46c3c13c",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T06:42:21.9767432Z {\"suite\":\"capture-admission-native\",\"passed\":26,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T06:42:22.1485145Z {\"suite\":\"capture-writer-boundary\",\"passed\":21,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T06:42:22.2815939Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T06:43:14.8655354Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T06:44:09.7620630Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T06:44:13.3862617Z PASS actual hooked scheduler retention refuses before work under a held capture and preserves the drained generation",
+        "2026-11-06T06:44:13.4026357Z PASS native D1 RETURNING execution preempts held capture without actor admission; plain SELECT preserves it and updated rows survive exact restore",
+        "2026-11-06T06:44:17.3069497Z PASS actual hooked device health write preempts capture after final held-check, preserves state/ACK and refuses sealed capture",
+        "2026-11-06T06:44:30.8321314Z PASS actual hooked restore RPC retains exact archived device state including post-preemption health and revocation",
+        "2026-11-06T06:44:38.0303884Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "limits": [
+    "Controller installation occurs only in the native test harness; default source retains original DB/env identity without additional SQL/admission RPCs.",
+    "Controlled cases cover all execution methods/batches/sessions; focused native D1 scenario covers actual UPDATE RETURNING/read and full encrypted restore, not every provider/method/fleet/latency combination.",
+    "Raw/retained bindings, exported helpers, constructor/lifecycle/deferred escapes and external operator/migration/publication paths remain incompletely accounted.",
+    "Conservative urgent mutation classification may preempt capture for excluded/operational SQL; real-traffic capture liveness unqualified.",
+    "Urgent admission uncertainty refuses SQL: safety-preserving authority/storage/transport-outage fallback NOT_IMPLEMENTED. No diagnostic notice can replace durable invalidation.",
+    "No production bootstrap/authority binding/authenticated transport, independently verified private destination/separate key/context, schedule/current PITR/cloud recovery/RTO/RPO.",
+    "Existing Miniflare RPC disposal warning remains; no other group, canonical acceptance, live data/config/schema/credential, APK/UI, R2/card/billing, merge or deployment changed."
+  ]
+}

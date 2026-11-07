@@ -1,0 +1,124 @@
+{
+  "format": "brick-phase8d-group1-capture-broker-hosted-v1",
+  "sourceSha": "b1d2ace93476d4151e5d252378cf22008302b488",
+  "batchParentSha": "559a3e085c31950936648e26c6bbc3d78acc206a",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_NATIVE_SIGNED_TRANSPORT_AND_RESTORE_CI_VERIFIED_NOT_INSTALLED",
+  "newNativeClientCases": 36,
+  "keyRoles": [
+    "capture",
+    "runtime-writer",
+    "external-writer"
+  ],
+  "transport": "WebCrypto HMAC request/response purpose separation, URL/source/resource/authority-epoch/nonce/time/operation/request-digest/status binding",
+  "replay": "Actual native durable transactions; no request initialization; restart/loss/corruption/regression/capacity/expiry tested; writer tickets never expire",
+  "controllerReceipts": "Typed runtime adapter validates actual writer ID and pinned authority epoch even for correctly signed replies; lost/late/unconfirmed replies start no work and retain native ownership",
+  "nativeFullRestore": "Capture acquire/held/page/device/release use signed client/handler and native replay; actual41+4/deviceDO encrypted source-destruction/fresh restore, exact bytes/state/credential exclusions/interruption/restart and max5 source SQL/call retained",
+  "inventories": {
+    "matchedRuntimeGitBlobs": 89,
+    "runtimeSourceSetSha256": "ffad62308abb43cb7e4340c610a3375ac3d974a32fb47743c22e77a93770ec50",
+    "matchedExternalGitBlobs": 260,
+    "externalSourceSetSha256": "023cd1629877bcec886d2f1782ca566f938feb358ef42a46c34331c4e9d4a350",
+    "externalSummary": {
+      "selectedFiles": 260,
+      "filesWithManagementSignals": 64,
+      "explicitClassifications": 66,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 1,
+      "unresolvedDynamicImports": 126
+    },
+    "brokerImportedByProductionGraph": false,
+    "productionControllerInstallCalls": 0
+  },
+  "prCheckout": {
+    "sha": "8e8354c047ace963519c698cd77ad75668973c16",
+    "verifiedParents": [
+      "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+      "b1d2ace93476d4151e5d252378cf22008302b488"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42189972010,
+      "jobId": 127799281053,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "8e8354c047ace963519c698cd77ad75668973c16",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42189971812,
+      "jobId": 127799280651,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "8e8354c047ace963519c698cd77ad75668973c16",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T08:45:57.4449550Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T08:45:58.2946396Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T08:45:59.7406639Z {\"suite\":\"capture-broker-native\",\"passed\":36,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T08:45:59.9054645Z {\"suite\":\"capture-writer-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T08:46:00.0243860Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T08:46:39.3015599Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T08:47:25.9505226Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T08:47:32.3081360Z PASS signed source/resource/epoch-pinned broker carries capture acquire, held checks, page/device reads and release with native durable replay; production route/key remains absent",
+        "2026-11-06T08:47:32.3309147Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T08:47:45.6123316Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    },
+    {
+      "runId": 42189963877,
+      "jobId": 127799255776,
+      "event": "push",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "b1d2ace93476d4151e5d252378cf22008302b488",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T08:46:00.0464118Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T08:46:00.9624919Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T08:46:02.7420417Z {\"suite\":\"capture-broker-native\",\"passed\":36,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T08:46:02.9062450Z {\"suite\":\"capture-writer-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T08:46:03.0240242Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T08:46:53.3788573Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T08:47:59.4799431Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T08:48:07.2394613Z PASS signed source/resource/epoch-pinned broker carries capture acquire, held checks, page/device reads and release with native durable replay; production route/key remains absent",
+        "2026-11-06T08:48:07.2723648Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T08:48:24.3524001Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "limits": [
+    "New handler/client/replay are staged components and native fixtures only. No production route/key/controller/bootstrap/authority binding/migration or private endpoint was installed.",
+    "Native fixtures use synthetic URLs and ephemeral keys; HTTPS URL checks/signatures are not proof of actual TLS endpoint, key custody/rotation, provider, fleet/rate/latency or independent protocol review.",
+    "Replay authentication records expire only after signed windows; durable writer ownership is never expired. Limits are cooperative waiting/stream bounds, not hard JS/OS preemption or proof remote effects stopped.",
+    "Lost/invalid/timed-out native admission replies retain ownership and start no work; P8D-093 semantics persist. Unknown-outcome reconciliation and safe urgent authority/storage/transport-outage fallback remain incomplete.",
+    "Actual read callbacks retain allowlists; an outer synthetic writer envelope and trusted fixture controls/bootstrap still cover otherwise uninstrumented paths. Complete operator/credential/raw/lifecycle/deferred/process-tree accounting remains open.",
+    "No private independent destination/separate backup-key/context custody, schedule/monitoring, current least-privilege PITR or isolated live-cloud recovery/RTO/RPO acceptance.",
+    "Existing Miniflare RPC-stub disposal warning remains. No Group1/Phase8D PASS, other group, canonical criteria/status/owners/reviews/dispositions, live family-data/schema/credential/APK/UI/R2/billing/merge/deployment changes.",
+    "Only OPS-002/OPS-003 receive scoped partial proof. Audit uses current repository ledger/Group1 plan; user-referenced document tab has not been identified/reconciled."
+  ]
+}

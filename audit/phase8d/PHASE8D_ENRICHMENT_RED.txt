@@ -1,0 +1,21 @@
+{"suite":"enrichment-failure","passed":0,"failed":5,"scope":"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes"}
+FAIL semantic failure reaches durable FAILED receipt and automatic retry without starving peers: failure must not be successful maintenance
+
+true !== false
+
+FAIL refinement failure reaches durable FAILED receipt and automatic retry without starving peers: failure must not be successful maintenance
+
+true !== false
+
+FAIL cleanup failure reaches durable FAILED receipt and automatic retry without starving peers: failure must not be successful maintenance
+
+true !== false
+
+FAIL commute failure reaches durable FAILED receipt and automatic retry without starving peers: failure must not be successful maintenance
+
+true !== false
+
+FAIL signed durable hypothesis ACK survives optional refinement outage: optional refinement must not prevent exact durable ACK
+
+503 !== 200
+

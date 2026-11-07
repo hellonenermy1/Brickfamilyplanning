@@ -1,0 +1,12 @@
+PASS trusted40-day history remains readable before and after cleanup
+PASS expired raw is unavailable even before cleanup and not listed
+PASS expired trusted is unavailable before cleanup
+PASS raw expiry scrubs raw copy and embedded raw coordinates while preserving trusted delta
+PASS retention age uses original first receipt rather than delayed capture time
+PASS hypotheses30/refined90/backup30 match existing authoritative policies
+PASS cleanup cannot delete a refreshed object selected under an old age
+PASS exact30/90-day receipt boundaries remain available until expiry
+PASS generic listing supports long literal prefixes and wildcard characters
+OBSERVED cleanup statements: 8
+PASS bulk cleanup uses bounded statement count and cascades chunk deletion
+{"suite":"d1-retention","passed":10,"failed":0,"scope":"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim"}

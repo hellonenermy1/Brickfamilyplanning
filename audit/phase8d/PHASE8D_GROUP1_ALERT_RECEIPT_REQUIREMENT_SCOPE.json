@@ -1,0 +1,23 @@
+{
+  "format": "brick-phase8d-group1-alert-receipt-scope-v1",
+  "sourceSha": "e90ecb762c247946b6976821eb489be7ab7873f0",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Staged optional monitor v2 pins Ed25519 public key/epoch/recipient in config identity and verifies canonical exact-alert positive delivery receipts. Full proof survives/reverifies on restart; unknown events resolve without send/requeue/expiry, invalid proof leaves them intact.54 crypto/SQLite/synthetic-signer/B2/child-exit cases and current-source push/PR/Phase2/portal CI pass, preserving50 legacy monitor cases. Real signer/pin provenance, custody, recipient delivery, installation and negative-outcome workflows remain unqualified.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Actual signed native41+4/deviceDO encrypted B2-fixture recovery includes three receipt integration groups: forged proof refuses with uncertainty retained; exact pinned positive proof persists across restart without resend; archive remains STALE and deliveryQualified=false. Existing full fresh restore/restart,33-row/16-table relationship, credential/revocation/interruption and max5 statement checks pass. Synthetic signer/provider/sinks are not live cloud recovery, actual notification or RTO/RPO acceptance.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only staged cryptographic/local-state/synthetic native/current CI support; no actual signer/operator identity, end-user delivery/custody/schedule, other-group or formal acceptance."
+}

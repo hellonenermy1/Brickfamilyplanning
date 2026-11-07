@@ -1,0 +1,5 @@
+PASS no ACK when direct D1 history persistence fails after durable device-event insert
+PASS retry/response loss converges on exactly one immutable history row
+PASS interrupted second D1 history group has no range ACK; full retry fills holes without duplicating committed rows
+PASS transactional revoke fence prevents direct-history write in the exact revocation interleaving
+LIMIT local signed Worker/native D1/DO fault injection; no cloud timing, physical phone retry or latency qualification

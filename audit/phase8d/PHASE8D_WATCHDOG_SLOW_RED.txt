@@ -1,0 +1,10 @@
+PASS 64-device offline sweep advances across bounded invocations without exceeding50 statements
+PASS one failed notification retains retry and does not stop healthy peers
+PASS failed push retries existing durable event after automatic retry interval
+PASS simultaneous root starts share one maintenance tick and alarm decision
+PASS real Miniflare root alarms finish a pending64-device scan without manual ticks
+FAIL slow live push cannot hold up independent daily backup or hide a timed-out notification: independent backup must finish while live push is still delayed
+
+false !== true
+
+{"suite":"watchdog","passed":5,"failed":1,"scope":"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance"}
