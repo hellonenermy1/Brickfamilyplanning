@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "53d216c8d8ffb6a6831e8d35874848f9bb34d523",
+  "basisCommitSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 132
   },
-  "sourceSetSha256": "cadd3a99f96a19652a70fffff1c29d5df36d81b91c483e049af342e746fdd5bc",
+  "sourceSetSha256": "e2327c2b58f5f38afc0549c54d64f11ea2d745788c5cccf717c97768c52b0524",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -3019,8 +3019,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "42138165fee97afb92f696c46996d1018650b29335e3443e6a1537734a15f5c7",
-      "gitBlobSha": "41cb7ad02ec5c3274e58374c60675c3b04a6481b",
+      "sha256": "2fa83f3fb386ede660dbdca24048382547b9b8ef8cac8f2fffa97b3e0b19a961",
+      "gitBlobSha": "5b6552f171bdd2e9af300d19d744a2e7f7f409a0",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -4662,8 +4662,8 @@
     },
     {
       "path": "scripts/phase8d-capture-hook-profile.mjs",
-      "sha256": "734064cd5aaadd6212f4826db2867d0b219db6b91bb16108972bc45b19c37a8c",
-      "gitBlobSha": "5f2fda8d938eb1451798fa5f3649c458b0c8f2b2",
+      "sha256": "07dd97a5be331ccf758b741baa9050c5d9328a339ed014b785584a70c3ca0926",
+      "gitBlobSha": "48cf1da31e737ae8f79b1ea857a55c7a8bfc915a",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7188,8 +7188,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-writer-boundary.mjs",
-      "sha256": "8990982b892a4fd3b49e3ab101c321441dfcdadb8d731dcbb8bdf2d24dd08f7d",
-      "gitBlobSha": "60d35ac06951ce3c60ebb715266043bf44bb37b8",
+      "sha256": "2623d294971fd4ad60fa04848fb01c118db22bd069186b9873df4bcea82a191e",
+      "gitBlobSha": "03e7500199d8fc08a14d0d88de518b1afe689d41",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -9324,8 +9324,8 @@
     },
     {
       "path": "scripts/test-phase8d-urgent-request.mjs",
-      "sha256": "2e1fa350f29367bfe8aa65d5f1690075645d7ab0e62e5e4be4dd8c150cef8375",
-      "gitBlobSha": "4e46cc7bb35b6e0134addb25d2e458396a6aaddd",
+      "sha256": "596a39cd6c6746efa654f4fdfd304e075ce0f275590405306621946984c2f051",
+      "gitBlobSha": "e24f07fda02f822138eb736a1b6c017b740f2ad2",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -9414,8 +9414,8 @@
     },
     {
       "path": "scripts/test-phase8d-worker-entry.mjs",
-      "sha256": "899d285b7747768344d1a1ee61ee794002035df755bbe80199b5339f0e66b81b",
-      "gitBlobSha": "a9feb557a9927a16c6bf45da743ef4e3e0735f9c",
+      "sha256": "1a809a70f2c88ee94914f492a8dbd9d8c46a53dc9f6354a3d9545d56bd75f352",
+      "gitBlobSha": "d71e4e6bfee7deb26cbb689edbaffc7aff8a0b8a",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual composed Worker and signed SQLite authority with controlled scheduler capabilities and native deferred D1 witness writes; no provider credentials, outbound calls or complete writer/operational qualification.",
       "signals": [],

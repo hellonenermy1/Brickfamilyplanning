@@ -8,9 +8,9 @@
       "file": "src/worker-beta-cardfree.ts",
       "method": "fetch",
       "operation": "worker.fetch",
-      "priority": "urgent",
+      "priority": "AUTHORIZED_URGENT_OTHERWISE_ORDINARY",
       "line": 72,
-      "bodySha256": "cb1138000de8c9cf997e592cc9b69ba4eff8d65dce31120e1814c71a6453722f",
+      "bodySha256": "da6cd19cadfbcea2acfbfac022892a96a302f5dbb625e6be59dea39ae88c6bd8",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     },
     {

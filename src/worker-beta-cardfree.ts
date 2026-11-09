@@ -70,7 +70,7 @@ export async function runCardfreeMaintenance(env:Env,_ctx:ExecutionContext,onWat
 function maintenance(env:Env,ctx:ExecutionContext){ctx.waitUntil(env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('beta-maintenance')).kick().catch(()=>{}));}
 export default {
  async fetch(req:Request<unknown,IncomingRequestCfProperties>,env:Env,ctx:ExecutionContext):Promise<Response>{
-  return runCaptureWriter(env,'worker.fetch','urgent',ctx,async ctx=>{
+  return runCaptureWriter(env,'worker.fetch',async()=>await captureUrgentRequestAllowed(req,env)?'urgent':'ordinary',ctx,async ctx=>{
   env=stagedCaptureDatabases(env,ctx);
   if(env.APP_ENV!=='development'||env.DEV_PARENT_AUTH_MODE!=='d1-session-v1'||env.BETA_STORAGE_MODE!=='d1'||env.BETA_CHANNEL!=='beta')return betaJson({error:'cardfree_configuration_required'},503);
   const clean=stripDevParentInternalHeader(req),u=new URL(clean.url),r=cardfreeRuntime(env);maintenance(env,ctx);

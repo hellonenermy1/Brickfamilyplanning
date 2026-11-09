@@ -83,9 +83,9 @@ try{
   const c=await rpc('requestCapture',randomBytes(16).toString('hex'),identity);assert.equal(c.state,'DRAINING');assert.equal((await db.prepare('SELECT COUNT(*) n FROM witness').first()).n,0);
   await invoke({release:id});assert.equal((await pending).status,200);await active(0);assert.equal((await rpc('pollCapture',c.captureId)).state,'DRAINED');assert.equal((await db.prepare('SELECT COUNT(*) n FROM witness').first()).n,3);
  });
- await test('actual urgent Worker entry preempts a held native capture before work',async()=>{
-  await fresh();const c=await rpc('requestCapture',randomBytes(16).toString('hex'),identity);assert.equal(c.state,'DRAINED');
-  const r=await invoke({id:'preempt',autoRelease:true});assert.equal(r.status,200);await r.text();await active(0);await assert.rejects(rpc('pollCapture',c.captureId),/CAPTURE_UNAVAILABLE/);
+ await test('actual anonymous ordinary Worker request cannot preempt a held native capture',async()=>{
+  const db=await fresh();const c=await rpc('requestCapture',randomBytes(16).toString('hex'),identity);assert.equal(c.state,'DRAINED');
+  const r=await invoke({id:'no-preempt',autoRelease:true});assert.equal(r.status,503);assert.equal((await r.json()).error,'CAPTURE_WRITER_BUSY');assert.equal((await rpc('pollCapture',c.captureId)).state,'DRAINED');assert.equal((await db.prepare('SELECT COUNT(*) n FROM witness').first()).n,0);
  });
  for(const kind of ['fetch','scheduled'])for(const stage of ['runtime.enter','runtime.start'])await test('actual '+kind+' lost '+stage+' receipt starts no scheduler work',async()=>{
   const db=await fresh();await rpc('fault',stage);const r=await invoke({id:kind+stage,kind,autoRelease:true});assert.equal(r.status,503);const body=await r.json();assert.equal(body.error,stage==='runtime.enter'?'CAPTURE_WRITER_ADMISSION_UNCERTAIN':'CAPTURE_WRITER_START_UNCERTAIN');

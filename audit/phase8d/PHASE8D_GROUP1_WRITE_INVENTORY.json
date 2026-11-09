@@ -1,19 +1,19 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "53d216c8d8ffb6a6831e8d35874848f9bb34d523",
+  "basisCommitSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
   "summary": {
     "sourceFiles": 90,
-    "sqlPrepareCandidates": 305,
+    "sqlPrepareCandidates": 306,
     "sqlWriteOrUnknown": 173,
     "mutationOrWrapperCandidates": 73,
     "deferredWorkCandidates": 21,
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "00957b115641b986cdfa096852032ebe4d39033fafba8d71f68430121b31b47a",
+  "runtimeSourceSetSha256": "1c4a4cb82381d144ed179468e8e07a3b42672766582bf7f6a800b0d3d86f2d6d",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -945,17 +945,27 @@
     },
     {
       "path": "src/capture-urgent-request.ts",
-      "sha256": "33f3c52efea7c1fc3e39eb1cfb5b736039e45f02777840dc4a03f955be84996c",
-      "gitBlobSha": "2a37853aca49811836628668aa6977374222c37c",
+      "sha256": "1fe5960f2c4e366c60a7a4b72dab9d7e774761077947b331578fee488f348178",
+      "gitBlobSha": "e6b62976c106e3a3189501b0638f11fa4333e52c",
       "imports": [
         "src/bounded-body.ts",
+        "src/dev-parent-auth.ts",
         "src/device-json-security.ts",
         "src/index.ts",
         "src/safety-event-write.ts"
       ],
       "sites": [
         {
-          "line": 23,
+          "line": 19,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 35,
           "column": 26,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -967,8 +977,8 @@
     },
     {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "3b939cb1f73c7672c1a62b0f298fee4c5cc898fdd95323030be2db1241f5f028",
-      "gitBlobSha": "f484c6b379366ba1ec486b32930bd356cbbe214f",
+      "sha256": "1812b6d585ab5d28ad7440ed966dbbb73ea7cabbf063a94c9b3f2ffa5eb703a4",
+      "gitBlobSha": "85b6499fbd28e44ced137ffdcedb7fd74aa12673",
       "imports": [],
       "sites": [
         {
@@ -4401,8 +4411,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "65aadf4247074520ad8e790731660c5a9dbfae240ac0faa732c976e247ec66ec",
-      "gitBlobSha": "5b426bc127a6b14160840a1665f938fe6abe4ce0",
+      "sha256": "be6ddf2da65d92ad9f8aa30d72dad950c171b27a9dff51deedc32485fae98f14",
+      "gitBlobSha": "090868b855545edc76c94e1c124ee4788f2fe8eb",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",
