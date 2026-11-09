@@ -1,0 +1,237 @@
+{
+  "format": "brick-phase8d-group1-authenticated-guard-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+  "sourceTreeSha": "4a0b12a6b120588edcd48623d239cd08a68e83f0",
+  "baselineSha": "da4b0271eaf0c7b32dc1c5eaa546f11c699c1037",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "AUTHENTICATED_GUARD_SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 70,
+  "contractCases": 26,
+  "nativeTransportCases": 44,
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "920678c94d068bc024676b4c05f5b602d142b56395c5fca8b04a76ca29ff8ce0"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "254ee16cc98f9a39d82f8c4044821456d029d62080c1c9b7adfe2c6c7e993099"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "f06c62009ebee6ad33fd1be51744ff1d124a5c1411b83222836f83753259c7d1"
+    },
+    {
+      "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+      "sha256": "96ae8185e5b4100ba2a5a2c908133d57ff656b677075b16e86ffdde63788b5ef"
+    },
+    {
+      "path": "scripts/test-phase8d-quarantine-contract.mjs",
+      "sha256": "f581a06945a8bd6bafc170a593dd5f2e3dada169d37151822a07bdf7393a0670"
+    },
+    {
+      "path": "scripts/test-phase8d-quarantine-transport.mjs",
+      "sha256": "8d2f5ace3986cf9dec3cf92ad88df4b53d82336108f7fdf34766dd99c40e75ff"
+    },
+    {
+      "path": "src/quarantine-transport.ts",
+      "sha256": "154f2b04e8123386c43d12c7cc293af009902f8f5c6b4fbd81cf09888f48efc8"
+    }
+  ],
+  "verifiedBehavior": [
+    "Own HMAC request/response domain, source/resource and separate epoch pins; request nonce/hash/status-bound receipts; separate capture-clear and runtime-poison keys.",
+    "Bounded 4096-entry native durable replay consumes before guard work; replay, restart replay, missing state, full capacity, invalid role/payload/protocol/signature/identity/expiry refuse. No network initialization/reset.",
+    "Clear checks and urgent quarantine use actual authenticated guard protocol through native authority/D1/device fixtures. Durable poison plus lost acknowledgement starts no source write. Unsigned/replayed/malformed replies cannot authorize capture.",
+    "Trusted-owner candidate contract rejects shared origins/epoch/IDs/key material and mutable/coerced configuration; emits no secrets and actualFailureDomainQualified=false.",
+    "Full signed encrypted41+4/deviceDO destruction/fresh restore runs through guard transport; interrupted encrypted journal resumes >45 entries without source page/device rereads and seals after guarded release; exact33-row/16-table relation/config parity, auth/nonce/expiry/revocation and restart preserved."
+  ],
+  "replayCapacity": 4096,
+  "requestReplyByteLimit": 4096,
+  "productionInstalled": false,
+  "actualFailureDomainQualified": false,
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "38b55580e9bf2a20ad0dc1b0ae5b987fa7659e89e5bf11f0a70a643e632ac09d",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "9396029ed0533173147b84cb7c1790c74c413180c2a5825403693fc0c761aa48"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "3861ef12ad91021e6c12b4c844bfd2d51712299e58e32ee12b4f3ac651345eae"
+      },
+      {
+        "group": 12,
+        "sha256": "05215322c512b16429bd89fe7a2531a6d63f02d1b23248e8889090d91ff7389f"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "c85eacdb1ec691b096ec335cc5d5deda950770250bb64be230e2722f9b2ecab0"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "hostedRuns": [
+    {
+      "runId": 42653454606,
+      "jobId": 129285600417,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+      "logSha256": "7ddd0f8bd404d241aca4b3bfc8aada0ca42f7f65178cd0df7e5ea1c616c3418b"
+    },
+    {
+      "runId": 42653454665,
+      "jobId": 129285599759,
+      "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+      "logSha256": "34255e696d2ee97730d9b758cc788047daf77db49004ad0d080ae0c59ffa2fdf"
+    },
+    {
+      "runId": 42653454552,
+      "jobId": 129285600096,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+      "logSha256": "8a4286d34bce13b06df2477c2c860e2460d56412fa95f78480f463d81f818938"
+    },
+    {
+      "runId": 42653440783,
+      "jobId": 129285559020,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+      "logSha256": "676f225f5220366b28b61f6985e258e9abd8ec3a824c0869f55621d6a0e47a51"
+    }
+  ],
+  "verifiedMergeCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "ae0f33f89aa11925dd9f6802ed9952381ebc9203"
+  ],
+  "remaining": [
+    "Trusted actual installation with protected TLS endpoint, restricted key custody/rotation and independent failure-domain evidence; distinct configured origins do not prove that domain.",
+    "Complete declared final writer/operator/credential effects, raw/lower-level/direct binding bypass restrictions, four external beta-tool hooks and STARTED/legacy unknown-outcome reconciliation; authority installation/rollback compatibility.",
+    "Restricted B2 runtime credential and separately durable version manifest/key/context; installed schedule/readback/age/failure and real-recipient monitoring.",
+    "Current least-privilege PITR evidence and isolated cloud restore/interruption/rollback with measured RTO/RPO."
+  ],
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "liveCloudflareWrites": false,
+  "providerTestRepeated": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false,
+  "limitations": "Controlled native routing, ephemeral keys and trusted fixture bootstrap. Distinct URLs/configuration do not establish actual TLS, key custody, independent failure domain, full writer coverage, operational rate/capacity, schedule, recipient delivery or cloud recovery acceptance. Existing Miniflare disposal warnings retained."
+}

@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
+  "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 302,
+      "selectedTrackedFiles": 304,
       "explicitManagementClassifications": 77,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 134,
+      "filesWithDynamicImportExpressions": 135,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -333,6 +333,17 @@
       "actualProtectedIndependentTransportOrFailureDomainQualified": false,
       "productionInstalled": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARDED_BROKER_EVIDENCE.json"
+    },
+    {
+      "id": "AUTHENTICATED_INDEPENDENT_GUARD_TRANSPORT",
+      "state": "SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 70,
+      "nativeTransportCases": 44,
+      "configurationContractCases": 26,
+      "replayCapacity": 4096,
+      "actualFailureDomainQualified": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -348,8 +359,8 @@
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
-      "state": "GUARDED_ALL_CAPTURE_OPERATIONS_NATIVE_AND_HOSTED_QUALIFIED_ACTUAL_INSTALLATION_AND_FAILURE_DOMAIN_OPEN",
-      "needed": "Actual native urgent source effect follows durable independent quarantine; guarded acquire/poll/held/page/device/release checks prevent old/new capture success and survive restart. Source/path integration qualified; actual protected authenticated independent guard transport/bootstrap/failure-domain and live recovery qualification still open."
+      "state": "AUTHENTICATED_GUARD_SOURCE_NATIVE_HOSTED_QUALIFIED_ACTUAL_INSTALLATION_AND_FAILURE_DOMAIN_OPEN",
+      "needed": "All capture operations and urgent source fallback use independently pinned authenticated guard with separate fixture keys, role separation and durable replay. Source/recovery qualification complete; actual installer/TLS/custody/failure-domain and live qualification remain."
     },
     {
       "id": "AUTHENTICATED_SOURCE_TRANSPORT",
@@ -384,107 +395,79 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARDED_BROKER_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42649720429,
-        "jobId": 129272468918,
+        "runId": 42653454606,
+        "jobId": 129285600417,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "pull_request",
-        "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42649720429",
-        "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-        "status": "completed",
         "conclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "348bcf36658e96a7e1f0ea817205c3ee6b776178",
-        "exactCheckoutFromGitLogVerified": true,
+        "passedSteps": 33,
+        "totalSteps": 33,
         "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": true,
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
-        "scope": "Exact final source/current-base native synthetic verification, not installed production guard transport or operational recovery acceptance.",
-        "capturedLogSha256": "2804bf0d97f55553a6430dcec8a2ec8d2b2150230141a872061f463900ca9a5c"
+        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+        "logSha256": "7ddd0f8bd404d241aca4b3bfc8aada0ca42f7f65178cd0df7e5ea1c616c3418b"
       },
       {
-        "runId": 42649720415,
-        "jobId": 129272469161,
+        "runId": 42653454665,
+        "jobId": 129285599759,
+        "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
         "event": "pull_request",
-        "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42649720415",
-        "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-        "status": "completed",
         "conclusion": "success",
-        "steps": 10,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "348bcf36658e96a7e1f0ea817205c3ee6b776178",
-        "exactCheckoutFromGitLogVerified": true,
+        "passedSteps": 14,
+        "totalSteps": 14,
         "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": false,
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
-        "scope": "Exact final source/current-base native synthetic verification, not installed production guard transport or operational recovery acceptance.",
-        "capturedLogSha256": "15e84bdeb634a047eec75112c0a4468fd6a92e694e5ad2a70988779ea926d38f"
+        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+        "logSha256": "34255e696d2ee97730d9b758cc788047daf77db49004ad0d080ae0c59ffa2fdf"
       },
       {
-        "runId": 42649720338,
-        "jobId": 129272470084,
+        "runId": 42653454552,
+        "jobId": 129285600096,
+        "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
-        "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42649720338",
-        "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-        "status": "completed",
         "conclusion": "success",
-        "steps": 14,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "348bcf36658e96a7e1f0ea817205c3ee6b776178",
-        "exactCheckoutFromGitLogVerified": true,
+        "passedSteps": 10,
+        "totalSteps": 10,
         "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": false,
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
-        "scope": "Exact final source/current-base native synthetic verification, not installed production guard transport or operational recovery acceptance.",
-        "capturedLogSha256": "4b23deacbcab8d43a892b71eddd68e4835a4eeedf64ba732436ee9b048f8a186"
+        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
+        "logSha256": "8a4286d34bce13b06df2477c2c860e2460d56412fa95f78480f463d81f818938"
       },
       {
-        "runId": 42649708267,
-        "jobId": 129272426380,
+        "runId": 42653440783,
+        "jobId": 129285559020,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
-        "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42649708267",
-        "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-        "status": "completed",
         "conclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-        "exactCheckoutFromGitLogVerified": true,
+        "passedSteps": 33,
+        "totalSteps": 33,
         "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": true,
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
-        "scope": "Exact final source/current-base native synthetic verification, not installed production guard transport or operational recovery acceptance.",
-        "capturedLogSha256": "3859d3d150c4b14e71b04dc99b2b67ca2b4566d55952961f2e6fe6e3de92738c"
+        "verifiedCheckoutSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+        "logSha256": "676f225f5220366b28b61f6985e258e9abd8ec3a824c0869f55621d6a0e47a51"
       }
     ],
-    "scope": "Guarded all-operation signed capture broker/native bootstrap and encrypted journal resume/full recovery; final corrected fixture qualified. No production transport/guard-domain/installer/custody/schedule/PITR/cloud acceptance."
+    "scope": "Authenticated guard transport/separation contract and native full encrypted recovery. No actual TLS/installation/key custody/failure-domain/schedule/PITR/cloud acceptance."
   },
-  "lastHostedQualifiedSourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARDED_BROKER_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARDED_BROKER_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
+  "lastMergeQualifiedSourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
+      "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "5270845103785a4c77aa76bdbfee0da0d9142fab",
+      "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
