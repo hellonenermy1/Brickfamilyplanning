@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 134
   },
-  "sourceSetSha256": "0ed24484c9a6c47dde28c54b8ba823048947b2ccba7213e49b9982071b3e05ba",
+  "sourceSetSha256": "2726c1d68ed942c615b0c144a46c561cdda2d2d61dd3b717029675b4d81037d9",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -7173,8 +7173,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-broker.mjs",
-      "sha256": "ff958475555eb9f80bdb342998593e8c0c9646f583df84d803901e0246034e59",
-      "gitBlobSha": "2e86838560f63f7b1d240c62b64d7a25b393bbc6",
+      "sha256": "7b3590670a71ddb07506e0c284bd20013687a5c6857f5ed1b6ba8ce5519b1a81",
+      "gitBlobSha": "50d9a972ddf71d93081cdb29bc01e604d7fcc324",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic HMAC/replay client/server and native authority with ephemeral test keys and blocked outbound network; no production endpoint/key or provider qualification.",
       "signals": [],
