@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+  "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -36,7 +36,7 @@
       "id": "D1_EXECUTION_BOUNDARIES",
       "state": "INERT_SOURCE_AND_NATIVE_FIXTURE_VERIFIED",
       "adapterCases": 22,
-      "environmentPlacementSites": 4,
+      "environmentPlacementSites": 10,
       "executionMethods": [
         "run",
         "first",
@@ -47,17 +47,20 @@
       ],
       "sessionsWrapped": true,
       "productionControllerInstallCalls": 0,
-      "completeWriterCoverage": false
+      "completeWriterCoverage": false,
+      "scopedDescendantCases": 27,
+      "sameIsolateOnly": true,
+      "crossRpcInheritanceQualified": false
     },
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 293,
+      "selectedTrackedFiles": 295,
       "explicitManagementClassifications": 77,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 132,
+      "filesWithDynamicImportExpressions": 133,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -221,11 +224,12 @@
       "eligibilityNativeCases": 39,
       "newWriterPolicyCases": 6,
       "anonymousOutageQuarantineDenied": true,
-      "scheduledBlanketFallbackDenied": true,
+      "scheduledBlanketFallbackDenied": false,
       "normalRootPriorityClassificationComplete": false,
       "allUrgentOperationCoverage": false,
       "path": "src/capture-urgent-request.ts",
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHORIZED_URGENT_EVIDENCE.json"
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHORIZED_URGENT_EVIDENCE.json",
+      "scheduledFallbackPolicy": "TRUSTED_PLATFORM_EVENT_REQUIRES_DURABLE_QUARANTINE_ROUTINE_ACTORS_STILL_ORDINARY"
     },
     {
       "id": "CLASSIFIED_ROOT_AND_PARENT_REVOCATION",
@@ -256,6 +260,17 @@
       "allWriterCoverage": false,
       "productionActivation": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_INGEST_ADMISSION_EVIDENCE.json"
+    },
+    {
+      "id": "SCOPED_D1_AND_SCHEDULED_WATCHDOG",
+      "state": "SOURCE_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "scopeCases": 27,
+      "actualSchedulerNativeCases": 8,
+      "opaqueSameClientSameIsolateOnly": true,
+      "crossRpcInheritanceQualified": false,
+      "routineOutageBypass": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPED_SCHEDULER_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -267,12 +282,12 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "PARTIAL_INERT_WORKER_ACTOR_AND_D1_BOUNDARIES",
-      "needed": "Actual roots,16 actor hooks and4 D1 placements have native/source proof; fresh SOS/parent-revoke/health/location/batch/preview now have request-specific admission. Remaining nested D1/actor/maintenance urgency, watchdog/other ingress, raw/operator/credential/lifecycle/deferred/process-tree accounting and STARTED/legacy reconciliation remain. Protected matched guard on all capture/resume/seal/release, trusted transport/bootstrap/custody and actual live qualification required. No partial activation."
+      "needed": "Worker roots,16 actor hooks and10 D1 placements have staged native/source proof. Same-client in-isolate D1 descendants now borrow admitted ownership; cross-RPC ownership/draining ordinary children, remaining command/receiver/diagnostic writers, raw/operator/credential/lifecycle/deferred/process-tree accounting and STARTED/legacy reconciliation remain. Matched protected authenticated guard/bootstrap/transport/failure-domain and live qualification required. No partial activation."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
-      "state": "FRESH_SOS_PARENT_HEALTH_LOCATION_BATCH_PREVIEW_NATIVE_SOURCE_CI_VERIFIED_OTHER_POLICY_AND_LIVE_QUALIFICATION_OPEN",
-      "needed": "Fresh health/single/batch/live preview now join SOS/parent revoke in root proof. Native healthy preemption, broker-outage actual writes, history-hole/partial batch retry/no premature ACK, health consumed-counter retention/next heartbeat, preview failed-write/exact retry and restart are verified. Delayed/completed data may be ordinary and retry during capture. Nested already-admitted D1/actor/maintenance urgency, watchdog/scheduled outage policy and remaining command/receiver/diagnostic entrypoints remain. Complete writers/unknown ownership reconciliation and matched authenticated protected guard/bootstrap/failure-domain/live recovery proof still block activation."
+      "state": "FRESH_INGEST_SOS_PARENT_AND_SCHEDULED_WATCHDOG_NATIVE_SOURCE_CI_VERIFIED_OTHER_POLICY_AND_LIVE_QUALIFICATION_OPEN",
+      "needed": "Fresh SOS/parent/health/location/batch/preview and trusted scheduled watchdog now have native request/platform-specific quarantine proof. Actual ordinary routine groups/backup/retention refuse outage bypass; aggregate failure/rearm remains truthful. Same-isolate D1 ownership is covered; cross-RPC and other ingress/unknown ownership, matched authenticated protected guard/bootstrap/failure-domain/live recovery remain open."
     },
     {
       "id": "AUTHENTICATED_SOURCE_TRANSPORT",
@@ -307,107 +322,107 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_INGEST_ADMISSION_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPED_SCHEDULER_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42628215013,
-        "jobId": 129197412901,
+        "runId": 42633421277,
+        "jobId": 129215248952,
+        "event": "pull_request",
+        "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42633421277",
+        "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": 33,
+        "allStepsCompletedSuccess": true,
+        "checkoutSha": "069b7cb473c5f36657e27f5cc9c7b92eaff09655",
+        "exactCheckoutFromGitLogVerified": true,
+        "errorMarkers": 0,
+        "existingMiniflareRpcDisposalWarning": true,
+        "scope": "Exact-source/current-base native synthetic verification, not installed production or live operational recovery acceptance.",
+        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+        "capturedLogSha256": "1421e227b1b8736438a1d915dd66eea214b8838749641236ca9e391af0ae9bb8"
+      },
+      {
+        "runId": 42633421173,
+        "jobId": 129215247534,
         "event": "pull_request",
         "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42628215013",
-        "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42633421173",
+        "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
         "status": "completed",
         "conclusion": "success",
         "steps": 14,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "b1888ec2f45323fec3fe4989648b8ac057ea746a",
+        "checkoutSha": "069b7cb473c5f36657e27f5cc9c7b92eaff09655",
         "exactCheckoutFromGitLogVerified": true,
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": false,
-        "scope": "Exact source/current-base PR checkout with inspected matching tree/parents; native synthetic and preservation only, not installed or live operational recovery acceptance.",
-        "capturedLogSha256": "eeab2ae8a3934b1edc02ad162b9957f85742f5a7d2e0a2bde7390c210e991f05",
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline."
+        "scope": "Exact-source/current-base native synthetic verification, not installed production or live operational recovery acceptance.",
+        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+        "capturedLogSha256": "859d04df57ad93618d9e8f2496a53142a322c7b5ccf421d4072c7b0836889cc4"
       },
       {
-        "runId": 42628215075,
-        "jobId": 129197412529,
+        "runId": 42633421252,
+        "jobId": 129215249275,
         "event": "pull_request",
         "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42628215075",
-        "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42633421252",
+        "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
         "status": "completed",
         "conclusion": "success",
         "steps": 10,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "b1888ec2f45323fec3fe4989648b8ac057ea746a",
+        "checkoutSha": "069b7cb473c5f36657e27f5cc9c7b92eaff09655",
         "exactCheckoutFromGitLogVerified": true,
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": false,
-        "scope": "Exact source/current-base PR checkout with inspected matching tree/parents; native synthetic and preservation only, not installed or live operational recovery acceptance.",
-        "capturedLogSha256": "720400d032e612cb1a938c8d96b24d289ea6e2f607fd8a7164cfa3acc2a189e4",
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline."
+        "scope": "Exact-source/current-base native synthetic verification, not installed production or live operational recovery acceptance.",
+        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+        "capturedLogSha256": "50b9b9db81fc1f06eef55a334bca248fcd16b74ef59a7d7b33fe03f1659765e6"
       },
       {
-        "runId": 42628214926,
-        "jobId": 129197411435,
-        "event": "pull_request",
-        "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42628214926",
-        "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
-        "status": "completed",
-        "conclusion": "success",
-        "steps": 33,
-        "allStepsCompletedSuccess": true,
-        "checkoutSha": "b1888ec2f45323fec3fe4989648b8ac057ea746a",
-        "exactCheckoutFromGitLogVerified": true,
-        "errorMarkers": 0,
-        "existingMiniflareRpcDisposalWarning": true,
-        "scope": "Exact source/current-base PR checkout with inspected matching tree/parents; native synthetic and preservation only, not installed or live operational recovery acceptance.",
-        "capturedLogSha256": "e2b02184bb0b2293188688256a7fb6c047b493c49f5cbc3f0c0a5d6ba4d39f87",
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline."
-      },
-      {
-        "runId": 42628206402,
-        "jobId": 129197384868,
+        "runId": 42633409098,
+        "jobId": 129215209295,
         "event": "push",
         "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42628206402",
-        "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+        "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42633409098",
+        "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
         "status": "completed",
         "conclusion": "success",
         "steps": 33,
         "allStepsCompletedSuccess": true,
-        "checkoutSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+        "checkoutSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
         "exactCheckoutFromGitLogVerified": true,
         "errorMarkers": 0,
         "existingMiniflareRpcDisposalWarning": true,
-        "scope": "Exact source/current-base PR checkout with inspected matching tree/parents; native synthetic and preservation only, not installed or live operational recovery acceptance.",
-        "capturedLogSha256": "c1c8b7553c3aeaec7715da24748b0c5ed7a1ad5edbe0c9ad58ce2e379b48ee87",
-        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline."
+        "scope": "Exact-source/current-base native synthetic verification, not installed production or live operational recovery acceptance.",
+        "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+        "capturedLogSha256": "7817e1c14f5d207b8e87abff8f53a97089924a4bb604be273a3b89d5867d48eb"
       }
     ],
-    "scope": "Fresh health/single/batch/live-preview admission and outage retry with actual synthetic native Worker/D1/device/guard and current-base preservation. No complete writer/watchdog/nested policy, production guard/custody/schedule/PITR/live recovery acceptance."
+    "scope": "Same-isolate scoped D1 ownership and actual trusted scheduled watchdog outage/native restart, plus current-base preservation. No complete cross-RPC writer, live production guard/custody/schedule/PITR/cloud recovery acceptance."
   },
-  "lastHostedQualifiedSourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_INGEST_ADMISSION_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_INGEST_ADMISSION_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPED_SCHEDULER_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPED_SCHEDULER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+  "lastMergeQualifiedSourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+      "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "56e48ab4bae4643a4203c01bbdf8d285f349eda4",
+      "sourceSha": "bf8951c41895b1ead1b74e783d89e08c7f91405f",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
