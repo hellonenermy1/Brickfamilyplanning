@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+  "basisCommitSha": "02aa0cdf355acc9e7f50c1060237592d96dbc6a7",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
   "summary": {
-    "selectedFiles": 301,
+    "selectedFiles": 302,
     "filesWithManagementSignals": 72,
     "explicitClassifications": 77,
     "betaMutatorsUnfenced": 4,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 134
   },
-  "sourceSetSha256": "6d25b6e0e031839efc8db323afe8893f1508c640562bbd1a08d883ef012534f2",
+  "sourceSetSha256": "0ed24484c9a6c47dde28c54b8ba823048947b2ccba7213e49b9982071b3e05ba",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -738,6 +738,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-full-store-recovery.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-guarded-broker.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2446,6 +2451,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-guarded-broker.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-health-revoke-race.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3109,8 +3119,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "7fa36a849e226cc2b858c91656e96f1883ee9c7469b942385df84f05e46fd551",
-      "gitBlobSha": "61ecc1e8e34bdf33f06e7f5a0ad98c117242a39c",
+      "sha256": "3db53e4a9a443b0aa9d10b1aeb1b5027cc0358bd9def9ea35126e2b68c9694b4",
+      "gitBlobSha": "6e8ef75e1c686f7f70249d3a71a7fdc95d42428a",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3160,6 +3170,7 @@
         "scripts/test-phase8d-external-writer-inventory.mjs",
         "scripts/test-phase8d-external-writer.mjs",
         "scripts/test-phase8d-full-store-recovery.mjs",
+        "scripts/test-phase8d-guarded-broker.mjs",
         "scripts/test-phase8d-journal-files.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
@@ -7342,8 +7353,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "a7905b4f1c01a99f06e6c87b21e2777f2ddab1863fae43a429cc406ce5e22875",
-      "gitBlobSha": "b044eacbe9bd8cbf9b4a437ca41d804f114e144d",
+      "sha256": "6e1ecac49ea764d6b1d8450f6b1bd07f627813cf834a7fb108ed0ce6c65c591a",
+      "gitBlobSha": "a782893a71c6d131c1257c0dc7db243887d89840",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -7360,11 +7371,11 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 161,
+          "line": 165,
           "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
         },
         {
-          "line": 161,
+          "line": 165,
           "kind": "BACKUP_ALERT_RECEIPT_CAPABILITY"
         }
       ],
@@ -8331,6 +8342,28 @@
         "node:assert/strict",
         "node:crypto",
         "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-guarded-broker.mjs",
+      "sha256": "06d0d15b93fc5c633493485ea50c2a16c388c5cdedab747d4691cc9ef4854309",
+      "gitBlobSha": "56ef8af74f9750ad15c4bc236daed460389872a0",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
