@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "02aa0cdf355acc9e7f50c1060237592d96dbc6a7",
+  "basisCommitSha": "da4b0271eaf0c7b32dc1c5eaa546f11c699c1037",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
   "summary": {
-    "selectedFiles": 302,
+    "selectedFiles": 304,
     "filesWithManagementSignals": 72,
     "explicitClassifications": 77,
     "betaMutatorsUnfenced": 4,
@@ -13,9 +13,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 134
+    "unresolvedDynamicImports": 135
   },
-  "sourceSetSha256": "2726c1d68ed942c615b0c144a46c561cdda2d2d61dd3b717029675b4d81037d9",
+  "sourceSetSha256": "9f331e7a63f2123dc862d8264eb090b9bfed616abcbdc4e7c274551b5c8a9545",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -793,6 +793,16 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-protected-backup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-quarantine-contract.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-quarantine-transport.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2566,6 +2576,11 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-quarantine-transport.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-r2-lifecycle-merge.mjs",
       "to": "scripts/phase8d-r2-lifecycle-merge.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3119,8 +3134,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "3db53e4a9a443b0aa9d10b1aeb1b5027cc0358bd9def9ea35126e2b68c9694b4",
-      "gitBlobSha": "6e8ef75e1c686f7f70249d3a71a7fdc95d42428a",
+      "sha256": "920678c94d068bc024676b4c05f5b602d142b56395c5fca8b04a76ca29ff8ce0",
+      "gitBlobSha": "e25f3b6628bc285bc8c29dbd0e02f540e28ae13c",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3181,6 +3196,8 @@
         "scripts/test-phase8d-private-archive-files.mjs",
         "scripts/test-phase8d-process-completion.mjs",
         "scripts/test-phase8d-protected-backup.mjs",
+        "scripts/test-phase8d-quarantine-contract.mjs",
+        "scripts/test-phase8d-quarantine-transport.mjs",
         "scripts/test-phase8d-refinement-corruption.mjs",
         "scripts/test-phase8d-refinement-lifecycle.mjs",
         "scripts/test-phase8d-release-acceptance.mjs",
@@ -7353,8 +7370,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "6e1ecac49ea764d6b1d8450f6b1bd07f627813cf834a7fb108ed0ce6c65c591a",
-      "gitBlobSha": "a782893a71c6d131c1257c0dc7db243887d89840",
+      "sha256": "96ae8185e5b4100ba2a5a2c908133d57ff656b677075b16e86ffdde63788b5ef",
+      "gitBlobSha": "b4496e6484af7a7b3bcade4da3567c98f1e1ddcf",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -9046,6 +9063,50 @@
       "imports": [
         "node:assert/strict",
         "node:fs",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-quarantine-contract.mjs",
+      "sha256": "f581a06945a8bd6bafc170a593dd5f2e3dada169d37151822a07bdf7393a0670",
+      "gitBlobSha": "104e9847f763ca039765b4fe44800758e584c472",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-quarantine-transport.mjs",
+      "sha256": "8d2f5ace3986cf9dec3cf92ad88df4b53d82336108f7fdf34766dd99c40e75ff",
+      "gitBlobSha": "abbf7937df12c09042d0c73dfe0bfe176cd9e228",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
         "node:path"
       ],
       "referencedScriptCandidates": [],
