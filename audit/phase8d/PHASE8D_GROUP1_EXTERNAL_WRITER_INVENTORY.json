@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "c91bb63dd67a884c16375724351468ee3797f1e0",
+  "basisCommitSha": "7bb1208bc11e4338e4b54948394961d5d1aa1e5e",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
   "summary": {
-    "selectedFiles": 291,
+    "selectedFiles": 292,
     "filesWithManagementSignals": 72,
     "explicitClassifications": 77,
     "betaMutatorsUnfenced": 4,
@@ -13,9 +13,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 130
+    "unresolvedDynamicImports": 131
   },
-  "sourceSetSha256": "e14e3a85724b64bf18b98211431cab6963f9e4e3910ba742def5af559d24e700",
+  "sourceSetSha256": "159fbb4f11cb509d3c694487dbccbe94760de4164141cf9cfda9b183853c6d94",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -748,6 +748,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-maintenance-leases.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-outage-quarantine.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2999,8 +3004,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "514a4f2e11f824e701a6106a1b5381a48feded4f3b86cdea789363554b0f9a35",
-      "gitBlobSha": "7f47173a24d60d140fd36b6b51b4fc8221accb43",
+      "sha256": "29f399801082283620a74663a004d25b185fc09b669416ea96df197b9b855e98",
+      "gitBlobSha": "42d7973ab0773152473e108ec6c9ced37b1ef422",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3052,6 +3057,7 @@
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
         "scripts/test-phase8d-maintenance-leases.mjs",
+        "scripts/test-phase8d-outage-quarantine.mjs",
         "scripts/test-phase8d-parent-credential-recovery.mjs",
         "scripts/test-phase8d-pitr-lifecycle.mjs",
         "scripts/test-phase8d-private-archive-files.mjs",
@@ -7071,8 +7077,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-coordinator.mjs",
-      "sha256": "d183ebc63dfa53aedf992ce17876929630f828ed8621188c14a6bddf5b8216ce",
-      "gitBlobSha": "9f881235eafb1db0d0ffbcbc932bbe1a414812fd",
+      "sha256": "c569485dc8afd40a939de61ae4d5214569a395fad7d8855512f17f3ba82bf2b2",
+      "gitBlobSha": "72eeba60b7e89a630664b9d4a1f6c50bd098f1bb",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -8528,6 +8534,28 @@
       "imports": [
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-outage-quarantine.mjs",
+      "sha256": "30e25eff834117b359d254487ffadf849c3584da6a4e55dfe15633fafce03bfc",
+      "gitBlobSha": "b7e64a96707c46fcfe085e7807c21a920f37d7d8",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:fs",
+        "node:os",
+        "node:path",
         "node:url"
       ],
       "referencedScriptCandidates": [],

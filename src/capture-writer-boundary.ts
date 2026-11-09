@@ -1,19 +1,20 @@
 // Inert until a trusted in-isolate bootstrap explicitly installs a controller.
-// No production bootstrap, env flag, binding, HTTP/RPC activation or urgent-outage
-// bypass is provided. Partial hook coverage must never enable source capture.
+// No production bootstrap, env flag, binding or HTTP/RPC activation is provided.
+// Urgent outage fallback requires an independently durable capture quarantine. Partial hook coverage must never enable source capture.
 type Ticket={authorityEpoch:string;writerId:string;tracked:boolean};
 export type CaptureWriterPriority='ordinary'|'urgent';
-export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED'|'RESERVATION_CANCELLED'|'CANCELLATION_UNCERTAIN'|'START_UNCERTAIN';
+export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED'|'RESERVATION_CANCELLED'|'CANCELLATION_UNCERTAIN'|'START_UNCERTAIN'|'URGENT_QUARANTINED'|'URGENT_QUARANTINE_UNCERTAIN';
 export type CaptureWriterController={
  enterWriter(writerId:string,priority:CaptureWriterPriority):Promise<{admitted:boolean;ticket?:Ticket;requiresStart?:boolean}>;
  startWriter?(ticket:Ticket,priority:CaptureWriterPriority):Promise<{started:boolean}>;
  cancelReservation?(writerId:string,priority:CaptureWriterPriority):Promise<{cancelled:boolean}>;
  exitWriter(ticket:Ticket):Promise<{released:boolean}>;
  notice(code:CaptureWriterNotice,operation:string):unknown;
+ quarantineUrgent?(writerId:string,operation:string):Promise<{quarantined:true;writerId:string}>;
  timeoutMs?:number;
 };
 type Context=Pick<ExecutionContext,'waitUntil'> & Partial<Pick<ExecutionContext,'passThroughOnException'>>;
-type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number;start?:CaptureWriterController['startWriter'];cancel?:CaptureWriterController['cancelReservation']};
+type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number;start?:CaptureWriterController['startWriter'];cancel?:CaptureWriterController['cancelReservation'];quarantine?:CaptureWriterController['quarantineUrgent']};
 const controllers=new WeakMap<object,Installed>();
 // Internal adapter discovery only; this does not install or activate a controller.
 export function stagedCaptureWriterConfigured(owner:object){return controllers.has(owner);}
@@ -23,7 +24,8 @@ export function installStagedCaptureWriterController(owner:object,controller:Cap
  const timeout=controller?.timeoutMs??1000;
  if(!owner||typeof owner!=='object'||controllers.has(owner)||typeof controller?.enterWriter!=='function'||typeof controller.exitWriter!=='function'||typeof controller.notice!=='function'||!Number.isSafeInteger(timeout)||timeout<5||timeout>15000)throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if((controller.startWriter!==undefined||controller.cancelReservation!==undefined)&&(typeof controller.startWriter!=='function'||typeof controller.cancelReservation!=='function'))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
- controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
+ if(controller.quarantineUrgent!==undefined&&typeof controller.quarantineUrgent!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.quarantineUrgent?{quarantine:controller.quarantineUrgent.bind(controller)}:{}),...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
 }
 function report(c:Installed,code:CaptureWriterNotice,operation:string){try{Promise.resolve(c.notice(code,operation)).catch(()=>{});}catch{} }
 async function bounded<T>(p:Promise<T>,ms:number){let timer:ReturnType<typeof setTimeout>|undefined;const deadline=performance.now()+ms;try{const result=await Promise.race([p,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT')),ms);})]);if(performance.now()>=deadline)throw Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT');return result;}finally{clearTimeout(timer);}}
@@ -33,18 +35,23 @@ export async function runCaptureWriter<T>(owner:object,operation:string,priority
  const installed=controllers.get(owner);if(!installed)return work(parent as ExecutionContext);const c=installed;
  if(!/^[a-z][a-z0-9.-]{0,79}$/.test(operation)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_OPERATION_INVALID');
  const writerId=crypto.randomUUID().replaceAll('-','');
+ let quarantined=false;
+ async function urgentFallback(){
+  if(priority!=='urgent'||!c.quarantine)return false;
+  try{const result=await bounded(Promise.resolve().then(()=>c.quarantine!(writerId,operation)),c.timeoutMs);if(!result||Object.keys(result).sort().join(',')!=='quarantined,writerId'||result.quarantined!==true||result.writerId!==writerId)throw Error('quarantine receipt invalid');quarantined=true;report(c,'URGENT_QUARANTINED',operation);return true;}catch{report(c,'URGENT_QUARANTINE_UNCERTAIN',operation);throw Error('CAPTURE_WRITER_URGENT_QUARANTINE_UNCERTAIN');}
+ }
  const request=Promise.resolve().then(()=>c.enter(writerId,priority));let admission;
  try{admission=await bounded(request,c.timeoutMs);}catch{
   report(c,'ADMISSION_UNCERTAIN',operation);
   // A lost/late reply can leave a durable ticket. Work has NOT started. Clean up
   // only the correctly bound late ticket; never erase unknown ownership on timeout.
   schedule(parent,c.cancel?cancelUnstarted(c,writerId,priority,operation):request.then(async late=>{if(late?.admitted===true&&validTicket(late.ticket,writerId)&&late.requiresStart!==true){const r=await bounded(Promise.resolve().then(()=>c.exit(late.ticket!)),c.timeoutMs);if(r?.released!==true)throw Error('late release uncertain');report(c,'LATE_ADMISSION_CLEANUP',operation);}}),c,operation);
-  throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');
+  if(!await urgentFallback())throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');
  }
- if(admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
- if(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||(admission.requiresStart===true)!==Boolean(c.start)){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
- const ticket={...admission.ticket};
- if(c.start){try{const result=await bounded(Promise.resolve().then(()=>c.start!({...ticket},priority)),c.timeoutMs);if(result?.started!==true)throw Error('start unconfirmed');}catch{report(c,'START_UNCERTAIN',operation);schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_START_UNCERTAIN');}}
+ if(!quarantined&&admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
+ if(!quarantined&&(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||(admission.requiresStart===true)!==Boolean(c.start))){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
+ const ticket=admission?.ticket?{...admission.ticket}:undefined;
+ if(!quarantined&&c.start){try{const result=await bounded(Promise.resolve().then(()=>c.start!({...ticket!},priority)),c.timeoutMs);if(result?.started!==true)throw Error('start unconfirmed');}catch{report(c,'START_UNCERTAIN',operation);schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);if(!await urgentFallback())throw Error('CAPTURE_WRITER_START_UNCERTAIN');}}
  let closed=false,workRejected=false,deferredRejected=false;const pending:Promise<boolean>[]=[];
  const waitUntil=(value:Promise<unknown>)=>{const observed=Promise.resolve(value).then(()=>true,()=>{deferredRejected=true;report(c,'DEFERRED_REJECTED',operation);return false;});if(closed){report(c,'LATE_WORK_UNACCOUNTED',operation);throw Error('CAPTURE_WRITER_SCOPE_CLOSED');}pending.push(observed);};
  const scoped=new Proxy(parent,{get(target,key){if(key==='waitUntil')return waitUntil;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}}) as ExecutionContext;
@@ -56,7 +63,10 @@ export async function runCaptureWriter<T>(owner:object,operation:string,priority
   if(workRejected||deferredRejected){report(c,'WORK_OUTCOME_UNCERTAIN',operation);return;}
   // Do not put a timeout on work/deferred settlement and then release ownership.
   // A permanently unresolved task leaves its writer durable and blocks capture.
-  const result=await bounded(Promise.resolve().then(()=>c.exit(ticket)),c.timeoutMs);
+  // Fallback quarantine is permanent, including after successful work. Never
+  // pretend its synthetic permission is a normal releasable authority ticket.
+  if(quarantined)return;
+  const result=await bounded(Promise.resolve().then(()=>c.exit(ticket!)),c.timeoutMs);
   if(result?.released!==true)throw Error('capture writer release uncertain');
  }
  try{return await work(scoped);}catch(error){workRejected=true;report(c,'WORK_REJECTED',operation);throw error;}
