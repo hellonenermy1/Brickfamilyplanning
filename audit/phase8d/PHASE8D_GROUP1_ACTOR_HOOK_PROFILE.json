@@ -10,7 +10,7 @@
       "operation": "worker.fetch",
       "priority": "AUTHORIZED_URGENT_OTHERWISE_ORDINARY",
       "line": 72,
-      "bodySha256": "da6cd19cadfbcea2acfbfac022892a96a302f5dbb625e6be59dea39ae88c6bd8",
+      "bodySha256": "0cfe4d46f32c795eb9c722003a7db7eefcecff3d2df9903a939d18a57137f9a0",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     },
     {
@@ -88,6 +88,15 @@
       "bodySha256": "e549be3bbc04b675e6ce3b0be6df608a2eaf715bffb4840ba742ec5ed4b0f7e9"
     }
   ],
+  "runtimeContextCalls": 2,
+  "deviceRecoveryReadProfile": {
+    "file": "src/do-recovery.ts",
+    "sourceSha256": "810864802d996d72dbafcd9cf7d3f7918b4efb6df86a06267bf47cba0fbbdab6",
+    "identityFunctionSha256": "dd4fbbf705c38f576a74fc87385e6b6192eb4728392e2e37b068432055f6af98",
+    "identitySql": "SELECT public_key_spki_b64, revoked_at FROM devices WHERE id=?1",
+    "classification": "CURRENT_SOURCE_IDENTITY_SELECT_ONLY_DEVICE_RESTORE_WRITES_DO_TRANSACTION",
+    "notice": "Read current base device and recovery source; native ownership/source-row parity complements this change guard. Source hashes and literal SQL are not complete raw/operator coverage or independent acceptance."
+  },
   "notice": "Current actor/Worker entry surface and source bodies only. Production controller installs remain zero. Complete raw/operator/lifecycle/deferred coverage, urgent-outage fallback, transport/bootstrap/custody and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
   "methods": [
     {

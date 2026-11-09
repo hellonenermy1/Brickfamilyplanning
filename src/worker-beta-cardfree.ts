@@ -73,7 +73,7 @@ export default {
   return runCaptureWriter(env,'worker.fetch',async()=>await captureUrgentRequestAllowed(req,env)?'urgent':'ordinary',ctx,async ctx=>{
   env=stagedCaptureDatabases(env,ctx);
   if(env.APP_ENV!=='development'||env.DEV_PARENT_AUTH_MODE!=='d1-session-v1'||env.BETA_STORAGE_MODE!=='d1'||env.BETA_CHANNEL!=='beta')return betaJson({error:'cardfree_configuration_required'},503);
-  const clean=stripDevParentInternalHeader(req),u=new URL(clean.url),r=cardfreeRuntime(env);maintenance(env,ctx);
+  const clean=stripDevParentInternalHeader(req),u=new URL(clean.url),r=cardfreeRuntime(env,ctx);maintenance(env,ctx);
   if(u.pathname==='/parent'||u.pathname.startsWith('/parent/')){
    const auth={DB:env.DB,PARENT_LOGIN_RATE:env.PARENT_LOGIN_RATE,DEV_PARENT_LOGIN_HASH:env.DEV_PARENT_LOGIN_HASH};
    const invalidateParentSockets=clean.method==='POST'&&(u.pathname==='/parent/logout'||u.pathname==='/parent/change-password')&&await devParentSessionValid(clean,auth);
