@@ -2,7 +2,6 @@
   "format": "brick-phase8d-group1-real-b2-proof-v1",
   "date": "2026-11-09",
   "authorization": "User approved the previously proposed allPrivate bucket and bounded encrypted synthetic upload/exact-version readback test. No repeat permission needed within this scope.",
-  "sourceImplementationPendingCommit": true,
   "baselineSha": "c91bb63dd67a884c16375724351468ee3797f1e0",
   "provider": "Backblaze B2 Native API through connected app",
   "bucketName": "brick-recovery-jayvian-20261107",
@@ -157,7 +156,8 @@
     {
       "attempt": "5minute manual handoff",
       "uploadedParts": 7,
-      "outcome": "Upload checks passed; fixture timed out before reassembled readback/restore. Not counted as restore pass. Encryption key exited with fixture."
+      "outcome": "Upload checks passed; fixture timed out before reassembled readback/restore. Not counted as restore pass. Encryption key exited with fixture.",
+      "partialExactVersionDownloadCallsAfterFixtureExit": 1
     },
     {
       "attempt": "30minute operator window",
@@ -184,5 +184,108 @@
   "harnessSha256": "a7905b4f1c01a99f06e6c87b21e2777f2ddab1863fae43a429cc406ce5e22875",
   "defaultModeExitCode": 0,
   "defaultModeLogSha256": "6c6fc84a854782566abd8dd8584d62a22af1b1db3e52a2197d8182392474ac2c",
-  "noExistingKeyPermissionRetentionOrBillingMutation": true
+  "noExistingKeyPermissionRetentionOrBillingMutation": true,
+  "testedSourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+  "testedSourceTreeSha": "0505067c6e7097bbb12cadbf9c1540fc2ced308b",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "mergeCheckoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "502b7ddc264695db9bc209ba41ccb53c51c45e29"
+  ],
+  "ciRuns": [
+    {
+      "runId": 42581635130,
+      "jobId": 129041490233,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635130",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:30.2778430Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.9573612Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:31.0272182Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:31.1351128Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "8e629c6091ccd192263afd3a63773ab215b7361c5bbb9eefb9ebd1c62172b488"
+    },
+    {
+      "runId": 42581635205,
+      "jobId": 129041490510,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635205",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:30.0971623Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.6865944Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:30.7687316Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:30.7765976Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "474289191e95c43e42ceee8820096bab2fa57a03dd90c0c11cfbbd448d24b026"
+    },
+    {
+      "runId": 42581635128,
+      "jobId": 129041489839,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635128",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:29.4459835Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.1723288Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:30.2361504Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:30.2447006Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "1efecaa141f94ad9000a2dcbc99b6cf01e6d509f0edcb12975f4c702509fb155"
+    },
+    {
+      "runId": 42581630474,
+      "jobId": 129041475307,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581630474",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:27.4900037Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +502b7ddc264695db9bc209ba41ccb53c51c45e29:refs/remotes/origin/audit/phase8d-d1-qualification",
+        "2026-11-09T07:48:28.1963196Z  * [new ref]         502b7ddc264695db9bc209ba41ccb53c51c45e29 -> origin/audit/phase8d-d1-qualification",
+        "2026-11-09T07:48:28.2598392Z 502b7ddc264695db9bc209ba41ccb53c51c45e29"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "877f305bae9490f35d5d46a1c40155a15b29c5751eed9f9eb469b0ce61656b3a"
+    }
+  ],
+  "ciDefaultModeQualified": true,
+  "productionRuntimeFilesChanged": false
 }
