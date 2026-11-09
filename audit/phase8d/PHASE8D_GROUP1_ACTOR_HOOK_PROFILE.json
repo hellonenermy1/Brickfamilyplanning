@@ -19,7 +19,7 @@
       "operation": "worker.scheduled",
       "priority": "urgent",
       "line": 101,
-      "bodySha256": "e8042dd20f9ebc920802b15f1bb90e5d211f642933ff39cfd21e4aae19a0231b",
+      "bodySha256": "f617cd543ac02ced10e7227cd6b0ebe59b6ee3a7cba095e85480423490661f1f",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     }
   ],
@@ -39,6 +39,30 @@
     {
       "file": "src/beta-scheduler.ts",
       "line": 15
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 22
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 29
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 36
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 41
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 46
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 50
     }
   ],
   "notice": "Current actor/Worker entry surface and source bodies only. Production controller installs remain zero. Complete raw/operator/lifecycle/deferred coverage, urgent-outage fallback, transport/bootstrap/custody and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
@@ -338,7 +362,7 @@
       "className": "BetaScheduler",
       "method": "runWatchdogPage",
       "line": 19,
-      "bodySha256": "f46acc3aec9ba36d96ba089be72626a9d0d4e6ec21af1636405a6a5316f47a48",
+      "bodySha256": "49de3a7cc7243b768d34eb6e821dd191541c16bdfc572a937ce664e8d1bee2be",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.watchdog-page",
       "priority": "urgent"
@@ -347,8 +371,8 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runWatchdogDevice",
-      "line": 20,
-      "bodySha256": "38259d846828f422d53fb3c00f022e192cc32407a65bc4622745d7b37ecf2587",
+      "line": 26,
+      "bodySha256": "3f55922cacc7e3c080258779fb1aa41265cdd91172931dea218bf419a6204e65",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.watchdog-device",
       "priority": "urgent"
@@ -357,18 +381,18 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runGroup",
-      "line": 23,
-      "bodySha256": "a92af2072cc588f221010937c0da49b49f0ff8f99e870bce53747a3df7302fae",
+      "line": 34,
+      "bodySha256": "457be6289a206390a73efc6c3d091997ab10a2779ff181657fd6777f55145e4e",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.group",
-      "priority": "urgent"
+      "priority": "ordinary"
     },
     {
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runDerivedWork",
-      "line": 24,
-      "bodySha256": "e4d49a1151fdf7d1e740f8666f9143d851e10a7eb76d92624d29798927c03cfb",
+      "line": 38,
+      "bodySha256": "446a141049c77fdc56ec44619cddfa25b08a121f42b38f8351dcf3387d24ed37",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.derived",
       "priority": "ordinary"
@@ -377,8 +401,8 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runRetentionWork",
-      "line": 31,
-      "bodySha256": "a33535e6ebb2ab5388a1cc2a6875bf270c1bf9226428e36069d46c052a95e18a",
+      "line": 45,
+      "bodySha256": "4452002ac1a0e10f3fe81b86256a029ccede0fc11301375cf8ffbb73d40a9642",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.retention",
       "priority": "ordinary"
@@ -387,8 +411,8 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runDailyBackup",
-      "line": 32,
-      "bodySha256": "bf297e0eea19a00f48cbe6b0604ad87cf0be0aa75682da8d8b101cbe17da46ad",
+      "line": 49,
+      "bodySha256": "ae6be8208e1203463e5e6914bfdd6424fd6546a23b8eafe36f1c15ae2e4b0c64",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.backup",
       "priority": "ordinary"
@@ -397,7 +421,7 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "arm",
-      "line": 33,
+      "line": 53,
       "bodySha256": "aec36b5fff519b1b2e3667006eb8926182ef8e315bd2f156631bed37304cbbb3",
       "disposition": "REVIEWED_CURRENT_EXCLUSION",
       "reason": "Scheduler alarm control is reconstructible and not archived."
@@ -406,7 +430,7 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "kick",
-      "line": 34,
+      "line": 54,
       "bodySha256": "ab0f8bbdfb5f21a4c45ff4d33fce7cc00c81d70bf40d5d4a01c060c9321633d4",
       "disposition": "REVIEWED_CURRENT_EXCLUSION",
       "reason": "Arms alarm/starts runTick; each archived-writing child RPC has its own boundary."
@@ -415,7 +439,7 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "status",
-      "line": 43,
+      "line": 63,
       "bodySha256": "eb4ec7ee8d170e37a362f1fc585eb49a89e9b1f2ef3e4876a97a5470f375e03f",
       "disposition": "REVIEWED_CURRENT_EXCLUSION",
       "reason": "Read-only operational scheduler status."
@@ -424,7 +448,7 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "runTick",
-      "line": 44,
+      "line": 64,
       "bodySha256": "8cfbbe7eae5f73a5f3531e9929c8d0e327375ce283ce8d90e77debc8c6173b5a",
       "disposition": "REVIEWED_CURRENT_EXCLUSION",
       "reason": "Coordinator awaits child RPCs; own lastTick/alarm/provider-cache-read control is not archived."
@@ -433,7 +457,7 @@
       "file": "src/beta-scheduler.ts",
       "className": "BetaScheduler",
       "method": "alarm",
-      "line": 54,
+      "line": 74,
       "bodySha256": "47f4e2bd7fd09aacb5562e0d5f0dcb0c2126acd632f99f6b9da47e08d680cdd2",
       "disposition": "REVIEWED_CURRENT_EXCLUSION",
       "reason": "Delegates to runTick and separately owned child RPCs."

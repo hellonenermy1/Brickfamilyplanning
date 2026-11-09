@@ -12,10 +12,19 @@ export type CaptureWriterController={
  notice(code:CaptureWriterNotice,operation:string):unknown;
  quarantineUrgent?(writerId:string,operation:string):Promise<{quarantined:true;writerId:string}>;
  timeoutMs?:number;
+ getScope?():Promise<object>;
 };
 type Context=Pick<ExecutionContext,'waitUntil'> & Partial<Pick<ExecutionContext,'passThroughOnException'>>;
-type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number;start?:CaptureWriterController['startWriter'];cancel?:CaptureWriterController['cancelReservation'];quarantine?:CaptureWriterController['quarantineUrgent']};
+type Installed={enter:CaptureWriterController['enterWriter'];exit:CaptureWriterController['exitWriter'];notice:CaptureWriterController['notice'];timeoutMs:number;start?:CaptureWriterController['startWriter'];cancel?:CaptureWriterController['cancelReservation'];quarantine?:CaptureWriterController['quarantineUrgent'];getScope?:CaptureWriterController['getScope']};
 const controllers=new WeakMap<object,Installed>();
+type ScopePin={authorityEpoch:string;sourceSha:string;resourceSetSha256:string};
+const scopePins=new WeakMap<object,Readonly<ScopePin>>();
+const childScopes=new WeakMap<object,{token:object;run<T>(work:()=>Promise<T>):Promise<T>}>();
+// Trusted in-isolate capability only. No serialized object/header can recreate it.
+export function createStagedCaptureWriterScope(pin:ScopePin):object{
+ if(!pin||Object.keys(pin).sort().join(',')!=='authorityEpoch,resourceSetSha256,sourceSha'||!hex32(pin.authorityEpoch)||typeof pin.sourceSha!=='string'||typeof pin.resourceSetSha256!=='string'||!(/^[a-f0-9]{40}$/).test(pin.sourceSha)||!(/^[a-f0-9]{64}$/).test(pin.resourceSetSha256))throw Error('CAPTURE_WRITER_SCOPE_INVALID');
+ const token=Object.freeze({});scopePins.set(token,Object.freeze({...pin}));return token;
+}
 // Internal adapter discovery only; this does not install or activate a controller.
 export function stagedCaptureWriterConfigured(owner:object){return controllers.has(owner);}
 const hex32=(x:unknown)=>typeof x==='string'&&/^[a-f0-9]{32}$/.test(x);
@@ -25,14 +34,31 @@ export function installStagedCaptureWriterController(owner:object,controller:Cap
  if(!owner||typeof owner!=='object'||controllers.has(owner)||typeof controller?.enterWriter!=='function'||typeof controller.exitWriter!=='function'||typeof controller.notice!=='function'||!Number.isSafeInteger(timeout)||timeout<5||timeout>15000)throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if((controller.startWriter!==undefined||controller.cancelReservation!==undefined)&&(typeof controller.startWriter!=='function'||typeof controller.cancelReservation!=='function'))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if(controller.quarantineUrgent!==undefined&&typeof controller.quarantineUrgent!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
- controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.quarantineUrgent?{quarantine:controller.quarantineUrgent.bind(controller)}:{}),...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
+ if(controller.getScope!==undefined&&typeof controller.getScope!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.getScope?{getScope:controller.getScope.bind(controller)}:{}),...(controller.quarantineUrgent?{quarantine:controller.quarantineUrgent.bind(controller)}:{}),...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
 }
 function report(c:Installed,code:CaptureWriterNotice,operation:string){try{Promise.resolve(c.notice(code,operation)).catch(()=>{});}catch{} }
 async function bounded<T>(p:Promise<T>,ms:number){let timer:ReturnType<typeof setTimeout>|undefined;const deadline=performance.now()+ms;try{const result=await Promise.race([p,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT')),ms);})]);if(performance.now()>=deadline)throw Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT');return result;}finally{clearTimeout(timer);}}
 function schedule(parent:Context,promise:Promise<unknown>,c:Installed,operation:string){const safe=promise.catch(()=>{report(c,'RELEASE_UNCERTAIN',operation);});try{parent.waitUntil(safe);}catch{report(c,'CONTEXT_REJECTED',operation);} }
 async function cancelUnstarted(c:Installed,writerId:string,priority:CaptureWriterPriority,operation:string){try{const result=await bounded(Promise.resolve().then(()=>c.cancel!(writerId,priority)),c.timeoutMs);if(result?.cancelled!==true)throw Error('uncertain cancellation');report(c,'RESERVATION_CANCELLED',operation);}catch{report(c,'CANCELLATION_UNCERTAIN',operation);}}
+async function resolveScope(c:Installed){
+ if(!c.getScope)return undefined;
+ try{const token=await bounded(Promise.resolve().then(()=>c.getScope!()),c.timeoutMs);if(!token||typeof token!=='object'||!scopePins.has(token))throw Error('unknown scope');return token;}catch{throw Error('CAPTURE_WRITER_SCOPE_UNCERTAIN');}
+}
+export function runCaptureWriterDescendant<T>(owner:object,operation:string,parent:Context,work:()=>Promise<T>):Promise<T>{
+ if(!/^d1\.(run|first|all|raw|batch|exec)$/.test(operation))return Promise.reject(Error('CAPTURE_WRITER_OPERATION_INVALID'));
+ const inherited=childScopes.get(parent),c=controllers.get(owner);
+ if(!inherited||!c)return runCaptureWriter(owner,operation,'urgent',parent,()=>work());
+ return inherited.run(async()=>{
+  const token=await resolveScope(c);
+  // Foreign/missing scope keeps independent admission and ownership.
+  if(token!==inherited.token)return runCaptureWriter(owner,operation,'urgent',parent,()=>work());
+  return work();
+ });
+}
 export async function runCaptureWriter<T>(owner:object,operation:string,inputPriority:CaptureWriterPriority|(()=>Promise<CaptureWriterPriority>),parent:Context,work:(scoped:ExecutionContext)=>Promise<T>,fallbackAllowed?:()=>Promise<boolean>):Promise<T>{
  const installed=controllers.get(owner);if(!installed)return work(parent as ExecutionContext);const c=installed;
+ const scope=await resolveScope(c);
  let priority:CaptureWriterPriority;
  try{priority=typeof inputPriority==='function'?await bounded(Promise.resolve().then(inputPriority),c.timeoutMs):inputPriority;}catch{throw Error('CAPTURE_WRITER_PRIORITY_UNCERTAIN');}
  if(!/^[a-z][a-z0-9.-]{0,79}$/.test(operation)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_OPERATION_INVALID');
@@ -54,12 +80,18 @@ export async function runCaptureWriter<T>(owner:object,operation:string,inputPri
   if(!await urgentFallback())throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');
  }
  if(!quarantined&&admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
- if(!quarantined&&(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||(admission.requiresStart===true)!==Boolean(c.start))){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
+ if(!quarantined&&(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||scope&&admission.ticket.authorityEpoch!==scopePins.get(scope)!.authorityEpoch||(admission.requiresStart===true)!==Boolean(c.start))){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
  const ticket=admission?.ticket?{...admission.ticket}:undefined;
  if(!quarantined&&c.start){try{const result=await bounded(Promise.resolve().then(()=>c.start!({...ticket!},priority)),c.timeoutMs);if(result?.started!==true)throw Error('start unconfirmed');}catch{report(c,'START_UNCERTAIN',operation);schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);if(!await urgentFallback())throw Error('CAPTURE_WRITER_START_UNCERTAIN');}}
  let closed=false,workRejected=false,deferredRejected=false;const pending:Promise<boolean>[]=[];
  const waitUntil=(value:Promise<unknown>)=>{const observed=Promise.resolve(value).then(()=>true,()=>{deferredRejected=true;report(c,'DEFERRED_REJECTED',operation);return false;});if(closed){report(c,'LATE_WORK_UNACCOUNTED',operation);throw Error('CAPTURE_WRITER_SCOPE_CLOSED');}pending.push(observed);};
  const scoped=new Proxy(parent,{get(target,key){if(key==='waitUntil')return waitUntil;const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}}) as ExecutionContext;
+ if(scope)childScopes.set(scoped,{token:scope,run<T>(child:()=>Promise<T>){
+  if(closed)throw Error('CAPTURE_WRITER_SCOPE_CLOSED');
+  const promise=Promise.resolve().then(child);
+  pending.push(promise.then(()=>true,()=>{deferredRejected=true;report(c,'DEFERRED_REJECTED',operation);return false;}));
+  return promise;
+ }});
  async function finish(){
   for(let next=0;next<pending.length;){const batch=pending.slice(next);next=pending.length;await Promise.all(batch);}
   closed=true;

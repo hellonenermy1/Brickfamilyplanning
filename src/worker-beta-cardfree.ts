@@ -98,5 +98,5 @@ export default {
   return beta.fetch(clean as Request<unknown,IncomingRequestCfProperties>,r,ctx);
   },()=>captureUrgentRequestAllowed(req,env));
  },
- async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){return runCaptureWriter(env,'worker.scheduled','urgent',ctx,async ctx=>{await runCardfreeMaintenance(stagedCaptureDatabases(env,ctx),ctx);},async()=>false);}
+ async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){return runCaptureWriter(env,'worker.scheduled','urgent',ctx,async ctx=>{await runCardfreeMaintenance(stagedCaptureDatabases(env,ctx),ctx);},async()=>true);}
 } satisfies ExportedHandler<Env>;

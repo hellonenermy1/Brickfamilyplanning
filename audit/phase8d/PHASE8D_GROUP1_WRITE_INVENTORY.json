@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "7140a0915a410925c7f2ec81ed3395b3b4dafbd8",
+  "basisCommitSha": "e70e2c3bcc3d51e512dbbb0e4935e9589356b568",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
@@ -13,7 +13,7 @@
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "3f4195aa34c975949c13d5f5fc4c32d7769c37c5738fa55a4d6d40da97a42a71",
+  "runtimeSourceSetSha256": "a973a48ca276200b0c3915c83b5c083afff307edb86a98692d16c46d1f213484",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -27,39 +27,44 @@
       "column": 87
     },
     {
-      "file": "src/capture-d1-boundary.ts",
-      "line": 10,
-      "column": 59
+      "file": "src/capture-writer-boundary.ts",
+      "line": 51,
+      "column": 27
+    },
+    {
+      "file": "src/capture-writer-boundary.ts",
+      "line": 55,
+      "column": 37
     },
     {
       "file": "src/beta-scheduler.ts",
-      "line": 19,
-      "column": 141
+      "line": 21,
+      "column": 24
     },
     {
       "file": "src/beta-scheduler.ts",
-      "line": 20,
-      "column": 163
-    },
-    {
-      "file": "src/beta-scheduler.ts",
-      "line": 23,
-      "column": 128
-    },
-    {
-      "file": "src/beta-scheduler.ts",
-      "line": 29,
+      "line": 28,
       "column": 10
     },
     {
       "file": "src/beta-scheduler.ts",
-      "line": 31,
-      "column": 76
+      "line": 36,
+      "column": 10
     },
     {
       "file": "src/beta-scheduler.ts",
-      "line": 32,
-      "column": 74
+      "line": 40,
+      "column": 10
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 45,
+      "column": 34
+    },
+    {
+      "file": "src/beta-scheduler.ts",
+      "line": 49,
+      "column": 32
     },
     {
       "file": "src/beta-device.ts",
@@ -200,52 +205,52 @@
         },
         {
           "name": "runWatchdogDevice",
-          "line": 20,
+          "line": 26,
           "column": 2
         },
         {
           "name": "runGroup",
-          "line": 23,
-          "column": 2
-        },
-        {
-          "name": "runDerivedWork",
-          "line": 24,
-          "column": 2
-        },
-        {
-          "name": "runRetentionWork",
-          "line": 31,
-          "column": 2
-        },
-        {
-          "name": "runDailyBackup",
-          "line": 32,
-          "column": 2
-        },
-        {
-          "name": "arm",
-          "line": 33,
-          "column": 2
-        },
-        {
-          "name": "kick",
           "line": 34,
           "column": 2
         },
         {
+          "name": "runDerivedWork",
+          "line": 38,
+          "column": 2
+        },
+        {
+          "name": "runRetentionWork",
+          "line": 45,
+          "column": 2
+        },
+        {
+          "name": "runDailyBackup",
+          "line": 49,
+          "column": 2
+        },
+        {
+          "name": "arm",
+          "line": 53,
+          "column": 2
+        },
+        {
+          "name": "kick",
+          "line": 54,
+          "column": 2
+        },
+        {
           "name": "status",
-          "line": 43,
+          "line": 63,
           "column": 2
         },
         {
           "name": "runTick",
-          "line": 44,
+          "line": 64,
           "column": 2
         },
         {
           "name": "alarm",
-          "line": 54,
+          "line": 74,
           "column": 2
         }
       ]
@@ -769,8 +774,8 @@
     },
     {
       "path": "src/beta-scheduler.ts",
-      "sha256": "dc1f39135da6b73e2c4476f5aba2b3f7d40cf599307da772dd01c4fc1f88f967",
-      "gitBlobSha": "c3b0a17307804f4a73821d9dfa4de433dcbb8a3c",
+      "sha256": "2ee3865630fcf29eccc93ff68b376d37237b15bf9473157d28d88f52c6d7a25a",
+      "gitBlobSha": "0b2ee4da346537f730c2c4359407624c845b3fb4",
       "imports": [
         "src/background-work.ts",
         "src/backup-v6.ts",
@@ -785,7 +790,7 @@
       ],
       "sites": [
         {
-          "line": 33,
+          "line": 53,
           "column": 111,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "setAlarm",
@@ -793,7 +798,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 39,
+          "line": 59,
           "column": 4,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -801,7 +806,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 49,
+          "line": 69,
           "column": 49,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -810,7 +815,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 50,
+          "line": 70,
           "column": 10,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "put",
@@ -818,7 +823,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 51,
+          "line": 71,
           "column": 15,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "put",
@@ -826,7 +831,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 52,
+          "line": 72,
           "column": 17,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "setAlarm",
@@ -910,14 +915,14 @@
     },
     {
       "path": "src/capture-d1-boundary.ts",
-      "sha256": "1d13e6cafe738710e7a3f3ea82dfb3ab2b09e910ca7292033aaa1ee266ce1b84",
-      "gitBlobSha": "b8949ac31ca3b337404657853a479b5281ae66e3",
+      "sha256": "9b2cd089efb7bc3f5ebcfeb32667cf2579ee232beeb21f2a996f7c5317b5e3e7",
+      "gitBlobSha": "80015698d22af20996b1ae6f159c1da4fb4af98c",
       "imports": [
         "src/capture-writer-boundary.ts"
       ],
       "sites": [
         {
-          "line": 20,
+          "line": 22,
           "column": 54,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -926,7 +931,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 21,
+          "line": 23,
           "column": 191,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "batch",
@@ -934,7 +939,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 23,
+          "line": 25,
           "column": 62,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "exec",
@@ -1009,12 +1014,12 @@
     },
     {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "1812b6d585ab5d28ad7440ed966dbbb73ea7cabbf063a94c9b3f2ffa5eb703a4",
-      "gitBlobSha": "85b6499fbd28e44ced137ffdcedb7fd74aa12673",
+      "sha256": "3d2ef2b47993208854a066054bc99a08437df6484aff854221be7771a268b2af",
+      "gitBlobSha": "451ca578599f2622d106cf2cc6e696dd23c8448b",
       "imports": [],
       "sites": [
         {
-          "line": 32,
+          "line": 42,
           "column": 166,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4443,8 +4448,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "be6ddf2da65d92ad9f8aa30d72dad950c171b27a9dff51deedc32485fae98f14",
-      "gitBlobSha": "090868b855545edc76c94e1c124ee4788f2fe8eb",
+      "sha256": "7893244a9f0bd87506080fa7914f01026d5ea2f45b5350c55070236556f2f5b0",
+      "gitBlobSha": "bd791fad3799aff385ed9e65520d3aff40b092d2",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",

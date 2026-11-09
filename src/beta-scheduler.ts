@@ -16,20 +16,40 @@ export class BetaScheduler extends DurableObject<CardfreeEnv>{
  private running:Promise<void>|null=null;
  private tick:Promise<void>|null=null;
  private watchdogRunning:ReturnType<typeof watchdogPage>|null=null;
- async runWatchdogPage(){if(this.watchdogRunning)return this.watchdogRunning;const budget=d1WorkBudget(this.env.DB,44);this.watchdogRunning=runCaptureWriter(this,'scheduler.watchdog-page','urgent',this.ctx,()=>watchdogPage(budget.db,id=>this.env.BETA_SCHEDULER.get(this.env.BETA_SCHEDULER.idFromName('watchdog-'+id)).runWatchdogDevice(id))).finally(()=>{this.watchdogRunning=null;});return this.watchdogRunning;}
- async runWatchdogDevice(id:string){if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))throw Error('invalid watchdog device');const budget=d1WorkBudget(this.env.DB,44);return runCaptureWriter(this,'scheduler.watchdog-device','urgent',this.ctx,()=>runBackgroundWork(this.env.DB,'watchdog',id,()=>checkWatchdogDevice(budget.db,id,event=>this.env.BRICK_DEVICE.get(this.env.BRICK_DEVICE.idFromName(id)).pushSafetyEvent(event))));}
- // These internal RPCs use separate named objects/invocations, not the device
- // DO or its alarm. They hold no authoritative DO state; D1 owns work receipts.
- async runGroup(group:'minute'|'daily'){if(!['minute','daily'].includes(group))throw Error('invalid maintenance group');return runCaptureWriter(this,'scheduler.group','urgent',this.ctx,scoped=>runCardfreeMaintenanceGroup(this.env,scoped,group));}
+ async runWatchdogPage(){
+  if(this.watchdogRunning)return this.watchdogRunning;
+  this.watchdogRunning=runCaptureWriter(this,'scheduler.watchdog-page','urgent',this.ctx,scoped=>{
+   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44);
+   return watchdogPage(budget.db,id=>env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('watchdog-'+id)).runWatchdogDevice(id));
+  }).finally(()=>{this.watchdogRunning=null;});return this.watchdogRunning;
+ }
+ async runWatchdogDevice(id:string){
+  if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))throw Error('invalid watchdog device');
+  return runCaptureWriter(this,'scheduler.watchdog-device','urgent',this.ctx,scoped=>{
+   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44);
+   return runBackgroundWork(env.DB,'watchdog',id,()=>checkWatchdogDevice(budget.db,id,event=>env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(id)).pushSafetyEvent(event)));
+  });
+ }
+ // Routine groups never use the independent urgent-outage capability.
+ async runGroup(group:'minute'|'daily'){
+  if(!['minute','daily'].includes(group))throw Error('invalid maintenance group');
+  return runCaptureWriter(this,'scheduler.group','ordinary',this.ctx,scoped=>runCardfreeMaintenanceGroup(stagedCaptureDatabases(this.env,scoped),scoped,group));
+ }
  async runDerivedWork(kind:DerivedKind,deviceId:string){
   if(!['refinement','commute'].includes(kind)||!/^[A-Za-z0-9_-]{1,128}$/.test(deviceId))throw Error('invalid derived work');
-  // Two raw receipt queries +44 computation statements +success/failure finish
-  // stay below50, even if a finish attempt itself fails. No billing dependency.
-  const budget=d1WorkBudget(this.env.DB,44),runtime=cardfreeRuntime({...this.env,DB:budget.db}),now=Date.now();
-  return runCaptureWriter(this,'scheduler.derived','ordinary',this.ctx,()=>runBackgroundWork(this.env.DB,kind,deviceId,()=>kind==='refinement'?processRefinementsForDevice(runtime,deviceId,now):refreshCommutes(runtime,deviceId,now-2*86400000,now)));
+  return runCaptureWriter(this,'scheduler.derived','ordinary',this.ctx,scoped=>{
+   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44),runtime=cardfreeRuntime({...env,DB:budget.db}),now=Date.now();
+   return runBackgroundWork(env.DB,kind,deviceId,()=>kind==='refinement'?processRefinementsForDevice(runtime,deviceId,now):refreshCommutes(runtime,deviceId,now-2*86400000,now));
+  });
  }
- async runRetentionWork(){const budget=d1WorkBudget(this.env.DB,44);return runCaptureWriter(this,'scheduler.retention','ordinary',this.ctx,()=>runBackgroundWork(this.env.DB,'refined-retention','global',()=>cleanupPhase5RefinedHistory(cardfreeRuntime({...this.env,DB:budget.db}))));}
- async runDailyBackup(){const budget=d1WorkBudget(this.env.DB,48);return runCaptureWriter(this,'scheduler.backup','ordinary',this.ctx,()=>snapshotD1ToR2(cardfreeRuntime({...this.env,DB:budget.db})));}
+ async runRetentionWork(){return runCaptureWriter(this,'scheduler.retention','ordinary',this.ctx,scoped=>{
+  const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44);
+  return runBackgroundWork(env.DB,'refined-retention','global',()=>cleanupPhase5RefinedHistory(cardfreeRuntime({...env,DB:budget.db})));
+ });}
+ async runDailyBackup(){return runCaptureWriter(this,'scheduler.backup','ordinary',this.ctx,scoped=>{
+  const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,48);
+  return snapshotD1ToR2(cardfreeRuntime({...env,DB:budget.db}));
+ });}
  async arm(){const now=Date.now(),next=await this.ctx.storage.getAlarm();if(next===null||next>now+60000)await this.ctx.storage.setAlarm(now+60000);return {armed:true};}
  async kick(){
   await this.arm();
