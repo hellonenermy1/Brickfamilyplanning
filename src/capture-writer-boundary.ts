@@ -31,13 +31,16 @@ function report(c:Installed,code:CaptureWriterNotice,operation:string){try{Promi
 async function bounded<T>(p:Promise<T>,ms:number){let timer:ReturnType<typeof setTimeout>|undefined;const deadline=performance.now()+ms;try{const result=await Promise.race([p,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT')),ms);})]);if(performance.now()>=deadline)throw Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT');return result;}finally{clearTimeout(timer);}}
 function schedule(parent:Context,promise:Promise<unknown>,c:Installed,operation:string){const safe=promise.catch(()=>{report(c,'RELEASE_UNCERTAIN',operation);});try{parent.waitUntil(safe);}catch{report(c,'CONTEXT_REJECTED',operation);} }
 async function cancelUnstarted(c:Installed,writerId:string,priority:CaptureWriterPriority,operation:string){try{const result=await bounded(Promise.resolve().then(()=>c.cancel!(writerId,priority)),c.timeoutMs);if(result?.cancelled!==true)throw Error('uncertain cancellation');report(c,'RESERVATION_CANCELLED',operation);}catch{report(c,'CANCELLATION_UNCERTAIN',operation);}}
-export async function runCaptureWriter<T>(owner:object,operation:string,priority:CaptureWriterPriority,parent:Context,work:(scoped:ExecutionContext)=>Promise<T>):Promise<T>{
+export async function runCaptureWriter<T>(owner:object,operation:string,priority:CaptureWriterPriority,parent:Context,work:(scoped:ExecutionContext)=>Promise<T>,fallbackAllowed?:()=>Promise<boolean>):Promise<T>{
  const installed=controllers.get(owner);if(!installed)return work(parent as ExecutionContext);const c=installed;
  if(!/^[a-z][a-z0-9.-]{0,79}$/.test(operation)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_OPERATION_INVALID');
  const writerId=crypto.randomUUID().replaceAll('-','');
  let quarantined=false;
  async function urgentFallback(){
   if(priority!=='urgent'||!c.quarantine)return false;
+  // Broad ingress must prove request-specific urgent authorization before it can
+  // poison capture. A timeout/lost proof is refusal, never implicit permission.
+  if(fallbackAllowed){try{if(await bounded(Promise.resolve().then(fallbackAllowed),c.timeoutMs)!==true)return false;}catch{return false;}}
   try{const result=await bounded(Promise.resolve().then(()=>c.quarantine!(writerId,operation)),c.timeoutMs);if(!result||Object.keys(result).sort().join(',')!=='quarantined,writerId'||result.quarantined!==true||result.writerId!==writerId)throw Error('quarantine receipt invalid');quarantined=true;report(c,'URGENT_QUARANTINED',operation);return true;}catch{report(c,'URGENT_QUARANTINE_UNCERTAIN',operation);throw Error('CAPTURE_WRITER_URGENT_QUARANTINE_UNCERTAIN');}
  }
  const request=Promise.resolve().then(()=>c.enter(writerId,priority));let admission;

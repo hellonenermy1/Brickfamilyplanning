@@ -208,7 +208,7 @@ async function ingestHealth(req: Request, env: Env, id: string) {
   return json({ ok: true, receivedAt: now, healthStatus: classification.status, healthReason: classification.reason });
 }
 
-function validSafetyEvent(x: unknown): x is SafetyEvent {
+export function validSafetyEvent(x: unknown): x is SafetyEvent {
   if (!x || typeof x !== "object") return false;
   const e = x as Record<string, unknown>;
   if (e.protocol !== 1 || typeof e.eventId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(e.eventId)) return false;

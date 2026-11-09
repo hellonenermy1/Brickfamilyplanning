@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "7bb1208bc11e4338e4b54948394961d5d1aa1e5e",
+  "basisCommitSha": "53d216c8d8ffb6a6831e8d35874848f9bb34d523",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
   "summary": {
-    "selectedFiles": 292,
+    "selectedFiles": 293,
     "filesWithManagementSignals": 72,
     "explicitClassifications": 77,
     "betaMutatorsUnfenced": 4,
@@ -13,9 +13,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 131
+    "unresolvedDynamicImports": 132
   },
-  "sourceSetSha256": "159fbb4f11cb509d3c694487dbccbe94760de4164141cf9cfda9b183853c6d94",
+  "sourceSetSha256": "cadd3a99f96a19652a70fffff1c29d5df36d81b91c483e049af342e746fdd5bc",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -808,6 +808,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-route-lookup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-urgent-request.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2636,6 +2641,16 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-urgent-request.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-urgent-request.mjs",
+      "to": "scripts/phase8d-signed-writer-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-watchdog-state.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3004,8 +3019,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "29f399801082283620a74663a004d25b185fc09b669416ea96df197b9b855e98",
-      "gitBlobSha": "42d7973ab0773152473e108ec6c9ced37b1ef422",
+      "sha256": "42138165fee97afb92f696c46996d1018650b29335e3443e6a1537734a15f5c7",
+      "gitBlobSha": "41cb7ad02ec5c3274e58374c60675c3b04a6481b",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3069,6 +3084,7 @@
         "scripts/test-phase8d-requirements-ledger.mjs",
         "scripts/test-phase8d-route-live.mjs",
         "scripts/test-phase8d-route-lookup.mjs",
+        "scripts/test-phase8d-urgent-request.mjs",
         "scripts/test-phase8d-watchdog-state.mjs",
         "scripts/test-phase8d-watchdog.mjs",
         "scripts/test-phase8d-worker-entry.mjs",
@@ -4646,8 +4662,8 @@
     },
     {
       "path": "scripts/phase8d-capture-hook-profile.mjs",
-      "sha256": "79e8f158fe36a306009956d60559a8b5f046c70d0d3ee8881ea0974ec8a8332b",
-      "gitBlobSha": "544e4b1e291b4aa09fbbe07c70609a7c9187b5ed",
+      "sha256": "734064cd5aaadd6212f4826db2867d0b219db6b91bb16108972bc45b19c37a8c",
+      "gitBlobSha": "5f2fda8d938eb1451798fa5f3649c458b0c8f2b2",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -5030,8 +5046,8 @@
     },
     {
       "path": "scripts/phase8d-signed-writer-fixture.mjs",
-      "sha256": "0aa6899cde745b11874bbfaa1a7ea6c827a849de517b4492f75b0174e4056ca6",
-      "gitBlobSha": "48d36e36e1922b87f9ee38f18294f89a45a3ad4f",
+      "sha256": "183e421f9f1b3b3744202c5168b93872c3f18866b2952f91a830e5ad02898482",
+      "gitBlobSha": "e14c978277e4144ac7d63136074d070e0a5c55f3",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7172,8 +7188,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-writer-boundary.mjs",
-      "sha256": "bf2095f51c87c83ad2e32dd3db34b43b9a956c799493ede24252d198a0feeca9",
-      "gitBlobSha": "836d4db768f720221a9660b81b7bb0f3ce4d31ed",
+      "sha256": "8990982b892a4fd3b49e3ab101c321441dfcdadb8d731dcbb8bdf2d24dd08f7d",
+      "gitBlobSha": "60d35ac06951ce3c60ebb715266043bf44bb37b8",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -9302,6 +9318,31 @@
         "node:assert/strict",
         "node:fs",
         "node:sqlite"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-urgent-request.mjs",
+      "sha256": "2e1fa350f29367bfe8aa65d5f1690075645d7ab0e62e5e4be4dd8c150cef8375",
+      "gitBlobSha": "4e46cc7bb35b6e0134addb25d2e458396a6aaddd",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "./phase8d-signed-writer-fixture.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

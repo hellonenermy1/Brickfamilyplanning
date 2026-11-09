@@ -1,29 +1,29 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "7bb1208bc11e4338e4b54948394961d5d1aa1e5e",
+  "basisCommitSha": "53d216c8d8ffb6a6831e8d35874848f9bb34d523",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
   "summary": {
-    "sourceFiles": 89,
-    "sqlPrepareCandidates": 304,
+    "sourceFiles": 90,
+    "sqlPrepareCandidates": 305,
     "sqlWriteOrUnknown": 173,
     "mutationOrWrapperCandidates": 73,
     "deferredWorkCandidates": 21,
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "247a5b90b8b9530e1faab70fd9df79a682455b779a2e753e81b0b7e1767a3a6c",
+  "runtimeSourceSetSha256": "00957b115641b986cdfa096852032ebe4d39033fafba8d71f68430121b31b47a",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 72,
+      "line": 73,
       "column": 10
     },
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 100,
+      "line": 101,
       "column": 87
     },
     {
@@ -944,9 +944,31 @@
       ]
     },
     {
+      "path": "src/capture-urgent-request.ts",
+      "sha256": "33f3c52efea7c1fc3e39eb1cfb5b736039e45f02777840dc4a03f955be84996c",
+      "gitBlobSha": "2a37853aca49811836628668aa6977374222c37c",
+      "imports": [
+        "src/bounded-body.ts",
+        "src/device-json-security.ts",
+        "src/index.ts",
+        "src/safety-event-write.ts"
+      ],
+      "sites": [
+        {
+          "line": 23,
+          "column": 26,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        }
+      ]
+    },
+    {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "e04c0fddf67d1a461784e96a79ccd2402a46f3f97ae40a0ce63e4c003baba63e",
-      "gitBlobSha": "8673bca4531fa7486fbb76a8c0bbab030f737dc6",
+      "sha256": "3b939cb1f73c7672c1a62b0f298fee4c5cc898fdd95323030be2db1241f5f028",
+      "gitBlobSha": "f484c6b379366ba1ec486b32930bd356cbbe214f",
       "imports": [],
       "sites": [
         {
@@ -2068,8 +2090,8 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "f9d804b81e54feeb09ff09397416a5eb9d63a8b2f64c6584f353d17f34a6b1c8",
-      "gitBlobSha": "e85fa0076f69a7696180ef3fceba7b7705791fa0",
+      "sha256": "e5754ebe0278631d261d62f64ebf718ea7c3a7fff8c0a0755bae7ce06dd0c1a7",
+      "gitBlobSha": "71d4b96b6ebca6de8ba037e86c535358450e4c2a",
       "imports": [
         "src/crypto.ts",
         "src/device-do.ts",
@@ -4379,8 +4401,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "c3c8ba75cdfb962e07af86ed805fb608dd08a1b8237ae0b8e655f930ae8a4b94",
-      "gitBlobSha": "082d68d6334e3fb6ef4b843ac74f7221ac189b0f",
+      "sha256": "65aadf4247074520ad8e790731660c5a9dbfae240ac0faa732c976e247ec66ec",
+      "gitBlobSha": "5b426bc127a6b14160840a1665f938fe6abe4ce0",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",
@@ -4388,6 +4410,7 @@
         "src/beta-scheduler.ts",
         "src/bounded-body.ts",
         "src/capture-d1-boundary.ts",
+        "src/capture-urgent-request.ts",
         "src/capture-writer-boundary.ts",
         "src/dev-free-runtime.ts",
         "src/dev-maintenance.ts",
@@ -4398,7 +4421,7 @@
       ],
       "sites": [
         {
-          "line": 27,
+          "line": 28,
           "column": 11,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -4407,7 +4430,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 52,
+          "line": 53,
           "column": 100,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -4416,7 +4439,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 59,
+          "line": 60,
           "column": 3,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4424,7 +4447,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 59,
+          "line": 60,
           "column": 63,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4432,7 +4455,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 69,
+          "line": 70,
           "column": 52,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4440,7 +4463,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 91,
+          "line": 92,
           "column": 11,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "put",

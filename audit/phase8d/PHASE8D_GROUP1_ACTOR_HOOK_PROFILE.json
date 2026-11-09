@@ -9,8 +9,8 @@
       "method": "fetch",
       "operation": "worker.fetch",
       "priority": "urgent",
-      "line": 71,
-      "bodySha256": "be0089621e76a107b84f0f747fbc8aa08a15f79a36220fe1c9c3f683ff177c2d",
+      "line": 72,
+      "bodySha256": "cb1138000de8c9cf997e592cc9b69ba4eff8d65dce31120e1814c71a6453722f",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     },
     {
@@ -18,19 +18,19 @@
       "method": "scheduled",
       "operation": "worker.scheduled",
       "priority": "urgent",
-      "line": 100,
-      "bodySha256": "ed85f00bcee36e65e6095174177755d3ca92fcf48e39c1260b33121991f6696d",
+      "line": 101,
+      "bodySha256": "e8042dd20f9ebc920802b15f1bb90e5d211f642933ff39cfd21e4aae19a0231b",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP"
     }
   ],
   "databaseAdapterBoundarySites": [
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 73
+      "line": 74
     },
     {
       "file": "src/worker-beta-cardfree.ts",
-      "line": 100
+      "line": 101
     },
     {
       "file": "src/beta-device.ts",

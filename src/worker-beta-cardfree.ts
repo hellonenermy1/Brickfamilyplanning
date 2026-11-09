@@ -1,4 +1,5 @@
 import {runCaptureWriter} from './capture-writer-boundary';
+import {captureUrgentRequestAllowed} from './capture-urgent-request';
 import beta from './worker-beta';
 import {stagedCaptureDatabases} from './capture-d1-boundary';
 import {watchdogDeadline} from './watchdog-work';
@@ -95,7 +96,7 @@ export default {
    const headers=new Headers(response.headers);headers.set('X-Brick-Storage','d1-chunked-no-r2');headers.set('X-Brick-Parent-Auth','d1-session-v1');return new Response(response.body,{status:response.status,statusText:response.statusText,headers,...(response.webSocket?{webSocket:response.webSocket}:{})});
   }
   return beta.fetch(clean as Request<unknown,IncomingRequestCfProperties>,r,ctx);
-  });
+  },()=>captureUrgentRequestAllowed(req,env));
  },
- async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){return runCaptureWriter(env,'worker.scheduled','urgent',ctx,async ctx=>{await runCardfreeMaintenance(stagedCaptureDatabases(env,ctx),ctx);});}
+ async scheduled(_controller:ScheduledController,env:Env,ctx:ExecutionContext){return runCaptureWriter(env,'worker.scheduled','urgent',ctx,async ctx=>{await runCardfreeMaintenance(stagedCaptureDatabases(env,ctx),ctx);},async()=>false);}
 } satisfies ExportedHandler<Env>;
