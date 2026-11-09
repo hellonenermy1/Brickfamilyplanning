@@ -187,6 +187,20 @@
       "actorBoundariesPreserved": 16,
       "productionInstalled": false,
       "completeWriterCoverageOrOutageFallbackQualified": false
+    },
+    {
+      "id": "REAL_PRIVATE_B2_SYNTHETIC_TRANSFER_AND_LOCAL_RECOVERY",
+      "state": "ACTUAL_PROVIDER_READBACK_AND_FRESH_LOCAL_RESTORE_VERIFIED_RUNTIME_CUSTODY_UNQUALIFIED",
+      "archiveBytes": 3260838,
+      "parts": 7,
+      "independentDownloads": 14,
+      "localPrimaryTables": 41,
+      "localDiagnosticsTables": 4,
+      "localDeviceObjects": 2,
+      "publicSharing": false,
+      "keyExported": false,
+      "productionInstalled": false,
+      "isolatedCloudflareRestoreRun": false
     }
   ],
   "remaining": [
@@ -212,13 +226,13 @@
     },
     {
       "id": "PRIVATE_INDEPENDENT_DESTINATION",
-      "state": "B2_ADAPTER_STAGED_SYNTHETIC_PROVIDER_NATIVE_CI_VERIFIED_REAL_DESTINATION_UNQUALIFIED",
-      "needed": "Fresh batch read-only B2 status/list succeeds but shows zero visible buckets and permissions broader than staged restricted allowlist. Prepared private bucket plus encrypted synthetic provider drill requires explicit authorization. Actual card-free destination, restricted runtime key, independent encryption-key/context custody and readback remain unqualified."
+      "state": "REAL_PRIVATE_B2_SYNTHETIC_TRANSFER_LOCAL_RESTORE_VERIFIED_RUNTIME_CUSTODY_UNQUALIFIED",
+      "needed": "Approved allPrivate bucket created and real seven-part encrypted archive uploaded, downloaded twice by exact version and authenticated/restored to fresh local41+4/deviceDO stores. Complete installed runtime selection manifest/transport, restricted key and independent durable key/context custody/card-free operational qualification remain. Manual connector chunking is not the staged single-object adapter qualification."
     },
     {
       "id": "SEPARATE_KEY_CONTEXT_CUSTODY",
       "state": "UNVERIFIED",
-      "needed": "Verified separate encryption-key/trusted-context custody; no production key generated here."
+      "needed": "Synthetic drill key/context stayed only in process and were not exported/uploaded. This does not establish independently retained usable production custody after host/source failure. Restricted runtime credential remains uninstalled."
     },
     {
       "id": "SCHEDULE_AND_MONITORING",
@@ -334,18 +348,16 @@
     "target": "FOUR_ACTIVE_WORKDAYS",
     "state": "AT_RISK",
     "reasons": [
-      "No verified usable independent private destination or separate key/context custody.",
-      "No new authenticated Cloudflare/PITR/isolated recovery path established.",
-      "Complete writer coverage/urgent-outage behavior and genuine acceptance review remain incomplete."
+      "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
+      "No new authenticated Cloudflare/PITR/isolated restore path established.",
+      "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete."
     ],
     "nextPreparedProviderAction": {
-      "operation": "b2_create_bucket",
-      "parameters": {
-        "bucketName": "brick-recovery-jayvian-20261107",
-        "bucketType": "allPrivate"
-      },
-      "authorization": "NOT_YET_GIVEN",
-      "followOn": "Bounded encrypted synthetic archive upload/exact-version download/authentication only; no family data, sharing, deletion or retention policy change."
-    }
-  }
+      "previousAction": "APPROVED_AND_EXECUTED",
+      "bucketName": "brick-recovery-jayvian-20261107",
+      "scope": "Private bucket + bounded encrypted synthetic roundtrip/local restore only; no repeat authorization needed for the granted scope."
+    },
+    "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery."
+  },
+  "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json"
 }

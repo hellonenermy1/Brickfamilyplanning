@@ -1,5 +1,7 @@
 # Group1 — actual Worker entry ownership and dependency check
 
+> Historical dependency note superseded on9November: user approved the proposed private B2 bucket/test; actual creation, real encrypted provider readback and fresh local recovery now verified. See PHASE8D_GROUP1_REAL_B2.md. Earlier source limits and remaining operational blockers still apply.
+
 Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. Continued four-day plan at `df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f`. This is actual source integration with controlled native proof, not activation or operational acceptance.
 
 ## Dependency check performed before source work

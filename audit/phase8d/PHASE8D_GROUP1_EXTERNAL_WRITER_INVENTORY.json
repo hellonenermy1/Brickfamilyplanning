@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f",
+  "basisCommitSha": "c91bb63dd67a884c16375724351468ee3797f1e0",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 130
   },
-  "sourceSetSha256": "546b9e8f4532045fb52467ff4850de592bb976b217e35d2ce184f60f78f0ef52",
+  "sourceSetSha256": "e14e3a85724b64bf18b98211431cab6963f9e4e3910ba742def5af559d24e700",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -2999,8 +2999,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "c5ab930473fa96fd61d076ca9855634851578521cf2a91b36c83a6b5829b0bd7",
-      "gitBlobSha": "f601d5a7dbdd2eb89db86a04271517925ba6519f",
+      "sha256": "514a4f2e11f824e701a6106a1b5381a48feded4f3b86cdea789363554b0f9a35",
+      "gitBlobSha": "7f47173a24d60d140fd36b6b51b4fc8221accb43",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7203,8 +7203,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "af81eee82714c354ce495b2015d63acf68a62d4dda218dcdc59f33d76db8ab1b",
-      "gitBlobSha": "cd7870bcafc1cb900b1319c67116760b46608dea",
+      "sha256": "a7905b4f1c01a99f06e6c87b21e2777f2ddab1863fae43a429cc406ce5e22875",
+      "gitBlobSha": "b044eacbe9bd8cbf9b4a437ca41d804f114e144d",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
@@ -7221,11 +7221,11 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 150,
+          "line": 161,
           "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
         },
         {
-          "line": 150,
+          "line": 161,
           "kind": "BACKUP_ALERT_RECEIPT_CAPABILITY"
         }
       ],
