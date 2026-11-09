@@ -1,0 +1,138 @@
+{
+  "format": "brick-group1-named-writer-surface-profile-v1",
+  "basisCommitSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+  "basisSnapshot": {
+    "commitSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+    "runtimeSourceSetSha256": "a7aba185dae625b3e1694b7f116d1ca41a51716078a477eb99717f2f134c4297",
+    "qualificationSourceSha": "013ef2e6f76c20d59048c01a8ae225137fe6142d",
+    "qualificationEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json"
+  },
+  "activation": "NOT_READY",
+  "runtimeSourceSetSha256": "a7aba185dae625b3e1694b7f116d1ca41a51716078a477eb99717f2f134c4297",
+  "runtimeFiles": 90,
+  "runtimeProjectionIdenticalToBasis": true,
+  "workerRootHandlers": [
+    "fetch",
+    "scheduled"
+  ],
+  "commandTableMentionPaths": [
+    "src/backup-v6.ts"
+  ],
+  "externalToolHooks": [
+    {
+      "path": "scripts/ensure-beta-d1-columns.mjs",
+      "operations": [
+        "schema"
+      ],
+      "installedControllers": 0
+    },
+    {
+      "path": "scripts/publish-beta-d1-release.mjs",
+      "operations": [
+        "publication"
+      ],
+      "installedControllers": 0
+    },
+    {
+      "path": "scripts/setup-beta-d1.mjs",
+      "operations": [
+        "deployment"
+      ],
+      "installedControllers": 0
+    },
+    {
+      "path": "scripts/verify-beta-live.mjs",
+      "operations": [
+        "probe"
+      ],
+      "installedControllers": 0
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "DIRECT_EVENT_PERSISTENCE",
+      "classification": "Actual synchronous D1 history persistence under owning scoped DB; not a bound cloud queue.",
+      "files": [
+        {
+          "path": "src/dev-free-runtime.ts",
+          "sha256": "7533c1ca789b4d1c30c709392df350eefd2a056915319e94dd3a1f66828bacfd"
+        },
+        {
+          "path": "src/worker-beta-cardfree.ts",
+          "sha256": "2628b792fed999812de5388fc9ce26fac9f7d700d6bef4c2c9f536aa99d98da0"
+        }
+      ],
+      "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"
+    },
+    {
+      "id": "GROUND_RECEIVER",
+      "classification": "Actual receiver fetch is ordinary at root; D1 effects inherit owning scope; caught write failures retain uncertainty.",
+      "files": [
+        {
+          "path": "src/ground-receiver.ts",
+          "sha256": "fadf1a71ff6082cf7f6841120a92cfd199aebc1a25f0893fa0cfb301d78781c5"
+        },
+        {
+          "path": "src/worker-v9.ts",
+          "sha256": "dd5be2da86a8eacd43c4fa1a2c6177733fcbba87c779565cae318352293bc915"
+        },
+        {
+          "path": "src/worker-beta-cardfree.ts",
+          "sha256": "2628b792fed999812de5388fc9ce26fac9f7d700d6bef4c2c9f536aa99d98da0"
+        }
+      ],
+      "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"
+    },
+    {
+      "id": "BETA_DIAGNOSTIC_STORES",
+      "classification": "Signed observation route reserves transient nonce and atomically stores diagnostics; no success ACK before exact readback.",
+      "files": [
+        {
+          "path": "src/beta-api.ts",
+          "sha256": "e8792fc1b659701f203f0c3a70ac6171fd42f748b8dcb04b2fd821dfed9c3c05"
+        },
+        {
+          "path": "src/worker-beta.ts",
+          "sha256": "edaa078c990b4318367c4d032f70973f0964bf006cbf278af4530a08f0230279"
+        },
+        {
+          "path": "src/worker-beta-cardfree.ts",
+          "sha256": "2628b792fed999812de5388fc9ce26fac9f7d700d6bef4c2c9f536aa99d98da0"
+        }
+      ],
+      "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"
+    },
+    {
+      "id": "DEVICE_LIFECYCLE",
+      "classification": "Socket/alarm/logout effects and excluded betaDiagnostic separated from hooked persistent revocation/telemetry.",
+      "files": [
+        {
+          "path": "src/device-do.ts",
+          "sha256": "64c68fbf9603f4120a2a164ec0423b92db95552ffd0f763eb46ca19b48173845"
+        },
+        {
+          "path": "src/beta-device.ts",
+          "sha256": "657f1e1ce6ee43e9badee6daee4e46c8abbd8fd66f6ec6ac9a62558ee0b65d22"
+        },
+        {
+          "path": "src/do-recovery.ts",
+          "sha256": "810864802d996d72dbafcd9cf7d3f7918b4efb6df86a06267bf47cba0fbbdab6"
+        }
+      ],
+      "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"
+    },
+    {
+      "id": "COMMAND_TABLE",
+      "classification": "Current runtime graph mentions device_commands in backup table list only; no live command writer/API asserted.",
+      "files": [
+        {
+          "path": "src/backup-v6.ts",
+          "sha256": "9b9ec8f835182bb63c592c42c94713252fab342d2912e96159e9735ae0939908"
+        }
+      ],
+      "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"
+    }
+  ],
+  "nativeFixture": "scripts/test-phase8d-writer-surface.mjs",
+  "notice": "Reconciles only the named remaining current source surfaces. No production installer or live queue is added. Static reachability/hashes/native fixtures do not prove arbitrary raw/operator/credential/dynamic/package/deferred/process-tree coverage, transport/bootstrap/guard independence, STARTED reconciliation or operational recovery. Identical runtime projection permits scoped carry-forward of prior runtime checks; new test/profile files still need their own qualification."
+}

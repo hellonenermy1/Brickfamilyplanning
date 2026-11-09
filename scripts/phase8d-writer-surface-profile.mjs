@@ -1,0 +1,26 @@
+// Named remaining-source reconciliation only. Never imports/executes runtime code.
+import fs from 'node:fs';import {createHash} from 'node:crypto';import ts from 'typescript';
+const basis=process.argv[2];if(!/^[a-f0-9]{40}$/.test(basis??''))throw Error('Exact basis required');
+const inventory=JSON.parse(fs.readFileSync('audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json','utf8')),external=JSON.parse(fs.readFileSync('audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json','utf8'));
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+for(const f of inventory.files)if(sha(fs.readFileSync(f.path))!==f.sha256)throw Error('Stale runtime inventory: '+f.path);
+// Pinned from the exact prior commit's checked-in runtime inventory; no shallow-checkout ancestor dependency.
+const basisSnapshot={"commitSha":"9b06256864f6ba2dda62e0f4d77f1c3c45c774a1","runtimeSourceSetSha256":"a7aba185dae625b3e1694b7f116d1ca41a51716078a477eb99717f2f134c4297","qualificationSourceSha":"013ef2e6f76c20d59048c01a8ae225137fe6142d","qualificationEvidencePath":"audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json"};
+if(basis!==basisSnapshot.commitSha)throw Error('Unreviewed carry-forward basis');
+const unchanged=inventory.runtimeSourceSetSha256===basisSnapshot.runtimeSourceSetSha256;
+const code=fs.readFileSync(inventory.entry,'utf8'),ast=ts.createSourceFile(inventory.entry,code,ts.ScriptTarget.Latest,true);let entry=ast.statements.find(ts.isExportAssignment)?.expression;while(entry&&(ts.isSatisfiesExpression(entry)||ts.isAsExpression(entry)))entry=entry.expression;
+const handlers=entry&&ts.isObjectLiteralExpression(entry)?entry.properties.filter(ts.isMethodDeclaration).map(x=>x.name.getText(ast)).sort():[];if(handlers.join(',')!=='fetch,scheduled')throw Error('Unreviewed Worker root handlers');
+const commands=inventory.files.filter(f=>fs.readFileSync(f.path,'utf8').includes('device_commands')).map(f=>f.path);if(commands.join(',')!=='src/backup-v6.ts')throw Error('Command source surface changed; review new writer before accepting profile');
+const tools=external.knownBetaToolHooks.map(x=>({path:x.path,operations:x.calls.map(c=>c.operation),installedControllers:x.controllerInstallCalls.length}));if(tools.length!==4||tools.some(x=>x.installedControllers!==0))throw Error('External tool activation/source assumption changed');
+const directFile='src/dev-free-runtime.ts',directCode=fs.readFileSync(directFile,'utf8'),directAst=ts.createSourceFile(directFile,directCode,ts.ScriptTarget.Latest,true),direct=directAst.statements.find(n=>ts.isClassDeclaration(n)&&n.name?.text==='DirectEventQueue');
+if(!direct||direct.members.filter(ts.isMethodDeclaration).map(m=>m.name.getText(directAst)).sort().join(',')!=='persist,send,sendBatch')throw Error('Direct event method surface changed');
+const sql=[];function visit(n){if(ts.isCallExpression(n)&&ts.isPropertyAccessExpression(n.expression)&&n.expression.name.text==='prepare')sql.push(n.arguments[0]?.getText(directAst));ts.forEachChild(n,visit);}visit(direct);if(sql.length!==1||!sql[0].includes('INSERT OR IGNORE INTO dev_location_history'))throw Error('Direct event storage surface changed');
+const definitions=[
+ ['DIRECT_EVENT_PERSISTENCE',['src/dev-free-runtime.ts','src/worker-beta-cardfree.ts'],'Actual synchronous D1 history persistence under owning scoped DB; not a bound cloud queue.'],
+ ['GROUND_RECEIVER',['src/ground-receiver.ts','src/worker-v9.ts','src/worker-beta-cardfree.ts'],'Actual receiver fetch is ordinary at root; D1 effects inherit owning scope; caught write failures retain uncertainty.'],
+ ['BETA_DIAGNOSTIC_STORES',['src/beta-api.ts','src/worker-beta.ts','src/worker-beta-cardfree.ts'],'Signed observation route reserves transient nonce and atomically stores diagnostics; no success ACK before exact readback.'],
+ ['DEVICE_LIFECYCLE',['src/device-do.ts','src/beta-device.ts','src/do-recovery.ts'],'Socket/alarm/logout effects and excluded betaDiagnostic separated from hooked persistent revocation/telemetry.'],
+ ['COMMAND_TABLE',['src/backup-v6.ts'],'Current runtime graph mentions device_commands in backup table list only; no live command writer/API asserted.']
+];
+const surfaces=definitions.map(([id,paths,classification])=>({id,classification,files:paths.map(path=>({path,sha256:sha(fs.readFileSync(path))})),review:'CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE'}));
+console.log(JSON.stringify({format:'brick-group1-named-writer-surface-profile-v1',basisCommitSha:basis,basisSnapshot,activation:'NOT_READY',runtimeSourceSetSha256:inventory.runtimeSourceSetSha256,runtimeFiles:inventory.files.length,runtimeProjectionIdenticalToBasis:unchanged,workerRootHandlers:handlers,commandTableMentionPaths:commands,externalToolHooks:tools,surfaces,nativeFixture:'scripts/test-phase8d-writer-surface.mjs',notice:'Reconciles only the named remaining current source surfaces. No production installer or live queue is added. Static reachability/hashes/native fixtures do not prove arbitrary raw/operator/credential/dynamic/package/deferred/process-tree coverage, transport/bootstrap/guard independence, STARTED reconciliation or operational recovery. Identical runtime projection permits scoped carry-forward of prior runtime checks; new test/profile files still need their own qualification.'},null,2));
