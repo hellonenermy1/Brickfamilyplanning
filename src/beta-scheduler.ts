@@ -1,4 +1,4 @@
-import {runCaptureWriter} from './capture-writer-boundary';
+import {runCaptureWriter,type CaptureWriterParent} from './capture-writer-boundary';
 import {stagedCaptureDatabases} from './capture-d1-boundary';
 import {DurableObject} from 'cloudflare:workers';
 import {runCardfreeMaintenance,runCardfreeMaintenanceGroup,cardfreeRuntime,type CardfreeEnv} from './worker-beta-cardfree';
@@ -35,21 +35,21 @@ export class BetaScheduler extends DurableObject<CardfreeEnv>{
   if(!['minute','daily'].includes(group))throw Error('invalid maintenance group');
   return runCaptureWriter(this,'scheduler.group','ordinary',this.ctx,scoped=>runCardfreeMaintenanceGroup(stagedCaptureDatabases(this.env,scoped),scoped,group));
  }
- async runDerivedWork(kind:DerivedKind,deviceId:string){
+ async runDerivedWork(kind:DerivedKind,deviceId:string,parent?:CaptureWriterParent){
   if(!['refinement','commute'].includes(kind)||!/^[A-Za-z0-9_-]{1,128}$/.test(deviceId))throw Error('invalid derived work');
   return runCaptureWriter(this,'scheduler.derived','ordinary',this.ctx,scoped=>{
-   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44),runtime=cardfreeRuntime({...env,DB:budget.db}),now=Date.now();
+   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44),runtime=cardfreeRuntime({...env,DB:budget.db},scoped),now=Date.now();
    return runBackgroundWork(env.DB,kind,deviceId,()=>kind==='refinement'?processRefinementsForDevice(runtime,deviceId,now):refreshCommutes(runtime,deviceId,now-2*86400000,now));
-  });
+  },undefined,parent);
  }
- async runRetentionWork(){return runCaptureWriter(this,'scheduler.retention','ordinary',this.ctx,scoped=>{
+ async runRetentionWork(parent?:CaptureWriterParent){return runCaptureWriter(this,'scheduler.retention','ordinary',this.ctx,scoped=>{
   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,44);
-  return runBackgroundWork(env.DB,'refined-retention','global',()=>cleanupPhase5RefinedHistory(cardfreeRuntime({...env,DB:budget.db})));
- });}
- async runDailyBackup(){return runCaptureWriter(this,'scheduler.backup','ordinary',this.ctx,scoped=>{
+  return runBackgroundWork(env.DB,'refined-retention','global',()=>cleanupPhase5RefinedHistory(cardfreeRuntime({...env,DB:budget.db},scoped)));
+ },undefined,parent);}
+ async runDailyBackup(parent?:CaptureWriterParent){return runCaptureWriter(this,'scheduler.backup','ordinary',this.ctx,scoped=>{
   const env=stagedCaptureDatabases(this.env,scoped),budget=d1WorkBudget(env.DB,48);
-  return snapshotD1ToR2(cardfreeRuntime({...env,DB:budget.db}));
- });}
+  return snapshotD1ToR2(cardfreeRuntime({...env,DB:budget.db},scoped));
+ },undefined,parent);}
  async arm(){const now=Date.now(),next=await this.ctx.storage.getAlarm();if(next===null||next>now+60000)await this.ctx.storage.setAlarm(now+60000);return {armed:true};}
  async kick(){
   await this.arm();

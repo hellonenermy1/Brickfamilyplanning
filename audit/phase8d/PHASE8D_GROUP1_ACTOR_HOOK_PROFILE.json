@@ -65,6 +65,29 @@
       "line": 50
     }
   ],
+  "routineRpcBoundaries": [
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "operation": "scheduler.derived",
+      "target": "runDerivedWork",
+      "line": 20,
+      "bodySha256": "d64d92ee3efe103cf4c6609f0a2ab3e50bf8e8917785d6b233fb6fc64468dfa3"
+    },
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "operation": "scheduler.retention",
+      "target": "runRetentionWork",
+      "line": 21,
+      "bodySha256": "df198d555a2186a4ba80d5737c3d97d1e339fb5ba494aee20890040ba639bac1"
+    },
+    {
+      "file": "src/worker-beta-cardfree.ts",
+      "operation": "scheduler.backup",
+      "target": "runDailyBackup",
+      "line": 22,
+      "bodySha256": "e549be3bbc04b675e6ce3b0be6df608a2eaf715bffb4840ba742ec5ed4b0f7e9"
+    }
+  ],
   "notice": "Current actor/Worker entry surface and source bodies only. Production controller installs remain zero. Complete raw/operator/lifecycle/deferred coverage, urgent-outage fallback, transport/bootstrap/custody and operational recovery remain incomplete. Constructor/socket/scheduler exclusions require reevaluation on source change; body hashes are change detection, not authenticated independent review.",
   "methods": [
     {
@@ -392,7 +415,7 @@
       "className": "BetaScheduler",
       "method": "runDerivedWork",
       "line": 38,
-      "bodySha256": "446a141049c77fdc56ec44619cddfa25b08a121f42b38f8351dcf3387d24ed37",
+      "bodySha256": "d19412f7221a90bc39d6f5f93bf947a974c000e2c33daec98aa7dae0f724e304",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.derived",
       "priority": "ordinary"
@@ -402,7 +425,7 @@
       "className": "BetaScheduler",
       "method": "runRetentionWork",
       "line": 45,
-      "bodySha256": "4452002ac1a0e10f3fe81b86256a029ccede0fc11301375cf8ffbb73d40a9642",
+      "bodySha256": "e5c8664d9c3b4012465a5e480103b2a6744563cfda2ca764a37e234e5f866d9c",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.retention",
       "priority": "ordinary"
@@ -412,7 +435,7 @@
       "className": "BetaScheduler",
       "method": "runDailyBackup",
       "line": 49,
-      "bodySha256": "ae6be8208e1203463e5e6914bfdd6424fd6546a23b8eafe36f1c15ae2e4b0c64",
+      "bodySha256": "a69da068d5be5c99fc1effd8d1bb9fdabc9df80f68d85abf7dc49fc166f74eae",
       "disposition": "HOOK_PRESENT_INERT_UNTIL_BOOTSTRAP",
       "operation": "scheduler.backup",
       "priority": "ordinary"

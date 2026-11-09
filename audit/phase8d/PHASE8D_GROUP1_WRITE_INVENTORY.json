@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "e70e2c3bcc3d51e512dbbb0e4935e9589356b568",
+  "basisCommitSha": "21a1d8d36adada94cd814c3f99490749b37afefb",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
@@ -13,7 +13,7 @@
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "a973a48ca276200b0c3915c83b5c083afff307edb86a98692d16c46d1f213484",
+  "runtimeSourceSetSha256": "9f71c536f770b29151845ae1695daf140fa3ebf535cef4cf501270bbef517ed0",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -28,12 +28,12 @@
     },
     {
       "file": "src/capture-writer-boundary.ts",
-      "line": 51,
+      "line": 54,
       "column": 27
     },
     {
       "file": "src/capture-writer-boundary.ts",
-      "line": 55,
+      "line": 58,
       "column": 37
     },
     {
@@ -59,12 +59,12 @@
     {
       "file": "src/beta-scheduler.ts",
       "line": 45,
-      "column": 34
+      "column": 61
     },
     {
       "file": "src/beta-scheduler.ts",
       "line": 49,
-      "column": 32
+      "column": 59
     },
     {
       "file": "src/beta-device.ts",
@@ -774,8 +774,8 @@
     },
     {
       "path": "src/beta-scheduler.ts",
-      "sha256": "2ee3865630fcf29eccc93ff68b376d37237b15bf9473157d28d88f52c6d7a25a",
-      "gitBlobSha": "0b2ee4da346537f730c2c4359407624c845b3fb4",
+      "sha256": "fd11f9fbd995bfb1fc03d3856732ac5d4e4669fd98604c8f463cc16fe1aa1387",
+      "gitBlobSha": "eeea505e4ef0783452b08757f5d22a0310866530",
       "imports": [
         "src/background-work.ts",
         "src/backup-v6.ts",
@@ -1014,12 +1014,12 @@
     },
     {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "3d2ef2b47993208854a066054bc99a08437df6484aff854221be7771a268b2af",
-      "gitBlobSha": "451ca578599f2622d106cf2cc6e696dd23c8448b",
+      "sha256": "864cd1f55e2e794d96eb90982819a70869eadee1e9dd201bc029aee9214f8f16",
+      "gitBlobSha": "e5099d082e8008842aa9d96108ac5d387d1bd986",
       "imports": [],
       "sites": [
         {
-          "line": 42,
+          "line": 45,
           "column": 166,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",
@@ -4448,8 +4448,8 @@
     },
     {
       "path": "src/worker-beta-cardfree.ts",
-      "sha256": "7893244a9f0bd87506080fa7914f01026d5ea2f45b5350c55070236556f2f5b0",
-      "gitBlobSha": "bd791fad3799aff385ed9e65520d3aff40b092d2",
+      "sha256": "38a6066eeeff8e2cc0540f29575e867d1f797c06a5f82f31ae29e6c4f46d8758",
+      "gitBlobSha": "b555accdb99310f21cbef4b259ca1be404a2cedf",
       "imports": [
         "src/beta-api.ts",
         "src/beta-device.ts",

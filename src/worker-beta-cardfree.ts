@@ -1,4 +1,4 @@
-import {runCaptureWriter} from './capture-writer-boundary';
+import {runCaptureWriter,runCaptureWriterRpc} from './capture-writer-boundary';
 import {captureUrgentRequestAllowed} from './capture-urgent-request';
 import beta from './worker-beta';
 import {stagedCaptureDatabases} from './capture-d1-boundary';
@@ -14,12 +14,12 @@ import { readBoundedBody } from './bounded-body';
 export { BrickDevice } from './beta-device';
 export type CardfreeEnv=Parameters<typeof beta.fetch>[1]&{PARENT_LOGIN_RATE:RateLimit;DEV_PARENT_LOGIN_HASH:string;DEV_PARENT_AUTH_MODE:string;BRICK_MAP_SOURCE:string;BETA_STORAGE_MODE:string;WATCHDOG_MANAGED_BY_ROOT?:boolean;BETA_SCHEDULER:DurableObjectNamespace<import('./beta-scheduler').BetaScheduler>};
 type Env=CardfreeEnv;
-export function cardfreeRuntime(env:Env):Env{
+export function cardfreeRuntime(env:Env,ctx?:ExecutionContext):Env{
  const result=developmentRuntimeEnv(env);const direct=result.EVENTS;
  return {...result,WATCHDOG_MANAGED_BY_ROOT:true,BACKGROUND_WORK:{
-  run(kind,deviceId){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('derived-'+deviceId)).runDerivedWork(kind,deviceId);},
-  cleanup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-refined-retention')).runRetentionWork();},
-  backup(){return env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-backup')).runDailyBackup();}
+  run(kind,deviceId){return runCaptureWriterRpc('scheduler.derived',ctx,parent=>env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('derived-'+deviceId)).runDerivedWork(kind,deviceId,parent));},
+  cleanup(){return runCaptureWriterRpc('scheduler.retention',ctx,parent=>env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-refined-retention')).runRetentionWork(parent));},
+  backup(){return runCaptureWriterRpc('scheduler.backup',ctx,parent=>env.BETA_SCHEDULER.get(env.BETA_SCHEDULER.idFromName('maintenance-backup')).runDailyBackup(parent));}
  },EVENTS:{
   async send(body:unknown){
    const b=body as {type?:string;deviceId?:string;token?:string};
@@ -52,7 +52,7 @@ async function serveBetaOneMapTile(url:URL):Promise<Response|null>{
 }
 async function closeSockets(env:Env){let after='';for(let page=0;page<100;page++){const rows=await env.DB.prepare('SELECT id FROM devices WHERE id>?1 ORDER BY id LIMIT 100').bind(after).all<{id:string}>();for(const r of rows.results)await env.BRICK_DEVICE.get(env.BRICK_DEVICE.idFromName(r.id)).closeParentSockets();if(rows.results.length<100)return;after=rows.results[rows.results.length-1].id;}throw Error('socket_invalidation_limit');}
 export async function runCardfreeMaintenanceGroup(env:Env,ctx:ExecutionContext,group:'minute'|'daily'){
- const r=cardfreeRuntime(env),now=Date.now();
+ const r=cardfreeRuntime(env,ctx),now=Date.now();
  if(group==='minute')return(await runMaintenanceTask(env.DB,'beta-minute-v2',60000,()=>awaitScheduledWork(scoped=>beta.scheduled(syntheticScheduledController('*/1 * * * *',now),r,scoped),ctx)))==='BUSY'?'PENDING' as const:'COMPLETED' as const;
  if(group!=='daily')throw Error('invalid maintenance group');
  const daily=await runMaintenanceTask(env.DB,'beta-daily-v2',86400000,()=>awaitScheduledWork(async scoped=>{

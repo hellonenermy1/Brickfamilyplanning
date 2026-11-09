@@ -8,7 +8,7 @@ export type WriterTicket = {authorityEpoch: string; writerId: string; tracked: b
 export type ExternalOperation='publication'|'probe'|'schema'|'deployment';
 export type ReservationKind={kind:'runtime';priority:'ordinary'|'urgent'}|{kind:'external';operation:ExternalOperation};
 export type ReservationCancellation=ReservationKind&{authorityEpoch:string;writerId:string};
-type Writer = {priority: 'ordinary' | 'urgent'; admittedAt: number; externalOperation?:ExternalOperation;phase?:'RESERVED'|'STARTED'};
+type Writer = {priority: 'ordinary' | 'urgent'; admittedAt: number; externalOperation?:ExternalOperation;phase?:'RESERVED'|'STARTED';parentWriterId?:string};
 type Capture = CaptureFence & {state: 'DRAINING' | 'DRAINED'; expiresAt: number};
 type Closed = {captureId: string; generation: string; reason: 'RELEASED' | 'EXPIRED' | 'PREEMPTED'};
 type State = {format: 1|2; identity: Identity; authorityEpoch: string; lastSeenAt: number; writers: Record<string, Writer>; capture: Capture | null; closed: Closed | null; quarantined: boolean;cancelled?:Record<string,ReservationKind>};
@@ -30,7 +30,7 @@ function validState(v: unknown): asserts v is State {
   const s=v as State;
   try {identity(s.identity);} catch {throw Error('CAPTURE_AUTHORITY_CORRUPT');}
   if(![1,2].includes(s.format)||s.format===1&&Object.hasOwn(s,'cancelled')||s.format===2&&!object(s.cancelled)||!hex(s.authorityEpoch,32)||!time(s.lastSeenAt)||typeof s.quarantined!=='boolean'||!object(s.writers)||Object.keys(s.writers).length>MAX_DECLARED_WRITERS)throw Error('CAPTURE_AUTHORITY_CORRUPT');
-  for(const [key,w] of Object.entries(s.writers)){if(!object(w))throw Error('CAPTURE_AUTHORITY_CORRUPT');const fields=['priority','admittedAt',...(w.externalOperation===undefined?[]:['externalOperation']),...(w.phase===undefined?[]:['phase'])];if(!hex(key,32)||!exact(w,fields)||w.externalOperation!==undefined&&(w.priority!=='ordinary'||!['publication','probe','schema','deployment'].includes(w.externalOperation))||w.phase!==undefined&&(s.format===1||!['RESERVED','STARTED'].includes(w.phase))||!['ordinary','urgent'].includes(w.priority)||!time(w.admittedAt)||w.admittedAt>s.lastSeenAt)throw Error('CAPTURE_AUTHORITY_CORRUPT');}
+  for(const [key,w] of Object.entries(s.writers)){if(!object(w))throw Error('CAPTURE_AUTHORITY_CORRUPT');const fields=['priority','admittedAt',...(w.externalOperation===undefined?[]:['externalOperation']),...(w.phase===undefined?[]:['phase']),...(w.parentWriterId===undefined?[]:['parentWriterId'])];if(!hex(key,32)||!exact(w,fields)||w.parentWriterId!==undefined&&(!hex(w.parentWriterId,32)||w.parentWriterId===key||w.priority!=='ordinary'||w.externalOperation!==undefined||w.phase===undefined)||w.externalOperation!==undefined&&(w.priority!=='ordinary'||!['publication','probe','schema','deployment'].includes(w.externalOperation))||w.phase!==undefined&&(s.format===1||!['RESERVED','STARTED'].includes(w.phase))||!['ordinary','urgent'].includes(w.priority)||!time(w.admittedAt)||w.admittedAt>s.lastSeenAt)throw Error('CAPTURE_AUTHORITY_CORRUPT');}
   if(s.cancelled!==undefined&&(!object(s.cancelled)||Object.keys(s.cancelled).length>MAX_CANCELLED_RESERVATIONS||Object.entries(s.cancelled).some(([key,value])=>!hex(key,32)||!kind(value)||Object.hasOwn(s.writers,key))))throw Error('CAPTURE_AUTHORITY_CORRUPT');
   if(s.closed!==null&&(!exact(s.closed,['captureId','generation','reason'])||!hex(s.closed.captureId,32)||!hex(s.closed.generation,32)||!['RELEASED','EXPIRED','PREEMPTED'].includes(s.closed.reason)))throw Error('CAPTURE_AUTHORITY_CORRUPT');
   if(s.capture!==null){const c=s.capture;if(!exact(c,['captureId','generation','resourceSetSha256','sourceSha','pausedAt','state','expiresAt'])||!hex(c.captureId,32)||!hex(c.generation,32)||!sameIdentity(c,s.identity)||!time(c.pausedAt)||!time(c.expiresAt)||c.expiresAt<=c.pausedAt||c.expiresAt>c.pausedAt+300000||c.pausedAt>s.lastSeenAt||!['DRAINING','DRAINED'].includes(c.state)||s.quarantined||c.state==='DRAINED'&&Object.keys(s.writers).length!==0)throw Error('CAPTURE_AUTHORITY_CORRUPT');}
@@ -72,7 +72,7 @@ export class CaptureAdmissionStore {
     return this.change((s,now)=>{
       if(s.cancelled?.[writerId]){if(!sameKind(s.cancelled[writerId],{kind:'runtime',priority}))throw Error('CAPTURE_WRITER_REUSE');return{admitted:false,code:'WRITER_CANCELLED' as const};}
       const prior=s.writers[writerId];
-      if(prior){if(prior.priority!==priority||prior.externalOperation!==undefined||(prior.phase!==undefined)!==reserved)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,...(reserved?{requiresStart:true}:{}),ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
+      if(prior){if(prior.parentWriterId!==undefined||prior.priority!==priority||prior.externalOperation!==undefined||(prior.phase!==undefined)!==reserved)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,...(reserved?{requiresStart:true}:{}),ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
       if(priority==='ordinary'&&(s.capture!==null||s.quarantined))return{admitted:false,code:'CAPTURE_BUSY' as const};
       if(priority==='urgent')close(s,'PREEMPTED');
       if(Object.keys(s.writers).length>=MAX_DECLARED_WRITERS){
@@ -82,6 +82,23 @@ export class CaptureAdmissionStore {
         s.quarantined=true;return{admitted:true,...(reserved?{requiresStart:true}:{}),ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:false} satisfies WriterTicket};
       }
       s.writers[writerId]={priority,admittedAt:now,...(reserved?{phase:'RESERVED' as const}:{})};return{admitted:true,...(reserved?{requiresStart:true}:{}),ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};
+    });
+  }
+  // Authenticated runtime transport only. Each child remains independently owned.
+  // A live STARTED parent permits continuation while capture is DRAINING, never
+  // after parent release, from RESERVED/legacy/external work, or in quarantine.
+  async reserveDescendantWriter(writerId:string,parent:WriterTicket){
+    if(!hex(writerId,32)||!exact(parent,['authorityEpoch','writerId','tracked'])||!hex(parent.authorityEpoch,32)||!hex(parent.writerId,32)||parent.tracked!==true||writerId===parent.writerId)throw Error('CAPTURE_DESCENDANT_INVALID');parent={...parent};
+    return this.change((s,now)=>{
+      if(parent.authorityEpoch!==s.authorityEpoch)throw Error('CAPTURE_WRITER_EPOCH_MISMATCH');
+      const cancelled=s.cancelled?.[writerId];if(cancelled){if(!sameKind(cancelled,{kind:'runtime',priority:'ordinary'}))throw Error('CAPTURE_WRITER_REUSE');return{admitted:false,code:'WRITER_CANCELLED' as const};}
+      const prior=s.writers[writerId];
+      if(prior){if(prior.parentWriterId!==parent.writerId)throw Error('CAPTURE_WRITER_REUSE');return{admitted:true,requiresStart:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};}
+      const owner=s.writers[parent.writerId];
+      if(s.quarantined||!owner||owner.phase!=='STARTED'||owner.externalOperation!==undefined||s.capture?.state==='DRAINED')return{admitted:false,code:'PARENT_UNAVAILABLE' as const};
+      if(Object.keys(s.writers).length>=MAX_DECLARED_WRITERS)return{admitted:false,code:'WRITER_CAPACITY' as const};
+      s.writers[writerId]={priority:'ordinary',admittedAt:now,phase:'RESERVED',parentWriterId:parent.writerId};
+      return{admitted:true,requiresStart:true,ticket:{authorityEpoch:s.authorityEpoch,writerId,tracked:true} satisfies WriterTicket};
     });
   }
   async enterExternalWriter(writerId:string,operation:ExternalOperation,expected:Identity){
