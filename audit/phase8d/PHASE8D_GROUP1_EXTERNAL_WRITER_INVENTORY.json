@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
+  "basisCommitSha": "7140a0915a410925c7f2ec81ed3395b3b4dafbd8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 132
   },
-  "sourceSetSha256": "e2327c2b58f5f38afc0549c54d64f11ea2d745788c5cccf717c97768c52b0524",
+  "sourceSetSha256": "84d748a0623f9bf8d68825a15d90721e4833812585e066a29e2df5e18f63ae65",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -2642,6 +2642,11 @@
     },
     {
       "from": "scripts/test-phase8d-urgent-request.mjs",
+      "to": "scripts/phase8d-do-state-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-urgent-request.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
@@ -3019,8 +3024,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "2fa83f3fb386ede660dbdca24048382547b9b8ef8cac8f2fffa97b3e0b19a961",
-      "gitBlobSha": "5b6552f171bdd2e9af300d19d744a2e7f7f409a0",
+      "sha256": "307c3ec2468b7fd29d50fa5480a17dde9ee372534a3f94a0daf3bb738fce7743",
+      "gitBlobSha": "7c0a784f7da458ab1e0a6ed3187b7f3ad6d56ff3",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -9324,14 +9329,15 @@
     },
     {
       "path": "scripts/test-phase8d-urgent-request.mjs",
-      "sha256": "596a39cd6c6746efa654f4fdfd304e075ce0f275590405306621946984c2f051",
-      "gitBlobSha": "e24f07fda02f822138eb736a1b6c017b740f2ad2",
+      "sha256": "066ffead232f18a587ae5b09f3ab5e1adfab7f36b58945173114e80e60a4e6fc",
+      "gitBlobSha": "8f1ec14f67071f3ee362f181ce5cdf4951d5637f",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [],
       "imports": [
+        "./phase8d-do-state-fixture.mjs",
         "./phase8d-native-fixture.mjs",
         "./phase8d-signed-writer-fixture.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",

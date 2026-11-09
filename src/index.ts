@@ -151,7 +151,7 @@ async function ingest(req: Request, env: Env, id: string) {
   return json({ ack: packet.sequence, duplicate: !isNew, liveAdvanced: isNewest });
 }
 
-function validHealth(x: unknown): x is DeviceHealth {
+export function validHealth(x: unknown): x is DeviceHealth {
   if (!x || typeof x !== "object") return false;
   const h = x as Record<string, unknown>, n = h.network;
   if (!(h.protocol === 1 && typeof h.elapsedRealtimeMs === "number" && h.elapsedRealtimeMs >= 0 &&

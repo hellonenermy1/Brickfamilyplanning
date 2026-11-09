@@ -145,7 +145,7 @@ async function canonicalPairingRequest(
   }) as Request<unknown, IncomingRequestCfProperties>;
 }
 
-async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
+export async function localDurabilityEvidenceDenied(req: Request): Promise<Response | null> {
   const bounded = await readBoundedBody(req.clone(), 8192);
   if (!bounded.ok || !bounded.body.byteLength) return null;
   let value: unknown;

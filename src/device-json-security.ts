@@ -35,7 +35,7 @@ async function signedJson(req: Request, env: DeviceJsonSecurityEnv, deviceId: st
   const signature = req.headers.get("X-Brick-Signature");
   if (!signature || signature.length > 512) return jsonError("missing or invalid signature", 401);
   const row = await env.DB.prepare("SELECT public_key_spki_b64,revoked_at FROM devices WHERE id=?1").bind(deviceId).first<DeviceKeyRow>();
-  if (!row || row.revoked_at) return jsonError("device unauthorized", 401);
+  if (!row || row.revoked_at !== null) return jsonError("device unauthorized", 401);
   const bounded = await readBoundedBody(req.clone(), maxBytes);
   if (!bounded.ok || !bounded.body.byteLength) return jsonError("invalid payload size", 400);
   const body = bounded.body;
@@ -55,7 +55,7 @@ function safeTimestamp(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 }
 
-export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, now = Date.now()): Promise<Response | null> {
+export async function readVerifiedHealthRequest(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, now = Date.now()): Promise<(SignedJson & {sequence:number;sentAt:number}) | Response> {
   const verified = await signedJson(req, env, deviceId);
   if (verified instanceof Response) return verified;
   const sequence = verified.json.healthSequence;
@@ -64,6 +64,13 @@ export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityE
   if (sentAt > now + 120_000) return jsonError("health timestamp is in the future", 400);
   if (sentAt < now - 10 * 60_000) return jsonError("stale health heartbeat", 409);
 
+  return {...verified,sequence,sentAt};
+}
+
+export async function reserveHealthReplay(req: Request, env: DeviceJsonSecurityEnv, deviceId: string, now = Date.now()): Promise<Response | null> {
+  const verified=await readVerifiedHealthRequest(req,env,deviceId,now);
+  if(verified instanceof Response)return verified;
+  const {sequence}=verified;
   const result = await env.DB.prepare(
     "INSERT INTO device_replay_state(device_id,last_health_sequence,updated_at) " +
     "SELECT ?1,?2,?3 WHERE EXISTS (SELECT 1 FROM devices WHERE id=?1 AND revoked_at IS NULL) " +

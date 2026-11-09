@@ -182,19 +182,14 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: published.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
 
-export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
-  const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:location-batch` });
-  if (!rate.success) return json({ error: "rate limited" }, 429);
-  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
-  const maxBytes = 3 + MAX_BATCH * V2_BYTES;
-  const body = await signedBody(req, d.public_key_spki_b64, maxBytes); if (body instanceof Response) return body;
+export function decodeLocationBatchRequest(body:ArrayBuffer,now=Date.now()):LivePacket[]|Response {
   if (body.byteLength < 3) return json({ error: "invalid batch" }, 400);
   const view = new DataView(body);
   if (view.getUint8(0) !== BATCH_VERSION) return json({ error: "unsupported batch version" }, 400);
   const count = view.getUint16(1, false);
   if (count < 1 || count > MAX_BATCH || body.byteLength !== 3 + count * V2_BYTES) return json({ error: "invalid batch size" }, 400);
 
-  const rawPackets: LivePacket[] = [], now = Date.now();
+  const rawPackets: LivePacket[] = [];
   try {
     for (let i = 0; i < count; i++) {
       const start = 3 + i * V2_BYTES;
@@ -204,6 +199,18 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
     }
   } catch { return json({ error: "invalid batch packet" }, 400); }
   for (let i = 1; i < rawPackets.length; i++) if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
+
+  return rawPackets;
+}
+
+export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
+  const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:location-batch` });
+  if (!rate.success) return json({ error: "rate limited" }, 429);
+  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
+  const maxBytes = 3 + MAX_BATCH * V2_BYTES;
+  const body = await signedBody(req, d.public_key_spki_b64, maxBytes); if (body instanceof Response) return body;
+  const rawPackets=decodeLocationBatchRequest(body);
+  if(rawPackets instanceof Response)return rawPackets;
 
   const packets = await Promise.all(rawPackets.map(packet => trustedPacket(packet, env)));
   const persisted = await persistAccepted(env, deviceId, packets, false);

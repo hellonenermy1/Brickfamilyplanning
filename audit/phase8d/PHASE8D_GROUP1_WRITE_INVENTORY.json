@@ -1,19 +1,19 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
+  "basisCommitSha": "7140a0915a410925c7f2ec81ed3395b3b4dafbd8",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",
   "summary": {
     "sourceFiles": 90,
-    "sqlPrepareCandidates": 306,
-    "sqlWriteOrUnknown": 173,
+    "sqlPrepareCandidates": 309,
+    "sqlWriteOrUnknown": 174,
     "mutationOrWrapperCandidates": 73,
     "deferredWorkCandidates": 21,
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "1c4a4cb82381d144ed179468e8e07a3b42672766582bf7f6a800b0d3d86f2d6d",
+  "runtimeSourceSetSha256": "3f4195aa34c975949c13d5f5fc4c32d7769c37c5738fa55a4d6d40da97a42a71",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -945,18 +945,50 @@
     },
     {
       "path": "src/capture-urgent-request.ts",
-      "sha256": "1fe5960f2c4e366c60a7a4b72dab9d7e774761077947b331578fee488f348178",
-      "gitBlobSha": "e6b62976c106e3a3189501b0638f11fa4333e52c",
+      "sha256": "bb125a71034cb5c78e190b00258b36ec059e8575c9dd0c779d118b1d40ca91d6",
+      "gitBlobSha": "6b66140b598ae1a15d38f52afbb4b31c8896c4fc",
       "imports": [
         "src/bounded-body.ts",
+        "src/crypto.ts",
         "src/dev-parent-auth.ts",
         "src/device-json-security.ts",
         "src/index.ts",
-        "src/safety-event-write.ts"
+        "src/live-state-order.ts",
+        "src/location-ingest-v6.ts",
+        "src/protocol.ts",
+        "src/safety-event-write.ts",
+        "src/worker-v5b.ts"
       ],
       "sites": [
         {
-          "line": 19,
+          "line": 25,
+          "column": 23,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 29,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "READ_CANDIDATE",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 54,
+          "column": 24,
+          "kind": "SQL_PREPARE_CANDIDATE",
+          "method": "prepare",
+          "receiver": "env.DB",
+          "sqlKind": "WRITE_OR_UNKNOWN",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 73,
           "column": 26,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -965,7 +997,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 35,
+          "line": 89,
           "column": 26,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -1744,8 +1776,8 @@
     },
     {
       "path": "src/device-json-security.ts",
-      "sha256": "e2e17e398403c50f4dab0ef609a50e8f19ff869592981066efd8f71d3ae75d34",
-      "gitBlobSha": "e5746eb33c6e4ef1b2e77eccdea5667e884b0eca",
+      "sha256": "f6458b8d241d72e132d06fb6706fbc477b55532a4cb6b9205c3c9a32cfba34fb",
+      "gitBlobSha": "0462d785390d2a84c687444e72acf7cf96bae365",
       "imports": [
         "src/bounded-body.ts",
         "src/crypto.ts"
@@ -1761,7 +1793,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 67,
+          "line": 74,
           "column": 24,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -1770,7 +1802,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 75,
+          "line": 82,
           "column": 24,
           "kind": "SQL_PREPARE_CANDIDATE",
           "method": "prepare",
@@ -2100,8 +2132,8 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "e5754ebe0278631d261d62f64ebf718ea7c3a7fff8c0a0755bae7ce06dd0c1a7",
-      "gitBlobSha": "71d4b96b6ebca6de8ba037e86c535358450e4c2a",
+      "sha256": "c915a8077cecd809a4bbcff0fd382f20511d4f7a4969697f76719283471aa474",
+      "gitBlobSha": "dec8bd4e0d51f71c07a5a7a9b1a74f25df6f8dfd",
       "imports": [
         "src/crypto.ts",
         "src/device-do.ts",
@@ -2240,8 +2272,8 @@
     },
     {
       "path": "src/location-ingest-v6.ts",
-      "sha256": "419ae8c0bbac67c834edf998f00b2f34c74f9a627448528513c85b76a02f3dba",
-      "gitBlobSha": "c2e4e98e9ac3af2f1f37744d5b02ebd646755d08",
+      "sha256": "eb631e474ec775bd17c17d649d9c1d56f8c67588d39f3919526a395b41b5c574",
+      "gitBlobSha": "cbf7a1d4f9df3192f3fe4fe6c13bf6854e48b4bb",
       "imports": [
         "src/bounded-body.ts",
         "src/crypto.ts",
@@ -4544,8 +4576,8 @@
     },
     {
       "path": "src/worker-v5b.ts",
-      "sha256": "6b1c8f26675254f66fd9ecf677a479432662d2c2e5a1e410a382ef4fabe10ae0",
-      "gitBlobSha": "a9271292af4e37defb914a2e10335956f32e1a73",
+      "sha256": "aac3bc89810e835ad4e843fd38cedbca3b61749d1f01885f30a0707c42f88914",
+      "gitBlobSha": "baa5c9aa31ec8d8a59fc31cdd2f05c7427316467",
       "imports": [
         "src/access-auth.ts",
         "src/bounded-body.ts",
