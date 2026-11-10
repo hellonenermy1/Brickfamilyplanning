@@ -1,3 +1,4 @@
+// Explicit create below enrolls synthetic fixture resources; never a recurring runtime fallback.
 // Actual composed Worker and signed SQLite-backed authority. Synthetic scheduler
 // capabilities expose deferred lifetimes; no provider calls or production keys.
 import assert from 'node:assert/strict';
@@ -24,8 +25,8 @@ export class Authority extends DurableObject{
   if(method==='fault'){await this.ctx.storage.put('fault',args[0]);return;}
   if(method==='stats')return await this.ctx.storage.get('stats')??{};
   if(method==='writers')return (await this.ctx.storage.get('brick-capture-admission-v1')).writers;
-  const result=await new CaptureAdmissionStore(this.ctx.storage)[method](...args);
-  if(method==='initialize'){const pin={...args[0],authorityEpoch:result.authorityEpoch};await new CaptureReplayStore(this.ctx.storage).initialize(pin);await this.ctx.storage.put('pin',pin);}
+  const result=await new CaptureAdmissionStore(this.ctx.storage)[method](...(method==='initialize'?[args[0],{create:true}]:args));
+  if(method==='initialize'){const pin={...args[0],authorityEpoch:result.authorityEpoch};await new CaptureReplayStore(this.ctx.storage).initialize(pin,{create:true});await this.ctx.storage.put('pin',pin);}
   return result;
  }
  async fetch(req){

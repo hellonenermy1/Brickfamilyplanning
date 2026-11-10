@@ -49,11 +49,14 @@ function held(c: Capture, count: number){return {...c,activeWriters:count};}
 export class CaptureAdmissionStore {
   constructor(private readonly storage: Pick<DurableObjectStorage,'transaction'>, private readonly clock: ()=>number = Date.now) {}
   private now(){const now=this.clock();if(!time(now))throw Error('CAPTURE_CLOCK_INVALID');return now;}
-  async initialize(expected: Identity) {
+  // Reopen by default. Explicit create is trusted first enrollment only; never a restart fallback.
+  async initialize(expected: Identity, options: {create?:boolean} = {}) {
+    if(!(exact(options,[])||exact(options,['create'])&&typeof options.create==='boolean'))throw Error('CAPTURE_INITIALIZATION_INVALID');const create=Object.hasOwn(options,'create')&&options.create===true;
     identity(expected);expected={...expected};
     return this.storage.transaction(async txn=>{
       const prior=await txn.get<State>(KEY);
       if(prior!==undefined){validState(prior);if(!sameIdentity(prior.identity,expected))throw Error('CAPTURE_IDENTITY_MISMATCH');return{initialized:true,authorityEpoch:prior.authorityEpoch};}
+      if(!create)throw Error('CAPTURE_AUTHORITY_UNINITIALIZED');
       const now=this.now();
       const state:State={format:3,identity:{...expected},authorityEpoch:id(),lastSeenAt:now,writers:{},capture:null,closed:null,quarantined:false,cancelled:{}};
       await txn.put(KEY,state);return{initialized:true,authorityEpoch:state.authorityEpoch};
@@ -159,8 +162,8 @@ export class CaptureAdmissionStore {
     if(!object(request)||!hex(request.authorityEpoch,32)||!hex(request.writerId,32))throw Error('CAPTURE_RESERVATION_INVALID');const descriptor:unknown=request.kind==='runtime'?{kind:request.kind,priority:request.priority}:{kind:request.kind,operation:request.operation};if(!kind(descriptor)||!exact(request,['authorityEpoch','writerId',...Object.keys(descriptor)]))throw Error('CAPTURE_RESERVATION_INVALID');const epoch=request.authorityEpoch,writerId=request.writerId,expected={...descriptor};
     return this.change((s,now)=>{if(epoch!==s.authorityEpoch)throw Error('CAPTURE_WRITER_EPOCH_MISMATCH');const cancelled=s.cancelled??{},prior=cancelled[writerId];if(prior){checkPrincipal(prior.principal,principal);if(!sameKind(prior,expected))throw Error('CAPTURE_WRITER_REUSE');return{cancelled:true};}const w=s.writers[writerId];if(w)checkPrincipal(w.principal,principal);if(w&&(!sameKind(writerKind(w),expected)||w.phase!=='RESERVED'))return{cancelled:false,code:'NOT_UNSTARTED' as const};if(!w&&s.quarantined)return{cancelled:false,code:'QUARANTINED_UNKNOWN' as const};if(Object.keys(cancelled).length>=MAX_CANCELLED_RESERVATIONS){close(s,'PREEMPTED');s.quarantined=true;return{cancelled:false,code:'CANCELLATION_CAPACITY' as const};}cancelled[writerId]={...expected,...(principal?{principal}:{})};s.cancelled=cancelled;delete s.writers[writerId];if(s.capture?.state==='DRAINING'&&Object.keys(s.writers).length===0){s.capture.state='DRAINED';s.capture.pausedAt=now;}return{cancelled:true};});
   }
-  // Raw trusted fixture capability. Operational signed transport must use the
-  // role-bound method below; legacy/unknown work needs separate reconciliation.
+  // Raw/role-only trusted fixture capabilities. The signed broker requires
+  // writerCommandForPrincipal; legacy/unknown work needs separate reconciliation.
   async exitWriter(ticket:WriterTicket){return this.finishWriter(ticket);}
   async exitWriterForRole(ticket:WriterTicket,role:'runtime'|'external'){
     if(!['runtime','external'].includes(role))throw Error('CAPTURE_WRITER_ROLE_MISMATCH');

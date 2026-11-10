@@ -16,12 +16,14 @@ function valid(v: unknown): asserts v is State {
 const same = (a: Identity, b: Identity) => a.sourceSha === b.sourceSha && a.resourceSetSha256 === b.resourceSetSha256;
 export class CaptureOutageQuarantine {
   constructor(private readonly storage: Pick<DurableObjectStorage, 'transaction'>) {}
-  async initialize(expected: Identity) {
+  // Reopen by default. Explicit create is trusted first enrollment only; never a restart fallback.
+  async initialize(expected: Identity, options: {create?:boolean} = {}) {
+    if(!(exact(options,[])||exact(options,['create'])&&typeof (options as {create?:unknown}).create==='boolean'))throw Error('CAPTURE_OUTAGE_INITIALIZATION_INVALID');const create=Object.hasOwn(options,'create')&&options.create===true;
     identity(expected); expected = { ...expected };
     return this.storage.transaction(async txn => {
       const prior = await txn.get<State>(KEY);
       if (prior !== undefined) { valid(prior); if (!same(prior.identity, expected)) throw Error('CAPTURE_OUTAGE_IDENTITY_MISMATCH'); }
-      else await txn.put(KEY, { format: 1, identity: expected, quarantined: false } satisfies State);
+      else {if(!create)throw Error('CAPTURE_OUTAGE_GUARD_UNINITIALIZED');await txn.put(KEY, { format: 1, identity: expected, quarantined: false } satisfies State);}
       return { initialized: true as const };
     });
   }
