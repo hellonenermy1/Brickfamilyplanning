@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+  "sourceSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 314,
+      "selectedTrackedFiles": 315,
       "explicitManagementClassifications": 84,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 141,
+      "filesWithDynamicImportExpressions": 142,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -425,13 +425,24 @@
       "runtimeGraphChanged": true,
       "freshFullRequalification": true,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json"
+    },
+    {
+      "id": "RECOVERY_SCHEMA_BEHAVIOR_AND_EXCLUDED_STATE",
+      "state": "SOURCE_NATIVE_D1_FULL_HOSTED_QUALIFIED_NOT_LIVE",
+      "nativeCases": 18,
+      "approvedPrimaryTriggers": 2,
+      "unreviewedTriggersViewsOrGeneratedColumnsAccepted": false,
+      "excludedPostflightRequired": true,
+      "sourcePageSqlCallEnvelope": 5,
+      "arbitraryDdlOrDistributedQuiescenceQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json"
     }
   ],
   "remaining": [
     {
       "id": "POPULATED_CONFIG_RELATIONSHIP_PARITY",
       "state": "CURRENT_SCHEMA_NATIVE_SOURCE_AND_PR_CI_VERIFIED_NOT_LIVE",
-      "needed": "Populated native scope verified on current integration base; isolated live-cloud parity/RTO/RPO remains unqualified."
+      "needed": "Native exact33-row/16-table parity remains verified;18 new native schema/excluded-state checks reject hidden mutation/nonce regeneration before success. Actual isolated cloud schema/PRAGMA compatibility, parity and measured RTO/RPO still need proof; no full arbitrary-DDL equivalence or quiescence inferred."
     },
     {
       "id": "COMPLETE_WRITER_HOOKS",
@@ -476,103 +487,103 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42796756443,
-        "jobId": 129763796357,
+        "runId": 42799468359,
+        "jobId": 129772991341,
         "name": "Brick Phase 2 — Isolated Parent Portal Verification",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
-        "normalizedDecodedLogSha256": "286077df7ce314cd5de44197f0af3a8e7f907fc3e42903bd4a09ea8606139ffa",
+        "verifiedCheckoutSha": "dbc0a718b8b5ed43df82500ed0c38ec1a45afeb6",
+        "normalizedDecodedLogSha256": "c506ffe7393021b55422290bd12465d7a9dade9305b7ff87b690bc22a830db22",
         "logNormalization": "Decoded UTF8 with LF endings and one final newline",
         "warningSummary": {
           "nodeDeprecationMarkers": 3,
           "rpcStubDisposalWarnings": 0,
-          "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+          "assessment": "Known native fixture disposal and Node deprecation warnings retained; zero error markers and all steps pass."
         }
       },
       {
-        "runId": 42796756263,
-        "jobId": 129763795839,
+        "runId": 42799467991,
+        "jobId": 129772989090,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "dbc0a718b8b5ed43df82500ed0c38ec1a45afeb6",
+        "normalizedDecodedLogSha256": "f3d1726ab72e58b501d007f7ff57f43d3c895fb1c503729ca444a81b4df98fd0",
+        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+        "warningSummary": {
+          "nodeDeprecationMarkers": 3,
+          "rpcStubDisposalWarnings": 1,
+          "assessment": "Known native fixture disposal and Node deprecation warnings retained; zero error markers and all steps pass."
+        }
+      },
+      {
+        "runId": 42799467947,
+        "jobId": 129772986567,
         "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
-        "normalizedDecodedLogSha256": "878355b33f1215020e7c590935c47c3dbf694bd368e71b3e3f0b449429615d7b",
+        "verifiedCheckoutSha": "dbc0a718b8b5ed43df82500ed0c38ec1a45afeb6",
+        "normalizedDecodedLogSha256": "e0847ae9b9d7a440b456e90ece646c0b84a132d3fb1dc995c9407e8bfc4f1eb4",
         "logNormalization": "Decoded UTF8 with LF endings and one final newline",
         "warningSummary": {
           "nodeDeprecationMarkers": 3,
           "rpcStubDisposalWarnings": 0,
-          "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+          "assessment": "Known native fixture disposal and Node deprecation warnings retained; zero error markers and all steps pass."
         }
       },
       {
-        "runId": 42796756061,
-        "jobId": 129763795035,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
-        "normalizedDecodedLogSha256": "ac622cc499f065afa1996d95c6caf16d98179a991e9d483e762ba6132ea05ecf",
-        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
-        "warningSummary": {
-          "nodeDeprecationMarkers": 3,
-          "rpcStubDisposalWarnings": 2,
-          "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
-        }
-      },
-      {
-        "runId": 42796746363,
-        "jobId": 129763760568,
+        "runId": 42799459304,
+        "jobId": 129772956452,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
-        "normalizedDecodedLogSha256": "9176959feb74b565bf11f204325d2592a667b6f5822e75af15cfbb06ecc9fd10",
+        "verifiedCheckoutSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
+        "normalizedDecodedLogSha256": "2bdce15b57d9fa0909cc9fe9797a60e22d27a35ad85b45961680cd24773039ef",
         "logNormalization": "Decoded UTF8 with LF endings and one final newline",
         "warningSummary": {
           "nodeDeprecationMarkers": 3,
-          "rpcStubDisposalWarnings": 2,
-          "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+          "rpcStubDisposalWarnings": 1,
+          "assessment": "Known native fixture disposal and Node deprecation warnings retained; zero error markers and all steps pass."
         }
       }
     ],
-    "scope": "Urgent root/inherited D1 scope-outage positive-guard fallback,31 focused/3 native scenarios and fresh full runtime qualification; operational installation/custody/cloud acceptance remain open."
+    "scope": "18 native D1 restore/capture schema and excluded-state cases, fresh full source qualification; actual cloud schema/quiescence/custody/recovery acceptance remains open."
   },
-  "lastHostedQualifiedSourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+  "lastMergeQualifiedSourceSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+      "sourceSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+      "sourceSha": "ec631b8860d64415fd5c3b2899292bd6b8c89ba8",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],

@@ -1,6 +1,6 @@
 # Group 1 activation and restart decision packet — NOT READY
 
-Prepared 10 November 2026 (Singapore), source `3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
+Prepared 10 November 2026 (Singapore), source `ec631b8860d64415fd5c3b2899292bd6b8c89ba8`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current source and provider facts
 
@@ -75,6 +75,12 @@ openStagedBackupMonitor({ directory, config }); // create defaults to false
 Supplying `target` on an ordinary reopen may check consistency; it never creates missing state. The backup-run journal also requires explicit first initialization and refuses normal reopen of missing state. Do not use a catch-and-create fallback, remove/truncate a journal, relax modes, change epoch or set `create:true` in recurring startup. If state is lost, stop and preserve available evidence. A wholly removed directory can still be explicitly re-enrolled by a privileged caller; global first-use/anti-rollback proof is not provided by a local API flag.
 
 Uncertain capture/upload/send is not proof work stopped. No time expiry, process exit assumption, ordinary retry or positive backup-selection proof may clear source-writer ownership. Positive selection reconciliation confirms a specific authenticated archive and returns that the prior publisher is not proven stopped. Unknown delivery requires a valid pinned positive receipt or a separately reviewed authoritative reconciliation; do not resend based on absence/timeout. Read-only monitor checks retain their existing CAS/deadline behavior; that is not mutation/delivery-stop proof.
+
+## Recovery schema behavior and excluded-state contract
+
+Before isolated capture/restore, both stores must match the supported table/column inventory and reviewed schema behavior. Primary requires the2 exact SQLite-stored identity-trigger definitions from migration008; diagnostics allows no triggers. Extra views/triggers, missing or altered/misbound approved triggers, and hidden/generated columns (including bookkeeping) refuse. Ordinary reviewed indexes remain supported. Do not bypass by matching only trigger names or silently dropping unknown objects. Actual cloud definitions and table_xinfo behavior remain unqualified until the approved isolated run inspects them.
+
+Both D1 targets preflight before the first restore data batch. Final checks require all excluded transient/auth/control tables empty as well as durable row counts and FK checks. Excluded state introduced during restore refuses success; discard the unqualified/partial targets and use new isolated targets. No cross-store transaction, race-free postcheck, arbitrary full-DDL equivalence or repair-in-place is claimed. Complete writer/credential/operator quiescence remains mandatory. See PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json for native trigger corruption, excluded-nonce recreation and generated-column baseline proofs.
 
 ## Bounded isolated proof sequence for later approval
 
