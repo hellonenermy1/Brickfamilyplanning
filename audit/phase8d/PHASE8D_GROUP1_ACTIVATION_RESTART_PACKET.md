@@ -1,6 +1,6 @@
 # Group 1 activation and restart decision packet — NOT READY
 
-Prepared 10 November 2026 (Singapore), source `c7204b151cc82f468f0a80f82a95b2b2e2de13fa`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
+Prepared 10 November 2026 (Singapore), source `3d4d5acf570fd2f931fb05f8d6584061f10f667a`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current source and provider facts
 
@@ -23,11 +23,17 @@ The approved bucket was observed `allPrivate`, revision2 at `2026-11-10T07:49:30
 
 The B2 app catalog supports key fields `capabilities`, `keyName`, `bucketIds`, `namePrefix`, `validDurationInSeconds`. It states the new secret is available only in its secure browser console, not chat. No key was created. Secure transfer to an explicitly selected private runtime must be resolved before any creation request; do not paste secrets into chat or commit them.
 
-## Required writer-release authority capability
+## Required credential-bound writer lifecycle capability
 
-The signed broker must use the genuine `exitWriterForRole` implementation from the qualified candidate. It derives runtime/external role from the verified HMAC key and checks stored writer kind plus confirmed STARTED phase in the same transaction that deletes ownership and advances drain. Both broker factories refuse authorities lacking this method. Do not alias it to raw `exitWriter`, weaken the phase check or downgrade the factory to regain compatibility. Wire/state format alone does not establish the required implementation identity.
+The signed broker must require the genuine `writerCommandForPrincipal` authority implementation from the qualified candidate. Both broker factories reject an older role-only authority. The broker derives principal from its verified HMAC key table: runtime/external role, key ID and domain-separated SHA-256 fingerprint of the random256-bit key. No ticket, payload field or caller header may select principal. All reservation reuse, start, cancellation/tombstone and exit owner checks occur atomically in the same transaction as the state mutation. Never alias this method to raw or role-only fixture methods or fall back when it is absent.
 
-RESERVED and unclassified legacy rows stay counted. Unknown source ownership requires a separately reviewed authoritative reconciliation; backup-selection proof cannot clear it. Raw `exitWriter` remains only a trusted lower fixture capability and must not be exposed by an operational wrapper. This change does not add same-role key-owner isolation or complete raw/credential/operator coverage. The baseline proof and current checks are in PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json.
+Durable authority state is now format3. Formats1/2 upgrade conservatively without changing epoch, erasing writers/tombstones or assigning an owner to existing records. Old unowned RESERVED/STARTED/legacy rows remain counted and cannot be adopted, started, cancelled or exited by a signed credential. Existing cancellation tombstones remain binding and cannot be claimed by a new principal. No TTL or elapsed time reconciles unknown source work. Older format1/2-only binaries must not run on format3 state; stop and review compatible authority/rollback scope. Restoring older state to erase ownership or downgrading to a raw broker is unsafe.
+
+A replacement key secret with the same ID, a replacement ID with the same secret, or a different key with the same role cannot inherit another credential's outstanding tickets. Retain secure access to the original credential for positively proven completion, or stop for a separately reviewed authoritative reconciliation. This source change does not authorize key creation, rotation or operational migration. The fingerprint is an identity pin, not key custody or a credential.
+
+RPC receivers may use a different runtime credential from a live STARTED parent; the child receives its own credential binding and remains independently counted after the parent exits. This does not authenticate end users or isolate callers sharing one credential. Parent hints remain allowlisted and scoped. Raw fixture methods also refuse credential-owned tracked writers. Untracked urgent capacity overflow is permanently quarantined; an acknowledgement neither clears tracked ownership nor permits capture.
+
+This closes the source per-credential lifecycle gap, including the previously identified same-role ticket release failure. Actual complete installation, raw/binding/operator credential restrictions, guard/TLS/domain/custody and independent review remain open. Native baseline/current evidence is in PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json. No partial production writer fence is authorized.
 
 ## Initialization and recurring restart contract
 

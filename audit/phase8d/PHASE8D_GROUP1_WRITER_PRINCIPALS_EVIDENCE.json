@@ -1,0 +1,309 @@
+{
+  "format": "brick-phase8d-group1-writer-principal-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+  "sourceTreeSha": "795b13722bd14e9d1e6811c045375e3c602173da",
+  "baselineSha": "072dbbe7e272e732196c13349e1c65d27cb0f91f",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "CREDENTIAL_BOUND_WRITER_LIFECYCLE_FALSE_DRAIN_FIXED_NATIVE_SCOPED_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 26,
+  "existingBrokerCases": 45,
+  "existingRoleExitCases": 21,
+  "baselineReproduction": {
+    "brokerSourceSha": "072dbbe7e272e732196c13349e1c65d27cb0f91f",
+    "authoritySourceSha": "072dbbe7e272e732196c13349e1c65d27cb0f91f",
+    "attackerRole": "runtime-writer",
+    "victimRole": "runtime-writer",
+    "distinctKeyIdsAndSecrets": true,
+    "victimTicketDeliberatelyProvided": true,
+    "captureBeforePendingMutation": "DRAINED",
+    "captureAfterActualScopedNativeD1Mutation": "DRAINED",
+    "nativeRowBefore": 0,
+    "nativeRowAfter": 1,
+    "logSha256": "c94be9b7298ca3fbaeed29ad0cf6a0e5def1247b9d28715b3b052ae308ac4b47",
+    "scope": "Exact prior broker and authority; actual scoped writer/D1 adapter/native D1/independent guard; synthetic bootstrap and keys. Not an unauthenticated/deployed incident. Historical reproduction only with explicit --baseline; ordinary CI does not require git history."
+  },
+  "correction": "Mandatory writerCommandForPrincipal derives role/keyId/domain-separated key fingerprint from verified HMAC configuration. Reservation reuse, start, cancellation and tombstones, descendant ownership and exit compare exact owner in the same durable state transaction. Both factories refuse old role-only authority; raw fixture methods refuse owned tracked records. No principal chosen by payload.",
+  "signedWireFormatChanged": false,
+  "durableStateFormat": 3,
+  "legacyFormatsAccepted": [
+    1,
+    2
+  ],
+  "legacyUpgrade": "Same epoch, no writer/tombstone deletion or owner adoption; unowned RESERVED/STARTED/legacy stay counted and signed controls refuse; format3 cannot safely downgrade to old validators.",
+  "credentialOwnerIsolationAdded": true,
+  "isolationUnit": "role + configured key ID + SHA256(BRICK_WRITER_KEY_V1 newline + 256-bit key hex); callers sharing one key remain one principal.",
+  "crossCredentialRpc": "Live STARTED parent may delegate across runtime credentials; child owns separate binding, independently retained after parent exit. Parent identity hint does not reveal parent key.",
+  "untrackedUrgentLimit": "Overflow stays permanently quarantined; untracked acknowledgement does not clear tracked rows, establish stored principal or permit capture.",
+  "verifiedBehavior": [
+    "Actual pending scoped native D1 root remains DRAINING after second same-role credential attempts release, then row0->1 precedes rightful owner release.",
+    "Runtime ordinary/urgent and external probe/publication/schema/deployment refuse foreign reservation reuse/start/cancel/exit; rightful operations succeed and source-changing quarantine remains.",
+    "Owner-bound cancellation tombstones prevent delayed admission and foreign adoption; old format2 unowned records/tombstones cannot be claimed.",
+    "Cross-credential child retains its own ownership after parent release; key secret replacement with same ID and ID replacement with same secret cannot inherit old work.",
+    "Corrupt durable principal role/ID/hash/extra fields or principal attached to old format refuses without reset. Caller-added principal fields refuse.",
+    "Actual transaction rollback, lost rightful exit ACK/absent duplicate and full native restart retain conservative outcomes. Raw/role-only authority cannot erase owned tracked work; old factories cannot bypass new required capability.",
+    "Full signed41+4/deviceDO capture, encrypted journal resume, durable run/selection, source destruction and fresh restore with exact33 rows16 populated relationship/configuration tables and restart remain verified."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "1e4701d4a46e866d162372c06a01cd691f583c7d220ac73b5ca615ec11f92871"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "ebdc3f768ea105a69f2b83301bbb3342c1ccdff0411372dd941f4c69b7fdf932"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "5e695f52a99ed8d756ad4b9839e618df35d7e84688a660d8c61e22466f047b29"
+    },
+    {
+      "path": "scripts/test-phase8d-capture-broker.mjs",
+      "sha256": "a4651bdef2aa8a976f22c4992752d3f33d322194b1e79b2b8837fdd47331e686"
+    },
+    {
+      "path": "scripts/test-phase8d-capture-reservations.mjs",
+      "sha256": "15ebfa4e3bf9359acd51eb2bf4bb6a7be334fd1a14bd36562c43816c5dced522"
+    },
+    {
+      "path": "scripts/test-phase8d-rpc-writers.mjs",
+      "sha256": "5801c7cb05288f7ed9912879344bebd0432080b8c2de713602bcb5b441761a76"
+    },
+    {
+      "path": "scripts/test-phase8d-worker-device-capture.mjs",
+      "sha256": "66939d7f6fdd9986d31c3bd6d293f729b14482e7782f18a7ada2e81c44a204e6"
+    },
+    {
+      "path": "scripts/test-phase8d-writer-exit-roles.mjs",
+      "sha256": "a11fe8f23496f58ebe59b82e7a5e151f2ab05f456a61e1b751a60f18f77ed519"
+    },
+    {
+      "path": "scripts/test-phase8d-writer-principals.mjs",
+      "sha256": "633d4916072dd3d1153f36259116bb41d96bd7205a041b7854504b8bd201d366"
+    },
+    {
+      "path": "scripts/test-phase8d-writer-surface.mjs",
+      "sha256": "383e9688f5a42a90fdf9d5b40ab9441f284f794c54f647706ac77fd2753a5c73"
+    },
+    {
+      "path": "src/capture-broker.ts",
+      "sha256": "54339ca93e5c3cbdc78e90f4cff08bdbbf999d1036285693a235680c5a09f1ee"
+    },
+    {
+      "path": "src/cardfree-capture-admission.ts",
+      "sha256": "f9381723cb89f23d62653af94c1c269a8dfe898655b872e6d89068e0aa96d6b6"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "71cd680b629a8243f73ad4e9a1b22628bbf56846d3b59c4c71cc35c40d837f40",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "37a2b9f66ab4d988c62977e74c9ff196c5c930954679bacebe935e8c81a0cf39"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "b20f062b8ca6e1ff152bfea2cdbd6b6c043be4bbbc118955d26e63878a98a97a"
+      },
+      {
+        "group": 12,
+        "sha256": "8b867d356163461147f267e3ad6da18b4e31a350825d621255b76b05c82f8dda"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "focusedLogSha256": "5499471575e9036766b6bb82f43f38e148911eca6d998a81f3fb67f4f6498574",
+  "qualificationNote": "Initial implementation56b2fe7 local campaign stopped group6 when old raw teardown correctly refused owned state. Three synthetic cleanup fixtures now use their actual signed credentials; final3d4d5ac repeated all26 groups and all4 hosted jobs. Fixture teardown is not operational reconciliation.",
+  "hostedRuns": [
+    {
+      "runId": 42791679773,
+      "jobId": 129746408738,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
+      "normalizedDecodedLogSha256": "a1e90f3e828bb2a17a115ebec3fd90ab174438b65849c906a76aac8cbd1aa05d",
+      "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 2,
+        "assessment": "Known native fixture RPC-stub disposal warnings and Node deprecations retained; all steps succeed, zero error markers."
+      }
+    },
+    {
+      "runId": 42791679699,
+      "jobId": 129746407984,
+      "name": "Brick Phase 2 — Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
+      "normalizedDecodedLogSha256": "92c4af5ea1f0ddc2c86c2f9324eea18521c7a564c33b6eab41c478d0a5c3133a",
+      "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 0,
+        "assessment": "Known native fixture RPC-stub disposal warnings and Node deprecations retained; all steps succeed, zero error markers."
+      }
+    },
+    {
+      "runId": 42791679791,
+      "jobId": 129746408581,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
+      "normalizedDecodedLogSha256": "5d65496f2477e9daa47a70215b99cd5dfc17a7cdc02a1b8673ac7f866860e530",
+      "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 0,
+        "assessment": "Known native fixture RPC-stub disposal warnings and Node deprecations retained; all steps succeed, zero error markers."
+      }
+    },
+    {
+      "runId": 42791670296,
+      "jobId": 129746382038,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+      "normalizedDecodedLogSha256": "7ac1d57f27af0fd11dc997380c9bdf714b13dd517af144d159a1160332542225",
+      "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 2,
+        "assessment": "Known native fixture RPC-stub disposal warnings and Node deprecations retained; all steps succeed, zero error markers."
+      }
+    }
+  ],
+  "verifiedMergeCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "3d4d5acf570fd2f931fb05f8d6584061f10f667a"
+  ],
+  "activationPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "productionControllerInstalls": 0,
+  "providerMetadataRefreshed": false,
+  "providerUploadTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "realAlertsSent": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "remaining": [
+    "Actual complete reviewed bootstrap/writer/operator/credential/raw bypass installation, genuine protected authority dispatch and safe unknown source STARTED/legacy reconciliation/format3-compatible rollback. No partial fencing.",
+    "Actual independent guard/TLS/domain/key custody, four external beta-tool installations and per-credential custody/rotation/traffic qualification. Shared-key instances are not isolated by this source.",
+    "Restricted B2 runtime credential, selected secure host/console transfer, independent record/key/digest/job-config/current delivery-state custody and anti-rollback, installed schedule and real recipient/signer.",
+    "Current scoped Cloudflare/PITR access, approved isolated synthetic D1/diagnostic/deviceDO recovery/interruption/rollback, agreed measured RTO/RPO and real independent acceptance review."
+  ]
+}
