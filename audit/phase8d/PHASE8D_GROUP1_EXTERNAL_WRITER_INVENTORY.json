@@ -1,21 +1,21 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "da4b0271eaf0c7b32dc1c5eaa546f11c699c1037",
+  "basisCommitSha": "55d64d3e862114adbf5c08f26f4232a963bf0464",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "7b941c4808d8636ca43d15521cb7c6925c7eb498beccb6a65c21190ee8768948",
+  "policySha256": "c09a35998e30090746ea91729742a4bb016c613ad7d6ba922cd78c6c13b5df8d",
   "summary": {
-    "selectedFiles": 304,
-    "filesWithManagementSignals": 72,
-    "explicitClassifications": 77,
+    "selectedFiles": 305,
+    "filesWithManagementSignals": 73,
+    "explicitClassifications": 78,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 135
+    "unresolvedDynamicImports": 136
   },
-  "sourceSetSha256": "9f331e7a63f2123dc862d8264eb090b9bfed616abcbdc4e7c274551b5c8a9545",
+  "sourceSetSha256": "4483e9e427820db100910344c19f763cc9f5abcfe3bd5364436571e1c6275419",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -155,6 +155,7 @@
         "scripts/test-phase8d-full-store-recovery.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
+        "scripts/test-phase8d-provisioner-ownership.mjs",
         "scripts/test-phase8d-route-live.mjs",
         "scripts/test-phase8d-watchdog.mjs",
         "scripts/test-phase8d-workerd-integration.mjs"
@@ -793,6 +794,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-protected-backup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-provisioner-ownership.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2576,6 +2582,26 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "to": "scripts/beta-compat-columns.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "to": "scripts/ensure-beta-d1-columns.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "to": "scripts/setup-beta-d1.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "to": "scripts/staged-external-writer.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-quarantine-transport.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3134,8 +3160,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "920678c94d068bc024676b4c05f5b602d142b56395c5fca8b04a76ca29ff8ce0",
-      "gitBlobSha": "e25f3b6628bc285bc8c29dbd0e02f540e28ae13c",
+      "sha256": "ff64b9d51b495b3d9b072c77335839039413f32207c1c0928d6a0504e4d15318",
+      "gitBlobSha": "565fd006279cb82096357e80353b50bbe2595dd2",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3196,6 +3222,7 @@
         "scripts/test-phase8d-private-archive-files.mjs",
         "scripts/test-phase8d-process-completion.mjs",
         "scripts/test-phase8d-protected-backup.mjs",
+        "scripts/test-phase8d-provisioner-ownership.mjs",
         "scripts/test-phase8d-quarantine-contract.mjs",
         "scripts/test-phase8d-quarantine-transport.mjs",
         "scripts/test-phase8d-refinement-corruption.mjs",
@@ -5351,8 +5378,8 @@
     },
     {
       "path": "scripts/setup-beta-d1.mjs",
-      "sha256": "cbd484848518ff6169eee065ba693963060625ca4031c3583cfb82a48e0a777f",
-      "gitBlobSha": "193339ffba1f4753ec55c65ae557f0c6f56d6c05",
+      "sha256": "27cf37b13cebd8baeb30fde44f452cff3b979a771036c39a45d5a54c32420a50",
+      "gitBlobSha": "7ab004f4cab354e9f724f1d2da5124ce1477b5ba",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
@@ -5377,31 +5404,31 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 111,
+          "line": 114,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 142,
+          "line": 145,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 142,
+          "line": 145,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 193,
+          "line": 196,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 193,
+          "line": 196,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
-          "line": 203,
+          "line": 206,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 220,
+          "line": 224,
           "kind": "WRANGLER_LITERAL"
         }
       ],
@@ -5723,8 +5750,8 @@
     },
     {
       "path": "scripts/staged-external-writer.mjs",
-      "sha256": "70a72c722e10996c61a10f0b493dc484c800baf55fc8abef07651eec48d82711",
-      "gitBlobSha": "87c05c585868966607706c0a207b200ea3c0befc",
+      "sha256": "cb2a2b8732afcbd61faff5316543b77be6407b348cb5240f00e51e91fdfdd6a5",
+      "gitBlobSha": "cde26859ab0c15d5b00315a07a055a484b1bb5e5",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Inactive external operation ownership adapter; trusted controller injection only in fixtures, no cloud transport or production installer.",
       "signals": [],
@@ -9012,6 +9039,64 @@
       ],
       "referencedScriptCandidates": [
         "scripts/phase8d-protected-backup.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "sha256": "9f96e0375e5cc16972189aa56817a23e0a064edc3fa1d0784ed42fe8e174e76a",
+      "gitBlobSha": "524f50a4bf7af4d0bc974d6a26423896f25504f7",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual schema/provisioner modules and real compatibility child use synthetic provider/CLI capabilities, native SQLite SQL and signed native authority. No real provider/credential or production controller; source remains indexed, not excluded by test name.",
+      "signals": [
+        {
+          "line": 13,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 13,
+          "kind": "WRANGLER_LITERAL"
+        },
+        {
+          "line": 24,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 26,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 28,
+          "kind": "WRANGLER_LITERAL"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [
+        {
+          "line": 23
+        }
+      ],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:events",
+        "node:fs",
+        "node:module",
+        "node:os",
+        "node:path",
+        "node:sqlite",
+        "node:stream",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/beta-compat-columns.mjs",
+        "scripts/ensure-beta-d1-columns.mjs",
+        "scripts/setup-beta-d1.mjs",
+        "scripts/staged-external-writer.mjs"
       ],
       "npmScriptReferences": []
     },

@@ -81,7 +81,7 @@ async function selectAccount() {
 }
 
 const accountId = await selectAccount();
-await runStagedExternalWriter('deployment',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:null,workerName:WORKER_NAME,workerHost:null},async()=>{
+await runStagedExternalWriter('deployment',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:null,workerName:WORKER_NAME,workerHost:null},async(targets)=>{
 if(!devAccessToken){
  let names=[];
  try{names=await cf(`/accounts/${accountId}/workers/scripts/${WORKER_NAME}/secrets`);}catch(e){if(!String(e.message).includes('Cloudflare API 404 '))throw e;}
@@ -97,6 +97,9 @@ if(!devAccessToken){
 async function ensureD1(name=D1_NAME) {
   const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
   let db = databases.find(x => x.name === name);
+  // A staged, source-pinned deployment may reuse only its declared databases.
+  // Creating/replacing one changes that resource identity and needs a new reviewed pin.
+  targets.database(db?.uuid);
   if (!db) {
     db = await cf(`/accounts/${accountId}/d1/database`, {
       method: 'POST',
@@ -204,6 +207,7 @@ const deployOutput = await run(npx, ['wrangler', 'deploy', '--strict', '--config
 const hostMatch = String(deployOutput).match(/https:\/\/([a-zA-Z0-9.-]+\.workers\.dev)/);
 if (!hostMatch) throw new Error('Development worker hostname was not detected after deploy.');
 const workerHost = hostMatch[1];
+targets.workerHost(workerHost);
 
 // Provision the hash as a private Worker secret, never as a public Wrangler var.
 // If secret provisioning fails, the new login route fails closed.

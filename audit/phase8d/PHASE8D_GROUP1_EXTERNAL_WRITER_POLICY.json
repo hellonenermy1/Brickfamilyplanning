@@ -258,6 +258,10 @@
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual disposable local child and inherited-pipe descendants with synthetic staged writer ownership; no management/network/provider calls or complete process-tree qualification."
     },
+    "scripts/test-phase8d-provisioner-ownership.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual schema/provisioner modules and real compatibility child use synthetic provider/CLI capabilities, native SQLite SQL and signed native authority. No real provider/credential or production controller; source remains indexed, not excluded by test name."
+    },
     "scripts/test-phase8d-public-secret-exposure.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."

@@ -16,7 +16,7 @@ export function installStagedExternalWriterController(pin,controller){
  installed=Object.freeze({pin:Object.freeze({...pin,databaseIds:Object.freeze([...pin.databaseIds])}),enter:controller.enter.bind(controller),exit:controller.exit.bind(controller),notice:controller.notice.bind(controller),timeoutMs,...(controller.start?{start:controller.start.bind(controller),cancel:controller.cancel.bind(controller)}:{})});
 }
 export async function runStagedExternalWriter(operation,scope,work){
- const c=installed;if(!c)return work();
+ const c=installed;if(!c)return work(Object.freeze({database(){},workerHost(){}}));
  const change=operation==='schema'||operation==='deployment';
  if(!operations.has(operation)||!scope||Object.keys(scope).sort().join(',')!=='accountId,databaseId,sourceSha,workerHost,workerName'||scope.sourceSha!==c.pin.sourceSha||scope.accountId!==c.pin.accountId||scope.workerName!==c.pin.workerName||!(scope.databaseId===null&&operation==='deployment'||c.pin.databaseIds.includes(scope.databaseId))||!(scope.workerHost===null&&change||scope.workerHost===c.pin.workerHost))throw Error('EXTERNAL_WRITER_SCOPE_MISMATCH');
  scope={...scope};
@@ -33,7 +33,11 @@ export async function runStagedExternalWriter(operation,scope,work){
  if(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||change&&admission.quarantined!==true||(admission.requiresStart===true)!==Boolean(c.start)){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)await cancelUnstarted();throw Error('EXTERNAL_WRITER_ADMISSION_UNCERTAIN');}
  const ticket={...admission.ticket};
  if(c.start){try{const result=await bounded(Promise.resolve().then(()=>c.start({...ticket},operation)),c.timeoutMs);if(result?.started!==true)throw Error('start unconfirmed');}catch{report(c,'START_UNCERTAIN',operation);await cancelUnstarted();throw Error('EXTERNAL_WRITER_START_UNCERTAIN');}}
- let value;try{value=await work();}catch(error){
+ // The deployment grant has databaseId=null because it spans both stores.
+ // Its discovered final targets must still belong to the pinned resource set.
+ // These checks never provision/rebind resources or infer safety from a name.
+ const targets=Object.freeze({database(id){if(!c.pin.databaseIds.includes(id))throw Error('EXTERNAL_WRITER_TARGET_MISMATCH');},workerHost(value){if(value!==c.pin.workerHost)throw Error('EXTERNAL_WRITER_TARGET_MISMATCH');}});
+ let value;try{value=await work(targets);}catch(error){
   // A rejected HTTP/process result does not prove remote side effects stopped.
   // Retain ownership for explicit reconciliation; never replay or expire it.
   report(c,'WORK_OUTCOME_UNCERTAIN',operation);throw error;
