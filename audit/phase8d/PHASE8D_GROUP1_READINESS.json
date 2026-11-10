@@ -439,16 +439,21 @@
     },
     {
       "id": "CURRENT_D1_BETA_METADATA_READ_PREREQUISITE",
-      "state": "SOURCE_SYNTHETIC_CLI_FULL_HOSTED_QUALIFIED_LIVE_NOT_DISPATCHED",
+      "state": "LIVE_WORKERS_METADATA_PARTIAL_PRIMARY_D1_IDENTITY_READ_DENIED",
       "focusedCases": 44,
       "workflowLoaderCases": 2,
-      "liveDispatch": "BLOCKED_CONNECTOR_NO_DISPATCH_BROWSER_SIGNED_OUT",
-      "currentAuditSecretAvailability": "UNKNOWN",
+      "liveDispatch": "EXECUTED_RUN_42816014091",
+      "currentAuditSecretAvailability": "PRESENT_WORKERS_READ_SUCCEEDED_D1_IDENTITY_ACCESS_DENIED",
       "historicalResourcePinsRecovered": true,
       "doNamespacePinsIndependentlyReviewed": false,
       "nullNamespaceModeQualifies": false,
       "operationalRecoveryProven": false,
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json"
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
+      "liveGetRequests": 5,
+      "bookmarkRequests": 0,
+      "metadataReadCompleted": false,
+      "pinnedMetadataChecksPassed": false,
+      "liveEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_BETA_READ_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -489,12 +494,12 @@
     },
     {
       "id": "CURRENT_PITR",
-      "state": "READER_SOURCE_QUALIFIED_LIVE_DISPATCH_BLOCKED",
-      "needed": "Current beta GET-only reader ready. Connector lacks dispatch; browser signed out. Current dedicated secret availability UNKNOWN; historical Workers reads succeeded. Recover historical pins from verified artifact; independently review DO pins. Live bookmarks/retention/recovery remain unqualified; do not retry legacy R2/Access paths or substitute deployment token."
+      "state": "PRIMARY_D1_IDENTITY_READ_ACCESS_DENIED_NO_BOOKMARKS_REQUESTED",
+      "needed": "Live audit run42816014091 confirms Workers version/bindings/host reads; primary D1 identity GET denied. Administrator must review dedicated audit token D1 Read/account coverage; exact policy cause unknown. Explicit authorization and secure entry needed for changes. No unchanged retry/deployment-token fallback. Independent DO pins/current bookmarks/retention/isolated recovery remain unqualified."
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
-      "state": "NOT_RUN_ACCESS_BLOCKED",
+      "state": "NOT_RUN_D1_ACCESS_AND_ISOLATED_OPERATIONAL_AUTHORITY_OPEN",
       "needed": "Explicit isolated target parity, interruption, rollback and measured RTO/RPO."
     }
   ],
@@ -605,7 +610,7 @@
     "state": "AT_RISK",
     "reasons": [
       "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
-      "Current beta metadata/PITR reader source-qualified; live dispatch blocked by connector capability/browser sign-in. Dedicated read secret availability unknown; namespace pins not independently reviewed.",
+      "GitHub login/launcher registration/dispatch resolved. Current Workers metadata read succeeded; primary D1 identity GET denied before any bookmark. Dedicated audit D1 Read/account coverage needs administrator review and separate authorization for correction.",
       "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete."
     ],
     "nextPreparedProviderAction": {
@@ -616,5 +621,7 @@
     "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery."
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
-  "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md"
+  "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
+  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_BETA_READ_EVIDENCE.json",
+  "liveMetadataExecutionSourceSha": "917f63b09c8ea09459b9926cf2d4466ec0013771"
 }

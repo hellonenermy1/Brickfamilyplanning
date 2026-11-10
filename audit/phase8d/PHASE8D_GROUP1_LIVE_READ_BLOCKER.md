@@ -1,4 +1,6 @@
-# Group1 live read: GitHub sign-in approval required
+# Group1 live read — current primary D1 access blocker
+
+Current result: PR61 launcher registration merged ascb380fe821b16cf5304843af2ce713d21f575788. GitHub login and actual manual dispatch verified. See [live current-beta result](PHASE8D_GROUP1_LIVE_BETA_READ.md):4 Workers reads passed, primary D1 identity denied; no bookmarks requested. Next is dedicated audit D1 Read/account coverage review, requiring explicit authorization for any correction. All prior sign-in/registration approval statuses below are historical and superseded. PR32 remains draft/unmerged; no cloud deployment.
 
 ## Current status: login verified; default-branch registration needs merge approval
 
