@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+  "sourceSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,8 +55,8 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 307,
-      "explicitManagementClassifications": 80,
+      "selectedTrackedFiles": 309,
+      "explicitManagementClassifications": 82,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
@@ -363,6 +363,16 @@
       "callerDigestMandatory": true,
       "independentCustodyQualified": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json"
+    },
+    {
+      "id": "DURABLE_ONE_SHOT_BACKUP_LIFECYCLE",
+      "state": "SOURCE_NATIVE_SQLITE_FRESH_PROCESS_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 47,
+      "scheduleInstalled": false,
+      "startedPhaseExpiry": false,
+      "automaticRestartReplay": false,
+      "positiveReconciliationProvesPriorAttemptStopped": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BACKUP_RUN_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -398,8 +408,8 @@
     },
     {
       "id": "SCHEDULE_AND_MONITORING",
-      "state": "DURABLE_MONITOR_AND_POSITIVE_RECEIPT_RECONCILIATION_NATIVE_CI_VERIFIED_REAL_SCHEDULE_SIGNER_ALERTS_UNQUALIFIED",
-      "needed": "One-shot SQLite monitor and pinned Ed25519 positive receipt reconciliation are staged. Actual capture/monitor scheduler/service, independent destination/key/context custody, real signer/pin provenance/recipient delivery, retention/overflow/negative-outcome operator workflows and availability remain unqualified; no partial fence activation."
+      "state": "DURABLE_ONE_SHOT_LIFECYCLE_AND_MONITOR_NATIVE_HOSTED_QUALIFIED_ACTUAL_SCHEDULE_ALERTS_OPEN",
+      "needed": "Explicit capture/publication/selection lifecycle now durably owns phases and refuses replay after uncertainty/restart; positive local selection reconciliation does not prove old publisher stopped. Existing monitor remains separate and checks current archive health. Actual capture/monitor scheduler/service, independent record/key/digest/job-config custody, signer provenance/real recipient delivery and operational availability remain unqualified; no partial fence activation."
     },
     {
       "id": "CURRENT_PITR",
@@ -414,79 +424,79 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BACKUP_RUN_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42744244030,
-        "jobId": 129592428512,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
-        "logSha256": "7e53ba741efc125b84d11fb75c01e105fabfe9cc6e011e98c2a7f7d2b5c177b4"
-      },
-      {
-        "runId": 42744244170,
-        "jobId": 129592428510,
-        "name": "Brick Beta Map and Portal Regression (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 10,
-        "totalSteps": 10,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
-        "logSha256": "1bbbe4630562da2ba5f8103d94da0bf5d3409593df2014c95e964acafa7d58a8"
-      },
-      {
-        "runId": 42744244094,
-        "jobId": 129592428441,
+        "runId": 42774914208,
+        "jobId": 129691045265,
         "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
-        "logSha256": "20a4b0605e55c0377f66cf232f6b514639de7a3a969b4492a33c5d586f99f34b"
+        "verifiedCheckoutSha": "59254ffcd220ad32c9101635af84c3d252e1c72c",
+        "logSha256": "55c190c75530f3a5fb19b0cb504aded3dae9304f10b01a360d8069f2b58f2faa"
       },
       {
-        "runId": 42744234747,
-        "jobId": 129592396978,
+        "runId": 42774914098,
+        "jobId": 129691041938,
+        "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 10,
+        "totalSteps": 10,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "59254ffcd220ad32c9101635af84c3d252e1c72c",
+        "logSha256": "3fcadb9264f993f4ebb6dd6b4b434df09476a9f5e580f06e8686ab338756826d"
+      },
+      {
+        "runId": 42774914246,
+        "jobId": 129691045483,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "59254ffcd220ad32c9101635af84c3d252e1c72c",
+        "logSha256": "6c391020ed576bbb312daa944e8ef02de095b2b0a5a04065f8d29ca7d4db2618"
+      },
+      {
+        "runId": 42774908014,
+        "jobId": 129691027110,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
-        "logSha256": "48e4106b8339a82004cde3ee0f10b561eb621f5c5349708c4aba603e96f53314"
+        "verifiedCheckoutSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
+        "logSha256": "6b3c7188ea3077bf2d4012d357de2f9c213a96ec6188acfead2197da11f0cc85"
       }
     ],
-    "scope": "Durable local authenticated provider selection/context with separate caller key/digest, fresh-process and full native encrypted recovery. No independent custody/domain, installation/schedule/PITR/cloud acceptance."
+    "scope": "Durable one-shot capture/publication/selection phases, positive local selection reconciliation and full native encrypted recovery. No installed schedule/custody/failure-domain/source-writer reset/PITR/cloud acceptance."
   },
-  "lastHostedQualifiedSourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BACKUP_RUN_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BACKUP_RUN_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+  "lastMergeQualifiedSourceSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+      "sourceSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+      "sourceSha": "99494db53883d2ad1a0f52b62a4ca7d33bb8973f",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
