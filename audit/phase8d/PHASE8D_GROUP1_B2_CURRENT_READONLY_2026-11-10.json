@@ -1,0 +1,50 @@
+{
+  "format": "brick-phase8d-group1-b2-current-readonly-v1",
+  "observationDate": "2026-11-10",
+  "method": "Connected B2 Cloud Vault app: connection_status, exact-name list_buckets, list_keys, list_versions(maxFileCount=100). Read-only; no credential contents, encryption key, file bodies or raw account/bucket/file IDs included.",
+  "approvedBucketName": "brick-recovery-jayvian-20261107",
+  "bucket": {
+    "matchCount": 1,
+    "type": "allPrivate",
+    "revision": 2,
+    "serverSideEncryption": "SSE-B2 AES256",
+    "fileLockEnabled": false,
+    "defaultRetentionMode": null,
+    "lifecycleRuleCount": 0
+  },
+  "connectedCredential": {
+    "connected": true,
+    "accountWideBucketScope": true,
+    "prefixRestricted": false,
+    "canWriteFiles": true,
+    "canDeleteFiles": true,
+    "canManageKeys": true,
+    "qualifiedAsRestrictedRuntimeCredential": false
+  },
+  "keyListing": {
+    "returnedKeyCount": 0,
+    "hasNextPage": false,
+    "qualification": "No separate restricted key shown by the connector at observation time; not proof that no other credential or independent key custody exists."
+  },
+  "exactVersionListing": {
+    "returnedVersions": 14,
+    "uploadVersions": 14,
+    "totalContentBytes": 6521676,
+    "nextFileNamePresent": false,
+    "nextFileIdPresent": false,
+    "allListedUnder": "drills/",
+    "exhaustiveForCurrentListing": true
+  },
+  "established": "Existing private synthetic backup drill objects remain listed in approved B2 destination; no new transfer or restore performed.",
+  "limitations": [
+    "Server-side encryption is not independent encryption-key custody.",
+    "Bucket privacy does not prove external runner installation, restricted runtime credentials or an actual schedule.",
+    "Current version listing is an inventory observation, not checksum revalidation, successful restore or production backup protection.",
+    "No Cloudflare isolated recovery, RTO/RPO or independent reviewer acceptance performed."
+  ],
+  "group1Status": "NOT_READY",
+  "phase8dStatus": "NOT_PASS",
+  "applicationDeployed": false,
+  "cloudflareWritesPerformed": false,
+  "b2WritesPerformed": false
+}
