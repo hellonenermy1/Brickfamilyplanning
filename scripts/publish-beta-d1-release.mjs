@@ -6,7 +6,17 @@ if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9-]{36}$/i.test(state.
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||state.workerName!=='brick-family-beta'||state.storageMode!=='d1-chunked-no-r2'||state.sourceGitSha!==process.env.GITHUB_SHA||!/^brick-family-beta\.[a-z0-9-]+\.workers\.dev$/.test(state.workerHost))throw Error('Isolated beta provenance required');
 await runStagedExternalWriter('publication',{sourceSha:state.sourceGitSha,accountId:state.accountId,databaseId:state.d1Id,workerName:'brick-family-beta',workerHost:state.workerHost},async()=>{
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now(),origin='https://'+state.workerHost;
-async function query(sql,params){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});const b=await r.json();if(!r.ok||b.success!==true)throw Error('Scoped D1 publish-session request failed: HTTP '+r.status);return b.result;}
+async function query(sql,params){
+ const url='https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query';
+ if(typeof process.env.CLOUDFLARE_API_TOKEN!=='string'||!process.env.CLOUDFLARE_API_TOKEN.length)throw Error('Dedicated D1 management credential required');
+ const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});
+ if(r?.status!==200||!r.ok||r.redirected||r.url&&r.url!==url)throw Error('Scoped D1 session metadata unavailable');
+ const b=await r.json().catch(()=>null);
+ if(!b||b.success!==true||!Array.isArray(b.result))throw Error('Scoped D1 session response invalid');
+ // SQL errors can be embedded inside otherwise successful API envelopes.
+ if(b.result.some(x=>!x||x.success===false||!Array.isArray(x.results)))throw Error('Scoped D1 session statement unqualified');
+ return b.result;
+}
 await query('INSERT INTO dev_parent_sessions(session_hash,created_at,expires_at,revoked_at) VALUES(?1,?2,?3,NULL)',[hash,now,now+300000]);
 try{
  const bytes=await fs.readFile('beta-artifact/Brick.apk');
