@@ -1,5 +1,16 @@
 # Group 1 activation and restart decision packet — NOT READY
 
+## Current continuation decision — 10 November 2026
+
+**Namespace identity prerequisite: independently supplied pins validated by digest.** Both user-supplied existing `brick-family-beta` namespace identities for `BRICK_DEVICE` and `BETA_SCHEDULER` matched the pre-existing active-binding SHA-256 values, without writing raw namespace IDs into the repository. Offline CI on `3a91c3c2` passed the independent-hash evidence suite16/16 and the existing synthetic pinned metadata suite44/44. Full source-only Group1 audit run42831143040 and accompanying portal CI were green. The earlier live metadata job's `DO_NAMESPACE_PINS_REQUIRED` exit2 remains a historical failure because that run used **null** expected IDs; no new pinned Cloudflare workflow dispatch has completed. A new exact source/binding/account/D1/host/historical-target GET-only run is the next live checkpoint. This step is not an isolated cloud restore.
+
+**Independent destination read-only follow-up:** the approved B2 bucket still reports `allPrivate`,14 retained synthetic object versions totaling6,521,676 bytes and no configured default retention/File Lock. The connected key remains broad/account-wide and key listing returned no separate restricted key. This cannot be installed as the production archive runner key. Evidence in `PHASE8D_GROUP1_B2_CURRENT_READONLY_2026-11-10.json`. No new archive upload/download, deletion, bucket/key/retention update, cloud mutation or application deployment.
+
+**Next operational decision sequence:** (1) complete exact pinned private-plan metadata GET; (2) review one *complete* Worker+DO+D1+external writer/urgent outage fence scope and rollback, not a partial runtime install; (3) establish separate least-privilege B2 key plus independently recoverable archive key/selection/record/alert journal custody without placing secrets in GitHub or chat; (4) agree exact synthetic-only Cloudflare restore resources, measured RTO/RPO, intervention and rollback criteria, and independent accountable reviewer; (5) install and test scheduling, recipient and current-age health only after proper approval. No element in this list is authorized for production activation by this document.
+
+**Status unchanged:** Group1 `IN_PROGRESS_NOT_READY`; P8D-002 `P1_OPEN`; Phase8D `NOT_PASS`; PR32 draft/unmerged. Historical sections below remain valid as dated evidence, but their *request for independently supplied namespace IDs* has already been fulfilled at the hash comparison stage.
+
+
 Prepared 10 November 2026 (Singapore), source `311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current beta metadata prerequisite
