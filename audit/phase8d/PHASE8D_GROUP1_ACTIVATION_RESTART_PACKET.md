@@ -1,5 +1,9 @@
 # Group 1 activation and restart decision packet — NOT READY
 
+## External operator source checkpoint
+
+An explicit pinned launcher now supplies a source-level installation path for four actual beta operator selectors in fresh Node processes.27 native cases and the complete local source campaign pass. Build/config/source/epoch/scope/private-file checks, shared controller import after checkout validation, all-four held-capture refusal and uncertain cleanup/release are qualified with a synthetic provider/HTTPS bridge. This is not a selected immutable secure runtime, real key/config/TLS installation or account-wide bypass restriction. Existing workflows still invoke direct tools, and all4 remain classified unfenced. See PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER.md/EVIDENCE.json.
+
 ## Superseding metadata checkpoint — 10 November 2026, 23:25 SGT
 
 Exact-pin11-GET live metadata run42844169184/source176e65f5 completed SUCCESS, including both independently supplied namespaces and current/historical bookmarks for both D1s. Metadata artifact13776663998 hash and complete checkout/logs verified; companion native job succeeded33/33. An earlier successful pinned run42826439260 was also recovered and verified. Older requests below for a new pinned run are historical and fulfilled; null-pin failures remain failed. See PHASE8D_GROUP1_PINNED_LIVE_METADATA.md/EVIDENCE.json. Next operational gate is complete trusted writer/bootstrap/raw/operator/credential installation and independent custody, followed by the authorized isolated cloud restoration; metadata does not establish these.

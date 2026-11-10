@@ -30,3 +30,6 @@ beta-artifact/
 .brick-p8d-workerd-*/
 
 beta-parent-login.encrypted.json
+
+# Explicit local operator bundle; configuration and credentials stay outside Git.
+scripts/.brick-operator-launcher.mjs

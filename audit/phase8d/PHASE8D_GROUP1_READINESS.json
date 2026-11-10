@@ -454,6 +454,20 @@
       "metadataReadCompleted": true,
       "pinnedMetadataChecksPassed": true,
       "liveEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json"
+    },
+    {
+      "id": "PINNED_EXTERNAL_OPERATOR_CLI_ENTRY",
+      "state": "SOURCE_NATIVE_LOCAL_QUALIFIED_NOT_PRODUCTION_INSTALLED",
+      "focusedNativeCases": 27,
+      "inventoryCases": 23,
+      "actualFreshNodeCliProcesses": true,
+      "knownToolSelectors": 4,
+      "actualPublicationAndVerificationSuccess": true,
+      "allFourHeldCaptureRefusals": true,
+      "defaultWorkflowActivated": false,
+      "completeRawCredentialCoverage": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -465,7 +479,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Credential-bound lifecycle and4-store reopen-only startup source-qualified with native pending D1 proof. Actual complete bootstrap/writer/operator/raw/binding/credential installation, external enrollment/epoch/anti-rollback custody,4 beta-tool installs and safe STARTED/legacy/format3-compatible rollback remain. No catch-and-create, stale-state reset or partial fence."
+      "needed": "Pinned opt-in external CLI entry now connects four real tools to signed ownership in fresh processes (27 native checks); direct invocation remains unfenced. Actual complete Worker/DO/D1/bootstrap/raw/binding/deferred/process/credential restrictions, protected immutable operator host/artifact/config/key, source transition/rollback and unknown STARTED/legacy reconciliation remain open. No partial capture activation."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",

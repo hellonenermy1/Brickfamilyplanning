@@ -349,6 +349,18 @@
     ".github/workflows/phase8d-cardfree-ci.yml": {
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback."
+    },
+    "scripts/phase8d-operator-entry.mjs": {
+      "classification": "STAGED_OPERATOR_LAUNCHER",
+      "reason": "Explicit pinned local launcher may configure signed ownership for four actual beta tools. Source/native proof only; no installed host, immutable artifact, restricted credentials, bypass prevention or production activation."
+    },
+    "scripts/build-phase8d-operator-launcher.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit local clean-checkout bundle creation only; no operator import/execution, key file read, provider request or production activation."
+    },
+    "scripts/test-phase8d-operator-launcher.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Fresh local Node operator modules and signed native authority with an explicit synthetic provider/HTTPS bridge; test name alone does not exclude effects, credentials, source or subprocess review."
     }
   }
 }

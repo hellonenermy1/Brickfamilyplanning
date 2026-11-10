@@ -1,5 +1,6 @@
-// No production installer, env flag or transport. Only trusted in-process test
-// bootstraps currently configure this controller. Default CLI behaviour is inert.
+// No default production installation or env activation flag. An explicit pinned
+// CLI launcher or test bootstrap can configure this shared module instance.
+// Direct tool execution remains inert and needs operational bypass restrictions.
 import {randomBytes} from 'node:crypto';
 let installed=null;
 const hex=(x,n)=>typeof x==='string'&&new RegExp('^[a-f0-9]{'+n+'}$').test(x);

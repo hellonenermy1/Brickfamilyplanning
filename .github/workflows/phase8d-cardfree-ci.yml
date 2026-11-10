@@ -69,6 +69,7 @@ jobs:
           node scripts/test-phase8d-process-completion.mjs
           node scripts/test-phase8d-external-writer.mjs
           node scripts/test-phase8d-provisioner-ownership.mjs
+          node scripts/test-phase8d-operator-launcher.mjs
           node scripts/test-phase8d-capture-broker.mjs
           node scripts/test-phase8d-writer-exit-roles.mjs
           node scripts/test-phase8d-writer-principals.mjs
