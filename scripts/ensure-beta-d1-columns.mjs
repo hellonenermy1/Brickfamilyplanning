@@ -8,18 +8,28 @@ const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
 
 async function cf(path, init = {}) {
+  const method = init.method ?? 'GET';
+  // Exact endpoint, bounded read: do not follow authorization-bearing redirects
+  // or permit indefinite remote waits while a writer reservation is held.
   const response = await fetch(API + path, {
     ...init,
+    redirect: 'error',
+    signal: AbortSignal.timeout(20000),
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
       ...(init.headers || {})
     }
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || body.success === false) {
-    throw new Error(`Cloudflare API ${response.status} for ${path}: ${JSON.stringify(body.errors || body)}`);
-  }
+  if (response.redirected || response.url && response.url !== API + path)
+    throw new Error('Cloudflare API response target changed');
+  if (!response.ok) throw new Error(`Cloudflare API ${response.status} for ${path}`);
+  // Cloudflare may return 201 when a resource is created, never for a GET.
+  if (response.status !== 200 && !(method === 'POST' && response.status === 201))
+    throw new Error('Cloudflare API unexpected success status');
+  const body = await response.json().catch(() => null);
+  if (!body || body.success !== true || !Object.hasOwn(body, 'result'))
+    throw new Error('Cloudflare API invalid response envelope');
   return body.result;
 }
 
