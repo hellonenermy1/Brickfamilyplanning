@@ -41,11 +41,15 @@ export async function attestCardfreePitr({ token, plan, request = fetch, now = D
         };
         const task = async () => {
             check(); result.requestsMade++;
-            const response = await request(API + '/accounts/' + plan.accountId + '/d1/database/' + id + suffix, { method: 'GET', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, redirect: 'error', signal: controller.signal });
+            const exactUrl = API + '/accounts/' + plan.accountId + '/d1/database/' + id + suffix;
+            const response = await request(exactUrl, { method: 'GET', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, redirect: 'error', signal: controller.signal });
             body = response?.body;
             check();
             if (response?.status === 401 || response?.status === 403) throw Error('READ_ACCESS_DENIED');
-            if (!response?.ok || !body) throw Error('METADATA_UNAVAILABLE');
+            // A completed, exact-target 200 response is required. A 201/206 or a
+            // redirected response is not trustworthy PITR identity/bookmark proof.
+            if (response?.status !== 200 || !response?.ok || response.redirected || response.url && response.url !== exactUrl || !body)
+                throw Error('METADATA_UNAVAILABLE');
             reader = body.getReader();
             const parts = []; let size = 0;
             for (;;) {
