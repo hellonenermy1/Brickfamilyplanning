@@ -14,7 +14,17 @@ for(const route of ['/parent','/parent/change-password','/parent/beta/download/a
  checks.push({route,status:r.status,forgedHeaderDenied:true});
 }
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now();
-async function query(sql,params){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});const b=await r.json();if(!r.ok||b.success!==true)throw Error('D1 smoke session request failed');return b.result;}
+async function query(sql,params){
+ const url='https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query';
+ if(typeof process.env.CLOUDFLARE_API_TOKEN!=='string'||!process.env.CLOUDFLARE_API_TOKEN.length)throw Error('Dedicated D1 management credential required');
+ const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});
+ if(r?.status!==200||!r.ok||r.redirected||r.url&&r.url!==url)throw Error('Scoped D1 session metadata unavailable');
+ const b=await r.json().catch(()=>null);
+ if(!b||b.success!==true||!Array.isArray(b.result))throw Error('Scoped D1 session response invalid');
+ // SQL errors can be embedded inside otherwise successful API envelopes.
+ if(b.result.some(x=>!x||x.success===false||!Array.isArray(x.results)))throw Error('Scoped D1 session statement unqualified');
+ return b.result;
+}
 const schema=await query("SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='dev_parent_credentials' LIMIT 1",[]);
 if(schema?.[0]?.results?.[0]?.ok!==1)throw Error('Additive parent credential migration not present in live beta D1');
 checks.push({route:'d1_parent_credential_schema',status:'PASS'});
