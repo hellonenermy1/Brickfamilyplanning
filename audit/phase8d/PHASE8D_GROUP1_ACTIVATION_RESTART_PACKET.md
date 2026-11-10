@@ -1,6 +1,6 @@
 # Group 1 activation and restart decision packet — NOT READY
 
-Prepared 10 November 2026 (Singapore), source `a583fb44db533cca38779977b9473dfabda78553`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
+Prepared 10 November 2026 (Singapore), source `3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current source and provider facts
 
@@ -34,6 +34,14 @@ A replacement key secret with the same ID, a replacement ID with the same secret
 RPC receivers may use a different runtime credential from a live STARTED parent; the child receives its own credential binding and remains independently counted after the parent exits. This does not authenticate end users or isolate callers sharing one credential. Parent hints remain allowlisted and scoped. Raw fixture methods also refuse credential-owned tracked writers. Untracked urgent capacity overflow is permanently quarantined; an acknowledgement neither clears tracked ownership nor permits capture.
 
 This closes the source per-credential lifecycle gap, including the previously identified same-role ticket release failure. Actual complete installation, raw/binding/operator credential restrictions, guard/TLS/domain/custody and independent review remain open. Native baseline/current evidence is in PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json. No partial production writer fence is authorized.
+
+## Urgent scope/bootstrap outage contract
+
+Urgent source work may use the already configured independent quarantine when scope resolution fails, after validated priority and any request-specific authorization proof. This cannot create/rebind a guard or choose source/resource/key identity from request data. The trusted installation must already bind the protected same-resource guard, authenticated client, custody and failure-domain separation. Shape-valid fixture receipts alone do not prove those facts.
+
+A confirmed guard quarantine must precede every fallback effect. Ordinary work, uncertain priority/authorization and uncertain guard still refuse. Root scope fallback cannot create an admission, release synthetic ownership or fabricate a scheduler parent hint. A late metadata reply and successful/deferred settlement cannot clear poison. Inherited D1 fallback stays under its counted parent and must not repeat lookup or release the parent on unknown outcome. Preserve actual native restart evidence in PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json.
+
+This runtime helper changed; the90-file source projection is no longer identical to the pinned historical basis. The named profile records that difference and the current full local/hosted campaign qualifies the new candidate. Do not silently move the historical basis or treat prior unchanged-runtime carry as current qualification. This is source work, not a complete installed writer fence.
 
 ## Control-plane creation and restart contract
 
