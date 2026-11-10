@@ -1,3 +1,11 @@
+## 2026-11-10 — Group 1 latest independent namespace + current B2 observation (no deployment)
+
+PR32 audit head previously `3a91c3c271c547a64b51d3b0a6cbc5c0c98a5167` passed exact source-level Phase8D audit run42831143040 (native job129881167092), companion Phase2 and beta portal suites. New offline independently supplied namespace SHA-256 guard passed16/16 and existing synthetic Worker/D1/DO metadata guard44/44. Both `BRICK_DEVICE` and `BETA_SCHEDULER` namespace identities were independently supplied by the user and their digests matched the previously read active binding IDs. Raw IDs remain out of public audit evidence; see PHASE8D_GROUP1_NAMESPACE_INDEPENDENT_PINS_2026-11-10.md and PHASE8D_GROUP1_NAMESPACE_PIN_EVIDENCE.json. The old live metadata job's null-pin exit2 remains **historically failed**, and **no new exact-pin live dispatch** occurred; successful CI does not prove live Cloudflare restoration.
+
+Fresh connected Backblaze B2 read-only checks: the explicitly approved private recovery bucket remained `allPrivate` (revision2), default SSE-B2 AES256, no configured lifecycle rule or File Lock; the connected key remains account-wide/broad including delete/key mutation. Key listing returned zero keys. Complete one-page exact-version listing returned14 uploaded synthetic test object versions totaling6,521,676 bytes under `drills/`; this is not a new transfer, checksum proof or production/key custody evidence. Sanitized source is PHASE8D_GROUP1_B2_CURRENT_READONLY_2026-11-10.json. No Cloudflare/B2 writes, secret/policy change, deletion, family-data operation, deployment or merge.
+
+Next prioritize exact pinned GET-only live metadata workflow using the separately retained private plan (Cloudflare workload dispatch still unavailable through current GitHub connector). Then complete actual writer/bootstrap/credential/guard independence, restricted runtime B2 key and separately recoverable encryption/selection/alert journal custody, a reviewed schedule/recipient and a synthetic-only isolated Cloudflare restore/rollback with measured agreed RTO/RPO. Group1 IN_PROGRESS_NOT_READY; P8D-002 P1_OPEN; Phase8D NOT PASS; PR32 draft/unmerged. Preserve the525 canonical acceptance/owner/reviewer/disposition fields.
+
 
 ## 2026-11-10 — historical PITR lookup verified for both D1 databases
 
