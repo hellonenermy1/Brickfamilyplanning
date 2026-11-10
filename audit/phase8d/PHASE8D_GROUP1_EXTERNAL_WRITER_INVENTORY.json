@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "220ccbe99565c289b93aa209c46ea50afc3fa6c6cd3f83008111f00d2ba19d3c",
+  "sourceSetSha256": "f0238c90827024e03ee6e7e78222cd1d680a17089937ad704231dc713c793bef",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -4320,8 +4320,8 @@
     },
     {
       "path": "scripts/cardfree-beta-readonly.mjs",
-      "sha256": "04e82558695b816b57c990d67b9d18766725d458f26eb3ba6b1bc0a1b690bc75",
-      "gitBlobSha": "55c9221452bbe5026c7559deadea2628390b3244",
+      "sha256": "7f66f17f4d8b36b5b0910dc59fd9c224b570944d6335f38fa9816d6b10812554",
+      "gitBlobSha": "dbe9558fae7d5028685e664e2c6f1081b145c0d3",
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Explicitly invoked dedicated-token/pinned-plan current beta Worker version/subdomain and existing D1 bookmark metadata GETs only. No SQL, script content, logs, resource writes or deployment-token fallback; CI uses synthetic request callbacks only.",
       "signals": [
@@ -4330,7 +4330,7 @@
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 103,
+          "line": 105,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
@@ -7431,8 +7431,8 @@
     },
     {
       "path": "scripts/test-phase8d-beta-readonly.mjs",
-      "sha256": "40826ed84b6ed0e0d535a3346c034c93664e67397243faf4cef294c161d7338f",
-      "gitBlobSha": "2b9b0818373152a09892d70b8f306786fee8c586",
+      "sha256": "98baa548ba3eadf4647ff5395510027814559b81574507b80bbefda78de17b4d",
+      "gitBlobSha": "b13c1a52673637e08fd449389cc40efeebe7684a",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic Cloudflare metadata transport plus private CLI subprocess fixtures with dedicated token empty and fake deployment token. No real provider requests; hardcoded API URL is tested, not executed by default fetch.",
       "signals": [
@@ -7445,15 +7445,15 @@
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 12,
+          "line": 14,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 20,
+          "line": 22,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 22,
+          "line": 24,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
