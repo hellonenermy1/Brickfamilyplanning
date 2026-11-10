@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 136
   },
-  "sourceSetSha256": "4483e9e427820db100910344c19f763cc9f5abcfe3bd5364436571e1c6275419",
+  "sourceSetSha256": "654ab57e424a2b54cd2602ef5ce97b0c05827f59552b8779f677400a173dcfb0",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -9044,8 +9044,8 @@
     },
     {
       "path": "scripts/test-phase8d-provisioner-ownership.mjs",
-      "sha256": "9f96e0375e5cc16972189aa56817a23e0a064edc3fa1d0784ed42fe8e174e76a",
-      "gitBlobSha": "524f50a4bf7af4d0bc974d6a26423896f25504f7",
+      "sha256": "1423ba42c00201a89e00cb4287b2b20e06cd555339a6d39b2090d26a27a12a29",
+      "gitBlobSha": "eb919a445533b4296e7ad0ac55cd20a1e2feac99",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual schema/provisioner modules and real compatibility child use synthetic provider/CLI capabilities, native SQLite SQL and signed native authority. No real provider/credential or production controller; source remains indexed, not excluded by test name.",
       "signals": [
