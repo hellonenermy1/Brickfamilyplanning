@@ -1,0 +1,10 @@
+{
+  "accountId": null,
+  "primaryId": null,
+  "diagnosticId": null,
+  "workerHost": null,
+  "expectedSourceSha": null,
+  "deviceNamespaceId": null,
+  "schedulerNamespaceId": null,
+  "workerName": "brick-family-beta"
+}

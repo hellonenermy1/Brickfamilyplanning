@@ -1,0 +1,290 @@
+{
+  "format": "brick-phase8d-group1-beta-readonly-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "sourceTreeSha": "0aa180f17a0090f02e11648fddcd6bc340fef4f7",
+  "baselineSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "SOURCE_SYNTHETIC_CLI_FULL_HOSTED_QUALIFIED_LIVE_NOT_DISPATCHED",
+  "focusedCases": 44,
+  "workflowLoaderCases": 2,
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "b85cf1289555ce662cd74d0f35db590df05e010b6d073953d41279188229fe2b"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "0746203126676a21762894430ce40dd896d12bc40a24302b0e92e93c78fe7723"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "4af733576d7e93b8a4ff3f61c8f3e91141d5adb621fecf6e53503d80f9d26dba"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "75def2c359f1db2359341ffcacd871958cd4f58ea87e5569469f9def019e0d86"
+    },
+    {
+      "path": "scripts/cardfree-beta-readonly.mjs",
+      "sha256": "7f66f17f4d8b36b5b0910dc59fd9c224b570944d6335f38fa9816d6b10812554"
+    },
+    {
+      "path": "scripts/test-phase8d-beta-readonly.mjs",
+      "sha256": "98baa548ba3eadf4647ff5395510027814559b81574507b80bbefda78de17b4d"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "cc1135f14a79635f54149f9de1a18c0a6e9438f1fcbae4990dfd9e9755450f40",
+    "stepLogs": [
+      {
+        "path": "01.log",
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "path": "02.log",
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "path": "03.log",
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "path": "04.log",
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "path": "05.log",
+        "sha256": "eae9bd00c6f73c1ca1efd25b776a44c9cca9976c9cc8d1ec2be213315906b799"
+      },
+      {
+        "path": "06.log",
+        "sha256": "211751cf474a8d940033a26df80af95641c794bc7a22fcb0807efa7f71063a1b"
+      },
+      {
+        "path": "07.log",
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "path": "08.log",
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "path": "09.log",
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "path": "10.log",
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "path": "11.log",
+        "sha256": "b20f062b8ca6e1ff152bfea2cdbd6b6c043be4bbbc118955d26e63878a98a97a"
+      },
+      {
+        "path": "12.log",
+        "sha256": "25d250f957f3dfc515a7cdefe275af4f2436a16c76440d4a32ead115833aea97"
+      },
+      {
+        "path": "13.log",
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "path": "14.log",
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "path": "15.log",
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "path": "16.log",
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "path": "17.log",
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "path": "18.log",
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "path": "19.log",
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "path": "20.log",
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "path": "21.log",
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "path": "22.log",
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "path": "23.log",
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "path": "24.log",
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "path": "25.log",
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "path": "26.log",
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "loaderResultsSha256": "39085c86952e3b7cd098d550e563e752e8338cc389680ce5252bb19ebd60b149",
+  "recordedDeploymentPins": {
+    "runId": 42255984279,
+    "artifactId": 13521829322,
+    "archiveSha256": "60e5e6d17cba16b3f2c194708d3085c80d7f132e52527b05e9b9a36f6bd7ec82",
+    "recordedSourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "pinsAreHistorical": true,
+    "missingPins": [
+      "deviceNamespaceId",
+      "schedulerNamespaceId"
+    ],
+    "resourceHashes": {
+      "accountId": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83",
+      "primaryId": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+      "diagnosticId": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+      "workerHost": "cbfb4ec4c2013b82ac719fd4803bdc87e164f9dac4607355a7945081b5e89b60"
+    }
+  },
+  "liveAttempt": {
+    "dispatched": false,
+    "cloudflareRequests": 0,
+    "result": "DISPATCH_UNAVAILABLE_BROWSER_SIGNED_OUT",
+    "connectorLimitation": "GitHub tools expose rerun but no workflow_dispatch creation.",
+    "browserObservation": "Workflow page shows Sign in/Sign up; no signed-in dispatch control.",
+    "workflowUrl": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/workflows/phase8d-cardfree-ci.yml",
+    "currentDedicatedSecretAvailability": "UNKNOWN",
+    "historicalReadEvidence": {
+      "runId": 41839919454,
+      "jobId": 126994212008,
+      "scope": "Nov5 legacy attestation read Workers metadata but lacked readable provenance; R2/Access checks lacked permissions. Does not prove current beta access or missing current secret."
+    }
+  },
+  "metadataScope": {
+    "getOnly": true,
+    "dedicatedSecretOnly": "CLOUDFLARE_AUDIT_READ_TOKEN",
+    "automaticPushPrLiveReads": false,
+    "fullyPinnedChecksRequireDoNamespaceIds": true,
+    "nullNamespaceMode": "Observation only: metadataReadCompleted may become true, checksPassed remains false and CLI exits2 with DO_NAMESPACE_PINS_REQUIRED.",
+    "sourceBindingIsSelfReported": true,
+    "atomicCrossServiceSnapshotProven": false,
+    "executedCodeMatchesSourceProven": false,
+    "credentialLeastPrivilegeProven": false,
+    "operationalRecoveryProven": false
+  },
+  "hostedRuns": [
+    {
+      "runId": 42806525310,
+      "jobId": 129796962020,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "rpcStubDisposalWarnings": 1,
+        "nodeDeprecationMarkers": 3
+      },
+      "skippedLiveJob": 129796963602,
+      "normalizedDecodedLogSha256": "7c3b6c1c64e7a4bbcdb900a1fbe309c0b428c09eedf8aa0391a6d4fc01ec7583"
+    },
+    {
+      "runId": 42806525965,
+      "jobId": 129796968214,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "rpcStubDisposalWarnings": 0,
+        "nodeDeprecationMarkers": 3
+      },
+      "skippedLiveJob": null,
+      "normalizedDecodedLogSha256": "930c2ed0db27dc93cfa1589fde1e31aa6f2a12fc0d4e6f22e92621955f735bf2"
+    },
+    {
+      "runId": 42806525835,
+      "jobId": 129796967476,
+      "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "rpcStubDisposalWarnings": 0,
+        "nodeDeprecationMarkers": 3
+      },
+      "skippedLiveJob": null,
+      "normalizedDecodedLogSha256": "2d5b3f11516eb6d99caeae45e60ebd85631acbc2ea6005376f8c5adb56a2d137"
+    },
+    {
+      "runId": 42806517172,
+      "jobId": 129796937266,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "rpcStubDisposalWarnings": 1,
+        "nodeDeprecationMarkers": 3
+      },
+      "skippedLiveJob": 129796939387,
+      "normalizedDecodedLogSha256": "0ee614c37b2f023dd9a757152d974e2caba1c29d6ba7384941d7e31cb1639911"
+    }
+  ],
+  "runtimeGraph": {
+    "files": 90,
+    "unchangedFromImmediateBaseline": true,
+    "historicalCarryBasisSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+    "projectionIdenticalToHistoricalBasis": false
+  },
+  "productionControllerInstalls": 0,
+  "providerMetadataRefreshed": false,
+  "providerUploadTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "realAlertsSent": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "verifiedMergeCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d"
+  ]
+}
