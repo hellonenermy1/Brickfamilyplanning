@@ -15,13 +15,13 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "cfb1ead923e33ce0d96296e0f487070501e83acac3487ce95ae537c058db292f",
+  "sourceSetSha256": "fc95b53def4fff58da4f21b2e04c2f9663371f5a1d2292dc16873f255a02812c",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
       "calls": [
         {
-          "line": 43,
+          "line": 53,
           "operation": "schema"
         }
       ],
@@ -41,7 +41,7 @@
       "path": "scripts/setup-beta-d1.mjs",
       "calls": [
         {
-          "line": 84,
+          "line": 94,
           "operation": "deployment"
         }
       ],
@@ -4589,8 +4589,8 @@
     },
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
-      "sha256": "fb55a232927af6911d9bfb46bffe76038f1c996a383a21d6a119adfa40adf913",
-      "gitBlobSha": "7e90d31fa047ec33f89a0c1d733c3008ca2b73fd",
+      "sha256": "e2da52c8c1ddae4e829fd9d073f704a43e0ffb009ebb23c9271e01b7f2d12e50",
+      "gitBlobSha": "d28554574e1db558c4c43cfadc4cb16b77c73cb7",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
@@ -4607,13 +4607,13 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 45,
+          "line": 55,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 43,
+          "line": 53,
           "operation": "schema"
         }
       ],
@@ -5650,8 +5650,8 @@
     },
     {
       "path": "scripts/setup-beta-d1.mjs",
-      "sha256": "27cf37b13cebd8baeb30fde44f452cff3b979a771036c39a45d5a54c32420a50",
-      "gitBlobSha": "7ab004f4cab354e9f724f1d2da5124ce1477b5ba",
+      "sha256": "7599362e4f98cf5f4d09cb157967fbc7dfe2778e5218722be02f4c83517a637c",
+      "gitBlobSha": "affb4b6c4a6e6a3461c5c5837323227071973e76",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
@@ -5676,23 +5676,15 @@
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 114,
+          "line": 124,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         },
         {
-          "line": 145,
+          "line": 155,
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 145,
-          "kind": "REMOTE_FLAG_LITERAL"
-        },
-        {
-          "line": 196,
-          "kind": "WRANGLER_LITERAL"
-        },
-        {
-          "line": 196,
+          "line": 155,
           "kind": "REMOTE_FLAG_LITERAL"
         },
         {
@@ -5700,13 +5692,21 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 224,
+          "line": 206,
+          "kind": "REMOTE_FLAG_LITERAL"
+        },
+        {
+          "line": 216,
+          "kind": "WRANGLER_LITERAL"
+        },
+        {
+          "line": 234,
           "kind": "WRANGLER_LITERAL"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 84,
+          "line": 94,
           "operation": "deployment"
         }
       ],
@@ -9483,8 +9483,8 @@
     },
     {
       "path": "scripts/test-phase8d-provisioner-ownership.mjs",
-      "sha256": "7da75f5166b8c0b23d20e1f6b5be3cab49ae701eb1d3b24420a843584b6b3cbd",
-      "gitBlobSha": "a44245c39fd3b8ec6024f19502078eb72d54da2a",
+      "sha256": "6d299ce3745010e824513b6f4bd6944385631297e70d7449a0b05f32b82dcd8f",
+      "gitBlobSha": "ca089ea156f24987bbfcda299e4f9a63560ea371",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual schema/provisioner modules and real compatibility child use synthetic provider/CLI capabilities, native SQLite SQL and signed native authority. No real provider/credential or production controller; source remains indexed, not excluded by test name.",
       "signals": [
