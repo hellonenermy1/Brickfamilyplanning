@@ -1,0 +1,26 @@
+# Inert default-branch registration. Select audit/phase8d-d1-qualification
+# in Run workflow to execute that branch's independently qualified definition.
+# This main-branch file never checks out source or receives cloud credentials.
+name: Phase 8D D1 storage and recovery audit (no cloud writes)
+on:
+  workflow_dispatch:
+    inputs:
+      run_cardfree_metadata:
+        description: Run the dedicated read-only current beta metadata check
+        type: boolean
+        default: false
+      plan_json:
+        description: Owner-verified pinned beta metadata plan (identities only, never tokens)
+        type: string
+        required: false
+permissions: {}
+jobs:
+  select-qualified-audit-branch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Refuse execution from the registration definition
+        shell: bash
+        run: |
+          echo 'Registration only. Select audit/phase8d-d1-qualification in Run workflow.'
+          exit 1
