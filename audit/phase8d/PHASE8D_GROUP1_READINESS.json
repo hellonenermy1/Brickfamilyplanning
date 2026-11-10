@@ -494,8 +494,8 @@
     },
     {
       "id": "CURRENT_PITR",
-      "state": "CURRENT_BOOKMARKS_OBSERVED_EXPECTED_DO_PINS_RETENTION_AND_RECOVERY_OPEN",
-      "needed": "Attempt2 completed9 GETs; both D1 identities/current bookmarks and matching final deployment reads attested. D1 access resolved. Expected DO namespace pins require independent review; historical retention, isolated cloud recovery and measured RTO/RPO remain unqualified. No further unchanged access retry."
+      "state": "CURRENT_AND_ONE_HISTORICAL_BOOKMARK_OBSERVED_DO_PINS_FULL_RETENTION_RECOVERY_OPEN",
+      "needed": "Run42823302330 completed11 GETs; both D1 identities/current and2026-11-06T16:51:22Z historical bookmarks plus matching deployment reread attested. Independently reviewed expected DO namespace pins, full retention and isolated restore/measured RTO/RPO remain open. Access denial resolved; no unchanged read retry."
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
@@ -610,7 +610,7 @@
     "state": "AT_RISK",
     "reasons": [
       "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
-      "GitHub launch and D1 read access resolved. Both current bookmarks observed in9 GETs; independently reviewed expected DO namespace pins, retention and isolated recovery evidence remain open.",
+      "GitHub launch/D1 access resolved; both current and6Nov historical bookmarks observed in11 GETs. Independent expected namespace pins, full retention and isolated cloud recovery remain open.",
       "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete."
     ],
     "nextPreparedProviderAction": {
@@ -622,6 +622,6 @@
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
-  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_PITR_OBSERVATION_EVIDENCE.json",
-  "liveMetadataExecutionSourceSha": "917f63b09c8ea09459b9926cf2d4466ec0013771"
+  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_HISTORICAL_PITR_EVIDENCE.json",
+  "liveMetadataExecutionSourceSha": "6d1111407b043ea9f0f2a50012563165066d3f80"
 }
