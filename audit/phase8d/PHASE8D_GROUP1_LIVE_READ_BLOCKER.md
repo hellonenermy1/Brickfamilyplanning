@@ -1,5 +1,12 @@
 # Group1 live read — current primary D1 access blocker
 
+
+## Latest continuation: Cloudflare authentication approval boundary
+
+10 November2026, Singapore: browser inventory showed the authenticated GitHub audit run and no existing Cloudflare session. Opening https://dash.cloudflare.com/profile/api-tokens redirected to the Cloudflare sign-in page. No D1 request was retried. The secure authentication method/credential request was rejected by automatic approval review: prior explicit authorization covered GitHub, not this Cloudflare sign-in to token settings. No credentials were submitted, token policy viewed or permission changed. This is separate from the genuine primary D1 GET denial already recorded; it neither explains that denial nor weakens its evidence.
+
+Next required user decision: approve Cloudflare sign-in in the cloud browser for a read-only review of the dedicated audit token's permissions and intended account scope. Do not request GitHub login/PR61 merge approval again. After authentication, inspect only existing policy/account metadata without reading secret values; prepare a concrete correction only if needed. No permission expansion, credential creation/replacement, GitHub secret update or cloud mutation is authorized by this read-only review. Preserve the current5-GET artifact and resume its read only after a material access correction. Group1 remains NOT READY; no new operational gate closed or new test count claimed. Source/native qualification is reused because no executable changed.
+
 Current result: PR61 launcher registration merged ascb380fe821b16cf5304843af2ce713d21f575788. GitHub login and actual manual dispatch verified. See [live current-beta result](PHASE8D_GROUP1_LIVE_BETA_READ.md):4 Workers reads passed, primary D1 identity denied; no bookmarks requested. Next is dedicated audit D1 Read/account coverage review, requiring explicit authorization for any correction. All prior sign-in/registration approval statuses below are historical and superseded. PR32 remains draft/unmerged; no cloud deployment.
 
 ## Current status: login verified; default-branch registration needs merge approval
