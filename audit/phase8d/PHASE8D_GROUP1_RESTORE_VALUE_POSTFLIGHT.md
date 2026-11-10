@@ -27,3 +27,7 @@ The actual card-free restore now checks every recovered row/column as a multiset
 The ten baseline corruptions are all refused after correction;12 focused native checks pass, including healthy populated parity and the byte envelope. The complete local card-free workflow run steps pass (typecheck, assets, inventories, admission/transport, operators, crypto/archive/monitor, schema/postflight, encrypted destruction/fresh restoration, ACK/retention/scheduler and legacy trust/recovery regressions). Evidence: PHASE8D_GROUP1_RESTORE_VALUE_POSTFLIGHT_EVIDENCE.json. Known native disposal warnings are retained.
 
 This is SOURCE/LOCAL VERIFIED. Live writer control, cloud resource/SQL limits, isolated cloud interruption/rollback and operational RTO/RPO remain unqualified. Value comparison does not establish complete DDL equivalence, cross-store atomicity or prevent writes after postflight. Group1/P8D-002 remain open.
+
+## Exact hosted qualification
+
+Executable source2e5178eac8661993e1ae8a2333517e28eb2b3c68/tree82cf15f357dbef6587096b3e3153ca2c93700f5a: push42846759432 and PR42846771069 audits both succeeded33/33; Phase2 run42846771106 passed14/14; portal42846771192 passed10/10. Full decoded logs show12 new postflight cases and complete native encrypted recovery, with no error markers. PR checkout3a40fef8071e60fa88b81a6616134a3640cd53e6 has the expected base/source parents and identical source tree. Source fix is SOURCE/CI VERIFIED; operational acceptance remains open. See PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json.

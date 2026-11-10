@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "sourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -460,7 +460,7 @@
     {
       "id": "POPULATED_CONFIG_RELATIONSHIP_PARITY",
       "state": "CURRENT_SCHEMA_NATIVE_SOURCE_AND_PR_CI_VERIFIED_NOT_LIVE",
-      "needed": "Native exact33-row/16-table parity remains verified;18 new native schema/excluded-state checks reject hidden mutation/nonce regeneration before success. Actual isolated cloud schema/PRAGMA compatibility, parity and measured RTO/RPO still need proof; no full arbitrary-DDL equivalence or quiescence inferred."
+      "needed": "Actual restore now verifies all recovered values, BLOBs/timestamps and permitted command retirement in bounded pages.12 new native cases and full push/PR audit pass on2e5178ea. Actual cloud schema/service budgets, independent writer isolation, interruption/rollback and agreed RTO/RPO remain unqualified."
     },
     {
       "id": "COMPLETE_WRITER_HOOKS",
@@ -494,8 +494,8 @@
     },
     {
       "id": "CURRENT_PITR",
-      "state": "CURRENT_AND_ONE_HISTORICAL_BOOKMARK_OBSERVED_DO_PINS_FULL_RETENTION_RECOVERY_OPEN",
-      "needed": "Run42823302330 completed11 GETs; both D1 identities/current and2026-11-06T16:51:22Z historical bookmarks plus matching deployment reread attested. Independently reviewed expected DO namespace pins, full retention and isolated restore/measured RTO/RPO remain open. Access denial resolved; no unchanged read retry.",
+      "state": "PINNED_METADATA_CURRENT_AND_HISTORICAL_VERIFIED_FULL_WINDOW_AND_RESTORE_OPEN",
+      "needed": "Pinned11-GET runs42844169184 and42826439260 independently verified with both DO pins, current/historical bookmarks and matching sampled deployment reads. Full retention window, complete writer/custody/schedule and isolated cloud restoration with measured agreed RTO/RPO remain open. Do not ask for namespace IDs or repeat unchanged reads.",
       "metadataCheckpoint": "Pinned live metadata verified in run42844169184; old input/dispatch denials are historical. This does not close full retention, writer/custody/schedule or actual cloud recovery."
     },
     {
@@ -506,92 +506,44 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42806525310,
-        "jobId": 129796962020,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
+        "runId": 42846759432,
+        "jobId": 129936191884,
         "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
-        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
-        "warningSummary": {
-          "rpcStubDisposalWarnings": 1,
-          "nodeDeprecationMarkers": 3
-        },
-        "skippedLiveJob": 129796963602,
-        "normalizedDecodedLogSha256": "7c3b6c1c64e7a4bbcdb900a1fbe309c0b428c09eedf8aa0391a6d4fc01ec7583"
+        "passedSteps": 33
       },
       {
-        "runId": 42806525965,
-        "jobId": 129796968214,
-        "name": "Brick Beta Map and Portal Regression (no cloud writes)",
-        "event": "pull_request",
+        "runId": 42846771069,
+        "jobId": 129936229174,
         "conclusion": "success",
-        "passedSteps": 10,
-        "totalSteps": 10,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
-        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
-        "warningSummary": {
-          "rpcStubDisposalWarnings": 0,
-          "nodeDeprecationMarkers": 3
-        },
-        "skippedLiveJob": null,
-        "normalizedDecodedLogSha256": "930c2ed0db27dc93cfa1589fde1e31aa6f2a12fc0d4e6f22e92621955f735bf2"
+        "passedSteps": 33
       },
       {
-        "runId": 42806525835,
-        "jobId": 129796967476,
-        "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
-        "event": "pull_request",
+        "runId": 42846771106,
+        "jobId": 129936230024,
         "conclusion": "success",
-        "passedSteps": 14,
-        "totalSteps": 14,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "c67f4a344cdabe26d761854b18f3ad892844338e",
-        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
-        "warningSummary": {
-          "rpcStubDisposalWarnings": 0,
-          "nodeDeprecationMarkers": 3
-        },
-        "skippedLiveJob": null,
-        "normalizedDecodedLogSha256": "2d5b3f11516eb6d99caeae45e60ebd85631acbc2ea6005376f8c5adb56a2d137"
+        "passedSteps": 14
       },
       {
-        "runId": 42806517172,
-        "jobId": 129796937266,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "push",
+        "runId": 42846771192,
+        "jobId": 129936232138,
         "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
-        "logNormalization": "Decoded UTF8 with LF endings and one final newline",
-        "warningSummary": {
-          "rpcStubDisposalWarnings": 1,
-          "nodeDeprecationMarkers": 3
-        },
-        "skippedLiveJob": 129796939387,
-        "normalizedDecodedLogSha256": "0ee614c37b2f023dd9a757152d974e2caba1c29d6ba7384941d7e31cb1639911"
+        "passedSteps": 10
       }
     ],
-    "scope": "44 synthetic transport/private CLI cases and2 actual workflow input-loader checks; full26 local and current-source hosted campaign. No live metadata dispatch or operational recovery acceptance."
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_POSTFLIGHT_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "lastMergeQualifiedSourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",

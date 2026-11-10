@@ -1,0 +1,80 @@
+{
+  "format": "brick-group1-restore-value-hosted-evidence-v1",
+  "sourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
+  "sourceTreeSha": "82cf15f357dbef6587096b3e3153ca2c93700f5a",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "prMergeSha": "3a40fef8071e60fa88b81a6616134a3640cd53e6",
+  "prMergeTreeSha": "82cf15f357dbef6587096b3e3153ca2c93700f5a",
+  "prMergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "2e5178eac8661993e1ae8a2333517e28eb2b3c68"
+  ],
+  "qualification": "SOURCE_AND_NATIVE_ONLY_NOT_DEPLOYED",
+  "sourcePush": {
+    "runId": 42846759432,
+    "jobId": 129936191884,
+    "conclusion": "success",
+    "passedSteps": 33,
+    "completeDecodedLogInspected": true,
+    "logCharacters": 260296,
+    "exactCheckoutVerified": true,
+    "errorMarkers": 0,
+    "restoreValueNativeCasesPassed": 12,
+    "fullEncryptedNativeRecoveryPassed": true,
+    "manualMetadataJob": "skipped"
+  },
+  "parentPhase2": {
+    "runId": 42846771106,
+    "jobId": 129936230024,
+    "conclusion": "success",
+    "passedSteps": 14,
+    "completeDecodedLogInspected": true,
+    "logCharacters": 24999,
+    "errorMarkers": 0,
+    "exactMergeCheckoutVerified": true
+  },
+  "betaPortal": {
+    "runId": 42846771192,
+    "jobId": 129936232138,
+    "conclusion": "success",
+    "passedSteps": 10,
+    "completeDecodedLogInspected": true,
+    "logCharacters": 16169,
+    "errorMarkers": 0,
+    "exactMergeCheckoutVerified": true
+  },
+  "separateLiveMetadata": {
+    "runId": 42844169184,
+    "executionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
+    "checksPassed": true,
+    "requests": 11,
+    "applicationSourceLabel": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "newRestoreSourceDeployed": false,
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json"
+  },
+  "additionalLocalCompatibility": {
+    "v1ElevenAndTwelveTableAndV2RestoreRegression": "passed",
+    "standaloneSqliteCliTest": "blocked_before_execution_missing_sqlite3_CLI",
+    "nativeSqliteAndWorkerdRecoveryInFullWorkflow": "passed",
+    "canonical525AndAcceptanceLedgerUnchangedByteForByte": true
+  },
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "applicationDeployed": false,
+  "cloudWritesPerformed": false,
+  "canonicalAcceptanceChanged": false,
+  "prAudit": {
+    "runId": 42846771069,
+    "jobId": 129936229174,
+    "conclusion": "success",
+    "passedSteps": 33,
+    "completeDecodedLogInspected": true,
+    "logCharacters": 261252,
+    "errorMarkers": 0,
+    "exactMergeCheckoutVerified": true,
+    "restoreValueNativeCasesPassed": 12,
+    "fullEncryptedNativeRecoveryPassed": true,
+    "manualMetadataJob": "skipped"
+  }
+}
