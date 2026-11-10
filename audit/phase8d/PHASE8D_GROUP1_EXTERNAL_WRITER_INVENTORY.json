@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "b5f567ea549ee261198ca0953978213bdd544de163b74f93a421eacac621d4ed",
+  "sourceSetSha256": "cfb1ead923e33ce0d96296e0f487070501e83acac3487ce95ae537c058db292f",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -4371,8 +4371,8 @@
     },
     {
       "path": "scripts/cardfree-pitr-readonly.mjs",
-      "sha256": "df54e78b9e13018f50ca4bdb23d457a8890188ae1fb270a0254aeb3b51657e22",
-      "gitBlobSha": "f7ecfd9242c3cca20aaf2db8b825d077bbfc939b",
+      "sha256": "5276ea22c028e5ed25bd549781a4c16136d8117c5d066d7d7dc4a0f9a0ff666a",
+      "gitBlobSha": "c9c423045d4990969104605844782f2dd24eda98",
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only.",
       "signals": [
@@ -7724,8 +7724,8 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-pitr.mjs",
-      "sha256": "1dcc5b751562c4a3ec189c56a2c84fba646ccb07db768b741600110216c9a783",
-      "gitBlobSha": "e94c60490777f013530943a563e746797b610e51",
+      "sha256": "f70cac2b2ca8a20b9270839f87ac65647128c4e65ffb18a053eaccdfe2be3b83",
+      "gitBlobSha": "eb08caee505610bccf42bfffc508132454309bb9",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
