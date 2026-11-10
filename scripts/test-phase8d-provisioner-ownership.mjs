@@ -28,6 +28,31 @@ try{
  }
  return fakeProcess(command,args,options,async p=>{if(args[0]==='wrangler'&&args[1]==='d1'){if(mode.failFirstSchema)throw Error('fixture schema child refused');const db=args[3]==='brick-family-beta-diagnostics'?dbs.get(diagnostic):dbs.get(mode.foreignPrimary?foreign:primary),file=args[args.indexOf('--file')+1];db.exec(fs.readFileSync(file,'utf8'));events.push('schema:'+file);if(mode.failAfterSchema)throw Error('fixture committed schema then child failure');}else if(args[0]==='wrangler'&&args[1]==='deploy'){events.push('deploy');p.stdout.write('https://'+(mode.wrongHost?'brick-family-beta.other.workers.dev':pin.workerHost));}else if(args[0]==='wrangler'&&args[1]==='secret'){events.push('secret');if(mode.failSecret)throw Error('fixture secret failure');}else if(!['run','tsc'].includes(args[0]))throw Error('fixture unexpected child');});};syncBuiltinESMExports();
  const runSetup=()=>load('setup-beta-d1.mjs'),runCompat=()=>load('ensure-beta-d1-columns.mjs');
+ // Each actual management CLI must refuse untrusted provider metadata before
+ // admission or any management side effect. No provider calls leave this fixture.
+ for(const tool of [['setup-beta-d1.mjs',runSetup],['ensure-beta-d1-columns.mjs',runCompat]]){
+  for(const variant of ['201-on-GET','redirected-200','wrong-final-url','provider-body-error']){
+   await test('actual '+tool[0]+' rejects '+variant+' account metadata before writer admission',async()=>{
+    await ready();
+    const validFetch=globalThis.fetch;
+    globalThis.fetch=async(input,init={})=>{
+     const url=String(input);
+     if(!url.endsWith('/accounts?per_page=50'))throw Error('Unexpected request after metadata refusal');
+     assert.equal(init.redirect,'error');assert(init.signal instanceof AbortSignal);
+     const result=Response.json(variant==='provider-body-error'?{success:false,errors:[{message:'PRIVATE_PROVIDER_DETAILS'}]}:{success:true,result:[{id:pin.accountId}]},{status:variant==='201-on-GET'?201:200});
+     if(variant==='redirected-200')Object.defineProperty(result,'redirected',{value:true});
+     if(variant==='wrong-final-url')Object.defineProperty(result,'url',{value:'https://other.invalid/metadata'});
+     return result;
+    };
+    try{
+     await assert.rejects(tool[1](),/Cloudflare API/);
+     assert.equal((await rpc('status')).activeWriters,0);
+     assert.equal(tools,0);
+     assert(!events.some(e=>e.startsWith('sql:')||e==='deploy'||e==='secret'));
+    }finally{globalThis.fetch=validFetch;}
+   });
+  }
+ }
  // Reproduce the exact preceding provisioner against a wrong named database.
  if(process.argv.includes('--baseline')){const baseline=cp.execFileSync('git',['show','55d64d3e862114adbf5c08f26f4232a963bf0464:scripts/setup-beta-d1.mjs'],{cwd:repo,encoding:'utf8'}),baselinePath=path.join(repo,'scripts/.brick-provisioner-baseline-'+process.pid+'.mjs');
  try{fs.writeFileSync(baselinePath,baseline);await ready({foreignPrimary:true,failFirstSchema:true});await assert.rejects(import(pathToFileURL(baselinePath).href),/OUTCOME_UNCERTAIN/);assert(dbs.get(foreign).prepare("SELECT name FROM sqlite_master WHERE name='brick_dev_migrations'").get());assert.equal((await rpc('status')).activeWriters,1);console.log('BASELINE prior exact provisioner created migration table in undeclared fixture database before child refusal');}finally{fs.rmSync(baselinePath,{force:true});}}
