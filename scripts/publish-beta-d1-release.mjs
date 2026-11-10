@@ -2,7 +2,8 @@ import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import fs from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 const state=JSON.parse(await fs.readFile('beta-setup-state.json','utf8'));
-if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9-]{36}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
+if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
+if(typeof process.env.CLOUDFLARE_API_TOKEN!=='string'||!process.env.CLOUDFLARE_API_TOKEN.length)throw Error('Dedicated D1 management credential required');
 if(process.env.GITHUB_REF_NAME!=='beta/backend-portal'||state.workerName!=='brick-family-beta'||state.storageMode!=='d1-chunked-no-r2'||state.sourceGitSha!==process.env.GITHUB_SHA||!/^brick-family-beta\.[a-z0-9-]+\.workers\.dev$/.test(state.workerHost))throw Error('Isolated beta provenance required');
 await runStagedExternalWriter('publication',{sourceSha:state.sourceGitSha,accountId:state.accountId,databaseId:state.d1Id,workerName:'brick-family-beta',workerHost:state.workerHost},async()=>{
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now(),origin='https://'+state.workerHost;
