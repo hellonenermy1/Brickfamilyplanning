@@ -1,5 +1,19 @@
 # Group1 live read: GitHub sign-in approval required
 
+## Current status: login verified; default-branch registration needs merge approval
+
+10 November 2026, Singapore: the user explicitly approved GitHub sign-in and the prepared read-only workflow. The secure password attempt returned Incorrect username or password; the user completed manual browser sign-in. Fresh workflow-page UI now shows authenticated repository/user navigation and Settings. Do not request the already-granted sign-in approval again or inspect/retain credential values.
+
+The authenticated current audit page still has no Run workflow control. Its menu has status badge/pin/disable only. GitHub GETs confirm both phase8d-cardfree-ci.yml and the legacy phase8d-cloudflare-readonly.yml absent on default main; main head is57343b3cab0c5c18572a8dcafda0a3cfc09209c0. This missing default-branch registration is a separate launch prerequisite, not a Cloudflare permission result. GitHub primary documentation confirms the UI/default-branch requirement: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow . No current Cloudflare request or manual workflow dispatch occurred.
+
+Prepared draft PR61: https://github.com/hellonenermy1/Brickfamilyplanning/pull/61 . Head12d91329cca55ec361f802dd6b01e1582dd82f71 on audit/phase8d-manual-registration; exactly one added file, .github/workflows/phase8d-cardfree-ci.yml. The main registration has only workflow_dispatch, exact matching two input definitions, empty token permissions and a fixed one-step shell message/exit1. No secrets, checkout, actions, dependency install, user-input interpolation or network commands. YAML/structure/input-equivalence checks and actual minimal-environment shell refusal passed; diff whitespace check passed. Existing main push/PR path filters do not select this added path. No deployment trigger introduced. The actual read implementation remains on the audit branch/PR32; its executable files are unchanged from qualified311d78d4.
+
+Next action requires explicit approval to merge PR61 into main; login/run approval did not authorize that merge. After approval, recheck PR61 exact diff/head and current main, mark ready and merge only this registration PR. Do not merge PR32 or change beta/backend-portal. Verify the authenticated workflow page now exposes Run workflow, choose audit/phase8d-d1-qualification, recheck exact executable blobs and prepared private historical plan, and run the metadata observation with the existing dedicated secret. Missing DO pins still prevent a full pinned PASS. If GitHub still refuses launch, record the actual response without guessing or broad-token fallback.
+
+All older statements below about absent sign-in approval/browser being signed out are historical and superseded by this status. Group1 remains NOT READY;8D NOT PASS; forecast AT RISK. No new credential, cloud/family-data, production/deployment, R2/card/billing or acceptance change.
+
+## Historical pre-approval check
+
 Checked 10 November 2026, Singapore. Repository head `f8a2a01a5d7f4f325d2d2088e07b540fa8cbb345`; unchanged integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. Executable qualification remains pinned to `311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d` and its recorded source tree. No implementation changed during this check.
 
 The latest supplied *Brick V1 Phase 8 Full Audit Execution Plan(9).pdf*, Library ID `libfile_a7308891fc4481918387a773a309b0d4`, page52/section8D.16 was read directly. It still requires actual backup/isolated restoration and schema, devices, history, places/config and relationship verification. Page53 retains deletion-isolation and diagnostic obligations. This is a focused Group1 authority check, not reconciliation of every page or the unidentified Yes tab. The supplied four-day closure plan was also read; its finite packages, no unrelated helper expansion and real operational exits remain applicable.
