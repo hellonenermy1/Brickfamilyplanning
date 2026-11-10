@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "261a1ff65807e97a17b30201ccb95e79f34a083bd99ef8da8481b97269589e77",
+  "sourceSetSha256": "3af1bc77e7d0e1bfb186c0a96528621fc65d32aebc4abce6b19c78d3ba828bf8",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -31,7 +31,7 @@
       "path": "scripts/publish-beta-d1-release.mjs",
       "calls": [
         {
-          "line": 7,
+          "line": 8,
           "operation": "publication"
         }
       ],
@@ -51,7 +51,7 @@
       "path": "scripts/verify-beta-live.mjs",
       "calls": [
         {
-          "line": 7,
+          "line": 8,
           "operation": "probe"
         }
       ],
@@ -5503,31 +5503,35 @@
     },
     {
       "path": "scripts/publish-beta-d1-release.mjs",
-      "sha256": "560bed9ee9ec204184c0e1f6392de7902774f4404f78e0335d6b69bb83bcedd5",
-      "gitBlobSha": "f5cec1931e898779dbce8d84e50956fb7e22c784",
+      "sha256": "7db501178f005c5c00bbfc239db20cb501d1b841786e9c0334092e685e1c7428",
+      "gitBlobSha": "4676275997281572655a1a3b9e872bcbac95d695",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 10,
-          "kind": "MANAGEMENT_API_LITERAL"
-        },
-        {
-          "line": 10,
-          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
-        },
-        {
-          "line": 11,
+          "line": 6,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
+          "line": 11,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 11,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
           "line": 12,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 13,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 7,
+          "line": 8,
           "operation": "publication"
         }
       ],
@@ -8565,8 +8569,8 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer.mjs",
-      "sha256": "b3c024e08ebdaa699951e5b7ca8fc0f0decfaccaf27f58a04f474f9f9a70dccd",
-      "gitBlobSha": "dc548279d0d6d90275886302ef4db15829f42149",
+      "sha256": "800e3eadd4dbb4f341bfa3112118cd5c813d5dc1a8aaed5729952bddd7950cbd",
+      "gitBlobSha": "2d981bd79d2c889b5457b10407c966890cd3672c",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
       "signals": [
@@ -8587,7 +8591,23 @@
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 69,
+          "line": 65,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 67,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 74,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 75,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 87,
           "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
@@ -10573,31 +10593,35 @@
     },
     {
       "path": "scripts/verify-beta-live.mjs",
-      "sha256": "5ea5311dcaf6c8041cdbb02bf062197fa85e7b9ccd2a7c47ad4ee5df160ed2f0",
-      "gitBlobSha": "b8a9c0efc305da43dec0a1577f10bbd34f1f36e2",
+      "sha256": "ef9ea9dfce79b6d30504f73dad657a345f7e9d78d7899522398340dfbb4c7f69",
+      "gitBlobSha": "357a656c73abb917f0777201bbf82ebb41c8fd22",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 18,
-          "kind": "MANAGEMENT_API_LITERAL"
-        },
-        {
-          "line": 18,
-          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
-        },
-        {
-          "line": 19,
+          "line": 6,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
+          "line": 19,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 19,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
           "line": 20,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 21,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
       "stagedExternalWriterCalls": [
         {
-          "line": 7,
+          "line": 8,
           "operation": "probe"
         }
       ],
