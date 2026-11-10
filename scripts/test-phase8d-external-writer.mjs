@@ -106,7 +106,9 @@ try{
    assert.equal(writers.length,1);
    assert.equal(writers[0].phase,'STARTED');
    assert(notices.includes('WORK_OUTCOME_UNCERTAIN'));
-   assert.equal((await rpc('requestCapture',randomBytes(16).toString('hex'),{sourceSha:pin.sourceSha,resourceSetSha256:pin.resourceSetSha256})).state,'DRAINING');
+   // The live verifier's earlier HTTP probes can already start this fixture capture.
+   if(captureId)assert.equal((await rpc('pollCapture',captureId)).state,'DRAINING');
+   else assert.equal((await rpc('requestCapture',randomBytes(16).toString('hex'),{sourceSha:pin.sourceSha,resourceSetSha256:pin.resourceSetSha256})).state,'DRAINING');
   }finally{globalThis.fetch=prior;}
  });
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])await test('actual '+file+' retains native ownership through readback and final session cleanup',async()=>{await ready();await import(pathToFileURL(path.join(repo,'scripts',file)).href+'?allowed='+index++);assert(events.includes('insert-session'));assert(events.includes('delete-session'));assert.equal((await rpc('status')).activeWriters,0);assert.equal((await rpc('pollCapture',captureId)).state,'DRAINED');assert.deepEqual(trace,['external.enter','external.start','writer.exit']);});
