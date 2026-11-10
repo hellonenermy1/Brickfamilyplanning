@@ -337,6 +337,18 @@
     "scripts/verify-phase7-development-live.mjs": {
       "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
       "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/cardfree-beta-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Explicitly invoked dedicated-token/pinned-plan current beta Worker version/subdomain and existing D1 bookmark metadata GETs only. No SQL, script content, logs, resource writes or deployment-token fallback; CI uses synthetic request callbacks only."
+    },
+    "scripts/test-phase8d-beta-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic Cloudflare metadata transport plus private CLI subprocess fixtures with dedicated token empty and fake deployment token. No real provider requests; hardcoded API URL is tested, not executed by default fetch."
+    },
+    ".github/workflows/phase8d-cardfree-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback."
     }
   }
 }

@@ -1,13 +1,13 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "f4e487e99c7e3a5d0a63942a5e5fb21c82ed8081",
+  "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "c94e8d59aaac62650132ab8e475bd51af488f6394c52f9a40db42ee176dd148d",
+  "policySha256": "454bc03e31e1afa42cb4f071bb1a270fb513f6ccc85ac26e9b34fcf0fa47d14d",
   "summary": {
-    "selectedFiles": 315,
-    "filesWithManagementSignals": 74,
-    "explicitClassifications": 84,
+    "selectedFiles": 317,
+    "filesWithManagementSignals": 76,
+    "explicitClassifications": 87,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "8c0f9f15dac33f18f41fe2b63ae6b483c65fb077877b88fb2f419feb0a29dd12",
+  "sourceSetSha256": "220ccbe99565c289b93aa209c46ea50afc3fa6c6cd3f83008111f00d2ba19d3c",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -135,6 +135,7 @@
         "scripts/cardfree-b2-destination.mjs",
         "scripts/cardfree-backup-alert-receipt.mjs",
         "scripts/cardfree-backup-monitor.mjs",
+        "scripts/cardfree-beta-readonly.mjs",
         "scripts/cardfree-pitr-readonly.mjs",
         "scripts/ensure-beta-d1-columns.mjs",
         "scripts/phase8d-b2-fixture.mjs",
@@ -147,6 +148,7 @@
         "scripts/test-phase8d-backup-alert-receipt.mjs",
         "scripts/test-phase8d-backup-monitor.mjs",
         "scripts/test-phase8d-beta-config.mjs",
+        "scripts/test-phase8d-beta-readonly.mjs",
         "scripts/test-phase8d-cardfree-recovery.mjs",
         "scripts/test-phase8d-d1-ack-faults.mjs",
         "scripts/test-phase8d-enrichment-failure.mjs",
@@ -549,6 +551,11 @@
     },
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/cardfree-beta-readonly.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/ensure-beta-d1-columns.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
@@ -630,6 +637,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-beta-config.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-beta-readonly.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1663,6 +1675,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/cardfree-beta-readonly.mjs",
+      "to": "scripts/cardfree-pitr-readonly.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/cardfree-capture-coordinator.mjs",
       "to": "scripts/cardfree-backup-package.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2275,6 +2292,16 @@
     {
       "from": "scripts/test-phase8d-beta-config.mjs",
       "to": "scripts/setup-beta-d1.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-beta-readonly.mjs",
+      "to": "scripts/cardfree-beta-readonly.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-beta-readonly.mjs",
+      "to": "scripts/cardfree-beta-readonly.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -3321,10 +3348,10 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "1fdac480c1e4de6d36b0443df39dfeba922ac8f332c2b845b1303440ebee3575",
-      "gitBlobSha": "70974ec67142c3352a93af1e70f5fbcfc20965c7",
-      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
-      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "sha256": "b85cf1289555ce662cd74d0f35db590df05e010b6d073953d41279188229fe2b",
+      "gitBlobSha": "1eb4d497ef8f8b02e8b4f8d09399022467a9e5ed",
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [],
@@ -3333,6 +3360,7 @@
         "scripts/audit-phase8d-requirements.mjs",
         "scripts/beta-compat-columns.mjs",
         "scripts/beta-deployment-contract.mjs",
+        "scripts/cardfree-beta-readonly.mjs",
         "scripts/ensure-beta-d1-columns.mjs",
         "scripts/phase8d-capture-hook-profile.mjs",
         "scripts/phase8d-capture-write-inventory.mjs",
@@ -3350,6 +3378,7 @@
         "scripts/test-phase8d-backup-monitor.mjs",
         "scripts/test-phase8d-backup-run.mjs",
         "scripts/test-phase8d-beta-config.mjs",
+        "scripts/test-phase8d-beta-readonly.mjs",
         "scripts/test-phase8d-capture-admission.mjs",
         "scripts/test-phase8d-capture-baseline.mjs",
         "scripts/test-phase8d-capture-broker.mjs",
@@ -4285,6 +4314,33 @@
         "node:fs",
         "node:path",
         "node:sqlite"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/cardfree-beta-readonly.mjs",
+      "sha256": "04e82558695b816b57c990d67b9d18766725d458f26eb3ba6b1bc0a1b690bc75",
+      "gitBlobSha": "55c9221452bbe5026c7559deadea2628390b3244",
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Explicitly invoked dedicated-token/pinned-plan current beta Worker version/subdomain and existing D1 bookmark metadata GETs only. No SQL, script content, logs, resource writes or deployment-token fallback; CI uses synthetic request callbacks only.",
+      "signals": [
+        {
+          "line": 4,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 103,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-pitr-readonly.mjs",
+        "node:crypto",
+        "node:fs",
+        "node:url"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -7370,6 +7426,49 @@
       ],
       "referencedScriptCandidates": [
         "scripts/setup-beta-d1.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-beta-readonly.mjs",
+      "sha256": "40826ed84b6ed0e0d535a3346c034c93664e67397243faf4cef294c161d7338f",
+      "gitBlobSha": "2b9b0818373152a09892d70b8f306786fee8c586",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic Cloudflare metadata transport plus private CLI subprocess fixtures with dedicated token empty and fake deployment token. No real provider requests; hardcoded API URL is tested, not executed by default fetch.",
+      "signals": [
+        {
+          "line": 5,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 5,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
+          "line": 12,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
+          "line": 20,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 22,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-beta-readonly.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/cardfree-beta-readonly.mjs"
       ],
       "npmScriptReferences": []
     },
