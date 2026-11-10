@@ -5,8 +5,8 @@
   "sourceFiles": [
     {
       "path": "scripts/phase8d-operator-entry.mjs",
-      "sha256": "83f16790317d86d6951fe19919a5574af0a0b1a439f776871d4788badc901e7c",
-      "gitBlobSha": "2c6c7cca369fa2ea5185efc8afef2f0671eaa870"
+      "sha256": "e2f9a81b26c9084ffb02470f20a7c56055d1d72733a16e9a830d7edf658c1711",
+      "gitBlobSha": "56770ce54beb857b7affe156c4636e2144f62aca"
     },
     {
       "path": "scripts/build-phase8d-operator-launcher.mjs",
@@ -15,8 +15,8 @@
     },
     {
       "path": "scripts/test-phase8d-operator-launcher.mjs",
-      "sha256": "db28776c664ca212a54ed137e28b95c43ccbd6e096ba160bdeb3e62adc787dbf",
-      "gitBlobSha": "485b28495603977c02e44af25b1007de962597b3"
+      "sha256": "b1be1628c11c74b8b5a094f8a328dba0bded5ee08eff6af6ab85ea29d7660d01",
+      "gitBlobSha": "a5222095e7560881004a62703682e466657bd7b5"
     },
     {
       "path": "scripts/staged-external-writer.mjs",
@@ -51,7 +51,7 @@
   ],
   "focusedNative": {
     "command": "node scripts/test-phase8d-operator-launcher.mjs",
-    "passed": 27,
+    "passed": 28,
     "failed": 0,
     "freshNodeCliProcesses": true,
     "nativeSignedAuthorityAndReplay": true,
@@ -59,8 +59,10 @@
     "allFourToolsHeldCaptureRefusalQualified": true,
     "actualCleanBuilderAndOverwriteRefusalQualified": true,
     "providerAndHttpsTransport": "SYNTHETIC_BRIDGE_ONLY",
-    "logSha256": "da6140323203eb9eef95c004ec04dcfc55f70622b75d676feb7d5067f95024bc",
-    "exitCode": 0
+    "logSha256": "e8c8ac48807b69891b5c813dc7479ea5ae21c4466ed4951d43c2235f1325858b",
+    "exitCode": 0,
+    "allFourBusyCasesReachedSignedAdmission": true,
+    "credentialConfigOutsideSourceCheckoutRequired": true
   },
   "externalInventoryRegressionCases": 23,
   "defaultWorkflowActivationChanged": false,
@@ -81,7 +83,8 @@
     "currentEncryptedNativeRecoveryPassed": true,
     "originalProductionRecoveryAndTrustRegressionPassed": true,
     "knownNativeDisposalWarningsRetained": true,
-    "finalStrongerDirtyHelperControlRerunSeparately": true
+    "finalStrongerDirtyHelperControlRerunSeparately": true,
+    "finalLauncher28CasesRerunAfterFullCampaign": true
   },
   "runtime90FileProjectionUnchanged": true
 }

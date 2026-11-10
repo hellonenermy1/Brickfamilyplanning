@@ -2,7 +2,7 @@
 
 ## External operator source checkpoint
 
-An explicit pinned launcher now supplies a source-level installation path for four actual beta operator selectors in fresh Node processes.27 native cases and the complete local source campaign pass. Build/config/source/epoch/scope/private-file checks, shared controller import after checkout validation, all-four held-capture refusal and uncertain cleanup/release are qualified with a synthetic provider/HTTPS bridge. This is not a selected immutable secure runtime, real key/config/TLS installation or account-wide bypass restriction. Existing workflows still invoke direct tools, and all4 remain classified unfenced. See PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER.md/EVIDENCE.json.
+An explicit pinned launcher now supplies a source-level installation path for four actual beta operator selectors in fresh Node processes.28 native cases and the complete local source campaign pass. Build/config/source/epoch/scope/private-file checks, shared controller import after checkout validation, all-four held-capture refusal and uncertain cleanup/release are qualified with a synthetic provider/HTTPS bridge. This is not a selected immutable secure runtime, real key/config/TLS installation or account-wide bypass restriction. Existing workflows still invoke direct tools, and all4 remain classified unfenced. See PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER.md/EVIDENCE.json.
 
 ## Superseding metadata checkpoint — 10 November 2026, 23:25 SGT
 

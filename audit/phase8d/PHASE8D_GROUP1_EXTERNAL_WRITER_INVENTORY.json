@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 144
   },
-  "sourceSetSha256": "a289d0316479e9dcc3d81c2bdc0087f999ac3c601f34d8df339c0add955bc244",
+  "sourceSetSha256": "189763ea8403e0d5448ba6df8c56f7aed6797bb30c9eafc143756897bcd58871",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -5426,8 +5426,8 @@
     },
     {
       "path": "scripts/phase8d-operator-entry.mjs",
-      "sha256": "83f16790317d86d6951fe19919a5574af0a0b1a439f776871d4788badc901e7c",
-      "gitBlobSha": "2c6c7cca369fa2ea5185efc8afef2f0671eaa870",
+      "sha256": "e2f9a81b26c9084ffb02470f20a7c56055d1d72733a16e9a830d7edf658c1711",
+      "gitBlobSha": "56770ce54beb857b7affe156c4636e2144f62aca",
       "classification": "STAGED_OPERATOR_LAUNCHER",
       "reason": "Explicit pinned local launcher may configure signed ownership for four actual beta tools. Source/native proof only; no installed host, immutable artifact, restricted credentials, bypass prevention or production activation.",
       "signals": [
@@ -5439,7 +5439,7 @@
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [
         {
-          "line": 46
+          "line": 48
         }
       ],
       "imports": [
@@ -9367,8 +9367,8 @@
     },
     {
       "path": "scripts/test-phase8d-operator-launcher.mjs",
-      "sha256": "db28776c664ca212a54ed137e28b95c43ccbd6e096ba160bdeb3e62adc787dbf",
-      "gitBlobSha": "485b28495603977c02e44af25b1007de962597b3",
+      "sha256": "b1be1628c11c74b8b5a094f8a328dba0bded5ee08eff6af6ab85ea29d7660d01",
+      "gitBlobSha": "a5222095e7560881004a62703682e466657bd7b5",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Fresh local Node operator modules and signed native authority with an explicit synthetic provider/HTTPS bridge; test name alone does not exclude effects, credentials, source or subprocess review.",
       "signals": [
@@ -9393,7 +9393,7 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 48,
+          "line": 49,
           "kind": "PINNED_OPERATOR_LAUNCHER_CAPABILITY"
         }
       ],

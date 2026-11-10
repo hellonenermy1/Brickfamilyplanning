@@ -458,7 +458,7 @@
     {
       "id": "PINNED_EXTERNAL_OPERATOR_CLI_ENTRY",
       "state": "SOURCE_NATIVE_LOCAL_QUALIFIED_NOT_PRODUCTION_INSTALLED",
-      "focusedNativeCases": 27,
+      "focusedNativeCases": 28,
       "inventoryCases": 23,
       "actualFreshNodeCliProcesses": true,
       "knownToolSelectors": 4,
@@ -479,7 +479,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Pinned opt-in external CLI entry now connects four real tools to signed ownership in fresh processes (27 native checks); direct invocation remains unfenced. Actual complete Worker/DO/D1/bootstrap/raw/binding/deferred/process/credential restrictions, protected immutable operator host/artifact/config/key, source transition/rollback and unknown STARTED/legacy reconciliation remain open. No partial capture activation."
+      "needed": "Pinned opt-in external CLI entry now connects four real tools to signed ownership in fresh processes (28 native checks); direct invocation remains unfenced. Actual complete Worker/DO/D1/bootstrap/raw/binding/deferred/process/credential restrictions, protected immutable operator host/artifact/config/key, source transition/rollback and unknown STARTED/legacy reconciliation remain open. No partial capture activation."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",

@@ -32,6 +32,8 @@ async function main(){
  if(process.env.GITHUB_SHA!==c.pin.sourceSha||tool==='deployment'&&c.operatorSourceSha!==c.pin.sourceSha)fail();
  const self=fileURLToPath(import.meta.url),root=path.dirname(path.dirname(self));
  if(path.basename(self)!=='.brick-operator-launcher.mjs'||fs.realpathSync(self)!==self||fs.realpathSync(root)!==root)fail();
+ const relativeConfig=path.relative(root,fs.realpathSync(args[1]));
+ if(relativeConfig===''||!path.isAbsolute(relativeConfig)&&relativeConfig!=='..'&&!relativeConfig.startsWith('..'+path.sep))fail();
  const git=(args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
  if(git(['rev-parse','HEAD'])!==BRICK_OPERATOR_SOURCE_SHA)fail();
  git(['diff','--quiet','HEAD','--']);
