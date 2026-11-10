@@ -51,6 +51,7 @@ jobs:
       - name: Canonical acceptance worksheet and closure inventory guards
         run: |
           node scripts/test-phase8d-beta-readonly.mjs
+          node scripts/test-phase8d-namespace-pin-evidence.mjs
           node scripts/test-phase8d-release-acceptance.mjs
           node scripts/test-phase8d-requirements-ledger.mjs
           node scripts/test-phase8d-acceptance-worksheet.mjs
