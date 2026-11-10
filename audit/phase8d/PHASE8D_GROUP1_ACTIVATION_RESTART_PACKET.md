@@ -1,6 +1,6 @@
 # Group 1 activation and restart decision packet — NOT READY
 
-Prepared 10 November 2026 (Singapore), source `d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
+Prepared 10 November 2026 (Singapore), source `c7204b151cc82f468f0a80f82a95b2b2e2de13fa`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current source and provider facts
 
@@ -22,6 +22,12 @@ The approved bucket was observed `allPrivate`, revision2 at `2026-11-10T07:49:30
 | Acceptance roles/criteria |525 canonical rows/214+311 mappings preserved; genuine review still unassigned | Real accountable implementation/test/independent review identities and agreed RTO/RPO pass criteria. No assistant self-sign-off, invented reviewer or deadline waiver. |
 
 The B2 app catalog supports key fields `capabilities`, `keyName`, `bucketIds`, `namePrefix`, `validDurationInSeconds`. It states the new secret is available only in its secure browser console, not chat. No key was created. Secure transfer to an explicitly selected private runtime must be resolved before any creation request; do not paste secrets into chat or commit them.
+
+## Required writer-release authority capability
+
+The signed broker must use the genuine `exitWriterForRole` implementation from the qualified candidate. It derives runtime/external role from the verified HMAC key and checks stored writer kind plus confirmed STARTED phase in the same transaction that deletes ownership and advances drain. Both broker factories refuse authorities lacking this method. Do not alias it to raw `exitWriter`, weaken the phase check or downgrade the factory to regain compatibility. Wire/state format alone does not establish the required implementation identity.
+
+RESERVED and unclassified legacy rows stay counted. Unknown source ownership requires a separately reviewed authoritative reconciliation; backup-selection proof cannot clear it. Raw `exitWriter` remains only a trusted lower fixture capability and must not be exposed by an operational wrapper. This change does not add same-role key-owner isolation or complete raw/credential/operator coverage. The baseline proof and current checks are in PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json.
 
 ## Initialization and recurring restart contract
 

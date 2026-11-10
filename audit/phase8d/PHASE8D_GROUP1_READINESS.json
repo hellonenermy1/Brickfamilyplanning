@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+  "sourceSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 310,
-      "explicitManagementClassifications": 83,
+      "selectedTrackedFiles": 311,
+      "explicitManagementClassifications": 84,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 137,
+      "filesWithDynamicImportExpressions": 138,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -383,6 +383,15 @@
       "realProviderMetadataChecked": true,
       "connectedB2CredentialRuntimeQualified": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_MONITOR_OPEN_EVIDENCE.json"
+    },
+    {
+      "id": "ROLE_BOUND_ATOMIC_WRITER_EXIT",
+      "state": "SOURCE_NATIVE_SCOPED_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 21,
+      "requiredAuthorityCapability": "exitWriterForRole",
+      "legacyUnknownReleased": false,
+      "sameRoleKeyOwnerIsolationAdded": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -394,7 +403,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Named runtime, authenticated guard, staged provisioner final database/hostname constraints and actual successful schema/child paths are source/native/CI qualified. Actual trusted installer, complete declared writer/operator/credential final effects, raw/direct-binding bypass restriction, four external beta-tool installations, unknown STARTED/legacy and authority install/rollback qualification remain. No partial production fence."
+      "needed": "Role-bound atomic signed exits now prevent cross-role false drain with actual scoped native D1 proof; broker requires genuine exitWriterForRole, no raw fallback. RESERVED/legacy unknown source ownership stays counted. Complete bootstrap/writer/operator/credential/raw bypass restrictions, same-role key-owner review, four beta-tool installations and safe source STARTED/legacy/authority install/rollback reconciliation remain. No partial fence."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -434,79 +443,79 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_MONITOR_OPEN_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42778072691,
-        "jobId": 129701196573,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
-        "logSha256": "d63990f32c9e457398d237e2a0e871d6d22e60d0bcdda9a8295e895fc0e89663"
-      },
-      {
-        "runId": 42778072887,
-        "jobId": 129701200619,
+        "runId": 42785576166,
+        "jobId": 129725810914,
         "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
-        "logSha256": "e06be6b8043455f87c31ff9adcfcc58cf531d18a4793c7b8c05401d14da71f9e"
+        "verifiedCheckoutSha": "636d7b93cb4fd9bee25702cdbdffca4f7d0f7075",
+        "logSha256": "a4107bcf93135d8d461b27c12e0ab1557265237c0777b3e184cb36d9432de715"
       },
       {
-        "runId": 42778072784,
-        "jobId": 129701196535,
+        "runId": 42785576465,
+        "jobId": 129725816519,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "636d7b93cb4fd9bee25702cdbdffca4f7d0f7075",
+        "logSha256": "304dcfdd5f253e63e3b76a382ae907348de021128e576e0182bf291c4e1a41fa"
+      },
+      {
+        "runId": 42785576252,
+        "jobId": 129725815742,
         "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
-        "logSha256": "5dac3aa095e447ce430cbbf84d99caa2b76bcd2eecaae4297bf430ae7563a1a6"
+        "verifiedCheckoutSha": "636d7b93cb4fd9bee25702cdbdffca4f7d0f7075",
+        "logSha256": "6b5f8bba8af995ac380474f55acd2f191c8b38352b666415f1ee5288224ba65c"
       },
       {
-        "runId": 42778066641,
-        "jobId": 129701178736,
+        "runId": 42785569137,
+        "jobId": 129725787906,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
-        "logSha256": "585f8e77854388bb338bc55bd744ef896ddd65e5399a75a9e2029f9869dd4151"
+        "verifiedCheckoutSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
+        "logSha256": "be31775a352a0304cc3b504ce7a86c7b09ed55b3174c42a995c52472acfc003d"
       }
     ],
-    "scope": "Monitor explicit initialization/reopen and existing source/native recovery; actual read-only B2 metadata highlights unqualified broad runtime credential. No installed schedule/key/custody/source-writer/cloud acceptance."
+    "scope": "Role-bound atomic writer exit/native scoped D1 false-drain correction, full source/native recovery. No genuine installer/domain/complete writer or same-role key-owner isolation, current cloud/custody acceptance."
   },
-  "lastHostedQualifiedSourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_MONITOR_OPEN_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_MONITOR_OPEN_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+  "lastMergeQualifiedSourceSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+      "sourceSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+      "sourceSha": "c7204b151cc82f468f0a80f82a95b2b2e2de13fa",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
