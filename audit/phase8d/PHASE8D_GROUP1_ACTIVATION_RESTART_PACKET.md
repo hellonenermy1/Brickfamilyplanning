@@ -1,6 +1,6 @@
 # Group 1 activation and restart decision packet — NOT READY
 
-Prepared 10 November 2026 (Singapore), source `3d4d5acf570fd2f931fb05f8d6584061f10f667a`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
+Prepared 10 November 2026 (Singapore), source `a583fb44db533cca38779977b9473dfabda78553`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
 ## Current source and provider facts
 
@@ -34,6 +34,21 @@ A replacement key secret with the same ID, a replacement ID with the same secret
 RPC receivers may use a different runtime credential from a live STARTED parent; the child receives its own credential binding and remains independently counted after the parent exits. This does not authenticate end users or isolate callers sharing one credential. Parent hints remain allowlisted and scoped. Raw fixture methods also refuse credential-owned tracked writers. Untracked urgent capacity overflow is permanently quarantined; an acknowledgement neither clears tracked ownership nor permits capture.
 
 This closes the source per-credential lifecycle gap, including the previously identified same-role ticket release failure. Actual complete installation, raw/binding/operator credential restrictions, guard/TLS/domain/custody and independent review remain open. Native baseline/current evidence is in PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json. No partial production writer fence is authorized.
+
+## Control-plane creation and restart contract
+
+All4 stores default to reopen-only:
+
+```js
+await authority.initialize(identity);
+await guard.initialize(identity);
+await captureReplay.initialize(capturePin);
+await guardReplay.initialize(guardPin);
+```
+
+Missing, corrupt or mismatched state stops startup without re-enrollment. First enrollment requires an explicit own-property `{create:true}` second argument in a separately trusted, reviewed first-use path. Valid existing state is retained during duplicate enrollment; it is never reset. Do not expose enrollment via HTTP/RPC, forward arbitrary caller options, or use catch-and-create on restart. Normal startup must use independently retained source/resource/epoch identities and reject unexpected authority epoch before any traffic or capture. A returned new epoch is not permission to update the trusted pin.
+
+This source prevents accidental default recreation; it does not establish global first-use. Privileged create:true after complete loss remains possible. External enrollment/custody and rollback controls must prevent that action and stale valid state restore from erasing unknown writers, poison, nonces or cancellation tombstones. Missing authority/replay state does not mean an already admitted source mutation stopped. Missing poisoned guard is not CLEAR. Stop, preserve evidence and obtain separately reviewed authoritative reconciliation. See PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json. Existing explicit-create synthetic fixture bootstraps are not approved recurring runtime installers.
 
 ## Initialization and recurring restart contract
 

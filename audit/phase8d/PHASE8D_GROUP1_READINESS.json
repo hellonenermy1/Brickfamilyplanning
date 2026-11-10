@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+  "sourceSha": "a583fb44db533cca38779977b9473dfabda78553",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 312,
+      "selectedTrackedFiles": 313,
       "explicitManagementClassifications": 84,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 139,
+      "filesWithDynamicImportExpressions": 140,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -404,6 +404,16 @@
       "credentialOwnerIsolationAdded": true,
       "sharedCredentialCallerIsolation": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json"
+    },
+    {
+      "id": "CONTROL_PLANE_REOPEN_WITHOUT_SAFETY_STATE_RECREATION",
+      "state": "SOURCE_NATIVE_PENDING_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 27,
+      "stores": 4,
+      "normalStartupCreatesMissingState": false,
+      "explicitEnrollmentRemainsPrivileged": true,
+      "globalFirstUseOrAntiRollbackQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -415,7 +425,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Credential-bound atomic lifecycle closes same-role/cross-role ticket false drain in source with actual native scoped D1 proof. Genuine writerCommandForPrincipal and format3-compatible authority/bootstrap/rollback required, no raw/role-only fallback or legacy owner adoption. Complete actual bootstrap/writer/operator/credential/raw restrictions, four beta-tool installations, secure per-credential custody/rotation and safe source STARTED/legacy reconciliation remain. No partial fence."
+      "needed": "Credential-bound lifecycle and4-store reopen-only startup source-qualified with native pending D1 proof. Actual complete bootstrap/writer/operator/raw/binding/credential installation, external enrollment/epoch/anti-rollback custody,4 beta-tool installs and safe STARTED/legacy/format3-compatible rollback remain. No catch-and-create, stale-state reset or partial fence."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -455,99 +465,103 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42791679773,
-        "jobId": 129746408738,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
-        "normalizedDecodedLogSha256": "a1e90f3e828bb2a17a115ebec3fd90ab174438b65849c906a76aac8cbd1aa05d",
-        "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
-        "warningSummary": {
-          "nodeDeprecationMarkers": 3,
-          "miniflareDisposalWarningMarkers": 9
-        }
-      },
-      {
-        "runId": 42791679699,
-        "jobId": 129746407984,
-        "name": "Brick Phase 2 — Isolated Parent Portal Verification",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 14,
-        "totalSteps": 14,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
-        "normalizedDecodedLogSha256": "92c4af5ea1f0ddc2c86c2f9324eea18521c7a564c33b6eab41c478d0a5c3133a",
-        "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
-        "warningSummary": {
-          "nodeDeprecationMarkers": 3,
-          "miniflareDisposalWarningMarkers": 0
-        }
-      },
-      {
-        "runId": 42791679791,
-        "jobId": 129746408581,
+        "runId": 42793749450,
+        "jobId": 129753479330,
         "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "a23af45532afca0b86d21c61dd956c3d34db0b69",
-        "normalizedDecodedLogSha256": "5d65496f2477e9daa47a70215b99cd5dfc17a7cdc02a1b8673ac7f866860e530",
-        "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+        "verifiedCheckoutSha": "9208a1f700b9d36b33bdf9f4080499b1c83df101",
+        "normalizedDecodedLogSha256": "2919fe653488cf2cff336bae546079f92fdebb75bbec6a2d1992b4f97dbd09e2",
+        "logNormalization": "Decoded UTF8, LF line endings, one final newline",
         "warningSummary": {
           "nodeDeprecationMarkers": 3,
-          "miniflareDisposalWarningMarkers": 0
+          "rpcStubDisposalWarnings": 0,
+          "assessment": "Known native fixture RPC disposal warnings and Node deprecations retained; all steps succeed and zero error markers."
         }
       },
       {
-        "runId": 42791670296,
-        "jobId": 129746382038,
+        "runId": 42793749042,
+        "jobId": 129753473508,
+        "name": "Brick Phase 2 — Isolated Parent Portal Verification",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 14,
+        "totalSteps": 14,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "9208a1f700b9d36b33bdf9f4080499b1c83df101",
+        "normalizedDecodedLogSha256": "49fd1f4102f05cb04db9492c936cbbe254ee0a730999d44b2fe983d26d8aa49c",
+        "logNormalization": "Decoded UTF8, LF line endings, one final newline",
+        "warningSummary": {
+          "nodeDeprecationMarkers": 3,
+          "rpcStubDisposalWarnings": 0,
+          "assessment": "Known native fixture RPC disposal warnings and Node deprecations retained; all steps succeed and zero error markers."
+        }
+      },
+      {
+        "runId": 42793749243,
+        "jobId": 129753474493,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "9208a1f700b9d36b33bdf9f4080499b1c83df101",
+        "normalizedDecodedLogSha256": "45634e571497171e88fba6e167aa1631c2648c981a8dc0b134a5c811024b079b",
+        "logNormalization": "Decoded UTF8, LF line endings, one final newline",
+        "warningSummary": {
+          "nodeDeprecationMarkers": 3,
+          "rpcStubDisposalWarnings": 2,
+          "assessment": "Known native fixture RPC disposal warnings and Node deprecations retained; all steps succeed and zero error markers."
+        }
+      },
+      {
+        "runId": 42793741609,
+        "jobId": 129753449646,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
-        "normalizedDecodedLogSha256": "7ac1d57f27af0fd11dc997380c9bdf714b13dd517af144d159a1160332542225",
-        "logNormalization": "Decoded UTF8 with LF line endings and one final newline",
+        "verifiedCheckoutSha": "a583fb44db533cca38779977b9473dfabda78553",
+        "normalizedDecodedLogSha256": "d813919a62c2725c3343d13b0d01f5f6c58d6fd2121f945928c6009a901b4999",
+        "logNormalization": "Decoded UTF8, LF line endings, one final newline",
         "warningSummary": {
           "nodeDeprecationMarkers": 3,
-          "miniflareDisposalWarningMarkers": 9
+          "rpcStubDisposalWarnings": 2,
+          "assessment": "Known native fixture RPC disposal warnings and Node deprecations retained; all steps succeed and zero error markers."
         }
       }
     ],
-    "scope": "Credential-bound writer lifecycle/native scoped D1 false-drain correction and full recovery; actual complete installation, credential custody and cloud acceptance remain open."
+    "scope": "Reopen-only control-store initialization with native pending scoped D1 false-drain/quarantine-loss proofs and full recovery; actual complete installation, external enrollment/anti-rollback/custody/cloud acceptance remain open."
   },
-  "lastHostedQualifiedSourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "a583fb44db533cca38779977b9473dfabda78553",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+  "lastMergeQualifiedSourceSha": "a583fb44db533cca38779977b9473dfabda78553",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+      "sourceSha": "a583fb44db533cca38779977b9473dfabda78553",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "3d4d5acf570fd2f931fb05f8d6584061f10f667a",
+      "sourceSha": "a583fb44db533cca38779977b9473dfabda78553",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
