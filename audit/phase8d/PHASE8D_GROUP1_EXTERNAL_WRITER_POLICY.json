@@ -62,6 +62,10 @@
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
     },
+    "scripts/cardfree-recovery-selection.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit private fsynced exact-version selection record and injected read-only archive capability; no provider writes/default network/CLI/key persistence or installation. Local retention/authentication does not prove independent custody."
+    },
     "scripts/codespaces-check.mjs": {
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
@@ -273,6 +277,10 @@
     "scripts/test-phase8d-recovery-coverage.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-recovery-selection.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual local file/crypto/fresh-process selection checks with explicit synthetic disk B2 capability only; indexed source, not excluded by test name or operational credential/custody approval."
     },
     "scripts/test-phase8d-release-gates.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",

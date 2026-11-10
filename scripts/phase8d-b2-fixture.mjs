@@ -21,5 +21,5 @@ export function syntheticB2Destination(directory){
   if(url.startsWith(pin.downloadOrigin+'/b2api/v4/b2_download_file_by_id?fileId=')&&init.method==='GET'&&init.headers.Authorization===auth.authorizationToken){const fileId=new URL(url).searchParams.get('fileId');if(!/^synthetic-file-[a-f0-9]{32}$/.test(fileId))throw Error('synthetic file pin');const value=JSON.parse(fs.readFileSync(indexPath,'utf8'))[fileId];if(!value)throw Error('synthetic file absent');const body=fs.readFileSync(path.join(directory,fileId));return response(url,body,{'content-type':'application/octet-stream','content-length':String(body.length),'x-bz-file-id':fileId,'x-bz-file-name':encodeURIComponent(value.fileName),'x-bz-content-sha1':value.contentSha1});}
   throw Error('synthetic fixture forbids unrecognized network capability');
  }});
- return{adapter,calls};
+ return{adapter,calls,pin:Object.freeze({...pin})};
 }
