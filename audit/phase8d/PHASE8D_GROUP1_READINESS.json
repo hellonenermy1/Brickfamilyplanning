@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+  "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 304,
-      "explicitManagementClassifications": 77,
+      "selectedTrackedFiles": 305,
+      "explicitManagementClassifications": 78,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 135,
+      "filesWithDynamicImportExpressions": 136,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -344,6 +344,15 @@
       "actualFailureDomainQualified": false,
       "productionInstalled": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json"
+    },
+    {
+      "id": "PROVISIONER_FINAL_TARGETS_AND_ACTUAL_SCHEMA_OWNERSHIP",
+      "state": "SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 16,
+      "selectedDatabasePinsEnforcedWhenControllerInstalled": true,
+      "deployedHostnameCheckedBeforeSecretMutation": true,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -355,7 +364,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Named current runtime surfaces and guarded all-operation capture broker/native encrypted journal resume are qualified. Actual trusted installer, complete declared writer/operator/credential final effects, lower-level/direct-binding bypass restriction, four external beta-tool installations, unknown STARTED/legacy and authority install/rollback qualification remain. No partial production fence."
+      "needed": "Named runtime, authenticated guard, staged provisioner final database/hostname constraints and actual successful schema/child paths are source/native/CI qualified. Actual trusted installer, complete declared writer/operator/credential final effects, raw/direct-binding bypass restriction, four external beta-tool installations, unknown STARTED/legacy and authority install/rollback qualification remain. No partial production fence."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -395,79 +404,79 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42653454606,
-        "jobId": 129285600417,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "errorMarkers": 0,
-        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
-        "logSha256": "7ddd0f8bd404d241aca4b3bfc8aada0ca42f7f65178cd0df7e5ea1c616c3418b"
-      },
-      {
-        "runId": 42653454665,
-        "jobId": 129285599759,
+        "runId": 42741771713,
+        "jobId": 129584292139,
         "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
-        "logSha256": "34255e696d2ee97730d9b758cc788047daf77db49004ad0d080ae0c59ffa2fdf"
+        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+        "logSha256": "5d38d35231794063bc5433d0212636128cfacafcd55fe2364361e517b5b6f362"
       },
       {
-        "runId": 42653454552,
-        "jobId": 129285600096,
+        "runId": 42741772160,
+        "jobId": 129584297311,
         "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "a979aa1202163d1f47adb930de67143df37f9c00",
-        "logSha256": "8a4286d34bce13b06df2477c2c860e2460d56412fa95f78480f463d81f818938"
+        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+        "logSha256": "d669b7ee58293bf6fd6bf686a108f96b0bc1d926786bb4f35cf4b358ed904811"
       },
       {
-        "runId": 42653440783,
-        "jobId": 129285559020,
+        "runId": 42741771763,
+        "jobId": 129584292486,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "errorMarkers": 0,
+        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+        "logSha256": "41d1daf44730ce494fd8b45232d6db5d10a85b6b0d2be47aa8996adfcc3014fb"
+      },
+      {
+        "runId": 42741765006,
+        "jobId": 129584273281,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
-        "logSha256": "676f225f5220366b28b61f6985e258e9abd8ec3a824c0869f55621d6a0e47a51"
+        "verifiedCheckoutSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+        "logSha256": "e34e3b38d3cc7f790f437afb707d088914bfba5845965a97be3e26a3124cb28e"
       }
     ],
-    "scope": "Authenticated guard transport/separation contract and native full encrypted recovery. No actual TLS/installation/key custody/failure-domain/schedule/PITR/cloud acceptance."
+    "scope": "Staged provisioner final targets and actual SQL/child ownership; full encrypted recovery/native regression. No actual controller installation/TLS/custody/failure domain/operational or cloud acceptance."
   },
-  "lastHostedQualifiedSourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+  "lastMergeQualifiedSourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+      "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "ae0f33f89aa11925dd9f6802ed9952381ebc9203",
+      "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
