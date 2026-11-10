@@ -1,5 +1,6 @@
 import { BACKUP_TABLES, TRANSIENT_RECOVERY_TABLES, MAX_BACKUP_DECODED_BYTES } from './backup-v6';
-import { restoreBackupToFreshD1 } from './backup-restore-v6';
+import { restoreBackupToFreshD1, retirePendingRecoveryCommands } from './backup-restore-v6';
+import { canonicalizeHistoricalDeviceRows } from './phase8-device-identity';
 import { CHUNK_BYTES, MAX_OBJECT_BYTES } from './dev-free-runtime';
 
 // Internal/off-platform recovery building block. No HTTP route, scheduled call or
@@ -156,6 +157,42 @@ async function verifyObjects(store: Store) {
   }
   if (chunks.some(c => typeof c.key !== 'string' || !keys.has(c.key))) throw Error('orphan recovery object chunk');
 }
+// Compare row multisets, not only counts/FKs. Bounded reads preserve every column,
+// BLOB byte and duplicate row while avoiding a whole-table provider response.
+// This is a postcondition, not a substitute for complete writer quiescence.
+async function verifyRestoredValues(db: D1Database, store: Store, table: string) {
+  const spec=store.columns[table],expected=new Map<string,number>();
+  const fingerprint=(row:Record<string,Cell>)=>JSON.stringify(spec.map(c=>row[c.name]));
+  for(const row of store.tables[table]){const key=fingerprint(row);expected.set(key,(expected.get(key)??0)+1);}
+  if(spec.some(c=>c.name==='__brick_restore_cursor'))throw Error('recovery value reconciliation failed: '+table);
+  let after:number|null=null,seen=0;
+  for(;;){
+    const cost=spec.map(c=>{const id='"'+c.name+'"';return(encoder.encode(c.name).length*6+8)+'+CASE WHEN '+id+' IS NULL THEN 4 ELSE '+(c.type.toUpperCase()==='BLOB'?'CAST((length('+id+')+2)/3 AS INTEGER)*4+32':c.type.toUpperCase()==='TEXT'?'length(CAST(json_quote('+id+') AS BLOB))+16':'64')+' END';});
+    const query=db.prepare('SELECT rowid cursor,2+'+cost.join('+')+' estimatedBytes FROM '+table+(after===null?'':' WHERE rowid>?1')+' ORDER BY rowid LIMIT 64');
+    const meta:{cursor:number;estimatedBytes:number}[]=(await(after===null?query:query.bind(after)).all<{cursor:number;estimatedBytes:number}>()).results;
+    if(!Array.isArray(meta)||meta.length>64)throw Error('recovery value reconciliation failed: '+table);
+    const selected:number[]=[];let estimated=4096+encoder.encode(JSON.stringify(spec)).byteLength,prior=after??-Infinity;
+    for(const row of meta){
+      if(!Number.isSafeInteger(row.cursor)||row.cursor<=prior||!Number.isSafeInteger(row.estimatedBytes)||row.estimatedBytes<0)throw Error('recovery value reconciliation failed: '+table);
+      prior=row.cursor;if(estimated+row.estimatedBytes>2*1024*1024)break;
+      estimated+=row.estimatedBytes;selected.push(row.cursor);
+    }
+    if(meta.length&&!selected.length)throw Error('recovery value reconciliation failed: '+table);
+    const rows:Record<string,unknown>[]=selected.length?(await db.prepare('SELECT rowid __brick_restore_cursor,'+spec.map(c=>'"'+c.name+'"').join(',')+' FROM '+table+' WHERE rowid IN('+selected.map(()=>'?').join(',')+') ORDER BY rowid').bind(...selected).all<Record<string,unknown>>()).results:[];
+    if(!Array.isArray(rows)||rows.length!==selected.length)throw Error('recovery value reconciliation failed: '+table);
+    let i=0;
+    for(const row of rows){
+      const cursor=row.__brick_restore_cursor;
+      if(cursor!==selected[i++]||typeof cursor!=='number'||!Number.isSafeInteger(cursor)||after!==null&&cursor<=after)throw Error('recovery value reconciliation failed: '+table);
+      after=cursor;const clean={...row};delete clean.__brick_restore_cursor;
+      const key=fingerprint(encodeCardfreeCaptureRow(clean,spec)),count=expected.get(key)??0;
+      if(count===0||++seen>store.tables[table].length)throw Error('recovery value reconciliation failed: '+table);
+      if(count===1)expected.delete(key);else expected.set(key,count-1);
+    }
+    if(!meta.length)break;
+  }
+  if(expected.size||seen!==store.tables[table].length)throw Error('recovery value reconciliation failed: '+table);
+}
 export async function restoreCardfreeD1(env: Env, body: ArrayBuffer, sha256: string) {
   if (env.BRICK_RECOVERY_MODE !== 'isolated-restore') throw Error('cardfree restore disabled');
   if (!body.byteLength || body.byteLength > MAX_BACKUP_DECODED_BYTES || !/^[a-f0-9]{64}$/.test(sha256) || await digest(body) !== sha256) throw Error('cardfree recovery integrity mismatch');
@@ -179,8 +216,13 @@ export async function restoreCardfreeD1(env: Env, body: ArrayBuffer, sha256: str
     inserts.push(env.DB.prepare('INSERT INTO ' + table + '(' + spec.map(c => '"' + c.name + '"').join(',') + ') VALUES (' + spec.map(() => '?').join(',') + ')').bind(...spec.map(c => decodeCell(row[c.name], c))));
   }
   for (const [db, statements] of [[env.DB, inserts], [env.BETA_DB, diagnosticStatements]] as const) for (let i = 0; i < statements.length; i += 50) await db.batch(statements.slice(i, i + 50));
+  // Match exactly the base restore's permitted transformations, including its
+  // single recorded retirement timestamp. Never excuse arbitrary value drift.
+  snapshot.primary.tables.devices=await canonicalizeHistoricalDeviceRows(snapshot.primary.tables.devices) as Record<string,Cell>[];
+  retirePendingRecoveryCommands(snapshot.primary.tables,base.restoredAt);
   for (const [db, store, tables, excluded] of [[env.DB, snapshot.primary, CARDFREE_PRIMARY_TABLES, CARDFREE_PRIMARY_EXCLUDED], [env.BETA_DB, snapshot.diagnostics, CARDFREE_DIAGNOSTIC_TABLES, CARDFREE_DIAGNOSTIC_EXCLUDED]] as const) {
     for (const table of tables) if (Number((await db.prepare('SELECT COUNT(*) n FROM ' + table).first<{ n: number }>())?.n) !== store.tables[table].length) throw Error('recovery row reconciliation failed: ' + table);
+    for(const table of tables)await verifyRestoredValues(db,store,table);
     for(const table of excluded)if(Number((await db.prepare('SELECT COUNT(*) n FROM '+table).first<{n:number}>())?.n)!==0)throw Error('recovery excluded-state reconciliation failed: '+table);
     if ((await db.prepare('PRAGMA foreign_key_check').all()).results.length) throw Error('recovery foreign-key reconciliation failed');
   }

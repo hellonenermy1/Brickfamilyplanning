@@ -1,5 +1,9 @@
 # Group 1 activation and restart decision packet — NOT READY
 
+## Superseding metadata checkpoint — 10 November 2026, 23:25 SGT
+
+Exact-pin11-GET live metadata run42844169184/source176e65f5 completed SUCCESS, including both independently supplied namespaces and current/historical bookmarks for both D1s. Metadata artifact13776663998 hash and complete checkout/logs verified; companion native job succeeded33/33. An earlier successful pinned run42826439260 was also recovered and verified. Older requests below for a new pinned run are historical and fulfilled; null-pin failures remain failed. See PHASE8D_GROUP1_PINNED_LIVE_METADATA.md/EVIDENCE.json. Next operational gate is complete trusted writer/bootstrap/raw/operator/credential installation and independent custody, followed by the authorized isolated cloud restoration; metadata does not establish these.
+
 ## Current continuation decision — 10 November 2026
 
 **Namespace identity prerequisite: independently supplied pins validated by digest.** Both user-supplied existing `brick-family-beta` namespace identities for `BRICK_DEVICE` and `BETA_SCHEDULER` matched the pre-existing active-binding SHA-256 values, without writing raw namespace IDs into the repository. Offline CI on `3a91c3c2` passed the independent-hash evidence suite16/16 and the existing synthetic pinned metadata suite44/44. Full source-only Group1 audit run42831143040 and accompanying portal CI were green. The earlier live metadata job's `DO_NAMESPACE_PINS_REQUIRED` exit2 remains a historical failure because that run used **null** expected IDs; no new pinned Cloudflare workflow dispatch has completed. A new exact source/binding/account/D1/host/historical-target GET-only run is the next live checkpoint. This step is not an isolated cloud restore.

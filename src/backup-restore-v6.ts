@@ -199,9 +199,9 @@ async function executeFreshRestore(db: D1Database, snapshot: Snapshot) {
  * Restoring history must never reissue commands left pending during a disaster.
  * Only explicit NEW post-recovery user requests may trigger one-shot actions.
  */
-function retirePendingCommands(snapshot: Snapshot) {
-  const at = Date.now();
-  for (const row of snapshot.tables.device_location_control) {
+export function retirePendingRecoveryCommands(tables: Record<string, Row[]>, at: number) {
+  if (!Number.isSafeInteger(at) || at <= 0) throw Error('invalid recovery retirement timestamp');
+  for (const row of tables.device_location_control) {
     if (row.command_status == null || row.command_status === "pending") {
       row.command_status = "expired";
       row.completed_at = at;
@@ -209,12 +209,12 @@ function retirePendingCommands(snapshot: Snapshot) {
       row.result_reason = "cancelled_on_disaster_restore";
     }
   }
-  for (const row of snapshot.tables.device_commands) {
+  for (const row of tables.device_commands) {
     if (row.status === "pending") {
       row.status = "expired"; row.result_json = JSON.stringify({ reason: "cancelled_on_disaster_restore" });
     }
   }
-  for (const row of snapshot.tables.device_live_track_control) {
+  for (const row of tables.device_live_track_control) {
     if (row.command_status === "pending") {
       row.command_status = "expired";
       row.completed_at = at;
@@ -235,7 +235,8 @@ export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer,
   // representation before it reaches the text UNIQUE index, and reject semantic duplicate keys so a
   // recovery cannot recreate two logical devices for one cryptographic identity.
   snapshot.tables.devices = await canonicalizeHistoricalDeviceRows(snapshot.tables.devices);
-  retirePendingCommands(snapshot);
+  const restoredAt = Date.now();
+  retirePendingRecoveryCommands(snapshot.tables, restoredAt);
   // Validate the entire payload before the first committed batch. This avoids
   // deterministic late-column/type failures leaving an otherwise fresh target partial.
   // SQL constraint/service failures can still leave partial batches: discard that
@@ -243,7 +244,7 @@ export async function restoreBackupToFreshD1(env: RestoreEnv, body: ArrayBuffer,
   for (const table of RESTORE_ORDER) for (const row of snapshot.tables[table]) validatedColumns(table, row);
   await assertFreshTarget(env.DB);
   const restoredRows = await executeFreshRestore(env.DB, snapshot);
-  return { format: snapshot.format, createdAt: snapshot.createdAt, restoredRows,
+  return { format: snapshot.format, createdAt: snapshot.createdAt, restoredAt, restoredRows,
     coverageComplete: (snapshot.missingTables ?? []).length === 0, missingTables: snapshot.missingTables ?? [] };
 }
 

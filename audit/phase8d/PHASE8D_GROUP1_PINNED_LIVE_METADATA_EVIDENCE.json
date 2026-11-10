@@ -1,0 +1,141 @@
+{
+  "format": "brick-group1-pinned-live-metadata-evidence-v1",
+  "status": "LIVE_PINNED_METADATA_VERIFIED_RECOVERY_OPEN",
+  "executionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "workflow": {
+    "runId": 42844169184,
+    "event": "workflow_dispatch",
+    "attempt": 1,
+    "overallConclusion": "success",
+    "metadataJobId": 129927053398,
+    "metadataJobConclusion": "success",
+    "nativeJobId": 129927052024,
+    "nativeJobConclusion": "success",
+    "nativeSteps": 33,
+    "metadataSteps": 9,
+    "artifactId": 13776663998,
+    "artifactZipSha256": "35e0f7dfa1f7df8759551f2df48f2aae879faba0a977fdfa166cc8e27980e8d5"
+  },
+  "observedResult": {
+    "format": "brick-cardfree-beta-readiness-v1",
+    "checkedAt": "2026-11-10T15:25:40.857Z",
+    "checksPassed": true,
+    "operationalRecoveryProven": false,
+    "installedWriterCoverageProven": false,
+    "independentCustodyProven": false,
+    "credentialLeastPrivilegeProven": false,
+    "executedCodeMatchesSourceProven": false,
+    "atomicCrossServiceSnapshotProven": false,
+    "activeVersionBindingMetadataVerified": true,
+    "metadataReadCompleted": true,
+    "requestsMade": 11,
+    "checks": [
+      {
+        "status": "ATTESTED",
+        "code": "ACTIVE_D1_BETA_VERSION_AND_BINDINGS"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "PINNED_WORKERS_DEV_HOST"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "D1_BOOKMARK_METADATA_AND_MATCHING_DEPLOYMENT_READS"
+      }
+    ],
+    "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83",
+    "planSha256": "cfa8c03f5e8b974cb86f519ad71e0cb03f79d71ec35ebc9f5f4cc939fb89ff52",
+    "active": {
+      "deploymentSha256": "a18f9fdb1ac3f8aeaf0ae4d754dc36ff7feff66479b32125d42b1f413ef2a844",
+      "versionSha256": "b5d87f0c2bee431930f1524d327788541d488b1fe956ba606e038bca456dab56",
+      "sourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "primarySha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+      "diagnosticSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+      "deviceNamespaceSha256": "fb8fccb5ec3e2c3d737ab7773c3f2158727d92c8fef21f75b699eb3cbc4986b2",
+      "schedulerNamespaceSha256": "9662662badbf80ea628c1b0460ecf7ad6876ba0958cc55893feec42f4ac4134a"
+    },
+    "workerHostSha256": "cbfb4ec4c2013b82ac719fd4803bdc87e164f9dac4607355a7945081b5e89b60",
+    "pitr": {
+      "format": "brick-cardfree-pitr-metadata-v1",
+      "checkedAt": "2026-11-10T15:25:40.857Z",
+      "checksPassed": true,
+      "recoveryProven": false,
+      "retentionWindowVerified": false,
+      "activeWorkerBindingsVerified": false,
+      "requestsMade": 6,
+      "resources": [
+        {
+          "role": "primary",
+          "resourceSha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:17.913Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "4bd239c7e5466159afb6b8fb596904d3f2c5648a567d4e036652c66fe571d175"
+          },
+          "historical": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "bf424b9f7705d2f398e9616dba6952ecfd1efc61ca100dedec5678d15ca99c99",
+            "requestedAt": "2026-11-06T16:51:22.000Z"
+          }
+        },
+        {
+          "role": "diagnostics",
+          "resourceSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:18.808Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "b9786af5f1642bcedf4688dbe1001e2e54a85a9f818274e07d7ef6b77b0c5778"
+          },
+          "historical": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "e4055697812e0eedc2ebef99bb8b265d83eab8b4a23b589279285c7369cea147",
+            "requestedAt": "2026-11-06T16:51:22.000Z"
+          }
+        }
+      ],
+      "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83"
+    }
+  },
+  "logVerification": {
+    "metadata": {
+      "bytes": 15818,
+      "sha256": "4f606bb372c744c3e87c6dc67065921f254a88cba3ca42c251ffeb3b6870acc4",
+      "checkoutShaPresent": true,
+      "errorMarkers": 0
+    },
+    "earlierMetadata": {
+      "bytes": 15817,
+      "sha256": "e94da0651fbc183460cf40ef0314e82a80d8aef7b03b82e475180bc9afd9ae64",
+      "checkoutShaPresent": true,
+      "errorMarkers": 0
+    },
+    "native": {
+      "characters": 258457,
+      "completeDecodedLogInspected": true,
+      "checkoutShaPresent": true,
+      "errorMarkers": 0
+    }
+  },
+  "earlierSuccessfulRunRecovered": {
+    "runId": 42826439260,
+    "executionSourceSha": "73f27f12518bf124db8e35debe77b1e0c092da70",
+    "metadataJobId": 129864898379,
+    "artifactId": 13769292314,
+    "artifactZipSha256": "8ac102d405e33124ae6c2ee5762ab1ec57cec54ce772f39552dfd25c0457d65d",
+    "checkedAt": "2026-11-10T13:39:03.798Z",
+    "checksPassed": true,
+    "requestsMade": 11,
+    "bothIndependentNamespaceDigestsMatched": true
+  },
+  "historicalNullPinFailuresReclassified": false,
+  "rawAccountOrResourceIdsStored": false,
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "phase8dStatus": "NOT_PASS"
+}

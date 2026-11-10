@@ -1,0 +1,62 @@
+{
+  "format": "brick-group1-restore-value-postflight-evidence-v1",
+  "baselineSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
+  "requirements": [
+    "OPS-003"
+  ],
+  "existingFinding": "P8D-002",
+  "sourceFiles": [
+    {
+      "path": "src/backup-restore-v6.ts",
+      "sha256": "59e28119428dc63efe3e357b8cdb2f9a87624241276db9e92ec6bd01ac4f3d3b",
+      "gitBlobSha": "6cd4f56755288189d8de5e95c5e11c64b5ce71d7"
+    },
+    {
+      "path": "src/cardfree-recovery.ts",
+      "sha256": "25783ea8f0b461bb50ff5475ec74794a1e82d2451cdb1d362aaddfbec80e5ddc",
+      "gitBlobSha": "68fee53458320b3afd748c26e27e6599bc706fa0"
+    },
+    {
+      "path": "scripts/test-phase8d-restore-value-parity.mjs",
+      "sha256": "f39dde4eb0a1e8f146cbb04cc88c51733d71491ac07ed3a80540efcdceb0ba43",
+      "gitBlobSha": "f796f555f850be9a292d636f673e06c7f6afe585"
+    },
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "fc842902d9bc08bc11cb90db8adcb15bd0c8ab03254d57edd580b1c50c0d1962",
+      "gitBlobSha": "96a790de6c5e277e77cbb95ffe932991bd9f7277"
+    }
+  ],
+  "baselineReproduction": {
+    "command": "node scripts/test-phase8d-restore-value-parity.mjs --baseline-only",
+    "corruptionsAccepted": 10,
+    "logSha256": "76fa92f0b6903bd57f2208258a48c0b0efed71f984e4bbf0ab34e6fe90faa69c",
+    "exitCode": 0
+  },
+  "focusedRegression": {
+    "command": "node scripts/test-phase8d-restore-value-parity.mjs",
+    "passed": 12,
+    "failed": 0,
+    "healthyExactValueAndPermittedCommandRetirement": true,
+    "twoPointFourMiBDiagnosticDataPagedUnderTwoMiB": true,
+    "unchangedCountsValidForeignKeysNegativeCases": 10,
+    "logSha256": "7d4ee44c72b7df6e49fa8a5777836ef878725784b7d5303558319e87120f514b",
+    "exitCode": 0
+  },
+  "runtimeSourceGraphUnchanged": true,
+  "cloudRecoveryProven": false,
+  "writerCoverageInstalled": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "phase8dStatus": "NOT_PASS",
+  "fullLocalRegression": {
+    "command": "bash /tmp/brick-full-audit.sh (all run steps from d1-storage-and-recovery job except unchanged npm ci)",
+    "exitCode": 0,
+    "runStepGroups": 26,
+    "logSha256": "6570280e1849f693495255b1c390d79cc954acaeb85833007ccd450a330b065b",
+    "logBytes": 167277,
+    "typecheckAndParentAssetsPassed": true,
+    "fullEncryptedNativeRecoveryPassed": true,
+    "legacyProductionRecoveryAndTrustRegressionPassed": true,
+    "knownNativeRpcDisposalWarningRetained": true
+  }
+}

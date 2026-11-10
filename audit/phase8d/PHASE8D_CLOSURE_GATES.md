@@ -1,3 +1,9 @@
+# Current metadata checkpoint — 10 November 2026, 23:25 SGT
+
+Pinned live metadata prerequisite is verified in run42844169184/source176e65f5, with both independent DO pins and11 GETs covering both D1 current/historical bookmarks. Exact artifact hash/log/checkout and successful companion native job verified. Earlier successful pinned run42826439260 separately recovered. Old null-pin failures remain failed. See PHASE8D_GROUP1_PINNED_LIVE_METADATA.md/EVIDENCE.json. This supersedes historical missing-namespace/no-dispatch wording below only. Complete writer/independent custody/schedule/actual isolated cloud recovery and all four group exits remain open; no production activation or final acceptance.
+
+---
+
 # Group1 — staged pinned positive alert delivery receipt reconciliation
 
 **Group1 NOT READY; Phase8D NOT PASS; P8D-002 P1 OPEN. Continue Group1 only.** Exact tested implementation **e90ecb762c247946b6976821eb489be7ab7873f0**, parent **b1db1b2d7b64a39209d187901c72f2871d3bec24**, unchanged portal integration base **141cbf42efaa61873c4fa87138ca5a0a19d404a2**. 42353999300 pull_request Phase 8D D1 storage and recovery audit (no cloud writes) completed/success33 steps; 42353999294 pull_request Brick Beta Map and Portal Regression (no cloud writes) completed/success10 steps; 42353999333 pull_request Brick Phase 2 — Isolated Parent Portal Verification completed/success14 steps; 42353995413 push Phase 8D D1 storage and recovery audit (no cloud writes) completed/success33 steps. Actual decoded logs, exact checkout and PR merge parents verified. Evidence: PHASE8D_GROUP1_ALERT_RECEIPT_HOSTED_EVIDENCE.json. Current audits and separate Phase2/portal preservation checks pass; PR32 remains draft/unmerged, no deployment.

@@ -439,21 +439,21 @@
     },
     {
       "id": "CURRENT_D1_BETA_METADATA_READ_PREREQUISITE",
-      "state": "LIVE_WORKERS_METADATA_PARTIAL_PRIMARY_D1_IDENTITY_READ_DENIED",
+      "state": "LIVE_PINNED_WORKER_D1_DO_METADATA_VERIFIED_RECOVERY_OPEN",
       "focusedCases": 44,
       "workflowLoaderCases": 2,
-      "liveDispatch": "EXECUTED_RUN_42816014091",
-      "currentAuditSecretAvailability": "PRESENT_WORKERS_READ_SUCCEEDED_D1_IDENTITY_ACCESS_DENIED",
+      "liveDispatch": "EXECUTED_RUN_42844169184",
+      "currentAuditSecretAvailability": "PRESENT_WORKERS_AND_BOTH_D1_READS_SUCCEEDED",
       "historicalResourcePinsRecovered": true,
-      "doNamespacePinsIndependentlyReviewed": false,
+      "doNamespacePinsIndependentlyReviewed": true,
       "nullNamespaceModeQualifies": false,
       "operationalRecoveryProven": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
-      "liveGetRequests": 5,
-      "bookmarkRequests": 0,
-      "metadataReadCompleted": false,
-      "pinnedMetadataChecksPassed": false,
-      "liveEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_BETA_READ_EVIDENCE.json"
+      "liveGetRequests": 11,
+      "bookmarkRequests": 4,
+      "metadataReadCompleted": true,
+      "pinnedMetadataChecksPassed": true,
+      "liveEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -495,7 +495,8 @@
     {
       "id": "CURRENT_PITR",
       "state": "CURRENT_AND_ONE_HISTORICAL_BOOKMARK_OBSERVED_DO_PINS_FULL_RETENTION_RECOVERY_OPEN",
-      "needed": "Run42823302330 completed11 GETs; both D1 identities/current and2026-11-06T16:51:22Z historical bookmarks plus matching deployment reread attested. Independently reviewed expected DO namespace pins, full retention and isolated restore/measured RTO/RPO remain open. Access denial resolved; no unchanged read retry."
+      "needed": "Run42823302330 completed11 GETs; both D1 identities/current and2026-11-06T16:51:22Z historical bookmarks plus matching deployment reread attested. Independently reviewed expected DO namespace pins, full retention and isolated restore/measured RTO/RPO remain open. Access denial resolved; no unchanged read retry.",
+      "metadataCheckpoint": "Pinned live metadata verified in run42844169184; old input/dispatch denials are historical. This does not close full retention, writer/custody/schedule or actual cloud recovery."
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
@@ -610,8 +611,8 @@
     "state": "AT_RISK",
     "reasons": [
       "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
-      "GitHub launch/D1 access resolved; both current and6Nov historical bookmarks observed in11 GETs. Independent expected namespace pins, full retention and isolated cloud recovery remain open.",
-      "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete."
+      "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete.",
+      "Pinned live metadata is verified; complete writer/custody/schedule and isolated cloud restore/rollback with agreed RTO/RPO remain open."
     ],
     "nextPreparedProviderAction": {
       "previousAction": "APPROVED_AND_EXECUTED",
@@ -622,6 +623,6 @@
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
-  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_HISTORICAL_PITR_EVIDENCE.json",
-  "liveMetadataExecutionSourceSha": "6d1111407b043ea9f0f2a50012563165066d3f80"
+  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
+  "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc"
 }

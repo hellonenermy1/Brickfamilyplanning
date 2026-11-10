@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "454bc03e31e1afa42cb4f071bb1a270fb513f6ccc85ac26e9b34fcf0fa47d14d",
   "summary": {
-    "selectedFiles": 318,
+    "selectedFiles": 319,
     "filesWithManagementSignals": 76,
     "explicitClassifications": 87,
     "betaMutatorsUnfenced": 4,
@@ -13,9 +13,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 142
+    "unresolvedDynamicImports": 143
   },
-  "sourceSetSha256": "c2f7473c05564dd66d22edec50fb728e1098a7e2c3894a28fb7eeb820d70ce54",
+  "sourceSetSha256": "022f37f2f6bcdc8e86e659f949f3be98908c3397a5d720c0aa8bdcf47430bd6e",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -872,6 +872,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-requirements-ledger.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-restore-value-parity.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2875,6 +2880,16 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-restore-value-parity.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-restore-value-parity.mjs",
+      "to": "scripts/phase8d-recovery-relations-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-route-live.mjs",
       "to": "scripts/phase8d-do-state-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3353,8 +3368,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "9c616b5c0348c75a7144e271f768a22782c4b9fe8d6a7e6161034700a4fc8cc9",
-      "gitBlobSha": "4cf76fc122d5dd8747ea22d41494e7d6d37990a8",
+      "sha256": "fc842902d9bc08bc11cb90db8adcb15bd0c8ab03254d57edd580b1c50c0d1962",
+      "gitBlobSha": "96a790de6c5e277e77cbb95ffe932991bd9f7277",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3430,6 +3445,7 @@
         "scripts/test-phase8d-refinement-lifecycle.mjs",
         "scripts/test-phase8d-release-acceptance.mjs",
         "scripts/test-phase8d-requirements-ledger.mjs",
+        "scripts/test-phase8d-restore-value-parity.mjs",
         "scripts/test-phase8d-route-live.mjs",
         "scripts/test-phase8d-route-lookup.mjs",
         "scripts/test-phase8d-rpc-parent.mjs",
@@ -9944,6 +9960,32 @@
       "referencedScriptCandidates": [
         "scripts/audit-phase8d-requirements.mjs"
       ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-restore-value-parity.mjs",
+      "sha256": "f39dde4eb0a1e8f146cbb04cc88c51733d71491ac07ed3a80540efcdceb0ba43",
+      "gitBlobSha": "f796f555f850be9a292d636f673e06c7f6afe585",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "./phase8d-recovery-relations-fixture.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
     {
