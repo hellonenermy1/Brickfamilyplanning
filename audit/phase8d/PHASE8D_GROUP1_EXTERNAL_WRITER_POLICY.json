@@ -314,6 +314,10 @@
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
     },
+    "scripts/test-phase8d-writer-exit-roles.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual HMAC guarded broker/native authority/guard and scoped native D1 role-exit regressions; explicit historical source baseline only, no current live key, source installer or complete writer/domain/custody qualification."
+    },
     "scripts/verify-beta-live.mjs": {
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."

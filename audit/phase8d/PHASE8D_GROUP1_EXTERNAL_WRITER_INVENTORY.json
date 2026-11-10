@@ -1,21 +1,21 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "61758ffeb3b82225192f885774ccad25f469781c",
+  "basisCommitSha": "2a88d01913319e5b4f48b15bd4e7b6232ef92555",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "65b567eecca98ce58b038556055f23b3c857ad30d8d185b803465fbeae7c3744",
+  "policySha256": "c94e8d59aaac62650132ab8e475bd51af488f6394c52f9a40db42ee176dd148d",
   "summary": {
-    "selectedFiles": 310,
+    "selectedFiles": 311,
     "filesWithManagementSignals": 74,
-    "explicitClassifications": 83,
+    "explicitClassifications": 84,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 137
+    "unresolvedDynamicImports": 138
   },
-  "sourceSetSha256": "deae4ecb0b1f10a044cccb62ef0d73e7e40b00c7375a652a23a1bfe7bbad80e0",
+  "sourceSetSha256": "2378e1f094da8c22aa333566933dc4b2abe95ce4a962e2d5fc1d795860e53f55",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -900,6 +900,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-workerd-integration.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-writer-exit-roles.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -3291,8 +3296,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "91134b83416e36734259737c90125cffb855a7f7a2bcfd55333d2834c14e91ee",
-      "gitBlobSha": "774370d698eeb36d025b34d76f9bc5e98b05713d",
+      "sha256": "4af51d2c3c20798cb67f0077794ffc2937fc4a427031f2a44cd6d2507d682b7d",
+      "gitBlobSha": "8b9de6011cca031612e169a154f8c0b2cbc48bee",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3374,6 +3379,7 @@
         "scripts/test-phase8d-worker-device-capture.mjs",
         "scripts/test-phase8d-worker-entry.mjs",
         "scripts/test-phase8d-workerd-integration.mjs",
+        "scripts/test-phase8d-writer-exit-roles.mjs",
         "scripts/test-phase8d-writer-scopes.mjs",
         "scripts/test-phase8d-writer-surface.mjs"
       ],
@@ -7420,8 +7426,8 @@
     },
     {
       "path": "scripts/test-phase8d-capture-broker.mjs",
-      "sha256": "7b3590670a71ddb07506e0c284bd20013687a5c6857f5ed1b6ba8ce5519b1a81",
-      "gitBlobSha": "50d9a972ddf71d93081cdb29bc01e604d7fcc324",
+      "sha256": "83d37704ea0fb22a986ea1121ef6b2bfb23ac17ebcac9316be392c339acee1bb",
+      "gitBlobSha": "d7fdd2f84345d0b863aa37d5020a5fb5cf7aac46",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Synthetic HMAC/replay client/server and native authority with ephemeral test keys and blocked outbound network; no production endpoint/key or provider qualification.",
       "signals": [],
@@ -10153,6 +10159,30 @@
         "node:path",
         "node:url",
         "node:zlib"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-writer-exit-roles.mjs",
+      "sha256": "ac032d6606dd7b67beca232bb2640db17f593d629be6dacb663b429206dc1aa1",
+      "gitBlobSha": "8d25f717b6318262ffde083d56d6de01f81b7e5e",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual HMAC guarded broker/native authority/guard and scoped native D1 role-exit regressions; explicit historical source baseline only, no current live key, source installer or complete writer/domain/custody qualification.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

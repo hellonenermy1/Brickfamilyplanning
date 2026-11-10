@@ -132,14 +132,22 @@ export class CaptureAdmissionStore {
     if(!object(request)||!hex(request.authorityEpoch,32)||!hex(request.writerId,32))throw Error('CAPTURE_RESERVATION_INVALID');const descriptor:unknown=request.kind==='runtime'?{kind:request.kind,priority:request.priority}:{kind:request.kind,operation:request.operation};if(!kind(descriptor)||!exact(request,['authorityEpoch','writerId',...Object.keys(descriptor)]))throw Error('CAPTURE_RESERVATION_INVALID');const epoch=request.authorityEpoch,writerId=request.writerId,expected={...descriptor};
     return this.change((s,now)=>{if(epoch!==s.authorityEpoch)throw Error('CAPTURE_WRITER_EPOCH_MISMATCH');const cancelled=s.cancelled??{},prior=cancelled[writerId];if(prior){if(!sameKind(prior,expected))throw Error('CAPTURE_WRITER_REUSE');return{cancelled:true};}const w=s.writers[writerId];if(w&&(!sameKind(writerKind(w),expected)||w.phase!=='RESERVED'))return{cancelled:false,code:'NOT_UNSTARTED' as const};if(!w&&s.quarantined)return{cancelled:false,code:'QUARANTINED_UNKNOWN' as const};if(Object.keys(cancelled).length>=MAX_CANCELLED_RESERVATIONS){close(s,'PREEMPTED');s.quarantined=true;return{cancelled:false,code:'CANCELLATION_CAPACITY' as const};}cancelled[writerId]=expected;s.cancelled=cancelled;delete s.writers[writerId];if(s.capture?.state==='DRAINING'&&Object.keys(s.writers).length===0){s.capture.state='DRAINED';s.capture.pausedAt=now;}return{cancelled:true};});
   }
-  async exitWriter(ticket:WriterTicket){
+  // Raw trusted fixture capability. Operational signed transport must use the
+  // role-bound method below; legacy/unknown work needs separate reconciliation.
+  async exitWriter(ticket:WriterTicket){return this.finishWriter(ticket);}
+  async exitWriterForRole(ticket:WriterTicket,role:'runtime'|'external'){
+    if(!['runtime','external'].includes(role))throw Error('CAPTURE_WRITER_ROLE_MISMATCH');
+    return this.finishWriter(ticket,role);
+  }
+  private async finishWriter(ticket:WriterTicket,role?:'runtime'|'external'){
     if(!exact(ticket,['authorityEpoch','writerId','tracked'])||!hex(ticket.authorityEpoch,32)||!hex(ticket.writerId,32)||typeof ticket.tracked!=='boolean')throw Error('CAPTURE_WRITER_INVALID');
     ticket={...ticket};
     return this.change((s,now)=>{
       if(ticket.authorityEpoch!==s.authorityEpoch)throw Error('CAPTURE_WRITER_EPOCH_MISMATCH');
-      if(!ticket.tracked){if(!s.quarantined)throw Error('CAPTURE_WRITER_INVALID');return{released:true,quarantined:true};}
+      if(!ticket.tracked){if(!s.quarantined||role==='external'||role!==undefined&&(s.writers[ticket.writerId]||s.cancelled?.[ticket.writerId]))throw Error('CAPTURE_WRITER_INVALID');return{released:true,quarantined:true};}
       if(!s.writers[ticket.writerId])return{released:false,code:'WRITER_NOT_TRACKED' as const};
       if(s.writers[ticket.writerId].phase==='RESERVED')throw Error('CAPTURE_RESERVATION_NOT_STARTED');
+      if(role&&(writerKind(s.writers[ticket.writerId]).kind!==role||s.writers[ticket.writerId].phase!=='STARTED'))throw Error('CAPTURE_WRITER_ROLE_MISMATCH');
       delete s.writers[ticket.writerId];
       if(s.capture?.state==='DRAINING'&&Object.keys(s.writers).length===0){s.capture.state='DRAINED';s.capture.pausedAt=now;}
       return{released:true,quarantined:s.quarantined};
