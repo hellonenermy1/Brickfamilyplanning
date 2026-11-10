@@ -8,6 +8,22 @@ await test('historical bookmarks use documented timestamp parameter with at most
 await test('history before database creation is not mislabelled missing PITR',async()=>{const t=transport({created:now-1000}),r=await attest({token,plan:{...plan,asOf:new Date(now-86400000).toISOString()},request:t.request,now});assert.equal(t.calls.length,4);assert.ok(r.resources.every(x=>x.historical.status==='NOT_APPLICABLE'));assert.equal(r.retentionWindowVerified,false);});
 await test('future or outside card-free check window targets refuse without calls',async()=>{const t=transport();for(const stamp of [now+1,now-8*86400000]){const r=await attest({token,plan:{...plan,asOf:new Date(stamp).toISOString()},request:t.request,now});assert.equal(r.requestsMade,0);}assert.equal(t.calls.length,0);});
 await test('401 and403 fail once without retries or alternative credentials/resources',async()=>{for(const status of [401,403]){const t=transport({status}),r=await attest({token,plan,request:t.request,now});assert.equal(t.calls.length,1);assert.equal(r.resources[0].code,'READ_ACCESS_DENIED');assert.equal(r.resources[1].code,'NO_REQUEST_AFTER_FAILED_CHECK');assert.ok(!JSON.stringify(r).includes('private provider body'));}});
+await test('non-200 success status and redirect metadata fail closed before other requests',async()=>{
+ for(const variant of ['created','partial','redirected','wrong-target']){
+  const t=transport(),original=t.request;
+  t.request=async(url,init)=>{
+   const response=await original(url,init);
+   const body=await response.text();
+   if(variant==='created'||variant==='partial')return new Response(body,{status:variant==='created'?201:206,headers:{'Content-Type':'application/json'}});
+   return {status:200,ok:true,redirected:variant==='redirected',url:variant==='wrong-target'?'https://different.example/metadata':url,body:new Response(body).body};
+  };
+  const r=await attest({token,plan,request:t.request,now});
+  assert.equal(r.checksPassed,false,variant);
+  assert.equal(r.requestsMade,1,variant);
+  assert.equal(r.resources[0].code,'METADATA_UNAVAILABLE',variant);
+  assert.equal(r.resources[1].code,'NO_REQUEST_AFTER_FAILED_CHECK',variant);
+ }
+});
 await test('wrong identity and oversized metadata fail before bookmark or other-resource reads',async()=>{for(const options of [{wrong:true},{large:true}]){const t=transport(options),r=await attest({token,plan,request:t.request,now});assert.equal(r.checksPassed,false);assert.equal(t.calls.length,1);}});
 await test('empty bookmark and network exception remain redacted BLOCKED results',async()=>{for(const options of [{bookmark:''},{throws:true}]){const t=transport(options),r=await attest({token,plan,request:t.request,now});assert.equal(r.checksPassed,false);assert.ok(!JSON.stringify(r).includes('private API details'));assert.ok(!JSON.stringify(r).includes(token));}});
 console.log(JSON.stringify({suite:'cardfree-pitr-readonly',passed,failed:0,scope:'synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof'}));
