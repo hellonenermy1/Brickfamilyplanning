@@ -8,9 +8,9 @@
     "qualificationEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json"
   },
   "activation": "NOT_READY",
-  "runtimeSourceSetSha256": "a7aba185dae625b3e1694b7f116d1ca41a51716078a477eb99717f2f134c4297",
+  "runtimeSourceSetSha256": "6a56f46333a0dcd99862d65387c13b7d6716b834d468b05d72878790c6bcef56",
   "runtimeFiles": 90,
-  "runtimeProjectionIdenticalToBasis": true,
+  "runtimeProjectionIdenticalToBasis": false,
   "workerRootHandlers": [
     "fetch",
     "scheduled"

@@ -3,7 +3,7 @@
 // Urgent outage fallback requires an independently durable capture quarantine. Partial hook coverage must never enable source capture.
 type Ticket={authorityEpoch:string;writerId:string;tracked:boolean};
 export type CaptureWriterPriority='ordinary'|'urgent';
-export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED'|'RESERVATION_CANCELLED'|'CANCELLATION_UNCERTAIN'|'START_UNCERTAIN'|'URGENT_QUARANTINED'|'URGENT_QUARANTINE_UNCERTAIN';
+export type CaptureWriterNotice='ADMISSION_UNCERTAIN'|'LATE_ADMISSION_CLEANUP'|'RELEASE_UNCERTAIN'|'DEFERRED_REJECTED'|'WORK_REJECTED'|'WORK_OUTCOME_UNCERTAIN'|'CONTEXT_REJECTED'|'LATE_WORK_UNACCOUNTED'|'RESERVATION_CANCELLED'|'CANCELLATION_UNCERTAIN'|'START_UNCERTAIN'|'URGENT_QUARANTINED'|'URGENT_QUARANTINE_UNCERTAIN'|'SCOPE_UNCERTAIN';
 export type CaptureWriterParent={format:'brick-writer-parent-v1';authorityEpoch:string;sourceSha:string;resourceSetSha256:string;writerId:string;operation:'scheduler.derived'|'scheduler.retention'|'scheduler.backup'};
 export type CaptureWriterController={
  enterDescendantWriter?(writerId:string,parent:Ticket):Promise<{admitted:boolean;ticket?:Ticket;requiresStart?:boolean}>;
@@ -48,12 +48,19 @@ async function resolveScope(c:Installed){
  if(!c.getScope)return undefined;
  try{const token=await bounded(Promise.resolve().then(()=>c.getScope!()),c.timeoutMs);if(!token||typeof token!=='object'||!scopePins.has(token))throw Error('unknown scope');return token;}catch{throw Error('CAPTURE_WRITER_SCOPE_UNCERTAIN');}
 }
+// A failed scope lookup is not permission. Urgent source work needs the same
+// independent durable quarantine and request proof as an admission outage.
+async function quarantineScopeOrAdmission(c:Installed,writerId:string,operation:string,fallbackAllowed?:()=>Promise<boolean>){
+ if(!c.quarantine)return false;
+ if(fallbackAllowed){try{if(await bounded(Promise.resolve().then(fallbackAllowed),c.timeoutMs)!==true)return false;}catch{return false;}}
+ try{const result=await bounded(Promise.resolve().then(()=>c.quarantine!(writerId,operation)),c.timeoutMs);if(!result||Object.keys(result).sort().join(',')!=='quarantined,writerId'||result.quarantined!==true||result.writerId!==writerId)throw Error('quarantine receipt invalid');report(c,'URGENT_QUARANTINED',operation);return true;}catch{report(c,'URGENT_QUARANTINE_UNCERTAIN',operation);throw Error('CAPTURE_WRITER_URGENT_QUARANTINE_UNCERTAIN');}
+}
 export function runCaptureWriterDescendant<T>(owner:object,operation:string,parent:Context,work:()=>Promise<T>):Promise<T>{
  if(!/^d1\.(run|first|all|raw|batch|exec)$/.test(operation))return Promise.reject(Error('CAPTURE_WRITER_OPERATION_INVALID'));
  const inherited=childScopes.get(parent),c=controllers.get(owner);
  if(!inherited||!c)return runCaptureWriter(owner,operation,'urgent',parent,()=>work());
  return inherited.run(async()=>{
-  const token=await resolveScope(c);
+  let token;try{token=await resolveScope(c);}catch(error){report(c,'SCOPE_UNCERTAIN',operation);if(!await quarantineScopeOrAdmission(c,crypto.randomUUID().replaceAll('-',''),operation))throw error;return work();}
   // Foreign/missing scope keeps independent admission and ownership.
   if(token!==inherited.token)return runCaptureWriter(owner,operation,'urgent',parent,()=>work());
   return work();
@@ -72,27 +79,32 @@ function validParent(value:CaptureWriterParent,pin:ScopePin,operation:string){
 }
 export async function runCaptureWriter<T>(owner:object,operation:string,inputPriority:CaptureWriterPriority|(()=>Promise<CaptureWriterPriority>),parent:Context,work:(scoped:ExecutionContext)=>Promise<T>,fallbackAllowed?:()=>Promise<boolean>,rpcParent?:CaptureWriterParent):Promise<T>{
  const installed=controllers.get(owner);if(!installed&&rpcParent!==undefined)throw Error('CAPTURE_WRITER_PARENT_UNVERIFIED');if(!installed)return work(parent as ExecutionContext);const c=installed;
- const scope=await resolveScope(c);
+ let scope:object|undefined;
  let priority:CaptureWriterPriority;
  try{priority=typeof inputPriority==='function'?await bounded(Promise.resolve().then(inputPriority),c.timeoutMs):inputPriority;}catch{throw Error('CAPTURE_WRITER_PRIORITY_UNCERTAIN');}
  if(!/^[a-z][a-z0-9.-]{0,79}$/.test(operation)||!['ordinary','urgent'].includes(priority))throw Error('CAPTURE_WRITER_OPERATION_INVALID');
- if(rpcParent!==undefined){rpcParent={...rpcParent};if(!scope||!c.descendant||!c.start||priority!=='ordinary'||!validParent(rpcParent,scopePins.get(scope)!,operation))throw Error('CAPTURE_WRITER_PARENT_UNVERIFIED');}
+
  const writerId=crypto.randomUUID().replaceAll('-','');
  let quarantined=false;
  async function urgentFallback(){
-  if(priority!=='urgent'||!c.quarantine)return false;
-  // Broad ingress must prove request-specific urgent authorization before it can
-  // poison capture. A timeout/lost proof is refusal, never implicit permission.
-  if(fallbackAllowed){try{if(await bounded(Promise.resolve().then(fallbackAllowed),c.timeoutMs)!==true)return false;}catch{return false;}}
-  try{const result=await bounded(Promise.resolve().then(()=>c.quarantine!(writerId,operation)),c.timeoutMs);if(!result||Object.keys(result).sort().join(',')!=='quarantined,writerId'||result.quarantined!==true||result.writerId!==writerId)throw Error('quarantine receipt invalid');quarantined=true;report(c,'URGENT_QUARANTINED',operation);return true;}catch{report(c,'URGENT_QUARANTINE_UNCERTAIN',operation);throw Error('CAPTURE_WRITER_URGENT_QUARANTINE_UNCERTAIN');}
+  if(priority!=='urgent')return false;
+  if(!await quarantineScopeOrAdmission(c,writerId,operation,fallbackAllowed))return false;
+  quarantined=true;return true;
  }
- const request=Promise.resolve().then(()=>rpcParent?c.descendant!(writerId,{authorityEpoch:rpcParent.authorityEpoch,writerId:rpcParent.writerId,tracked:true}):c.enter(writerId,priority));let admission;
+ // Never let an urgent caller use an invalid serialized parent to trigger poison.
+ if(rpcParent!==undefined&&priority!=='ordinary')throw Error('CAPTURE_WRITER_PARENT_UNVERIFIED');
+ try{scope=await resolveScope(c);}catch(error){report(c,'SCOPE_UNCERTAIN',operation);if(!await urgentFallback())throw error;}
+ if(rpcParent!==undefined){rpcParent={...rpcParent};if(!scope||!c.descendant||!c.start||priority!=='ordinary'||!validParent(rpcParent,scopePins.get(scope)!,operation))throw Error('CAPTURE_WRITER_PARENT_UNVERIFIED');}
+ let admission;
+ if(!quarantined){
+ const request=Promise.resolve().then(()=>rpcParent?c.descendant!(writerId,{authorityEpoch:rpcParent.authorityEpoch,writerId:rpcParent.writerId,tracked:true}):c.enter(writerId,priority));
  try{admission=await bounded(request,c.timeoutMs);}catch{
   report(c,'ADMISSION_UNCERTAIN',operation);
   // A lost/late reply can leave a durable ticket. Work has NOT started. Clean up
   // only the correctly bound late ticket; never erase unknown ownership on timeout.
   schedule(parent,c.cancel?cancelUnstarted(c,writerId,priority,operation):request.then(async late=>{if(late?.admitted===true&&validTicket(late.ticket,writerId)&&late.requiresStart!==true){const r=await bounded(Promise.resolve().then(()=>c.exit(late.ticket!)),c.timeoutMs);if(r?.released!==true)throw Error('late release uncertain');report(c,'LATE_ADMISSION_CLEANUP',operation);}}),c,operation);
   if(!await urgentFallback())throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');
+ }
  }
  if(!quarantined&&admission?.admitted===false)throw Error('CAPTURE_WRITER_BUSY');
  if(!quarantined&&(admission?.admitted!==true||!validTicket(admission.ticket,writerId)||scope&&admission.ticket.authorityEpoch!==scopePins.get(scope)!.authorityEpoch||(admission.requiresStart===true)!==Boolean(c.start))){report(c,'ADMISSION_UNCERTAIN',operation);if(c.cancel)schedule(parent,cancelUnstarted(c,writerId,priority,operation),c,operation);throw Error('CAPTURE_WRITER_ADMISSION_UNCERTAIN');}
