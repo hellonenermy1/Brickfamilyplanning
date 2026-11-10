@@ -1,0 +1,75 @@
+{
+  "format": "brick-group1-pinned-operator-hosted-evidence-v1",
+  "sourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+  "sourceTreeSha": "3c3b094aca2319e11570b00b6d6d6875b9972708",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "prMergeSha": "e80a1d79222db9713dde479409e32446c3caae31",
+  "prMergeTreeSha": "3c3b094aca2319e11570b00b6d6d6875b9972708",
+  "prMergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e"
+  ],
+  "records": {
+    "sourcePush": {
+      "runId": 42853192049,
+      "jobId": 129960175159,
+      "passedSteps": 33,
+      "conclusion": "success",
+      "completeDecodedLogInspected": true,
+      "logCharacters": 263450,
+      "checkoutSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+      "errorMarkers": 0,
+      "sourceShaPresent": true,
+      "nativeLauncherCasesPassed": 28,
+      "fullEncryptedNativeRecoveryPassed": true
+    },
+    "parentPhase2": {
+      "runId": 42853206870,
+      "jobId": 129959174620,
+      "passedSteps": 14,
+      "conclusion": "success",
+      "completeDecodedLogInspected": true,
+      "logCharacters": 25319,
+      "checkoutSha": "e80a1d79222db9713dde479409e32446c3caae31",
+      "errorMarkers": 0,
+      "sourceShaPresent": true
+    },
+    "betaPortal": {
+      "runId": 42853206865,
+      "jobId": 129959174575,
+      "passedSteps": 10,
+      "conclusion": "success",
+      "completeDecodedLogInspected": true,
+      "logCharacters": 16248,
+      "checkoutSha": "e80a1d79222db9713dde479409e32446c3caae31",
+      "errorMarkers": 0,
+      "sourceShaPresent": true
+    },
+    "prAudit": {
+      "runId": 42853207021,
+      "jobId": 129961261972,
+      "passedSteps": 33,
+      "conclusion": "success",
+      "completeDecodedLogInspected": true,
+      "logCharacters": 265487,
+      "checkoutSha": "e80a1d79222db9713dde479409e32446c3caae31",
+      "errorMarkers": 0,
+      "nativeLauncherCasesPassed": 28,
+      "fullEncryptedNativeRecoveryPassed": true
+    }
+  },
+  "manualMetadataJobs": "SKIPPED; no new provider read requested",
+  "boundedSourceScope": "Opt-in signed controller in fresh local Node operator processes and source build/configuration controls; synthetic HTTPS/provider bridge to real local durable authority/replay. Not installed production fencing.",
+  "productionInstalled": false,
+  "rawCredentialBypassRestrictionProven": false,
+  "realTlsOrIndependentHostCustodyProven": false,
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "supersededCiCancellation": {
+    "executed": false,
+    "reason": "Automatic approval review rejected cancellation because it could discard active CI work without explicit user authorization; runs were left to finish."
+  }
+}

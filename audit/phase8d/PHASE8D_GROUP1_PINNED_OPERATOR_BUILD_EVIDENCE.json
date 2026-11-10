@@ -1,0 +1,17 @@
+{
+  "format": "brick-group1-pinned-operator-build-evidence-v1",
+  "sourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+  "bundleSha256": "792279ab8ef944c721dd4e7d882575109cefe4cd33a98fcb97b9999ab39248c0",
+  "artifactRelativePath": "scripts/.brick-operator-launcher.mjs",
+  "nodeVersion": "24.22.1",
+  "esbuildVersion": "0.28.2",
+  "packageLockSha256": "0d50dabc87a67c02e40c9cab3293ed9c1d594cf35b40d504e5aff3eed5fb436b",
+  "declaredBuildWorkingDirectory": "checkout root",
+  "sameHostSeparateCleanWorktreesByteIdentical": true,
+  "syntaxCheckPassed": true,
+  "missingPrivateConfigRefusalExitCode": 2,
+  "missingPrivateConfigErrorRedacted": true,
+  "operatorExecutedWithRealConfiguration": false,
+  "productionInstalled": false,
+  "independentCustodyProven": false
+}

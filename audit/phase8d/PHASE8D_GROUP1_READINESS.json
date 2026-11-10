@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
+  "sourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -457,7 +457,7 @@
     },
     {
       "id": "PINNED_EXTERNAL_OPERATOR_CLI_ENTRY",
-      "state": "SOURCE_NATIVE_LOCAL_QUALIFIED_NOT_PRODUCTION_INSTALLED",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_QUALIFIED_NOT_PRODUCTION_INSTALLED",
       "focusedNativeCases": 28,
       "inventoryCases": 23,
       "actualFreshNodeCliProcesses": true,
@@ -467,7 +467,9 @@
       "defaultWorkflowActivated": false,
       "completeRawCredentialCoverage": false,
       "productionInstalled": false,
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json"
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
+      "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
+      "buildEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_BUILD_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -520,44 +522,44 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42846759432,
-        "jobId": 129936191884,
+        "runId": 42853192049,
+        "jobId": 129960175159,
         "conclusion": "success",
         "passedSteps": 33
       },
       {
-        "runId": 42846771069,
-        "jobId": 129936229174,
-        "conclusion": "success",
-        "passedSteps": 33
-      },
-      {
-        "runId": 42846771106,
-        "jobId": 129936230024,
+        "runId": 42853206870,
+        "jobId": 129959174620,
         "conclusion": "success",
         "passedSteps": 14
       },
       {
-        "runId": 42846771192,
-        "jobId": 129936232138,
+        "runId": 42853206865,
+        "jobId": 129959174575,
         "conclusion": "success",
         "passedSteps": 10
+      },
+      {
+        "runId": 42853207021,
+        "jobId": 129961261972,
+        "conclusion": "success",
+        "passedSteps": 33
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_HOSTED_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESTORE_VALUE_POSTFLIGHT_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "2e5178eac8661993e1ae8a2333517e28eb2b3c68",
+  "lastMergeQualifiedSourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
