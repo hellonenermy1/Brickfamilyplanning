@@ -1,0 +1,134 @@
+{
+  "format": "brick-phase8d-group1-live-pitr-observation-v1",
+  "date": "2026-11-10",
+  "executionSourceSha": "917f63b09c8ea09459b9926cf2d4466ec0013771",
+  "qualifiedExecutableSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "executableDiffFromQualifiedSourceEmpty": true,
+  "status": "LIVE_CURRENT_D1_BOOKMARK_OBSERVATION_COMPLETE_EXPECTED_DO_PINS_REQUIRED",
+  "previousAttemptEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_BETA_READ_EVIDENCE.json",
+  "permissionChange": {
+    "provenance": "USER_REPORTED_D1_READ_POLICY_SAVED",
+    "visiblePriorPolicyMissingD1Read": true,
+    "requestedCorrection": "Separate D1 Read account policy scoped to intended Brick account; Edit unchecked; existing permissions retained.",
+    "savedPolicyIndependentlyInspected": false,
+    "assistantMutatedCredentialsOrPolicy": false,
+    "githubSecretReplaced": false,
+    "effectiveD1ReadAccessObserved": true
+  },
+  "workflow": {
+    "runId": 42816014091,
+    "runAttempt": 2,
+    "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42816014091/attempts/2",
+    "metadataJobId": 129848248243,
+    "metadataJobConclusion": "failure",
+    "cliExitCode": 2,
+    "metadataJobCheckoutVerified": true,
+    "metadataJobErrorMarkers": 1,
+    "metadataJobDecodedLogSha256": "762bfa7ae69a226ed14e26c30ff2ec11c61860351b53ddeecc3fb7eb0b386616",
+    "startedAt": "2026-11-10T13:07:16Z",
+    "completedAt": "2026-11-10T13:07:26Z",
+    "artifactId": 13768026024,
+    "artifactZipSha256": "b15e8aa26fff7666dc372748ee4535eb16aac9da8ecad8c14d86bb26d8ae2b6b",
+    "artifactExpiresAt": "2026-11-24T13:07:23Z",
+    "sanitizedResultSha256": "452759549b2207187c3f45f4a46d7a05ac84c11ff2690e489580088155df6869",
+    "nativeRegressionCarriedFromAttempt1": true,
+    "nativeRegressionOriginalJobId": 129829191412,
+    "nativeRegressionAttempt2DisplayedJobId": 129848250959,
+    "nativeRegressionStartedAt": "2026-11-10T12:28:19Z",
+    "nativeRegressionCompletedAt": "2026-11-10T12:33:24Z",
+    "nativeRegressionPassedSteps": 33,
+    "nativeRegressionTotalSteps": 33
+  },
+  "observedResult": {
+    "format": "brick-cardfree-beta-readiness-v1",
+    "checkedAt": "2026-11-10T13:07:20.069Z",
+    "checksPassed": false,
+    "operationalRecoveryProven": false,
+    "installedWriterCoverageProven": false,
+    "independentCustodyProven": false,
+    "credentialLeastPrivilegeProven": false,
+    "executedCodeMatchesSourceProven": false,
+    "atomicCrossServiceSnapshotProven": false,
+    "activeVersionBindingMetadataVerified": false,
+    "metadataReadCompleted": true,
+    "requestsMade": 9,
+    "checks": [
+      {
+        "status": "ATTESTED",
+        "code": "ACTIVE_D1_BETA_VERSION_AND_BINDINGS"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "PINNED_WORKERS_DEV_HOST"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "D1_BOOKMARK_METADATA_AND_MATCHING_DEPLOYMENT_READS"
+      },
+      {
+        "status": "BLOCKED",
+        "code": "DO_NAMESPACE_PINS_REQUIRED"
+      }
+    ],
+    "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83",
+    "planSha256": "91ac038d669fb94f7f3061965a116f645fdba9b0664c5f5e4f11fc17dc54f8ca",
+    "active": {
+      "deploymentSha256": "a18f9fdb1ac3f8aeaf0ae4d754dc36ff7feff66479b32125d42b1f413ef2a844",
+      "versionSha256": "b5d87f0c2bee431930f1524d327788541d488b1fe956ba606e038bca456dab56",
+      "sourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "primarySha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+      "diagnosticSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+      "deviceNamespaceSha256": "fb8fccb5ec3e2c3d737ab7773c3f2158727d92c8fef21f75b699eb3cbc4986b2",
+      "schedulerNamespaceSha256": "9662662badbf80ea628c1b0460ecf7ad6876ba0958cc55893feec42f4ac4134a"
+    },
+    "workerHostSha256": "cbfb4ec4c2013b82ac719fd4803bdc87e164f9dac4607355a7945081b5e89b60",
+    "pitr": {
+      "format": "brick-cardfree-pitr-metadata-v1",
+      "checkedAt": "2026-11-10T13:07:20.069Z",
+      "checksPassed": true,
+      "recoveryProven": false,
+      "retentionWindowVerified": false,
+      "activeWorkerBindingsVerified": false,
+      "requestsMade": 4,
+      "resources": [
+        {
+          "role": "primary",
+          "resourceSha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:17.913Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "a8d34cb35a9075af6f1ab4c76cb347c79af356a47e59320e3e1f412b3841feef"
+          }
+        },
+        {
+          "role": "diagnostics",
+          "resourceSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:18.808Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "ec731b1a0f6eeb24d06172079b320ac736d05d4bbeab7f0a0749408c2850d6ab"
+          }
+        }
+      ],
+      "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83"
+    }
+  },
+  "limits": [
+    "Current bookmarks only; no historical timestamp or retention-window verification.",
+    "Expected DO namespace pins remain null; observed IDs/hashes must not become trusted expected pins automatically.",
+    "Matching before/after deployment reads are not an atomic snapshot or continuous stability proof.",
+    "Self-reported source label is not executable bytecode provenance.",
+    "No isolated cloud restore, complete installed writer coverage, independent custody, measured RTO/RPO or acceptance review.",
+    "Token policy scope/least privilege not independently proven by successful GETs."
+  ],
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false,
+  "group1Status": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS"
+}

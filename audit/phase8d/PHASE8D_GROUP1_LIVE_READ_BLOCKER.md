@@ -1,3 +1,17 @@
+# Group1 live read — expected namespace review remains
+
+## 2026-11-10 — D1 access resolved; current bookmark observations completed
+
+After the user reported saving a separate D1 Read policy scoped to Brick's account, only the failed metadata job was retried. The earlier screenshot showed D1 Read absent; the saved final policy was user-reported, not independently inspected. Assistant changed no credential/policy and replaced no GitHub secret. Run42816014091 attempt2/job129848248243 on917f63b completed9 GETs: active beta version/bindings/host, both D1 identities and current bookmarks, then matching final deployment reread. Effective D1 access is now demonstrated. Both D1 bookmark checks pass; metadataReadCompleted=true. No further permission/login retry is needed.
+
+The metadata job remains failure/exit2 because DO_NAMESPACE_PINS_REQUIRED is still intentional: expected device/scheduler namespace pins are null. Observed namespace hashes are not independently trusted expected pins. checksPassed=false and activeVersionBindingMetadataVerified=false remain. No historical timestamp was requested, so retentionWindowVerified=false; recoveryProven=false. Matching deployment reads do not prove an atomic snapshot, uninterrupted stability or executable-source provenance. Artifact13768026024 ZIP SHA256 b15e8aa26fff7666dc372748ee4535eb16aac9da8ecad8c14d86bb26d8ae2b6b verified; sanitized exact result saved. The33/33 native job was carried from attempt1 (12:28:19–12:33:24Z), not rerun in attempt2. Executables remain identical to qualified311d78d4; no new implementation test count or full current docs-head CI claim.
+
+Next metadata input: independently reviewed expected namespace IDs for BRICK_DEVICE and BETA_SCHEDULER on brick-family-beta, retained in the private plan. Do not copy observed hashes into expected pins or weaken the check to obtain green. Existing account/D1/host/source pins remain saved privately. Cloud recovery still requires an explicitly scoped isolated synthetic target and agreed measured RTO/RPO; no live mutation is authorized by these reads. Actual complete writer/bootstrap/raw/operator/credential installation, independent guard/replay/key/context custody, restricted B2 runtime, schedule/recipient and real acceptance review remain open. Group1 NOT READY; P8D-002 P1 OPEN;8D NOT PASS; forecast AT RISK. PR32 remains draft/unmerged; prior PR61 launcher-only merge is unchanged. No cloud writes, family-data operation, new B2 upload, notification, R2/card/billing/APK/UI or application deployment.
+
+Evidence: PHASE8D_GROUP1_LIVE_PITR_OBSERVATION.md and PHASE8D_GROUP1_LIVE_PITR_OBSERVATION_EVIDENCE.json. This supersedes earlier D1 denial and sign-in prerequisites as current blockers; retain those records as historical attempts.
+
+## Historical attempts (superseded as current prerequisites)
+
 # Group1 live read — current primary D1 access blocker
 
 

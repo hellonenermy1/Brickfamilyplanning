@@ -494,12 +494,12 @@
     },
     {
       "id": "CURRENT_PITR",
-      "state": "PRIMARY_D1_IDENTITY_READ_ACCESS_DENIED_NO_BOOKMARKS_REQUESTED",
-      "needed": "Live audit run42816014091 confirms Workers version/bindings/host reads; primary D1 identity GET denied. Administrator must review dedicated audit token D1 Read/account coverage; exact policy cause unknown. Explicit authorization and secure entry needed for changes. No unchanged retry/deployment-token fallback. Independent DO pins/current bookmarks/retention/isolated recovery remain unqualified."
+      "state": "CURRENT_BOOKMARKS_OBSERVED_EXPECTED_DO_PINS_RETENTION_AND_RECOVERY_OPEN",
+      "needed": "Attempt2 completed9 GETs; both D1 identities/current bookmarks and matching final deployment reads attested. D1 access resolved. Expected DO namespace pins require independent review; historical retention, isolated cloud recovery and measured RTO/RPO remain unqualified. No further unchanged access retry."
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
-      "state": "NOT_RUN_D1_ACCESS_AND_ISOLATED_OPERATIONAL_AUTHORITY_OPEN",
+      "state": "NOT_RUN_ISOLATED_OPERATIONAL_AUTHORITY_AND_CRITERIA_OPEN",
       "needed": "Explicit isolated target parity, interruption, rollback and measured RTO/RPO."
     }
   ],
@@ -610,7 +610,7 @@
     "state": "AT_RISK",
     "reasons": [
       "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
-      "GitHub login/launcher registration/dispatch resolved. Current Workers metadata read succeeded; primary D1 identity GET denied before any bookmark. Dedicated audit D1 Read/account coverage needs administrator review and separate authorization for correction.",
+      "GitHub launch and D1 read access resolved. Both current bookmarks observed in9 GETs; independently reviewed expected DO namespace pins, retention and isolated recovery evidence remain open.",
       "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete."
     ],
     "nextPreparedProviderAction": {
@@ -622,6 +622,6 @@
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
-  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_BETA_READ_EVIDENCE.json",
+  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_LIVE_PITR_OBSERVATION_EVIDENCE.json",
   "liveMetadataExecutionSourceSha": "917f63b09c8ea09459b9926cf2d4466ec0013771"
 }
