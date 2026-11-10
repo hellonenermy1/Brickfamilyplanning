@@ -22,9 +22,11 @@ function target(input){
  if(!hex(receipt.pinSha256,64)||receipt.archiveSha256!==policy.archiveSha256||receipt.fileName!=='brick-recovery/'+policy.context.backupId+'-'+policy.archiveSha256+'.brick')refuse();
  return{policy:{...policy,context:Object.fromEntries(['deployment','sourceSha','backupId','capturedAt','keyId'].map(k=>[k,policy.context[k]]))},receipt};
 }
-export function openStagedBackupMonitor({directory,config:input,target:initial,clock=Date.now}={}){
+// First creation is an explicit one-time action on a new directory. Recurring
+// entry points must omit create (or use false) and stop on any lost state.
+export function openStagedBackupMonitor({directory,config:input,target:initial,clock=Date.now,create=false}={}){
  const receiptEnabled=input?.format==='brick-backup-monitor-config-v2';
- if(typeof directory!=='string'||!directory||typeof clock!=='function'||!exact(input,['format','monitorId','intervalMs','retryBaseMs','retryMaxMs',...(receiptEnabled?['deliveryReceiptPin']:[])])||!['brick-backup-monitor-config-v1','brick-backup-monitor-config-v2'].includes(input.format)||!hex(input.monitorId,32)||!Number.isSafeInteger(input.intervalMs)||input.intervalMs<60000||input.intervalMs>86400000||!Number.isSafeInteger(input.retryBaseMs)||input.retryBaseMs<1000||!Number.isSafeInteger(input.retryMaxMs)||input.retryMaxMs<input.retryBaseMs||input.retryMaxMs>input.intervalMs)refuse();
+ if(typeof create!=='boolean'||typeof directory!=='string'||!directory||typeof clock!=='function'||!exact(input,['format','monitorId','intervalMs','retryBaseMs','retryMaxMs',...(receiptEnabled?['deliveryReceiptPin']:[])])||!['brick-backup-monitor-config-v1','brick-backup-monitor-config-v2'].includes(input.format)||!hex(input.monitorId,32)||!Number.isSafeInteger(input.intervalMs)||input.intervalMs<60000||input.intervalMs>86400000||!Number.isSafeInteger(input.retryBaseMs)||input.retryBaseMs<1000||!Number.isSafeInteger(input.retryMaxMs)||input.retryMaxMs<input.retryBaseMs||input.retryMaxMs>input.intervalMs)refuse();
  let receiptPin;try{receiptPin=receiptEnabled?validateBackupAlertReceiptPin(input.deliveryReceiptPin):null;}catch{refuse();}
  const config={...Object.fromEntries(['format','monitorId','intervalMs','retryBaseMs','retryMaxMs'].map(k=>[k,input[k]])),...(receiptEnabled?{deliveryReceiptPin:receiptPin}:{})},configSha256=hash(JSON.stringify(config)),root=path.resolve(directory),file=path.join(root,'backup-monitor.sqlite');
  let db,closed=false,identity;
@@ -55,12 +57,15 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
   v.outbox.push({message:{format:'brick-backup-monitor-alert-v1',eventId:nonce(),monitorId:config.monitorId,incidentId:incident.id,kind,observedAt:n,capturedAt:v.target.policy.context.capturedAt,code},state:'PENDING',deliveredAt:null});
  }
  try{
-  fs.mkdirSync(root,{recursive:true,mode:0o700});privateStat(root,true);
-  let fd;try{fd=fs.openSync(file,'wx',0o600);}catch(e){if(e.code!=='EEXIST')throw e;}finally{if(fd!==undefined)fs.closeSync(fd);}
+  // Initialization is a separate, one-time operator action. Normal restarts
+  // must never recreate lost state, even when the original target is supplied.
+  const initialTarget=create?target(initial):null,initialTime=create?now(0):null;
+  if(create){fs.mkdirSync(root,{mode:0o700});privateStat(root,true);const fd=fs.openSync(file,'wx',0o600);fs.closeSync(fd);}
+  else{privateStat(root,true);if(privateStat(file).size===0)refuse();}
   identity=privateStat(file);checkPath();db=new DatabaseSync(file,{timeout:25,allowExtension:false});checkPath();
-  const schema=db.prepare("SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").all();if(schema.length&&!(schema.length===1&&schema[0].name==='monitor_state'&&schema[0].sql===TABLE))refuse();
+  const schema=db.prepare("SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").all();if(create?schema.length!==0:!(schema.length===1&&schema[0].name==='monitor_state'&&schema[0].sql===TABLE))refuse();
   db.exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;');
-  if(!schema.length){const t=target(initial),n=now(0),v={format:'brick-backup-monitor-state-v1',configSha256,target:t,revision:0,lastClockAt:n,nextCheckAt:n,claim:null,lastResult:null,lastSuccessAt:null,failures:0,incident:null,outbox:[],alertOverflow:false};validate(v);const body=JSON.stringify(v);db.exec('BEGIN IMMEDIATE');try{db.exec(TABLE);db.prepare('INSERT INTO monitor_state VALUES(1,?,?)').run(body,hash(body));db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}}
+  if(create){const t=initialTarget,n=initialTime,v={format:'brick-backup-monitor-state-v1',configSha256,target:t,revision:0,lastClockAt:n,nextCheckAt:n,claim:null,lastResult:null,lastSuccessAt:null,failures:0,incident:null,outbox:[],alertOverflow:false};validate(v);const body=JSON.stringify(v);db.exec('BEGIN IMMEDIATE');try{db.exec(TABLE);db.prepare('INSERT INTO monitor_state VALUES(1,?,?)').run(body,hash(body));db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}const fd=fs.openSync(root,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_DIRECTORY);try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}}
   else{const v=read();now(v.lastClockAt);if(initial!==undefined&&JSON.stringify(target(initial))!==JSON.stringify(v.target))refuse();}
  }catch{try{db?.close();}catch{}refuse();}
  const api={

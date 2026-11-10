@@ -258,6 +258,10 @@
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
     },
+    "scripts/test-phase8d-monitor-open.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private monitor SQLite/crypto and synthetic sink/provider explicit-open regressions, competing initializers and fresh process; optional historical baseline only, no installed monitor/real notification or custody acceptance."
+    },
     "scripts/test-phase8d-parent-expensive-route-rate.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
