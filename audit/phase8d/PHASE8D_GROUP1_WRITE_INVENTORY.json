@@ -1,6 +1,6 @@
 {
   "format": "brick-group1-write-inventory-v1",
-  "basisCommitSha": "e6049cb59e740446ffd8024128815cd5a59f8210",
+  "basisCommitSha": "6b4e88d8509ca5e7dd42b505475965b08faf3787",
   "entry": "src/worker-beta-cardfree.ts",
   "activation": "NOT_READY",
   "notice": "Static candidates from relative import/export reachability only. basisCommitSha is the parent/reference used for this staged snapshot; exact current content is bound by per-file hashes and runtimeSourceSetSha256, not an assertion that every file equals that parent. Read-only prepares, cache/ephemeral writes and wrapper methods are retained for review. This is neither a complete runtime call graph nor enforced writer coverage. External scripts/operators, dynamic dispatch, deferred descendants and imported package behavior require separate accounting.",

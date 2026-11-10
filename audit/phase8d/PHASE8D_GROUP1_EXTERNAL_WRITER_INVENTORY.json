@@ -1,13 +1,13 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "e6049cb59e740446ffd8024128815cd5a59f8210",
+  "basisCommitSha": "6b4e88d8509ca5e7dd42b505475965b08faf3787",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "381d90e44eda4f8cf5201028b0a46dccaa6b6fe678f87c724b675c99342f94dc",
+  "policySha256": "4c4c09d5a4d5f1fdfe186945e78d5a54023d159cf4b740ff2f965e553f83f351",
   "summary": {
-    "selectedFiles": 307,
+    "selectedFiles": 309,
     "filesWithManagementSignals": 73,
-    "explicitClassifications": 80,
+    "explicitClassifications": 82,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 136
   },
-  "sourceSetSha256": "906280bf25f1383fbb33106e5100718ee322d24fbdcb172967ed5cc6d8a049ae",
+  "sourceSetSha256": "e8e653387b21de017549086296cdc6d28d3f76f1d6c87818ebed3980b77ce0f8",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -619,6 +619,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-backup-monitor.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-backup-run.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1612,6 +1617,21 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/cardfree-backup-run.mjs",
+      "to": "scripts/cardfree-b2-destination.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/cardfree-backup-run.mjs",
+      "to": "scripts/cardfree-backup-package.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/cardfree-backup-run.mjs",
+      "to": "scripts/cardfree-recovery-selection.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/cardfree-capture-coordinator.mjs",
       "to": "scripts/cardfree-backup-package.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2192,6 +2212,31 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-backup-run.mjs",
+      "to": "scripts/cardfree-backup-package.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-run.mjs",
+      "to": "scripts/cardfree-backup-run.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-run.mjs",
+      "to": "scripts/cardfree-recovery-selection.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-run.mjs",
+      "to": "scripts/phase8d-b2-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-run.mjs",
+      "to": "scripts/cardfree-backup-run.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-beta-config.mjs",
       "to": "scripts/beta-deployment-contract.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -2269,6 +2314,11 @@
     {
       "from": "scripts/test-phase8d-cardfree-recovery.mjs",
       "to": "scripts/cardfree-backup-package.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-cardfree-recovery.mjs",
+      "to": "scripts/cardfree-backup-run.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
@@ -3210,8 +3260,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "f888f490ef71b2a493d1c6049f5a5fcdd7e455dbf51ce4d8321d92981ec3b7af",
-      "gitBlobSha": "e7a7704943ea4533215461ccdcaca288a9c1922d",
+      "sha256": "2907a5ac08151dcc136d15707018c4244e189ab756c80fc888c3e4b9d7defa55",
+      "gitBlobSha": "f27bb1e823f6e4c76e9c9cdbfb936cc2526bba05",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3237,6 +3287,7 @@
         "scripts/test-phase8d-backup-alert-receipt.mjs",
         "scripts/test-phase8d-backup-health.mjs",
         "scripts/test-phase8d-backup-monitor.mjs",
+        "scripts/test-phase8d-backup-run.mjs",
         "scripts/test-phase8d-beta-config.mjs",
         "scripts/test-phase8d-capture-admission.mjs",
         "scripts/test-phase8d-capture-baseline.mjs",
@@ -4146,6 +4197,27 @@
       "stagedExternalControllerInstallCalls": [],
       "imports": [
         "node:crypto"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/cardfree-backup-run.mjs",
+      "sha256": "4a4eeef16ddba5ee72b3957c41dea3a8fbc03394cec28e259d6f6a10d5191ec4",
+      "gitBlobSha": "81cc47853ca2f82d450fcb7aeb140c31633bad05",
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit staged one-shot durable lifecycle calls injected capture/publication/read capabilities and retains local metadata; no default transport/timer/key persistence or installer. Effects are not excluded; started uncertainty never auto expires/replays.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-b2-destination.mjs",
+        "./cardfree-backup-package.mjs",
+        "./cardfree-recovery-selection.mjs",
+        "node:crypto",
+        "node:fs",
+        "node:path",
+        "node:sqlite"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -7164,6 +7236,34 @@
       "npmScriptReferences": []
     },
     {
+      "path": "scripts/test-phase8d-backup-run.mjs",
+      "sha256": "091f73cb6f4ec88ab423345a8585089a4034aa6b507e1fb0f755412075146e5b",
+      "gitBlobSha": "3273b8039a716bc2b313542bd57d11f9f92396c9",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private SQLite lifecycle/crypto/fresh process and explicit synthetic B2 capabilities; indexed source, no installed schedule/provider credential/custody or live recovery approval.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-backup-package.mjs",
+        "./cardfree-backup-run.mjs",
+        "./cardfree-recovery-selection.mjs",
+        "./phase8d-b2-fixture.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:sqlite",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/cardfree-backup-run.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
       "path": "scripts/test-phase8d-beta-config.mjs",
       "sha256": "00a8181996903131b81127e2998f7c55c30b5122983fcf414619ac47f259ba21",
       "gitBlobSha": "e2a79a332f1eb2604d2b1cb4a422dcb2556fd35e",
@@ -7468,21 +7568,21 @@
     },
     {
       "path": "scripts/test-phase8d-cardfree-recovery.mjs",
-      "sha256": "a39c1e40683029c7c4694deb6ecea85c30c0bc0d5ed07ee42aa583bbf5bfd4bd",
-      "gitBlobSha": "10839e577bfafd8033f798875a6d6bcca97347f2",
+      "sha256": "a070d23e4da5127c3a65c8b811394bba4fbc10f9dd112b72604712784d9dc77e",
+      "gitBlobSha": "6494883251bece6b7e161ef3ba8515c5504cb704",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting.",
       "signals": [
         {
-          "line": 2,
+          "line": 3,
           "kind": "BACKUP_ALERT_RECEIPT_CAPABILITY"
         },
         {
-          "line": 3,
+          "line": 4,
           "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
         },
         {
-          "line": 24,
+          "line": 25,
           "kind": "WRANGLER_LITERAL"
         },
         {
@@ -7501,6 +7601,7 @@
         "./cardfree-backup-health.mjs",
         "./cardfree-backup-monitor.mjs",
         "./cardfree-backup-package.mjs",
+        "./cardfree-backup-run.mjs",
         "./cardfree-capture-coordinator.mjs",
         "./cardfree-private-file.mjs",
         "./cardfree-recovery-selection.mjs",

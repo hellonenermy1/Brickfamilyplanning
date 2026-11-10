@@ -58,6 +58,10 @@
       "classification": "STAGED_OFF_PLATFORM_MONITOR",
       "reason": "Explicit one-shot health checks, private local SQLite state and injected synthetic alert sink capability; no default transport, source mutation, upload, production timer/schedule/bootstrap or real delivery qualification."
     },
+    "scripts/cardfree-backup-run.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit staged one-shot durable lifecycle calls injected capture/publication/read capabilities and retains local metadata; no default transport/timer/key persistence or installer. Effects are not excluded; started uncertainty never auto expires/replays."
+    },
     "scripts/cardfree-pitr-readonly.mjs": {
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
       "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
@@ -189,6 +193,10 @@
     "scripts/test-phase8d-backup-monitor.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual private local SQLite, synthetic B2/crypto/clocks and alert sinks, abrupt disposable child-process exits; no live provider/account/notifications. Not independently excluded by test name."
+    },
+    "scripts/test-phase8d-backup-run.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private SQLite lifecycle/crypto/fresh process and explicit synthetic B2 capabilities; indexed source, no installed schedule/provider credential/custody or live recovery approval."
     },
     "scripts/test-phase8d-beta-config.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
