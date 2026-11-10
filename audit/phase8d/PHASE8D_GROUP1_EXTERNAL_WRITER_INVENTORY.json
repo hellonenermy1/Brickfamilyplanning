@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 139
   },
-  "sourceSetSha256": "c7c6e17f4f7c04120ebd2f4e1f70ec51f208f457deb431a54e583548db9ed523",
+  "sourceSetSha256": "4574419bf1e574b8e3b6aafa03f3c49d89ab4e76266d38c1722be2ec3472c99e",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -9835,8 +9835,8 @@
     },
     {
       "path": "scripts/test-phase8d-rpc-writers.mjs",
-      "sha256": "76c324fc84b78d2106ea7139e3c0042d593a066865dd213a96a7d7ea97b79827",
-      "gitBlobSha": "9aa6e72e4fa638030858d20b450c5ae633d6c3c2",
+      "sha256": "5801c7cb05288f7ed9912879344bebd0432080b8c2de713602bcb5b441761a76",
+      "gitBlobSha": "53b96401c3c409cac59170abc3d477aaaeb53984",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10097,8 +10097,8 @@
     },
     {
       "path": "scripts/test-phase8d-worker-device-capture.mjs",
-      "sha256": "1b34e5c61360965b503b7d4adb580175bacfb7bd6f466fe8bbac5bf9c4f0e9b7",
-      "gitBlobSha": "e52041f395d083cf5444f528fde2827eeb3c34b9",
+      "sha256": "66939d7f6fdd9986d31c3bd6d293f729b14482e7782f18a7ada2e81c44a204e6",
+      "gitBlobSha": "82ca0b6a1d786d704af63a1b229ad6ec9da34b49",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10240,8 +10240,8 @@
     },
     {
       "path": "scripts/test-phase8d-writer-surface.mjs",
-      "sha256": "5ebcc4877ccc49f3b682b14f1867e81b080ca6bb736bc26c29f12032872c9d02",
-      "gitBlobSha": "81c7ee4e79ca10fa89703ce2670845e254caf1c8",
+      "sha256": "383e9688f5a42a90fdf9d5b40ab9441f284f794c54f647706ac77fd2753a5c73",
+      "gitBlobSha": "7869f9151296cb761fca4d941bb7c2d0e8a8cb48",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
