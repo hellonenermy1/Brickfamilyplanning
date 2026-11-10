@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "3af1bc77e7d0e1bfb186c0a96528621fc65d32aebc4abce6b19c78d3ba828bf8",
+  "sourceSetSha256": "c2f7473c05564dd66d22edec50fb728e1098a7e2c3894a28fb7eeb820d70ce54",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -8569,8 +8569,8 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer.mjs",
-      "sha256": "800e3eadd4dbb4f341bfa3112118cd5c813d5dc1a8aaed5729952bddd7950cbd",
-      "gitBlobSha": "2d981bd79d2c889b5457b10407c966890cd3672c",
+      "sha256": "e140508420244edccbb33011b38186fa865f109e36491b4b8ba2c888a44319d7",
+      "gitBlobSha": "5af093778e396f56efcfe642e6c870a40835e002",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
       "signals": [
