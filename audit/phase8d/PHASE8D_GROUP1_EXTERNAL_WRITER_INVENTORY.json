@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "454bc03e31e1afa42cb4f071bb1a270fb513f6ccc85ac26e9b34fcf0fa47d14d",
   "summary": {
-    "selectedFiles": 317,
+    "selectedFiles": 318,
     "filesWithManagementSignals": 76,
     "explicitClassifications": 87,
     "betaMutatorsUnfenced": 4,
@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "f0238c90827024e03ee6e7e78222cd1d680a17089937ad704231dc713c793bef",
+  "sourceSetSha256": "b5f567ea549ee261198ca0953978213bdd544de163b74f93a421eacac621d4ed",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -792,6 +792,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-monitor-open.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-namespace-pin-evidence.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -3348,8 +3353,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "b85cf1289555ce662cd74d0f35db590df05e010b6d073953d41279188229fe2b",
-      "gitBlobSha": "1eb4d497ef8f8b02e8b4f8d09399022467a9e5ed",
+      "sha256": "9c616b5c0348c75a7144e271f768a22782c4b9fe8d6a7e6161034700a4fc8cc9",
+      "gitBlobSha": "4cf76fc122d5dd8747ea22d41494e7d6d37990a8",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3409,6 +3414,7 @@
         "scripts/test-phase8d-maintenance-failure.mjs",
         "scripts/test-phase8d-maintenance-leases.mjs",
         "scripts/test-phase8d-monitor-open.mjs",
+        "scripts/test-phase8d-namespace-pin-evidence.mjs",
         "scripts/test-phase8d-outage-quarantine.mjs",
         "scripts/test-phase8d-parent-credential-recovery.mjs",
         "scripts/test-phase8d-pitr-lifecycle.mjs",
@@ -9168,6 +9174,22 @@
       "referencedScriptCandidates": [
         "scripts/cardfree-backup-monitor.mjs"
       ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-namespace-pin-evidence.mjs",
+      "sha256": "455a0096be4fda7e5351d1d3d765a533dea204027a2f5236af90dc2483106d4a",
+      "gitBlobSha": "c0f84aa38c6647fd0805b6806dbe421a281dcafc",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:assert/strict",
+        "node:fs"
+      ],
+      "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
     {
