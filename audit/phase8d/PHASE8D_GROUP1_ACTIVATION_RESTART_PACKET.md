@@ -4,6 +4,8 @@ Prepared 10 November 2026 (Singapore), source `311d78d4ee9fe43ff23d4f875e21ff8e0
 
 ## Current beta read prerequisite
 
+Latest continuation check: [live sign-in approval boundary](PHASE8D_GROUP1_LIVE_READ_BLOCKER.md). Automatic approval review rejected opening GitHub Sign in without explicit approval for that step. No credentials entered, dispatch or current Cloudflare request. Latest supplied PDF(9) page52 retains actual isolated restore requirements; current source/evidence preserved. Resume the prepared read after sign-in approval; do not add adjacent tooling as a substitute.
+
 The current D1 beta GET-only check and manual opt-in workflow are source/CI qualified. No live read dispatched: connector lacks dispatch creation and browser is signed out. Current audit secret availability UNKNOWN; historical Workers reads succeeded. Latest verified deployment artifact supplies historical D1/host/source pins; DO namespace pins still require independent review. Null DO pins are observation-only and never PASS. See [current read evidence](PHASE8D_GROUP1_BETA_READONLY.md) for exact artifact recovery and run inputs. Do not retry legacy R2/Access failures or use a deployment token. Metadata PASS would not close actual recovery/custody/writer gates.
 
 ## Current source and provider facts

@@ -1,0 +1,15 @@
+# Group1 live read: GitHub sign-in approval required
+
+Checked 10 November 2026, Singapore. Repository head `f8a2a01a5d7f4f325d2d2088e07b540fa8cbb345`; unchanged integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. Executable qualification remains pinned to `311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d` and its recorded source tree. No implementation changed during this check.
+
+The latest supplied *Brick V1 Phase 8 Full Audit Execution Plan(9).pdf*, Library ID `libfile_a7308891fc4481918387a773a309b0d4`, page52/section8D.16 was read directly. It still requires actual backup/isolated restoration and schema, devices, history, places/config and relationship verification. Page53 retains deletion-isolation and diagnostic obligations. This is a focused Group1 authority check, not reconciliation of every page or the unidentified Yes tab. The supplied four-day closure plan was also read; its finite packages, no unrelated helper expansion and real operational exits remain applicable.
+
+GitHub reports the evidence successor's PR workflows completed-success: native audit run42807513524, Phase2 run42807513124, portal run42807514374. These are run-summary observations; their full logs were not requalified here. The previous executable source retains its fully inspected33+33/14/10 and26-local-group evidence.
+
+The available GitHub connector still has no workflow-dispatch creation action. The browser workflow page shows Sign in/Sign up. Attempting the Sign in link was rejected by automatic approval review: it stated the audit continuation did not authorize this exact sign-in interaction. No login form or credential entry was reached; no workflow was dispatched; no current Cloudflare request was sent. This is an approval boundary before authentication, not a Cloudflare denial or evidence of an absent audit secret. No indirect workaround was attempted.
+
+Required next decision: explicit user approval to sign into GitHub in the cloud browser for the prepared read-only metadata/PITR workflow. Use the secure browser authentication flow; never ask for passwords/tokens in chat. After authentication, verify manual dispatch availability on the audit branch and the qualified source before executing the existing opt-in read job. Keep the deployment token unavailable. The run remains metadata-only and authorizes no Cloudflare write, merge, deployment, credential/permission change or family-data operation.
+
+Reuse `PHASE8D_GROUP1_BETA_READONLY.md` for the verified historical artifact/pin recovery, private plan and missing DO namespace pins. Null namespace pins remain observation-only and cannot pass full qualification. Current dedicated-secret availability remains UNKNOWN. A metadata pass would still leave complete installed writer coverage, independent runtime/key/context custody, schedule/recipient and isolated cloud restore/interruption/rollback with agreed measured RTO/RPO and real review open.
+
+Group1 NOT READY; P8D-002 P1 OPEN; Phase8D NOT PASS; completion forecast AT RISK. No new test counts, acceptance disposition or completion percentage. Canonical525 fields and214/311 mapping untouched.
