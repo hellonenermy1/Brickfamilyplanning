@@ -1,0 +1,246 @@
+{
+  "format": "brick-phase8d-group1-recovery-selection-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+  "sourceTreeSha": "f58d2ba8ff5d5ca2bcc71bed15587b8bdafba882",
+  "baselineSha": "e6049cb59e740446ffd8024128815cd5a59f8210",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "DURABLE_LOCAL_SELECTION_SOURCE_FILES_CRYPTO_FRESH_PROCESS_NATIVE_RECOVERY_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 40,
+  "priorScope": "Exact provider receipt and trusted restore context were retained by the full drill process; no reusable durable selection record/API was used. This is new staged source capability, not a claimed deployed vulnerability.",
+  "keyPersisted": false,
+  "trustedContextPersistedLocally": true,
+  "selectionContainsPlaintextBackupState": false,
+  "selectionByteLimit": 16384,
+  "independentCustodyQualified": false,
+  "callerDigestMandatory": true,
+  "automaticLatestDiscovery": false,
+  "providerUploadsBySelectionModule": 0,
+  "verifiedBehavior": [
+    "Verified publication must pass exact shape/status, source context/file name/pin binding and a new exact-version authenticated readback before record retention. No upload or retry is performed by selection module.",
+    "Fixed canonical payload with destination/context/exact receipt is MACed using domain-separated derived HMAC key. Private exclusive publication uses temp file/fsync/readback/no-overwrite link/directory fsync/final readback and emits caller digest only on full confirmation.",
+    "Recovery requires separately trusted expected digest, destination pin and key; changed canonical bytes, old record substitution under current digest, wrong key/pin/receipt/context, missing pin and malformed/oversized records refuse before provider read.",
+    "Private parent/file/mode/owner/nlink/type checks refuse symlink/hardlink/directory/FIFO/nonprivate cases. File/directory sync failures and pre/post publication corruption cannot acknowledge retention. Trusted ancestor path/same-user process isolation remain caller duties.",
+    "Read-only capability is bounded by validated timeout and maxBytes plus archive hash/context/key authentication. Hung/rejected/wrong readbacks cannot return archive; aborts do not authorize work or retry uploads.",
+    "Fresh Node process recovers exact synthetic disk provider version using private record and separately supplied key/digest. Full native signed encrypted41+4/deviceDO drill retains selection before source destruction, removes local archive, reloads provider/record and uses selected authenticated context for exact33-row/16-table fresh restore/restart."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "f888f490ef71b2a493d1c6049f5a5fcdd7e455dbf51ce4d8321d92981ec3b7af"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "108006d6b20e745e2bfda8000a997c7abe7c08c443026910cc9766020525e28e"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "cf9c86b85ce20cc62d2c36d96401023a6d4f32381948fd4e43c9798a23147f1e"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "c89a1c6c7c1f18c58d2284cac7db1fe4ea7ab3db1b8222e2e3b51d6bcbe90273"
+    },
+    {
+      "path": "scripts/cardfree-recovery-selection.mjs",
+      "sha256": "a276462b7b449694b1399412fce5015729158581325c8d14afd09fce0d6f2f44"
+    },
+    {
+      "path": "scripts/phase8d-b2-fixture.mjs",
+      "sha256": "e2c17089a2862457e4ef29755d42e8602f1e7155ce516034c77178e5068f4315"
+    },
+    {
+      "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+      "sha256": "a39c1e40683029c7c4694deb6ecea85c30c0bc0d5ed07ee42aa583bbf5bfd4bd"
+    },
+    {
+      "path": "scripts/test-phase8d-recovery-selection.mjs",
+      "sha256": "2d4733c7f69c8527b785d36464a3619c6e2488bd314183001c6572acf6f43a1c"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "5e7ac386459d2c2024aa5d5b6a7a572400ef00acbf68ef8df40bd31991f6f1d9",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "6c539aa55a5ad35cbc31131eebadb10bf8d62587f6559ef2280082e09e634f50"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "c43eb55aea14a057d72bb60bb718fad0309fc8eba78cdf87e9a64dafc9fdcf42"
+      },
+      {
+        "group": 12,
+        "sha256": "013dd4a612ab13b43aa1db570801c755d1413e6997b4321873b6b3bf5ad795cb"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "hostedRuns": [
+    {
+      "runId": 42744244030,
+      "jobId": 129592428512,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+      "logSha256": "7e53ba741efc125b84d11fb75c01e105fabfe9cc6e011e98c2a7f7d2b5c177b4"
+    },
+    {
+      "runId": 42744244170,
+      "jobId": 129592428510,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+      "logSha256": "1bbbe4630562da2ba5f8103d94da0bf5d3409593df2014c95e964acafa7d58a8"
+    },
+    {
+      "runId": 42744244094,
+      "jobId": 129592428441,
+      "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+      "logSha256": "20a4b0605e55c0377f66cf232f6b514639de7a3a969b4492a33c5d586f99f34b"
+    },
+    {
+      "runId": 42744234747,
+      "jobId": 129592396978,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+      "logSha256": "48e4106b8339a82004cde3ee0f10b561eb621f5c5349708c4aba603e96f53314"
+    }
+  ],
+  "verifiedMergeCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "71d26ff74fa6839bfb2ef6a2dff813e890d6573e"
+  ],
+  "remaining": [
+    "Actual trusted installer/TLS/key custody/independent failure-domain evidence and complete declared writer/operator/credential/raw bypass restrictions. Four beta-tool hooks uninstalled; STARTED/legacy reconciliation and authority install/rollback remain.",
+    "Restricted B2 runtime credential and independent durable custody for selection record, recovery key and caller-pinned record digest. Local record fsync/authentication does not prove separate/off-host custody, power-loss behavior or protection from same-user interference.",
+    "Installed capture/readback/age/failure scheduler and real-recipient monitoring, signer/recipient custody and availability.",
+    "Current scoped least-privilege PITR and isolated cloud restore/interruption/rollback with measured RTO/RPO."
+  ],
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "productionControllerInstalls": 0,
+  "providerTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false,
+  "limits": "Controlled synthetic disk B2, ephemeral key/caller digest input and private local filesystem. No actual independent custody/failure domain, key backup/rotation, real B2 token, power loss, schedule, real alert/recipient, cloud PITR/restore/RTO/RPO qualification. Existing Miniflare disposal warnings retained."
+}

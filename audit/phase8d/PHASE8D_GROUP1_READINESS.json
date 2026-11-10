@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+  "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,8 +55,8 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 305,
-      "explicitManagementClassifications": 78,
+      "selectedTrackedFiles": 307,
+      "explicitManagementClassifications": 80,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 21,
       "unresolvedRelativeImportCandidates": 4,
@@ -353,6 +353,16 @@
       "deployedHostnameCheckedBeforeSecretMutation": true,
       "productionInstalled": false,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json"
+    },
+    {
+      "id": "DURABLE_LOCAL_AUTHENTICATED_RECOVERY_SELECTION",
+      "state": "SOURCE_FILES_CRYPTO_FRESH_PROCESS_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 40,
+      "trustedContextPersistedLocally": true,
+      "keyPersisted": false,
+      "callerDigestMandatory": true,
+      "independentCustodyQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -379,12 +389,12 @@
     {
       "id": "PRIVATE_INDEPENDENT_DESTINATION",
       "state": "REAL_PRIVATE_B2_SYNTHETIC_TRANSFER_LOCAL_RESTORE_VERIFIED_RUNTIME_CUSTODY_UNQUALIFIED",
-      "needed": "Approved allPrivate bucket created and real seven-part encrypted archive uploaded, downloaded twice by exact version and authenticated/restored to fresh local41+4/deviceDO stores. Complete installed runtime selection manifest/transport, restricted key and independent durable key/context custody/card-free operational qualification remain. Manual connector chunking is not the staged single-object adapter qualification."
+      "needed": "Historical approved real seven-part encrypted B2 transfer/readback/local restore evidence preserved. Staged single-object adapter and durable local exact-version/context selection verified using synthetic provider. Actual restricted runtime credential, installed selection transport, independent record/key/caller-digest custody and card-free operational qualification remain. No repeat provider action."
     },
     {
       "id": "SEPARATE_KEY_CONTEXT_CUSTODY",
-      "state": "UNVERIFIED",
-      "needed": "Synthetic drill key/context stayed only in process and were not exported/uploaded. This does not establish independently retained usable production custody after host/source failure. Restricted runtime credential remains uninstalled."
+      "state": "DURABLE_LOCAL_CONTEXT_SELECTION_VERIFIED_INDEPENDENT_KEY_RECORD_DIGEST_CUSTODY_OPEN",
+      "needed": "Trusted context and exact provider selection now retained in private fsynced authenticated local record and recovered in fresh process/full native drill. Recovery key and caller-pinned selection digest are supplied separately; independently durable/off-host record/key/digest custody and restricted runtime credential remain unqualified."
     },
     {
       "id": "SCHEDULE_AND_MONITORING",
@@ -404,79 +414,79 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42741771713,
-        "jobId": 129584292139,
-        "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+        "runId": 42744244030,
+        "jobId": 129592428512,
+        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 14,
-        "totalSteps": 14,
+        "passedSteps": 33,
+        "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
-        "logSha256": "5d38d35231794063bc5433d0212636128cfacafcd55fe2364361e517b5b6f362"
+        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+        "logSha256": "7e53ba741efc125b84d11fb75c01e105fabfe9cc6e011e98c2a7f7d2b5c177b4"
       },
       {
-        "runId": 42741772160,
-        "jobId": 129584297311,
+        "runId": 42744244170,
+        "jobId": 129592428510,
         "name": "Brick Beta Map and Portal Regression (no cloud writes)",
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
-        "logSha256": "d669b7ee58293bf6fd6bf686a108f96b0bc1d926786bb4f35cf4b358ed904811"
+        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+        "logSha256": "1bbbe4630562da2ba5f8103d94da0bf5d3409593df2014c95e964acafa7d58a8"
       },
       {
-        "runId": 42741771763,
-        "jobId": 129584292486,
-        "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+        "runId": 42744244094,
+        "jobId": 129592428441,
+        "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
         "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
+        "passedSteps": 14,
+        "totalSteps": 14,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
-        "logSha256": "41d1daf44730ce494fd8b45232d6db5d10a85b6b0d2be47aa8996adfcc3014fb"
+        "verifiedCheckoutSha": "95462858003f2a41ea9219d4794d3b47c7a15b0d",
+        "logSha256": "20a4b0605e55c0377f66cf232f6b514639de7a3a969b4492a33c5d586f99f34b"
       },
       {
-        "runId": 42741765006,
-        "jobId": 129584273281,
+        "runId": 42744234747,
+        "jobId": 129592396978,
         "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "errorMarkers": 0,
-        "verifiedCheckoutSha": "208a49054a1331b5c929b9c542a320635c7972e3",
-        "logSha256": "e34e3b38d3cc7f790f437afb707d088914bfba5845965a97be3e26a3124cb28e"
+        "verifiedCheckoutSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+        "logSha256": "48e4106b8339a82004cde3ee0f10b561eb621f5c5349708c4aba603e96f53314"
       }
     ],
-    "scope": "Staged provisioner final targets and actual SQL/child ownership; full encrypted recovery/native regression. No actual controller installation/TLS/custody/failure domain/operational or cloud acceptance."
+    "scope": "Durable local authenticated provider selection/context with separate caller key/digest, fresh-process and full native encrypted recovery. No independent custody/domain, installation/schedule/PITR/cloud acceptance."
   },
-  "lastHostedQualifiedSourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+  "lastMergeQualifiedSourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+      "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+      "sourceSha": "71d26ff74fa6839bfb2ef6a2dff813e890d6573e",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
     }
   ],
