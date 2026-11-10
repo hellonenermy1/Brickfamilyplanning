@@ -59,6 +59,24 @@ try{
  };
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs','ensure-beta-d1-columns.mjs','setup-beta-d1.mjs'])await test('actual '+file+' refuses under held capture before management writes/Worker traffic',async()=>{await ready();const c=await rpc('requestCapture',randomBytes(16).toString('hex'),{sourceSha:pin.sourceSha,resourceSetSha256:pin.resourceSetSha256});await assert.rejects(import(pathToFileURL(path.join(repo,'scripts',file)).href+'?blocked='+index++),/EXTERNAL_WRITER_BUSY/);assert(events.every(e=>e==='metadata-get'));assert.equal((await rpc('status')).state,'DRAINED');assert.equal((await rpc('status')).activeWriters,0);assert(c.generation);});
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])
+ for(const variant of ['missing-management-token','invalid-d1-id'])
+ await test('actual '+file+' fails preflight '+variant+' without starting a writer',async()=>{
+  await ready();
+  const tokenValue=process.env.CLOUDFLARE_API_TOKEN,originalState=fs.readFileSync(path.join(cwd,'beta-setup-state.json'),'utf8');
+  try{
+   if(variant==='missing-management-token')delete process.env.CLOUDFLARE_API_TOKEN;
+   if(variant==='invalid-d1-id')fs.writeFileSync(path.join(cwd,'beta-setup-state.json'),JSON.stringify({...JSON.parse(originalState),d1Id:'cccccc-1111-4111-8111-cccccccccccc'}));
+   await assert.rejects(import(pathToFileURL(path.join(repo,'scripts',file)).href+'?preflight='+index++),/credential required|provenance missing/);
+   assert.equal((await rpc('status')).activeWriters,0);
+   assert.deepEqual(trace,[]);
+   assert.equal(events.length,0);
+  }finally{
+   if(tokenValue===undefined)delete process.env.CLOUDFLARE_API_TOKEN;
+   else process.env.CLOUDFLARE_API_TOKEN=tokenValue;
+   fs.writeFileSync(path.join(cwd,'beta-setup-state.json'),originalState);
+  }
+ });
+ for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])
  for(const variant of ['partial-206','redirected-200','changed-final-url','failed-sql-result','malformed-json'])
  await test('actual '+file+' refuses D1 '+variant+' and retains signed STARTED ownership',async()=>{
   await ready();
