@@ -41,15 +41,34 @@ function decodeCell(value: unknown, column: Column): string | number | null | Ar
   if (type === 'REAL' && typeof value === 'number' && Number.isFinite(value)) return value;
   throw Error('invalid recovery cell');
 }
+// Exact SQLite-stored bodies from schema/008_v1_phase2_evidence.sql. Names alone
+// are insufficient: replacing one with a mutating trigger must fail preflight.
+// Any legitimate trigger migration needs an explicit policy/source review.
+const APPROVED_RECOVERY_TRIGGERS:Record<string,{table:string;sql:string}>={
+  "trg_evidence_batch_records_identity_insert": {
+    "table": "evidence_batch_records",
+    "sql": "CREATE TRIGGER trg_evidence_batch_records_identity_insert\nBEFORE INSERT ON evidence_batch_records\nFOR EACH ROW\nWHEN NOT EXISTS (\n  SELECT 1 FROM evidence_records r\n  WHERE r.device_id = NEW.device_id\n    AND r.record_id = NEW.record_id\n    AND r.epoch = NEW.epoch\n    AND r.sequence = NEW.sequence\n)\nBEGIN\n  SELECT RAISE(ABORT, 'evidence batch link identity mismatch');\nEND"
+  },
+  "trg_evidence_batch_records_identity_update": {
+    "table": "evidence_batch_records",
+    "sql": "CREATE TRIGGER trg_evidence_batch_records_identity_update\nBEFORE UPDATE OF device_id, record_id, epoch, sequence ON evidence_batch_records\nFOR EACH ROW\nWHEN NOT EXISTS (\n  SELECT 1 FROM evidence_records r\n  WHERE r.device_id = NEW.device_id\n    AND r.record_id = NEW.record_id\n    AND r.epoch = NEW.epoch\n    AND r.sequence = NEW.sequence\n)\nBEGIN\n  SELECT RAISE(ABORT, 'evidence batch link identity mismatch');\nEND"
+  }
+};
 async function columns(db: D1Database, table: string): Promise<Column[]> {
-  const result = await db.prepare('PRAGMA table_info(' + table + ')').all<Column>();
+  const result = await db.prepare('PRAGMA table_xinfo(' + table + ')').all<Column & {hidden:number}>();
   if (!result.results.length) throw Error('missing recovery table: ' + table);
+  if(result.results.some(c=>c.hidden!==0))throw Error('unsupported hidden/generated recovery column: '+table);
   return result.results.map(({ name, type, notnull, pk, dflt_value }) => ({ name, type, notnull, pk, dflt_value }));
 }
 async function inventory(db: D1Database, durable: readonly string[], excluded: readonly string[]) {
-  const actual = (await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations')").all<{ name: string }>()).results.map(x => x.name).sort();
-  const metadata = (await db.prepare('PRAGMA table_info(brick_dev_migrations)').all<Column>()).results;
-  if (metadata.length && (metadata.length !== 2 || metadata[0].name !== 'name' || metadata[0].type !== 'TEXT' || metadata[0].pk !== 1 || metadata[1].name !== 'applied_at' || metadata[1].type !== 'INTEGER' || metadata[1].notnull !== 1)) throw Error('invalid migration bookkeeping schema');
+  // One query preserves the bounded capture invocation's existing SQL envelope.
+  const objects=(await db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND (type IN ('view','trigger') OR type='table' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations'))").all<{type:string;name:string;tbl_name:string;sql:string}>()).results;
+  const expected=durable.includes('evidence_batch_records')?APPROVED_RECOVERY_TRIGGERS:{};
+  const behavior=objects.filter(o=>o.type!=='table');
+  if(behavior.length!==Object.keys(expected).length||behavior.some(o=>o.type!=='trigger'||!Object.hasOwn(expected,o.name)||o.tbl_name!==expected[o.name].table||o.sql!==expected[o.name].sql))throw Error('unclassified recovery schema trigger/view');
+  const actual=objects.filter(o=>o.type==='table').map(o=>o.name).sort();
+  const metadata = (await db.prepare('PRAGMA table_xinfo(brick_dev_migrations)').all<Column & {hidden:number}>()).results;
+  if (metadata.length && (metadata.some(c=>c.hidden!==0) || metadata.length !== 2 || metadata[0].name !== 'name' || metadata[0].type !== 'TEXT' || metadata[0].pk !== 1 || metadata[1].name !== 'applied_at' || metadata[1].type !== 'INTEGER' || metadata[1].notnull !== 1)) throw Error('invalid migration bookkeeping schema');
   if (JSON.stringify(actual) !== JSON.stringify([...durable, ...excluded].sort())) throw Error('unclassified recovery schema');
 }
 async function capture(db: D1Database, durable: readonly string[], excluded: readonly string[]): Promise<Store> {
@@ -160,8 +179,9 @@ export async function restoreCardfreeD1(env: Env, body: ArrayBuffer, sha256: str
     inserts.push(env.DB.prepare('INSERT INTO ' + table + '(' + spec.map(c => '"' + c.name + '"').join(',') + ') VALUES (' + spec.map(() => '?').join(',') + ')').bind(...spec.map(c => decodeCell(row[c.name], c))));
   }
   for (const [db, statements] of [[env.DB, inserts], [env.BETA_DB, diagnosticStatements]] as const) for (let i = 0; i < statements.length; i += 50) await db.batch(statements.slice(i, i + 50));
-  for (const [db, store, tables] of [[env.DB, snapshot.primary, CARDFREE_PRIMARY_TABLES], [env.BETA_DB, snapshot.diagnostics, CARDFREE_DIAGNOSTIC_TABLES]] as const) {
+  for (const [db, store, tables, excluded] of [[env.DB, snapshot.primary, CARDFREE_PRIMARY_TABLES, CARDFREE_PRIMARY_EXCLUDED], [env.BETA_DB, snapshot.diagnostics, CARDFREE_DIAGNOSTIC_TABLES, CARDFREE_DIAGNOSTIC_EXCLUDED]] as const) {
     for (const table of tables) if (Number((await db.prepare('SELECT COUNT(*) n FROM ' + table).first<{ n: number }>())?.n) !== store.tables[table].length) throw Error('recovery row reconciliation failed: ' + table);
+    for(const table of excluded)if(Number((await db.prepare('SELECT COUNT(*) n FROM '+table).first<{n:number}>())?.n)!==0)throw Error('recovery excluded-state reconciliation failed: '+table);
     if ((await db.prepare('PRAGMA foreign_key_check').all()).results.length) throw Error('recovery foreign-key reconciliation failed');
   }
   // A failed batch can leave a partial isolated target. Discard it and retry fresh;

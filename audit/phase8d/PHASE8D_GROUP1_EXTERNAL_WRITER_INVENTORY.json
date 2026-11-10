@@ -1,11 +1,11 @@
 {
   "format": "brick-group1-external-writer-inventory-v1",
-  "basisCommitSha": "1b6e14eb18d7c8dd6055b2d73baca7bb64e2b609",
+  "basisCommitSha": "f4e487e99c7e3a5d0a63942a5e5fb21c82ed8081",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "c94e8d59aaac62650132ab8e475bd51af488f6394c52f9a40db42ee176dd148d",
   "summary": {
-    "selectedFiles": 314,
+    "selectedFiles": 315,
     "filesWithManagementSignals": 74,
     "explicitClassifications": 84,
     "betaMutatorsUnfenced": 4,
@@ -13,9 +13,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 4,
-    "unresolvedDynamicImports": 141
+    "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "cdbe729689eb593dc8321dc56c28c9864e207c78944244b3bc2f41ed6f494b37",
+  "sourceSetSha256": "8c0f9f15dac33f18f41fe2b63ae6b483c65fb077877b88fb2f419feb0a29dd12",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -825,6 +825,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-quarantine-transport.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-recovery-schema.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2758,6 +2763,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-recovery-schema.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-recovery-selection.mjs",
       "to": "scripts/cardfree-backup-package.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3311,8 +3321,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "deda03f4d6ed0995c1f9470bcf55c8a05bbd90f13df306bfb3b1a5f358375872",
-      "gitBlobSha": "f0b4d5c42ddf0f1ab7f7669ee61efc3adfade1c7",
+      "sha256": "1fdac480c1e4de6d36b0443df39dfeba922ac8f332c2b845b1303440ebee3575",
+      "gitBlobSha": "70974ec67142c3352a93af1e70f5fbcfc20965c7",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -3379,6 +3389,7 @@
         "scripts/test-phase8d-provisioner-ownership.mjs",
         "scripts/test-phase8d-quarantine-contract.mjs",
         "scripts/test-phase8d-quarantine-transport.mjs",
+        "scripts/test-phase8d-recovery-schema.mjs",
         "scripts/test-phase8d-recovery-selection.mjs",
         "scripts/test-phase8d-refinement-corruption.mjs",
         "scripts/test-phase8d-refinement-lifecycle.mjs",
@@ -9600,6 +9611,31 @@
         "node:assert/strict",
         "node:url",
         "node:zlib"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-recovery-schema.mjs",
+      "sha256": "96e863755e0e624a615830c4748740e6cbe7e8448fb49b7287564387e4c17171",
+      "gitBlobSha": "cdbdca2624bddc3e4427abc29da5b84435c53f11",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
