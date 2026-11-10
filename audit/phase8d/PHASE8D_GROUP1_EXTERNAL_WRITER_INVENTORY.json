@@ -15,7 +15,7 @@
     "unresolvedRelativeImportCandidates": 4,
     "unresolvedDynamicImports": 142
   },
-  "sourceSetSha256": "fc95b53def4fff58da4f21b2e04c2f9663371f5a1d2292dc16873f255a02812c",
+  "sourceSetSha256": "261a1ff65807e97a17b30201ccb95e79f34a083bd99ef8da8481b97269589e77",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -5503,22 +5503,26 @@
     },
     {
       "path": "scripts/publish-beta-d1-release.mjs",
-      "sha256": "a117da1ebfae4863a37f35979ddc1ab8a84e06b0f53c13ddf3c8cfc5925fa917",
-      "gitBlobSha": "48ad793edcf5f0f15124f38f3d90fb2999a86362",
+      "sha256": "560bed9ee9ec204184c0e1f6392de7902774f4404f78e0335d6b69bb83bcedd5",
+      "gitBlobSha": "f5cec1931e898779dbce8d84e50956fb7e22c784",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 9,
+          "line": 10,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 9,
+          "line": 10,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
+          "line": 11,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 9,
-          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+          "line": 12,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
       "stagedExternalWriterCalls": [
@@ -8561,8 +8565,8 @@
     },
     {
       "path": "scripts/test-phase8d-external-writer.mjs",
-      "sha256": "cf3976610d385cdf6d8b56c50f1c97b6f768ba7a907719fcc3a052fd6b9ef044",
-      "gitBlobSha": "78e845171ef7dfcd4f2702d34abca008cf8226fe",
+      "sha256": "b3c024e08ebdaa699951e5b7ca8fc0f0decfaccaf27f58a04f474f9f9a70dccd",
+      "gitBlobSha": "dc548279d0d6d90275886302ef4db15829f42149",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification.",
       "signals": [
@@ -8581,6 +8585,10 @@
         {
           "line": 56,
           "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 69,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
         }
       ],
       "stagedExternalWriterCalls": [
@@ -10565,22 +10573,26 @@
     },
     {
       "path": "scripts/verify-beta-live.mjs",
-      "sha256": "ca64e38dbbf0b81d265fc7ed62eab1615c6b60243db55f09d5dc972be5b1a0fb",
-      "gitBlobSha": "15886cc7c0fb289016907c1c156de46d043bc351",
+      "sha256": "5ea5311dcaf6c8041cdbb02bf062197fa85e7b9ccd2a7c47ad4ee5df160ed2f0",
+      "gitBlobSha": "b8a9c0efc305da43dec0a1577f10bbd34f1f36e2",
       "classification": "BETA_MUTATOR_UNFENCED",
       "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls.",
       "signals": [
         {
-          "line": 17,
+          "line": 18,
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 17,
+          "line": 18,
+          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+        },
+        {
+          "line": 19,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 17,
-          "kind": "D1_MANAGEMENT_QUERY_LITERAL"
+          "line": 20,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
       "stagedExternalWriterCalls": [
