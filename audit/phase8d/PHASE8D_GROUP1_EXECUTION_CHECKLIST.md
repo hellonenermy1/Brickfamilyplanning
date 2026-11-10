@@ -1,5 +1,5 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-10 Singapore. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-10 Singapore. Exact verified source+inventory SHA `18453da4c26e1e051d674b9b8bea5e7b1f21fb28`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
 
@@ -8,7 +8,7 @@ Rules: [x] means the specifically named **bounded** evidence exists, not that th
 - [x] SOURCE/CI: Current beta D1 and worker metadata GET-only verification has pinned source/resource identity, historical bookmark sampling, and a separate independent DO namespace ID hash match. **Not a new pinned live workflow run.**
 - [x] SOURCE/CI: D1 metadata read refuses 201/206, redirect and changed final URL; exact-head source CI passed in run #42834351206.
 - [x] SOURCE/CI: Setup and schema-maintenance Cloudflare management calls have 20-second deadlines, no redirect following, redacted response errors, strict JSON success envelope and status controls. Exact-head CI run #42836232612 succeeded with operator negative tests.
-- [ ] SOURCE/CI: Publish and live verification scripts share these Cloudflare management response safeguards and have tested failure/cleanup/ownership under malformed replies.
+- [x] SOURCE/CI: Publish and live verification scripts require exact non-redirected D1 HTTP200 success/statement envelopes, fail before admission on missing credential/malformed DB target, and preserve signed STARTED ownership under uncertain provider responses. Fourteen new fault/preflight scenarios; actual external-writer suite 43/43, provisioner-ownership 24/24, full Phase8D source audit run #42839953809 SUCCESS on commit `18453da4` (no live account write, deployment or cloud restore).
 - [ ] SOURCE: Complete all Worker/DO/D1/deferred/process/raw access writer paths and independently credentialed operator paths, including *all four* known external beta writers. Native helper hooks alone do not establish installation.
 
 ## B. Current provider identity and independent backup
