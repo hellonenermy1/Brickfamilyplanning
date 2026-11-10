@@ -1,0 +1,300 @@
+{
+  "format": "brick-phase8d-group1-monitor-open-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+  "sourceTreeSha": "1a0efd28971f297b517eb1b389aaef27d7aa09b6",
+  "baselineSha": "61758ffeb3b82225192f885774ccad25f469781c",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "MONITOR_LOST_STATE_RESET_FIXED_SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 32,
+  "existingMonitorCases": 50,
+  "existingReceiptCases": 54,
+  "baselineReproduction": {
+    "module": "scripts/cardfree-backup-monitor.mjs",
+    "sourceSha": "61758ffeb3b82225192f885774ccad25f469781c",
+    "priorUncertainDeliveries": 1,
+    "afterStoreLossReopenUncertainDeliveries": 0,
+    "syntheticSinkInvocationsAfterLaterCheck": 2,
+    "intactLegacyStoreOpensWithCorrectedSourceWithoutReset": true,
+    "logSha256": "48ed7950ad1f1a751304a80b818baa12c435c628ae376bbc09583589793c5eaf",
+    "scope": "Exact previous monitor with unchanged helper dependencies and synthetic provider/sink; no real notification or deployed incident claimed. Historical reproduction is explicit --baseline, not a recurring CI git-history dependency."
+  },
+  "correction": "create=false default reopens only existing nonempty initialized private database. create=true is explicit first-time initialization on a new directory; target/clock validated before path creation, exclusive mkdir/file and directory fsync. Initial target supplied on restart cannot recreate missing/empty state. Existing v1/v2 schema/config/receipt signatures unchanged.",
+  "verifiedBehavior": [
+    "Lost file/directory, empty file, missing schema/row refuse on normal reopen with or without original target and do not create replacement paths/state. No source/provider/sink operation starts.",
+    "Fresh creation refuses existing/empty/symlink/artifact directories and nonboolean mode. Malformed initial target/clock refuses before path creation. Competing first-time processes cannot both initialize same path.",
+    "Intact NEW/FRESH/PENDING/UNCERTAIN/DELIVERED state survives reopen with target unchanged; pending read-only claim remains. Wrong target cannot retarget/reset stored state. Fresh process retains unknown delivery and does not resend.",
+    "Initial committed SQLite transaction/lost reply and directory fsync failure cannot be retried with create; normal reopen of valid already-created initial state remains possible. No global first-use/anti-rollback or independent custody claim.",
+    "Full signed encrypted41+4/deviceDO backup lifecycle, source/local archive loss, retained-selection restore, exact33-row/16-table parity and existing Ed25519 positive receipt/restart/no-resend proof pass with explicit monitor first initialization."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "91134b83416e36734259737c90125cffb855a7f7a2bcfd55333d2834c14e91ee"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "ceb7c0a6a71dc7e7e615de045697708bc7720f4e09cc21f25f6333e6c9655b60"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "82dfa924f22da6b3b66c1295bcd93dac40170a6d8eaa052f2edbda7deafa82fa"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "4c3651c98fbdc455af28240b01bfcf63f260f918c9501acd29405bc9dbb28efc"
+    },
+    {
+      "path": "scripts/cardfree-backup-monitor.mjs",
+      "sha256": "4d406cdf87541953a403c44c0203facd5fa1c4eeb91faa15369707915c5957a8"
+    },
+    {
+      "path": "scripts/test-phase8d-backup-alert-receipt.mjs",
+      "sha256": "58913e834fec8799789fb2cab4c26ac78c8a8f7b25fbb5f47465b3467ee5aa6c"
+    },
+    {
+      "path": "scripts/test-phase8d-backup-monitor.mjs",
+      "sha256": "90856353cb50020e513bf0d32f525eac5346e3dbcfe8d53ccd315cd1641a45ec"
+    },
+    {
+      "path": "scripts/test-phase8d-cardfree-recovery.mjs",
+      "sha256": "d6905c1b0123a074a32da95283d5abb0ac6a3a305218e19f17a315c0c3a08644"
+    },
+    {
+      "path": "scripts/test-phase8d-monitor-open.mjs",
+      "sha256": "57cf3350f60f60f86abb76034b90e465073a0b167d274864a047f61279ec4c84"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "c477f97c6f6c2e7e2d176f336791765ee20a6cf2fe382238331d876c9af54f77",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "40186a6ba06a89b5c5257882986261ded159541fb5a875f21993e8abfaf6addb"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "b20f062b8ca6e1ff152bfea2cdbd6b6c043be4bbbc118955d26e63878a98a97a"
+      },
+      {
+        "group": 12,
+        "sha256": "8b867d356163461147f267e3ad6da18b4e31a350825d621255b76b05c82f8dda"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "hostedRuns": [
+    {
+      "runId": 42778072691,
+      "jobId": 129701196573,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
+      "logSha256": "d63990f32c9e457398d237e2a0e871d6d22e60d0bcdda9a8295e895fc0e89663"
+    },
+    {
+      "runId": 42778072887,
+      "jobId": 129701200619,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
+      "logSha256": "e06be6b8043455f87c31ff9adcfcc58cf531d18a4793c7b8c05401d14da71f9e"
+    },
+    {
+      "runId": 42778072784,
+      "jobId": 129701196535,
+      "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
+      "logSha256": "5dac3aa095e447ce430cbbf84d99caa2b76bcd2eecaae4297bf430ae7563a1a6"
+    },
+    {
+      "runId": 42778066641,
+      "jobId": 129701178736,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0",
+      "logSha256": "585f8e77854388bb338bc55bd744ef896ddd65e5399a75a9e2029f9869dd4151"
+    }
+  ],
+  "verifiedMergeCheckoutSha": "13fbe0efe6982868dd9c8f72141f14c01df73211",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "d2e46616ef74ee49e308b5bf423a5ac73cbfd2d0"
+  ],
+  "providerReadOnlyObservation": {
+    "observedAt": "2026-11-10T07:49:30.176Z",
+    "operations": [
+      "connection_status",
+      "list_buckets filtered by previously approved bucket name",
+      "read-only operation catalog for supported key-creation fields and secure-console handling"
+    ],
+    "readOnly": true,
+    "bucketCount": 1,
+    "accountIdSha256": "95ca09b7800742d5e3d64da5d6e9c56c5223fc2ec7ca439bfabf1d323b6ef63c",
+    "bucketIdSha256": "439e249b4b8ba15c3ca094ed937b5a9096bd67267da2497336b943a1e8b72373",
+    "bucketNameSha256": "d1a8728ffc5dbe961e1c9e3417ca8da97a3b4db4c3cc1573820fbc123923361b",
+    "bucketType": "allPrivate",
+    "bucketRevision": 2,
+    "connected": true,
+    "allowedBuckets": null,
+    "allowedNamePrefix": null,
+    "runtimeCredentialQualified": false,
+    "reason": "Connected key is account-wide/unprefixed with broad administrative/delete/share/key permissions; staged runtime destination contract requires exactly one bucket, brick-recovery/ prefix and listBuckets/readFiles/writeFiles only. No credential/permission mutation performed.",
+    "actualProviderUploadRepeated": false,
+    "filesReadOrChanged": false,
+    "independentKeyCustodyQualified": false,
+    "cardOrFreeTierVerified": false,
+    "capabilityCount": 38,
+    "capabilitiesSha256": "3020467bdd3060f0ba4396a07fdf90b75ab2b41140b92da9539c7d715ca5bf13",
+    "broadRightsObserved": {
+      "deleteFiles": true,
+      "shareFiles": true,
+      "writeKeys": true,
+      "writeBucketPolicy": true
+    },
+    "keyCreationCatalog": {
+      "required": [
+        "capabilities",
+        "keyName"
+      ],
+      "optionalRelevant": [
+        "bucketIds",
+        "namePrefix",
+        "validDurationInSeconds"
+      ],
+      "secretHandling": "Secret shown only in secure browser console; unavailable in chat. No key creation invoked."
+    }
+  },
+  "activationPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
+  "remaining": [
+    "Actual complete writer/bootstrap/operator/credential/raw bypass ownership and safe STARTED/legacy reconciliation; same independent guard/key/TLS/failure-domain installation with no partial fence.",
+    "Connected real B2 credential is account-wide/unprefixed with delete/share/key/policy rights. It is not qualified for runtime. Restricted credential scope, secure-console secret transfer and a selected independent runtime/custody destination require a separate authorized operation.",
+    "Independent current record/key/digest/job-config/monitor-delivery-state custody and rollback protection; actual capture/monitor schedule and real recipient/signer delivery remain unqualified.",
+    "Current scoped Cloudflare/PITR read access and approved isolated synthetic D1/diagnostic/device-DO restore/interruption/rollback/RTO/RPO run; actual accountable owners/reviewer and target RTO/RPO criteria unassigned."
+  ],
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "productionControllerInstalls": 0,
+  "providerUploadTestRepeated": false,
+  "providerMetadataRefreshed": true,
+  "liveCloudflareWrites": false,
+  "realAlertsSent": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false,
+  "limits": "Source/native private SQLite and synthetic alert/provider proof, plus actual read-only B2 connection/bucket/catalog metadata. No actual runtime credential restriction/creation/transfer, scheduler, real recipient, independent state custody/anti-rollback, writer installer or cloud recovery acceptance. Existing Miniflare disposal warnings retained."
+}
