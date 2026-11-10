@@ -58,6 +58,39 @@ try{
   events.push('authenticated-http');if(url.pathname==='/parent/change-password')return new Response('<form><input name="confirm"></form>');if(url.pathname==='/parent')return new Response('BETA · Test centre');if(url.pathname.endsWith('/download/apk'))return new Response(apk);if(url.pathname.endsWith('basemap.pmtiles'))return new Response(new Uint8Array(16),{status:206});if(url.pathname.endsWith('.png'))return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]));return Response.json({ok:true});
  };
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs','ensure-beta-d1-columns.mjs','setup-beta-d1.mjs'])await test('actual '+file+' refuses under held capture before management writes/Worker traffic',async()=>{await ready();const c=await rpc('requestCapture',randomBytes(16).toString('hex'),{sourceSha:pin.sourceSha,resourceSetSha256:pin.resourceSetSha256});await assert.rejects(import(pathToFileURL(path.join(repo,'scripts',file)).href+'?blocked='+index++),/EXTERNAL_WRITER_BUSY/);assert(events.every(e=>e==='metadata-get'));assert.equal((await rpc('status')).state,'DRAINED');assert.equal((await rpc('status')).activeWriters,0);assert(c.generation);});
+ for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])
+ for(const variant of ['partial-206','redirected-200','changed-final-url','failed-sql-result','malformed-json'])
+ await test('actual '+file+' refuses D1 '+variant+' and retains signed STARTED ownership',async()=>{
+  await ready();
+  const prior=globalThis.fetch;
+  let injected=0;
+  globalThis.fetch=async(input,init={})=>{
+   const url=String(input);
+   if(url.includes('/d1/database/')&&url.endsWith('/query')&&injected++===0){
+    assert.equal(init.method,'POST');
+    assert.equal(init.redirect,'error');
+    assert(init.signal instanceof AbortSignal);
+    if(variant==='malformed-json')return new Response('not-json',{status:200});
+    if(variant==='failed-sql-result')return Response.json({success:true,result:[{success:false,results:[],error:'PRIVATE_D1_PROVIDER_DETAIL'}]});
+    const reply=Response.json({success:true,result:[{results:[]}]},{status:variant==='partial-206'?206:200});
+    if(variant==='redirected-200')Object.defineProperty(reply,'redirected',{value:true});
+    if(variant==='changed-final-url')Object.defineProperty(reply,'url',{value:'https://untrusted.invalid/changed'});
+    return reply;
+   }
+   return prior(input,init);
+  };
+  try{
+   await assert.rejects(import(pathToFileURL(path.join(repo,'scripts',file)).href+'?d1-refusal='+index++),/Scoped D1 session/);
+   assert.equal(injected,1);
+   assert(!events.includes('delete-session'));
+   assert.equal((await rpc('status')).activeWriters,1);
+   const writers=Object.values(await rpc('writers'));
+   assert.equal(writers.length,1);
+   assert.equal(writers[0].phase,'STARTED');
+   assert(notices.includes('WORK_OUTCOME_UNCERTAIN'));
+   assert.equal((await rpc('requestCapture',randomBytes(16).toString('hex'),{sourceSha:pin.sourceSha,resourceSetSha256:pin.resourceSetSha256})).state,'DRAINING');
+  }finally{globalThis.fetch=prior;}
+ });
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])await test('actual '+file+' retains native ownership through readback and final session cleanup',async()=>{await ready();await import(pathToFileURL(path.join(repo,'scripts',file)).href+'?allowed='+index++);assert(events.includes('insert-session'));assert(events.includes('delete-session'));assert.equal((await rpc('status')).activeWriters,0);assert.equal((await rpc('pollCapture',captureId)).state,'DRAINED');assert.deepEqual(trace,['external.enter','external.start','writer.exit']);});
  await test('actual publication lost cleanup result leaves native capture draining for reconciliation',async()=>{await ready();cleanupFails=true;await assert.rejects(import(pathToFileURL(path.join(repo,'scripts/publish-beta-d1-release.mjs')).href+'?failed='+index++),/synthetic cleanup lost result/);cleanupFails=false;assert.equal((await rpc('status')).activeWriters,1);assert.equal((await rpc('pollCapture',captureId)).state,'DRAINING');assert(notices.includes('WORK_OUTCOME_UNCERTAIN'));});
  for(const file of ['publish-beta-d1-release.mjs','verify-beta-live.mjs'])await test('actual '+file+' lost signed reservation ACK cancels unstarted work and permits fresh retry',async()=>{await ready();await rpc('fault','external.enter');await assert.rejects(import(pathToFileURL(path.join(repo,'scripts',file)).href+'?lost-admission='+index++),/ADMISSION_UNCERTAIN/);assert.equal((await rpc('status')).activeWriters,0);assert.deepEqual(trace,['external.enter','external.cancel']);assert(events.every(e=>e==='metadata-get'));await import(pathToFileURL(path.join(repo,'scripts',file)).href+'?safe-new-attempt='+index++);assert(events.includes('delete-session'));assert.equal((await rpc('status')).activeWriters,0);});
