@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "53ec6a3ec43e09e76e1ad696f996bb0d44a67d2c167a7cf7c330f7692d9c59fd",
   "summary": {
-    "selectedFiles": 324,
+    "selectedFiles": 325,
     "filesWithManagementSignals": 78,
     "explicitClassifications": 90,
     "stagedOperatorLaunchers": 1,
@@ -14,9 +14,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 5,
-    "unresolvedDynamicImports": 144
+    "unresolvedDynamicImports": 145
   },
-  "sourceSetSha256": "542511f274cc6eea0e737b4b491a91a67583f8fea6f6cb6f09ed166a282bf91b",
+  "sourceSetSha256": "1e69f8ad1f30c52adc6860535e75ae91e667572a1a366024a79fbde30af01a26",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -860,6 +860,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-quarantine-transport.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-recovery-foreign-keys.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2863,6 +2868,16 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-recovery-foreign-keys.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-recovery-foreign-keys.mjs",
+      "to": "scripts/phase8d-recovery-relations-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-recovery-preflight.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3436,8 +3451,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "6f6d15cc69f2a20b781e950d4e82861392b164b275d8d216c3fa58eaad82c8fd",
-      "gitBlobSha": "6f71b443bdcc051c45920195dde27c7fb3194a51",
+      "sha256": "7dfe352e77738118f1ecf5c36e28c84bc6aa63209e40d8e2fd1e9b52a5f103b1",
+      "gitBlobSha": "95afa69fed3304226ce94613b5e1925181f9a655",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3509,6 +3524,7 @@
         "scripts/test-phase8d-provisioner-ownership.mjs",
         "scripts/test-phase8d-quarantine-contract.mjs",
         "scripts/test-phase8d-quarantine-transport.mjs",
+        "scripts/test-phase8d-recovery-foreign-keys.mjs",
         "scripts/test-phase8d-recovery-schema.mjs",
         "scripts/test-phase8d-recovery-selection.mjs",
         "scripts/test-phase8d-refinement-corruption.mjs",
@@ -10005,6 +10021,32 @@
       "referencedScriptCandidates": [
         "scripts/phase8-live-brick-backup-restore.mjs"
       ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-recovery-foreign-keys.mjs",
+      "sha256": "837db84c77eeb319aced949b1474c24f0271d94e1b700353f0f6315ce1ef54cf",
+      "gitBlobSha": "e3f9719a7525681533a3e8bb16f0eeafeec6c8e3",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "./phase8d-recovery-relations-fixture.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ],
+      "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
     {

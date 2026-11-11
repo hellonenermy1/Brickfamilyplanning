@@ -2,6 +2,7 @@ import { BACKUP_TABLES, TRANSIENT_RECOVERY_TABLES, MAX_BACKUP_DECODED_BYTES } fr
 import { restoreBackupToFreshD1, retirePendingRecoveryCommands } from './backup-restore-v6';
 import { canonicalizeHistoricalDeviceRows } from './phase8-device-identity';
 import { CHUNK_BYTES, MAX_OBJECT_BYTES } from './dev-free-runtime';
+import { assertRecoveryForeignKeys, assertRecoveryRelationships } from './cardfree-recovery-foreign-keys';
 
 // Internal/off-platform recovery building block. No HTTP route, scheduled call or
 // live configuration enables restore. The operator must independently quiesce
@@ -63,7 +64,7 @@ async function columns(db: D1Database, table: string): Promise<Column[]> {
 }
 async function inventory(db: D1Database, durable: readonly string[], excluded: readonly string[]) {
   // One query preserves the bounded capture invocation's existing SQL envelope.
-  const objects=(await db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND (type IN ('view','trigger') OR type='table' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations'))").all<{type:string;name:string;tbl_name:string;sql:string}>()).results;
+  const objects=(await db.prepare("SELECT type,name,tbl_name,sql,(SELECT json_group_array(json_object('id',f.id,'seq',f.seq,'table',f.\"table\",'from',f.\"from\",'to',f.\"to\",'on_update',f.on_update,'on_delete',f.on_delete,'match',f.match)) FROM pragma_foreign_key_list(sqlite_master.name) f) recoveryForeignKeys FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND (type IN ('view','trigger') OR type='table' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations'))").all<{type:string;name:string;tbl_name:string;sql:string;recoveryForeignKeys:string}>()).results;
   const expected=durable.includes('evidence_batch_records')?APPROVED_RECOVERY_TRIGGERS:{};
   const behavior=objects.filter(o=>o.type!=='table');
   if(behavior.length!==Object.keys(expected).length||behavior.some(o=>o.type!=='trigger'||!Object.hasOwn(expected,o.name)||o.tbl_name!==expected[o.name].table||o.sql!==expected[o.name].sql))throw Error('unclassified recovery schema trigger/view');
@@ -71,6 +72,7 @@ async function inventory(db: D1Database, durable: readonly string[], excluded: r
   const metadata = (await db.prepare('PRAGMA table_xinfo(brick_dev_migrations)').all<Column & {hidden:number}>()).results;
   if (metadata.length && (metadata.some(c=>c.hidden!==0) || metadata.length !== 2 || metadata[0].name !== 'name' || metadata[0].type !== 'TEXT' || metadata[0].pk !== 1 || metadata[1].name !== 'applied_at' || metadata[1].type !== 'INTEGER' || metadata[1].notnull !== 1)) throw Error('invalid migration bookkeeping schema');
   if (JSON.stringify(actual) !== JSON.stringify([...durable, ...excluded].sort())) throw Error('unclassified recovery schema');
+  for(const table of objects.filter(o=>o.type==='table'))assertRecoveryForeignKeys(table.name,table.recoveryForeignKeys,durable.includes('evidence_batch_records'));
 }
 async function capture(db: D1Database, durable: readonly string[], excluded: readonly string[]): Promise<Store> {
   await inventory(db, durable, excluded);
@@ -114,6 +116,7 @@ export async function finalizeCardfreeCapture(value:unknown){
   }
  }
  const bytes=encoder.encode(JSON.stringify(snapshot));if(bytes.byteLength>MAX_BACKUP_DECODED_BYTES)throw Error('cardfree recovery byte limit exceeded');
+ assertRecoveryRelationships(snapshot.primary);
  await verifyObjects(snapshot.primary);return{body:bytes.buffer,sha256:await digest(bytes.buffer),createdAt:snapshot.createdAt};
 }
 export {inventory as inspectCardfreeInventory,columns as cardfreeCaptureColumns};
@@ -202,6 +205,7 @@ export async function restoreCardfreeD1(env: Env, body: ArrayBuffer, sha256: str
   await preflight(env.DB, raw.primary, CARDFREE_PRIMARY_TABLES, CARDFREE_PRIMARY_EXCLUDED);
   const diagnosticStatements = await preflight(env.BETA_DB, raw.diagnostics, CARDFREE_DIAGNOSTIC_TABLES, CARDFREE_DIAGNOSTIC_EXCLUDED);
   const snapshot = raw as unknown as Snapshot;
+  assertRecoveryRelationships(snapshot.primary);
   await verifyObjects(snapshot.primary);
   const legacy = { format: 'brick-d1-snapshot-v3', createdAt: snapshot.createdAt, excludes: [], tables: Object.fromEntries(BACKUP_TABLES.map(table => [table, snapshot.primary.tables[table]])) };
   const compressed = await new Response(new Blob([JSON.stringify(legacy)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
@@ -221,6 +225,8 @@ export async function restoreCardfreeD1(env: Env, body: ArrayBuffer, sha256: str
   snapshot.primary.tables.devices=await canonicalizeHistoricalDeviceRows(snapshot.primary.tables.devices) as Record<string,Cell>[];
   retirePendingRecoveryCommands(snapshot.primary.tables,base.restoredAt);
   for (const [db, store, tables, excluded] of [[env.DB, snapshot.primary, CARDFREE_PRIMARY_TABLES, CARDFREE_PRIMARY_EXCLUDED], [env.BETA_DB, snapshot.diagnostics, CARDFREE_DIAGNOSTIC_TABLES, CARDFREE_DIAGNOSTIC_EXCLUDED]] as const) {
+    // A preflight check does not excuse relationship/schema drift during restore.
+    await inventory(db,tables,excluded);
     for (const table of tables) if (Number((await db.prepare('SELECT COUNT(*) n FROM ' + table).first<{ n: number }>())?.n) !== store.tables[table].length) throw Error('recovery row reconciliation failed: ' + table);
     for(const table of tables)await verifyRestoredValues(db,store,table);
     for(const table of excluded)if(Number((await db.prepare('SELECT COUNT(*) n FROM '+table).first<{n:number}>())?.n)!==0)throw Error('recovery excluded-state reconciliation failed: '+table);
