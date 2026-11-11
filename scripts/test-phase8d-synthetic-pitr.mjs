@@ -139,7 +139,7 @@ try {
     assert(code.includes("github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == true && github.ref == 'refs/heads/audit/phase8d-d1-qualification'"));
     assert(code.includes('inputs.approved_source_sha!==process.env.GITHUB_SHA'));
     const validation=code.slice(code.indexOf('      - name: Validate'),code.indexOf('      - name: Run only'));
-    assert(!validation.includes('secrets.CLOUDFLARE_API_TOKEN'));assert(!code.includes('secrets.CLOUDFLARE_AUDIT_READ_TOKEN'));
+    assert(!validation.includes('secrets.CLOUDFLARE_API_TOKEN'));assert(!code.slice(code.indexOf('  isolated-synthetic-pitr:')).includes('secrets.CLOUDFLARE_AUDIT_READ_TOKEN'));
     assert(code.includes('cancel-in-progress: false'));assert(code.includes('if: always()'));assert(code.includes('synthetic-pitr-plan.json.progress.jsonl'));
     assert(!code.includes('${{ inputs.'));assert(code.includes('retention-days: 14'));
   });

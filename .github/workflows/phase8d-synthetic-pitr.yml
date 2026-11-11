@@ -24,6 +24,28 @@ concurrency:
   group: phase8d-synthetic-pitr
   cancel-in-progress: false
 jobs:
+  reconcile-uncertain-synthetic-create:
+    if: github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == false && inputs.run_id == '20261111-c004458eeca590ce' && github.ref == 'refs/heads/audit/phase8d-d1-qualification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+      - name: GET-only reconciliation of the two approved names, no mutation retry
+        env:
+          DRILL_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_AUDIT_READ_TOKEN: ${{ secrets.CLOUDFLARE_AUDIT_READ_TOKEN }}
+        run: node scripts/reconcile-phase8d-synthetic-pitr.mjs > "$RUNNER_TEMP/synthetic-pitr-reconciliation.json"
+      - name: Retain sanitized read-only reconciliation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: phase8d-synthetic-pitr-reconciliation-${{ github.run_id }}
+          path: ${{ runner.temp }}/synthetic-pitr-reconciliation.json
+          if-no-files-found: warn
+          retention-days: 14
   isolated-synthetic-pitr:
     if: github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == true && github.ref == 'refs/heads/audit/phase8d-d1-qualification'
     runs-on: ubuntu-24.04
