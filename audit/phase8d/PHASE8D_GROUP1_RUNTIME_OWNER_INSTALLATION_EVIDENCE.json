@@ -1,0 +1,169 @@
+{
+  "format": "brick-group1-runtime-owner-installation-evidence-v1",
+  "sourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+  "sourceTreeSha": "dfc1360ab8ec74aff07e8e0281a7fde3117f0852",
+  "parentSha": "3be4a9d27167f569707a6da6ce07415ff91a1a41",
+  "sequentialEnrollmentPatternReproduced": true,
+  "legacySingleOwnerApiRetained": true,
+  "focusedEnrollmentCasesPassed": 26,
+  "boundaryCasesPassed": 41,
+  "remainingWriterCasesPassed": 20,
+  "schedulerRpcCasesPassed": 14,
+  "localAtomicityOnly": true,
+  "factoryInDefaultProductionGraph": false,
+  "factorySha256": "10a2ae19f6a9f0320292a2ee3dd33f021c313eec21f4f88cd65c73dee9b519dc",
+  "productionEntryWiredToFactory": false,
+  "authorityGuardReplayStateInitializedByFactory": false,
+  "networkOrKeyReadsByFactory": false,
+  "runtimeProfile": {
+    "files": 90,
+    "changedRuntimePaths": [
+      "src/capture-writer-boundary.ts"
+    ],
+    "priorSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
+    "currentSourceSetSha256": "8082dc0c556bce0056484bdf9007a143a3d7e72d311de650be12a649af154980",
+    "profilesRegenerated": true
+  },
+  "selectedSignedNativeFixtureSuites": [
+    "test-phase8d-writer-surface.mjs",
+    "test-phase8d-rpc-writers.mjs",
+    "test-phase8d-scheduler-capture.mjs",
+    "test-phase8d-worker-device-capture.mjs"
+  ],
+  "externalInventorySummary": {
+    "selectedFiles": 328,
+    "filesWithManagementSignals": 78,
+    "explicitClassifications": 90,
+    "stagedOperatorLaunchers": 1,
+    "betaMutatorsUnfenced": 4,
+    "stagedOffPlatformMonitors": 1,
+    "stagedOffPlatformDestinations": 1,
+    "legacyMutatorsNotBetaApproved": 13,
+    "unresolvedRelativeImportCandidates": 5,
+    "unresolvedDynamicImports": 147
+  },
+  "unchangedSha256": {
+    "audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv": "1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228",
+    "audit/phase8d/release-evidence/PHASE8D_REQUIREMENTS_LEDGER.json": "27a159ca14fc25baaf81b304ab76d6750ba64611d805963124f2434459ba63fa"
+  },
+  "limits": [
+    "Private local enrollment capability only; production entrypoints remain disconnected",
+    "Atomicity is synchronous within one isolate, not cross-isolate/host/account bootstrap",
+    "D1 object reference validation is not independently verified physical binding identity",
+    "Controlled fixture bootstrap/guard is not selected real TLS/failure-domain/epoch/key custody",
+    "Complete raw/operator/credential restrictions, independent custody/scheduling and live isolated recovery/RTO/RPO acceptance remain open"
+  ],
+  "productionActivated": false,
+  "cloudWritesPerformed": false,
+  "familyDataOperations": false,
+  "applicationDeployed": false,
+  "merged": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "hosted": {
+    "records": [
+      {
+        "runId": 42954320326,
+        "jobId": 130305688570,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 279344,
+        "errorMarkers": 0,
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+        "sourceShaPresent": true,
+        "ownerEnrollment26": true,
+        "boundary41": true,
+        "writer20": true,
+        "schedulerRpc14": true,
+        "fullEncryptedRecovery": true,
+        "installationNativeSummaries": [
+          "{\"suite\":\"worker-entry-native\",\"passed\":12,\"failed\":0,\"scope\":\"actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification\"}",
+          "{\"suite\":\"runtime-owner-installation\",\"passed\":26,\"failed\":0,\"scope\":\"explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls\"}",
+          "{\"suite\":\"scheduler-capture-native\",\"passed\":8,\"failed\":0,\"scope\":\"actual Worker scheduled/Scheduler/watchdog/device, signed broker and SQLite D1/DO guard/source/restart; no installed production schedule, recipient or complete cross-RPC writer qualification\"}",
+          "{\"suite\":\"rpc-parent-lifecycle\",\"passed\":14,\"failed\":0,\"scope\":\"actual compiled caller/receiver helper with controlled lifecycle/replies; native authority and actual scheduler RPC tested separately, not production or complete writer proof\"}",
+          "{\"suite\":\"scheduler-rpc-writers-native\",\"passed\":14,\"failed\":0,\"scope\":\"actual scheduler refinement/retention/backup RPC boundaries, signed descendant broker and SQLite source/ownership/restart; synthetic trusted bootstrap/faults, not complete writer or production schedule/cloud/custody acceptance\"}",
+          "{\"suite\":\"worker-device-capture-native\",\"passed\":22,\"failed\":0,\"scope\":\"actual authenticated Worker commute/actual Scheduler RPC and real device restore transaction with signed/native ownership and restart; controlled request-kick/rate/gates, no production traffic/bootstrap/full writer or cloud acceptance\"}",
+          "{\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+          "{\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+          "{\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}"
+        ]
+      },
+      {
+        "runId": 42954315275,
+        "jobId": 130305673103,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 277387,
+        "errorMarkers": 0,
+        "checkoutSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+        "sourceShaPresent": true,
+        "ownerEnrollment26": true,
+        "boundary41": true,
+        "writer20": true,
+        "schedulerRpc14": true,
+        "fullEncryptedRecovery": true,
+        "installationNativeSummaries": [
+          "{\"suite\":\"worker-entry-native\",\"passed\":12,\"failed\":0,\"scope\":\"actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification\"}",
+          "{\"suite\":\"runtime-owner-installation\",\"passed\":26,\"failed\":0,\"scope\":\"explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls\"}",
+          "{\"suite\":\"scheduler-capture-native\",\"passed\":8,\"failed\":0,\"scope\":\"actual Worker scheduled/Scheduler/watchdog/device, signed broker and SQLite D1/DO guard/source/restart; no installed production schedule, recipient or complete cross-RPC writer qualification\"}",
+          "{\"suite\":\"rpc-parent-lifecycle\",\"passed\":14,\"failed\":0,\"scope\":\"actual compiled caller/receiver helper with controlled lifecycle/replies; native authority and actual scheduler RPC tested separately, not production or complete writer proof\"}",
+          "{\"suite\":\"scheduler-rpc-writers-native\",\"passed\":14,\"failed\":0,\"scope\":\"actual scheduler refinement/retention/backup RPC boundaries, signed descendant broker and SQLite source/ownership/restart; synthetic trusted bootstrap/faults, not complete writer or production schedule/cloud/custody acceptance\"}",
+          "{\"suite\":\"worker-device-capture-native\",\"passed\":22,\"failed\":0,\"scope\":\"actual authenticated Worker commute/actual Scheduler RPC and real device restore transaction with signed/native ownership and restart; controlled request-kick/rate/gates, no production traffic/bootstrap/full writer or cloud acceptance\"}",
+          "{\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+          "{\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+          "{\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}"
+        ]
+      },
+      {
+        "runId": 42954320367,
+        "jobId": 130305689000,
+        "conclusion": "success",
+        "passedSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16169,
+        "errorMarkers": 0,
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+        "sourceShaPresent": true
+      },
+      {
+        "runId": 42954320330,
+        "jobId": 130305688287,
+        "conclusion": "success",
+        "passedSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 25079,
+        "errorMarkers": 0,
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+        "sourceShaPresent": true
+      }
+    ],
+    "prMergeSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+    "prMergeTreeSha": "dfc1360ab8ec74aff07e8e0281a7fde3117f0852",
+    "prMergeParents": [
+      "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "c1a1a5c1905e3edc77e77579e53fd26cca97def8"
+    ]
+  },
+  "freshLocalVerification": {
+    "ownerEnrollmentCases": 26,
+    "writerBoundaryCases": 41,
+    "scope": "Focused replay on the unchanged committed candidate after interruption",
+    "ownerLogSha256": "b4ab0172a723bff24ad917385c14ad5211f30ab5ebd11814eb2c82db1d2d7906",
+    "boundaryLogSha256": "1d2f400f8efe3b2da5ad561d87786a915dc5d313f5430442a61f6f4cbae1a4bf"
+  },
+  "priorInterruptedLocalFullCampaign": {
+    "status": "FINAL_LOG_NOT_RECOVERED",
+    "fullLocalPassClaimed": false,
+    "note": "Pre-interruption output recorded completed early groups, but the temporary final log/summary did not survive. Complete clean hosted audits qualify the unchanged candidate; no new full local run claimed."
+  },
+  "selectedSignedNativeCases": {
+    "remainingWriter": 20,
+    "schedulerRpc": 14,
+    "schedulerCapture": 8,
+    "workerDeviceCapture": 22
+  },
+  "manualMetadataJobs": "SKIPPED; pinned metadata was already completed and no provider read repeated"
+}

@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
+  "sourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 327,
+      "selectedTrackedFiles": 328,
       "explicitManagementClassifications": 90,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 23,
       "unresolvedRelativeImportCandidates": 5,
-      "filesWithDynamicImportExpressions": 146,
+      "filesWithDynamicImportExpressions": 147,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -537,6 +537,25 @@
       "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json",
       "liveProviderRestoreOrQuiescenceProven": false
+    },
+    {
+      "id": "ATOMIC_LOCAL_RUNTIME_OWNER_ENROLLMENT",
+      "state": "SOURCE_FOCUSED_AND_EXACT_PUSH_PR_CI_VERIFIED_NOT_PRODUCTION_WIRED",
+      "focusedCases": 26,
+      "boundaryCases": 41,
+      "selectedSignedNativeCases": {
+        "remainingWriter": 20,
+        "schedulerRpc": 14,
+        "schedulerCapture": 8,
+        "workerDeviceCapture": 22
+      },
+      "factoryPath": "src/capture-runtime-installation.ts",
+      "factoryInDefaultRuntimeGraph": false,
+      "productionEntryWired": false,
+      "physicalBindingIdentityProven": false,
+      "crossIsolateAtomicityProven": false,
+      "runtimeSourceSetSha256": "8082dc0c556bce0056484bdf9007a143a3d7e72d311de650be12a649af154980",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -548,7 +567,7 @@
     {
       "id": "COMPLETE_WRITER_HOOKS",
       "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
-      "needed": "Pinned opt-in external CLI entry now connects four real tools to signed ownership in fresh processes (28 native checks); direct invocation remains unfenced. Actual complete Worker/DO/D1/bootstrap/raw/binding/deferred/process/credential restrictions, protected immutable operator host/artifact/config/key, source transition/rollback and unknown STARTED/legacy reconciliation remain open. No partial capture activation."
+      "needed": "Atomic local owner/DB enrollment now has26 focused checks and signed native Worker/device/scheduler/RPC coverage (20/22/8/14 cases). The factory remains outside production entrypoints. The pinned CLI has35 native cases; four direct tools remain unfenced. Actual complete startup/rollback, verified physical bindings, Worker/DO/D1/deferred/process/raw/operator/credential restrictions, secure host/artifact/config/key and unknown STARTED/legacy reconciliation remain open. No partial activation."
     },
     {
       "id": "URGENT_OUTAGE_FALLBACK",
@@ -589,90 +608,114 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42947680587,
-        "jobId": 130284305518,
-        "event": "push",
+        "runId": 42954320326,
+        "jobId": 130305688570,
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 274482,
+        "logCharacters": 279344,
         "errorMarkers": 0,
-        "checkoutSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
-        "doPostflight25": true,
-        "reviewedDdl30": true,
-        "relationship24": true,
-        "valueParity12": true,
-        "populatedEncryptedRecovery": true,
-        "remainingWriter20": true
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+        "sourceShaPresent": true,
+        "ownerEnrollment26": true,
+        "boundary41": true,
+        "writer20": true,
+        "schedulerRpc14": true,
+        "fullEncryptedRecovery": true,
+        "installationNativeSummaries": [
+          "{\"suite\":\"worker-entry-native\",\"passed\":12,\"failed\":0,\"scope\":\"actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification\"}",
+          "{\"suite\":\"runtime-owner-installation\",\"passed\":26,\"failed\":0,\"scope\":\"explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls\"}",
+          "{\"suite\":\"scheduler-capture-native\",\"passed\":8,\"failed\":0,\"scope\":\"actual Worker scheduled/Scheduler/watchdog/device, signed broker and SQLite D1/DO guard/source/restart; no installed production schedule, recipient or complete cross-RPC writer qualification\"}",
+          "{\"suite\":\"rpc-parent-lifecycle\",\"passed\":14,\"failed\":0,\"scope\":\"actual compiled caller/receiver helper with controlled lifecycle/replies; native authority and actual scheduler RPC tested separately, not production or complete writer proof\"}",
+          "{\"suite\":\"scheduler-rpc-writers-native\",\"passed\":14,\"failed\":0,\"scope\":\"actual scheduler refinement/retention/backup RPC boundaries, signed descendant broker and SQLite source/ownership/restart; synthetic trusted bootstrap/faults, not complete writer or production schedule/cloud/custody acceptance\"}",
+          "{\"suite\":\"worker-device-capture-native\",\"passed\":22,\"failed\":0,\"scope\":\"actual authenticated Worker commute/actual Scheduler RPC and real device restore transaction with signed/native ownership and restart; controlled request-kick/rate/gates, no production traffic/bootstrap/full writer or cloud acceptance\"}",
+          "{\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+          "{\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+          "{\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}"
+        ]
       },
       {
-        "runId": 42947687154,
-        "jobId": 130284325775,
-        "event": "pull_request",
+        "runId": 42954315275,
+        "jobId": 130305673103,
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 276442,
+        "logCharacters": 277387,
         "errorMarkers": 0,
-        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
-        "doPostflight25": true,
-        "reviewedDdl30": true,
-        "relationship24": true,
-        "valueParity12": true,
-        "populatedEncryptedRecovery": true,
-        "remainingWriter20": true
+        "checkoutSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+        "sourceShaPresent": true,
+        "ownerEnrollment26": true,
+        "boundary41": true,
+        "writer20": true,
+        "schedulerRpc14": true,
+        "fullEncryptedRecovery": true,
+        "installationNativeSummaries": [
+          "{\"suite\":\"worker-entry-native\",\"passed\":12,\"failed\":0,\"scope\":\"actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification\"}",
+          "{\"suite\":\"runtime-owner-installation\",\"passed\":26,\"failed\":0,\"scope\":\"explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls\"}",
+          "{\"suite\":\"scheduler-capture-native\",\"passed\":8,\"failed\":0,\"scope\":\"actual Worker scheduled/Scheduler/watchdog/device, signed broker and SQLite D1/DO guard/source/restart; no installed production schedule, recipient or complete cross-RPC writer qualification\"}",
+          "{\"suite\":\"rpc-parent-lifecycle\",\"passed\":14,\"failed\":0,\"scope\":\"actual compiled caller/receiver helper with controlled lifecycle/replies; native authority and actual scheduler RPC tested separately, not production or complete writer proof\"}",
+          "{\"suite\":\"scheduler-rpc-writers-native\",\"passed\":14,\"failed\":0,\"scope\":\"actual scheduler refinement/retention/backup RPC boundaries, signed descendant broker and SQLite source/ownership/restart; synthetic trusted bootstrap/faults, not complete writer or production schedule/cloud/custody acceptance\"}",
+          "{\"suite\":\"worker-device-capture-native\",\"passed\":22,\"failed\":0,\"scope\":\"actual authenticated Worker commute/actual Scheduler RPC and real device restore transaction with signed/native ownership and restart; controlled request-kick/rate/gates, no production traffic/bootstrap/full writer or cloud acceptance\"}",
+          "{\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+          "{\"suite\":\"maintenance-failure\",\"passed\":5,\"failed\":0,\"scope\":\"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup\"}",
+          "{\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}"
+        ]
       },
       {
-        "runId": 42947687126,
-        "jobId": 130284325679,
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 14,
-        "completeDecodedLogInspected": true,
-        "logCharacters": 25000,
-        "errorMarkers": 0,
-        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
-        "sourceShaPresent": true
-      },
-      {
-        "runId": 42947687240,
-        "jobId": 130284326370,
-        "event": "pull_request",
+        "runId": 42954320367,
+        "jobId": 130305689000,
         "conclusion": "success",
         "passedSteps": 10,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16247,
+        "logCharacters": 16169,
         "errorMarkers": 0,
-        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
+        "sourceShaPresent": true
+      },
+      {
+        "runId": 42954320330,
+        "jobId": 130305688287,
+        "conclusion": "success",
+        "passedSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 25079,
+        "errorMarkers": 0,
+        "checkoutSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164",
         "sourceShaPresent": true
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
+  "lastMergeQualifiedSourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
-      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
+      "sourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "previousRecordedSourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json",
+      "testedPrMergeSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
-      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2"
+      "sourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
+      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "previousRecordedSourceSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json",
+      "testedPrMergeSha": "577911d36d7b7ffd0c6dd3522bedef5797a25164"
     }
   ],
   "executionForecast": {
@@ -688,10 +731,53 @@
       "bucketName": "brick-recovery-jayvian-20261107",
       "scope": "Private bucket + bounded encrypted synthetic roundtrip/local restore only; no repeat authorization needed for the granted scope."
     },
-    "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery."
+    "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery.",
+    "nextUnqualifiedActions": [
+      {
+        "gate": "COMPLETE_RUNTIME_STARTUP",
+        "required": "One reviewed production Worker/actor/D1/operator/raw-credential bootstrap and rollback scope; entrypoints are still unwired",
+        "responsibleRole": "Runtime/deployment owner"
+      },
+      {
+        "gate": "GUARD_AND_RUNNER",
+        "required": "Selected independently protected runtime/guard endpoints, failure domain and source/resource/epoch/key custody",
+        "responsibleRole": "Runtime/security owner"
+      },
+      {
+        "gate": "RESTRICTED_B2_AND_CUSTODY",
+        "required": "Approved least-privilege bucket/prefix key, secure runtime transfer and independently recoverable encryption/context/selection/current journal custody",
+        "responsibleRole": "Backup/account owner"
+      },
+      {
+        "gate": "SCHEDULE_AND_RECIPIENT",
+        "required": "Approved schedule, failure/age policy, actual recipient and signing/delivery verification",
+        "responsibleRole": "Operations owner"
+      },
+      {
+        "gate": "ISOLATED_CLOUD_DRILL",
+        "required": "Explicit new synthetic target identities, mutation/interruption/rollback scope and agreed measured RTO/RPO",
+        "responsibleRole": "Cloud/account owner"
+      },
+      {
+        "gate": "ACCEPTANCE",
+        "required": "Genuine accountable owner/tester/independent reviewer; no invented signoff or deadline waiver",
+        "responsible": "Unassigned"
+      }
+    ],
+    "guardHostCandidateDecisions": [
+      {
+        "provider": "Deno Deploy",
+        "state": "REJECT_NEW_GUARD_RUNNER_CANDIDATE",
+        "checkedDate": "2026-11-11",
+        "reason": "Official retirement announcement; independent administration/failure domain and no-card capacity remain unqualified",
+        "evidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARD_HOST_PREFLIGHT_2026-11-11.md",
+        "replacementSelected": false
+      }
+    ]
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
   "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
-  "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc"
+  "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
+  "localVerificationStatus": "FOCUSED_26_AND_41_PASSED_INTERRUPTED_FULL_LOCAL_FINAL_LOG_NOT_RECOVERED"
 }

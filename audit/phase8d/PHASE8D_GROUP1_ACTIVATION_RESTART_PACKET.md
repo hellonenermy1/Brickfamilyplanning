@@ -1,5 +1,13 @@
 # Group 1 activation and restart decision packet — NOT READY
 
+## Current qualification and next actions — 11 November 2026
+
+Sourcec1a1a5c/tree dfc1360 passed exact push42954315275 and PR42954320326 audits33/33 each; portals14/14 and10/10. Full logs and source/merge identity recovered after interruption. Fresh local26 owner-enrollment and41 boundary checks pass; the old full-local final log was not recovered. Atomic local runtime enrollment is source/native qualified through four signed suites20/14/8/22, but its factory remains outside production entrypoints. Do not interpret this as a complete deployed bootstrap or an approval to activate partial fencing. Current readiness/evidence pointers now identify PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json, not older operator/runtime checkpoints.
+
+The next six gates are: complete production startup/rollback scope; approved guard/runner and identity/key custody; restricted B2 credential plus separate archive/context/journal custody; actual schedule/recipient; approved isolated synthetic cloud resources/drill with agreed RTO/RPO; and genuine acceptance roles/review. Exact required inputs/responsible roles are in readiness.executionForecast.nextUnqualifiedActions. None is resolved by another unchanged metadata GET or more helper-only tests. The already supplied beta namespace pins and dedicated metadata access are completed prerequisites. Group1 NOT READY; P8D-002 P1 OPEN;8D NOT PASS. No activation/merge/deploy/provider/credential/notification/family-data operation is authorized by this packet.
+
+The older dated sections below retain their historical scope; their superseded input/dispatch requests are not the current queue.
+
 ## 11 November — device restore postflight and uncertain targets
 
 Source6f167ab3 adds a D1 identity/revocation recheck, full durable-state readback and sockets/alarm recheck after an isolated DO restore attempt. A post-attempt failure never qualifies that target; cached/persistent revocation fencing and socket closure are attempted, with explicit storage-failure limits. Do not treat a completed local fence as proof that older uncertain work stopped, clear it for a retry, or promote already-restored D1 stores when any DO remains unqualified. Keep the whole candidate externally isolated and use explicit reconciliation/discard/fresh-target authority. Preflight failures preserve existing targets.25 native cases and exact source/PR33-step audits pass; see PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT.md/EVIDENCE.json. The90-file runtime graph has a new hash from do-recovery.ts and was reprofiled/requalified; nothing was installed or deployed.
@@ -22,7 +30,7 @@ An explicit pinned launcher now supplies a source-level installation path for fo
 
 Exact-pin11-GET live metadata run42844169184/source176e65f5 completed SUCCESS, including both independently supplied namespaces and current/historical bookmarks for both D1s. Metadata artifact13776663998 hash and complete checkout/logs verified; companion native job succeeded33/33. An earlier successful pinned run42826439260 was also recovered and verified. Older requests below for a new pinned run are historical and fulfilled; null-pin failures remain failed. See PHASE8D_GROUP1_PINNED_LIVE_METADATA.md/EVIDENCE.json. Next operational gate is complete trusted writer/bootstrap/raw/operator/credential installation and independent custody, followed by the authorized isolated cloud restoration; metadata does not establish these.
 
-## Current continuation decision — 10 November 2026
+## Historical continuation decision — 10 November 2026 (superseded)
 
 **Namespace identity prerequisite: independently supplied pins validated by digest.** Both user-supplied existing `brick-family-beta` namespace identities for `BRICK_DEVICE` and `BETA_SCHEDULER` matched the pre-existing active-binding SHA-256 values, without writing raw namespace IDs into the repository. Offline CI on `3a91c3c2` passed the independent-hash evidence suite16/16 and the existing synthetic pinned metadata suite44/44. Full source-only Group1 audit run42831143040 and accompanying portal CI were green. The earlier live metadata job's `DO_NAMESPACE_PINS_REQUIRED` exit2 remains a historical failure because that run used **null** expected IDs; no new pinned Cloudflare workflow dispatch has completed. A new exact source/binding/account/D1/host/historical-target GET-only run is the next live checkpoint. This step is not an isolated cloud restore.
 
@@ -35,7 +43,7 @@ Exact-pin11-GET live metadata run42844169184/source176e65f5 completed SUCCESS, i
 
 Prepared 10 November 2026 (Singapore), source `311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d`, integration base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This packet scopes review and required inputs. It authorizes no deployment, resource/credential change, notification or family-data operation. PR32 remains draft/unmerged. Four-day forecast AT RISK; actual exit requirements remain.
 
-## Current beta metadata prerequisite
+## Historical beta metadata prerequisite (fulfilled)
 
 ## 2026-11-10 — historical PITR lookup verified for both D1 databases
 
@@ -55,7 +63,7 @@ The approved bucket was observed `allPrivate`, revision2 at `2026-11-10T07:49:30
 
 | Gate | Current qualification | Input or proof required before activation |
 | --- | --- | --- |
-| Exact active target identity |11 GETs complete; both D1 identities/current and6Nov historical bookmarks plus matching deployment reads attested | D1 access/login prerequisites resolved. Independently review expected BRICK_DEVICE/BETA_SCHEDULER namespace IDs and retain them in the private plan. Schemas/routes, token least privilege, full retention and isolated recovery remain unqualified. No automatic promotion of observed IDs or broad-token fallback. |
+| Exact active target identity |11 GETs complete; both D1 identities/current and6Nov historical bookmarks plus matching deployment reads attested | D1 access/login and independent namespace pin prerequisites are completed. Preserve the existing private pins; no repeated ID request/read is needed. Schemas/routes, token least privilege, full retention and isolated recovery remain unqualified. No automatic promotion of observed IDs or broad-token fallback. |
 | Complete writer installation | Native fixtures and source profiles; zero approved production controller installs | Review all Worker fetch/scheduled, actor/RPC, D1 execution/session, deferred/process/raw credential/operator effects against current inventories. Four external tools: ensure-beta-d1-columns, publish-beta-d1-release, setup-beta-d1, verify-beta-live. Resolve STARTED/legacy unknown outcomes without TTL resets. One reviewed complete bootstrap/rollback scope, not partial fencing. |
 | Guard trust/domain | Distinct fixture origins/keys/epochs and signed protocol qualified | Actual protected endpoint/TLS, independent failure domain, restricted key/epoch custody, persistent replay, caller identity and raw/bypass restrictions. Synthetic `.invalid` URLs are not deployable resource identities. |
 | Runtime B2 credential | Real bucket private; connected key is too broad | Separate authorized restricted key matching the source contract: exactly the approved bucket, prefix `brick-recovery/`, capabilities `listBuckets`, `readFiles`, `writeFiles`. Specify owner-selected key name/duration, runtime host and secure custody before creation. Never install the connected administrative key in the runner. |
