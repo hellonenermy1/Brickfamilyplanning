@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+  "sourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 324,
+      "selectedTrackedFiles": 325,
       "explicitManagementClassifications": 90,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 23,
       "unresolvedRelativeImportCandidates": 5,
-      "filesWithDynamicImportExpressions": 144,
+      "filesWithDynamicImportExpressions": 145,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -485,6 +485,22 @@
       "pointInTimeOnly": true,
       "immutableHostProven": false,
       "completeCredentialCoverage": false
+    },
+    {
+      "id": "RECOVERY_DECLARED_RELATIONSHIP_SCHEMA_AND_DATA",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 24,
+      "primaryTablesWithConstraints": 35,
+      "primaryConstraintGroups": 42,
+      "primaryColumnLinks": 46,
+      "diagnosticDeclaredForeignKeys": 0,
+      "orphanGraphPreWriteCases": 6,
+      "sourceSqlCallsPerPageMaximum": 5,
+      "postWriteSchemaRecheck": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json",
+      "fullDdlEquivalenceProven": false,
+      "liveProviderSchemaOrRestoreProven": false,
+      "completeWriterQuiescenceProven": false
     }
   ],
   "remaining": [
@@ -544,63 +560,67 @@
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42939916495,
-        "jobId": 130259000363,
+        "runId": 42942107024,
+        "jobId": 130266122467,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 267353,
+        "logCharacters": 270258,
         "errorMarkers": 0,
-        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
-        "launcher35": true,
-        "byteIntegrity12": true,
-        "populatedRecovery": true
+        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
+        "relationship24": true,
+        "schema18": true,
+        "valueParity12": true,
+        "populatedEncryptedRecovery": true
       },
       {
-        "runId": 42939907480,
-        "jobId": 130258972237,
+        "runId": 42942099796,
+        "jobId": 130266099374,
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 265400,
+        "logCharacters": 268222,
         "errorMarkers": 0,
-        "checkoutSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
-        "launcher35": true,
-        "byteIntegrity12": true,
-        "populatedRecovery": true
+        "checkoutSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
+        "relationship24": true,
+        "schema18": true,
+        "valueParity12": true,
+        "populatedEncryptedRecovery": true
       },
       {
-        "runId": 42939916498,
-        "jobId": 130259000547,
+        "runId": 42942107063,
+        "jobId": 130266122086,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
-        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
         "completeDecodedLogInspected": true,
+        "logCharacters": 16168,
         "errorMarkers": 0,
-        "logCharacters": 16248
+        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
+        "sourceShaPresent": true
       },
       {
-        "runId": 42939916515,
-        "jobId": 130259000188,
+        "runId": 42942106763,
+        "jobId": 130266120753,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
-        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
         "completeDecodedLogInspected": true,
+        "logCharacters": 25085,
         "errorMarkers": 0,
-        "logCharacters": 25079
+        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
+        "sourceShaPresent": true
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json",
   "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+  "lastMergeQualifiedSourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",

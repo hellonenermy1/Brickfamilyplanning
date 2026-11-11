@@ -1,5 +1,11 @@
 # Group 1 activation and restart decision packet — NOT READY
 
+## 11 November — recovery relationship prerequisite
+
+Recovery source `e1e1a6ccccc02dac5f083722fea90acc05343f1c` now checks42 grouped primary foreign-key constraints/46 column links and no diagnostic FKs. Both stores must match this reviewed relationship contract before capture/restore; absent constraints cannot be qualified by an empty `foreign_key_check`. Package finalization and pre-write restore also reject orphan device/place/witness/receiver/composite evidence tuples. Successful restore rechecks schema after writes.24 focused native cases pass, including real object cascade deletion and source max5 SQL calls. See PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_CONTRACT.md/EVIDENCE.json for final campaign identities and limits. Do not strip constraints, auto-enroll the observed schema, replay into a partial target or treat this as installed/cloud recovery proof. Actual provider support/DDL and isolated recovery remain required.
+
+The earlier operator paragraph below records the initial28-case checkpoint; its later35-case physical-byte verification and exact CI/build evidence are in PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json. Neither milestone establishes complete live writer controls or secure runtime/key installation.
+
 ## External operator source checkpoint
 
 An explicit pinned launcher now supplies a source-level installation path for four actual beta operator selectors in fresh Node processes.28 native cases and the complete local source campaign pass. Build/config/source/epoch/scope/private-file checks, shared controller import after checkout validation, all-four held-capture refusal and uncertain cleanup/release are qualified with a synthetic provider/HTTPS bridge. This is not a selected immutable secure runtime, real key/config/TLS installation or account-wide bypass restriction. Existing workflows still invoke direct tools, and all4 remain classified unfenced. See PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER.md/EVIDENCE.json.
