@@ -70,7 +70,12 @@ export async function restoreDeviceRecovery(ctx: DurableObjectState, env: Recove
   if (!record(snapshot) || Object.keys(snapshot).sort().join(",") !== "capturedAt,deviceId,format,keySha256,state" || snapshot.format !== "brick-do-snapshot-v1" || snapshot.deviceId !== deviceId || !Number.isSafeInteger(snapshot.capturedAt) || (snapshot.capturedAt as number) <= 0) throw new Error("invalid DO recovery envelope");
   checkState(snapshot.state);
   const state = snapshot.state;
+  // Compare lossless JSON state, including nested values, without making object
+  // insertion order an integrity boundary. Array order remains significant.
+  const canonical = (value: unknown) => JSON.stringify(value, (_key, item) =>
+    record(item) ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
   // Catch expected refusals inside the concurrency block to avoid resetting the DO.
+  let writeAttempted = false;
   const error = await ctx.blockConcurrencyWhile(async () => {
     try {
       const device = await identity(ctx, env, deviceId);
@@ -80,11 +85,32 @@ export async function restoreDeviceRecovery(ctx: DurableObjectState, env: Recove
       if (revoked) state.wsRevoked = true;
       await ctx.storage.transaction(async txn => {
         if ((await txn.list({ limit: 1 })).size) throw new Error("DO restore target is not empty");
+        // A rejected transaction receipt may still conceal a committed write.
+        writeAttempted = true;
         if (Object.keys(state).length) await txn.put(state);
       });
+      const current = await identity(ctx, env, deviceId);
+      if (current.keySha256 !== device.keySha256 || current.revoked !== device.revoked)
+        throw new Error("DO recovery identity changed during restore");
+      const restored = Object.fromEntries(await ctx.storage.list({ limit: RECOVERY_KEYS.length + 1 }));
+      checkState(restored);
+      if (canonical(restored) !== canonical(state)) throw new Error("DO recovery state reconciliation failed");
+      if (ctx.getWebSockets().length || await ctx.storage.getAlarm() !== null)
+        throw new Error("DO restore target changed sockets/alarm");
       setRevoked(revoked);
       return null;
-    } catch (e) { return e instanceof Error ? e.message : "DO restore failed"; }
+    } catch (e) {
+      if (writeAttempted) {
+        // Never promote or retry a partially written or unknown-outcome target.
+        // Persistent fencing is best effort if storage itself is unavailable;
+        // the failed receipt still requires isolation/manual reconciliation.
+        try { setRevoked(true); } catch {}
+        try { await ctx.storage.put("wsRevoked", true); } catch {}
+        try { for (const ws of ctx.getWebSockets()) ws.close(4003, "Recovery unverified"); } catch {}
+        return "DO recovery postflight uncertain; keep target isolated";
+      }
+      return e instanceof Error ? e.message : "DO restore failed";
+    }
   });
   if (error) throw new Error(error);
   return true;

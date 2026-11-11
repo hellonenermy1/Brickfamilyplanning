@@ -8,7 +8,7 @@
     "qualificationEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json"
   },
   "activation": "NOT_READY",
-  "runtimeSourceSetSha256": "6a56f46333a0dcd99862d65387c13b7d6716b834d468b05d72878790c6bcef56",
+  "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
   "runtimeFiles": 90,
   "runtimeProjectionIdenticalToBasis": false,
   "workerRootHandlers": [
@@ -116,7 +116,7 @@
         },
         {
           "path": "src/do-recovery.ts",
-          "sha256": "810864802d996d72dbafcd9cf7d3f7918b4efb6df86a06267bf47cba0fbbdab6"
+          "sha256": "b3495778be213f180392b5e08da18055b25c279cda5e24329e2ce1f11514f905"
         }
       ],
       "review": "CURRENT_NAMED_SOURCE_AND_SYNTHETIC_NATIVE_ONLY_NOT_AUTHENTICATED_ACCEPTANCE"

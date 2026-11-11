@@ -8,12 +8,12 @@
     "sourceFiles": 90,
     "sqlPrepareCandidates": 309,
     "sqlWriteOrUnknown": 174,
-    "mutationOrWrapperCandidates": 73,
+    "mutationOrWrapperCandidates": 74,
     "deferredWorkCandidates": 21,
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "6a56f46333a0dcd99862d65387c13b7d6716b834d468b05d72878790c6bcef56",
+  "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -1819,8 +1819,8 @@
     },
     {
       "path": "src/do-recovery.ts",
-      "sha256": "810864802d996d72dbafcd9cf7d3f7918b4efb6df86a06267bf47cba0fbbdab6",
-      "gitBlobSha": "440b6c8611c9c6c885c2bbe0412dd4bc5ed26424",
+      "sha256": "b3495778be213f180392b5e08da18055b25c279cda5e24329e2ce1f11514f905",
+      "gitBlobSha": "9f744dd12f9cce8b35f674e7eb246dae19ec6c5a",
       "imports": [
         "src/crypto.ts"
       ],
@@ -1843,7 +1843,7 @@
           "dynamicReceiver": false
         },
         {
-          "line": 81,
+          "line": 86,
           "column": 13,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "transaction",
@@ -1851,11 +1851,19 @@
           "dynamicReceiver": false
         },
         {
-          "line": 83,
+          "line": 90,
           "column": 46,
           "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
           "method": "put",
           "receiver": "txn",
+          "dynamicReceiver": false
+        },
+        {
+          "line": 108,
+          "column": 21,
+          "kind": "MUTATION_OR_WRAPPER_CANDIDATE",
+          "method": "put",
+          "receiver": "ctx.storage",
           "dynamicReceiver": false
         }
       ]

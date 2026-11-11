@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "53ec6a3ec43e09e76e1ad696f996bb0d44a67d2c167a7cf7c330f7692d9c59fd",
   "summary": {
-    "selectedFiles": 326,
+    "selectedFiles": 327,
     "filesWithManagementSignals": 78,
     "explicitClassifications": 90,
     "stagedOperatorLaunchers": 1,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 146
   },
-  "sourceSetSha256": "f402849b5f51ea0acffa9c7a39df30881e2dc7222c2adaf8a564f9264baf8350",
+  "sourceSetSha256": "ceb0eb62c972529c5f8acd0d4e8ab3541f606a08d38cc8e540a3b89618dbd2f4",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -745,6 +745,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-descendant-reservations.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-do-restore-postflight.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2608,6 +2613,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-do-restore-postflight.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-do-telemetry-fences.mjs",
       "to": "scripts/phase8d-do-state-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3461,8 +3471,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "9b1bceea4ae12d0a04eb1987c0c8fe72bde66f78c65cab79856f1b692574a96d",
-      "gitBlobSha": "23a877f9b28ee5c689ddece063f17d6fe9e81873",
+      "sha256": "eccd8d35cbfee016bd18c13f36caaf02dbb3274bb7fa515a96f49c455874722f",
+      "gitBlobSha": "cc850785e3e28f14e7fde7e74a992aa54b55b98c",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3511,6 +3521,7 @@
         "scripts/test-phase8d-d1-retention.mjs",
         "scripts/test-phase8d-d1-work-budget.mjs",
         "scripts/test-phase8d-descendant-reservations.mjs",
+        "scripts/test-phase8d-do-restore-postflight.mjs",
         "scripts/test-phase8d-edge-client.mjs",
         "scripts/test-phase8d-enrichment-failure.mjs",
         "scripts/test-phase8d-external-writer-inventory.mjs",
@@ -8591,6 +8602,29 @@
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
         "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-do-restore-postflight.mjs",
+      "sha256": "0ba5206c9ec8770dc2fba2fb9a1add3a140a650df2615f2c5dc9e3afd29bc566",
+      "gitBlobSha": "b999097ed885a410e92cfacc96365a940fed0faf",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
