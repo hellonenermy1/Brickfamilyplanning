@@ -1,3 +1,9 @@
+## 11 November — concrete next D1 recovery action prepared, unapproved
+
+Sourcea5713ae7578120d8d0c5fb7946a25677a285abe8 stages a synthetic-only D1 checkpoint/restore/undo/re-restore provider drill.40 offline cases and exact hosted push/PR33/33 each plus portal14/14+10/10 pass; full logs and source/merge identities verified. Read PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md and its companion evidence before any live operation. Draft PR62 registers only a disarmed manual launcher on main. Both merge and execution require the missing explicit scope approval: two named new/unbound synthetic databases, existing operator-secret use only in this job, bounded synthetic update/delete plus six restore calls, retain candidates, and proposed900-second synthetic recovery criterion. It does not request beta family-data/Worker/DO operations or PR32 merge. Existing metadata pins/B2 evidence remain completed; no repeat login/ID request/read or transfer is needed.
+
+Do not interpret another generic continue as that specific authorization. Finish independent source/evidence work first. A live synthetic pass would still leave full encrypted41+4/deviceDO cloud recovery, complete runtime writer installation, independent guard/runner/custody, restricted B2 schedule/recipient and genuine acceptance review open. No R2/card/billing/credential mutation. This is one bounded next gate, not a Group1 closure request.
+
 # Group 1 activation and restart decision packet — NOT READY
 
 ## Current qualification and next actions — 11 November 2026

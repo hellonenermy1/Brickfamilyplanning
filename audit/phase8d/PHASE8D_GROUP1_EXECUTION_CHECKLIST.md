@@ -1,7 +1,13 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `c1a1a5c1905e3edc77e77579e53fd26cca97def8`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `a5713ae7578120d8d0c5fb7946a25677a285abe8`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
+
+## 11 November — isolated synthetic D1 drill prepared
+
+- [x] SOURCE/OFFLINE: executablea5713ae adds a disarmed two-new-D1 canary checkpoint/restore/undo/re-restore drill with fixed account/protected-target hashes, fixed SQL, strict identities, bounded HTTP/body, fsynced request intent, no retries/deletion and explicit timing criterion.40 offline SQLite/fault cases pass; exact push/PR33/33 each and portal14/14+10/10 are verified from complete logs and expected merge parents/tree. See PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json. The request counter now increments only after intent persistence, immediately before dispatch.
+- [x] REVIEW PREPARATION: exact proposed names, operator-token use,900-second synthetic criterion, stop/reconciliation and retained-resource scope are concrete in PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md. Draft PR62 contains only a false-default manual launcher registration; no merge/dispatch is approved or executed.
+- [ ] AUTHORIZATION/PROVIDER: explicitly approve the one-file launcher merge and bounded new synthetic resource/drill/token-use scope plus criterion; then record actual provider results. This prepares only a D1 PITR subgate, not full41+4/deviceDO recovery, independent backup or complete Group1 acceptance.
 
 ## A. Source correctness and regression — current deliverable
 - [x] SOURCE/CI: Signed V2 capture/broker, durable replay, authority, quarantined urgent fallback, encrypted 41+4+D1/DO local destruction/restore fixtures implemented and verified in prior successful source CI. **Not installed.**
