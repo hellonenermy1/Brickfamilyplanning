@@ -1,5 +1,5 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `e1e1a6ccccc02dac5f083722fea90acc05343f1c`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `b68dfaf182dd0c758ce84b72e89dbe0fa5589623`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
 
@@ -17,6 +17,8 @@ Rules: [x] means the specifically named **bounded** evidence exists, not that th
 - [x] SOURCE/CI: Pinned operator/builder verify physical tracked bytes against the commit independently of Git index flags; ignored source, staged/replacement substitution, file/link/mode drift and caller Git redirection refuse.12 focused and35 fresh-process/native cases pass; full26 local run groups and exact push/PR33/33 each, portals14/14 and10/10 pass. Two clean local builds match, including unrelated working directory. See PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json. Point-in-time checks; immutable host/toolchain and full production installation remain unproved.
 
 - [x] SOURCE/CI: Recovery checks42 reviewed grouped foreign keys/46 column links, original cascade actions and composite ordering, plus child-parent tuples before package sealing/restore writes.24 native cases cover8 target mutations, unexpected diagnostic FK, source refusal, post-preflight schema drift,6 orphan graphs, actual cascade deletion and max5 source SQL. All26 local groups and exact push/PR audits33/33 each, portals14/14 and10/10 pass. See PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json. Declared relationships only; full DDL/provider/installed quiescence and live recovery remain unqualified.
+
+- [x] SOURCE/CI: Recovery pins117 reviewed table/index SQL definitions and checks the literal SQLite reserved prefix. Missing/changed unique or ordinary indexes, CHECKs, collations, conflict/deferred policies, table options and hidden lookalike application tables refuse before capture/restore writes; post-write drift refuses success.30 new native cases, all26 local groups, exact push/PR33/33 each and portals14/14 +10/10 pass. Readable policy and PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json retain exact scope. Pinned token identity only; real provider schema/support, secure installation and live recovery remain unqualified.
 
 ## B. Current provider identity and independent backup
 - [x] PROVIDER READ: Prior current + one historical (~2026-11-06) bookmark observation on both D1s completed; original manual job failed with expected namespace pins null. Do not retroactively pass it.

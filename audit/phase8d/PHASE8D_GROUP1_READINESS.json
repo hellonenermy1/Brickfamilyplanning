@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
+  "sourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 325,
+      "selectedTrackedFiles": 326,
       "explicitManagementClassifications": 90,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 23,
       "unresolvedRelativeImportCandidates": 5,
-      "filesWithDynamicImportExpressions": 145,
+      "filesWithDynamicImportExpressions": 146,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -501,6 +501,24 @@
       "fullDdlEquivalenceProven": false,
       "liveProviderSchemaOrRestoreProven": false,
       "completeWriterQuiescenceProven": false
+    },
+    {
+      "id": "RECOVERY_REVIEWED_TABLE_AND_INDEX_DEFINITIONS",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 30,
+      "primaryTables": 49,
+      "primaryIndexes": 59,
+      "diagnosticTables": 6,
+      "diagnosticIndexes": 3,
+      "reviewedDefinitions": 117,
+      "sourceSqlCallsPerPageMaximum": 5,
+      "literalSqliteReservedPrefix": true,
+      "schemaPolicyPath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_POLICY.json",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json",
+      "generalSqlSemanticEquivalenceProven": false,
+      "liveProviderSchemaOrRestoreProven": false,
+      "independentReviewer": null,
+      "completeWriterQuiescenceProven": false
     }
   ],
   "remaining": [
@@ -560,67 +578,69 @@
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42942107024,
-        "jobId": 130266122467,
-        "event": "pull_request",
-        "conclusion": "success",
-        "passedSteps": 33,
-        "completeDecodedLogInspected": true,
-        "logCharacters": 270258,
-        "errorMarkers": 0,
-        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
-        "relationship24": true,
-        "schema18": true,
-        "valueParity12": true,
-        "populatedEncryptedRecovery": true
-      },
-      {
-        "runId": 42942099796,
-        "jobId": 130266099374,
+        "runId": 42944392314,
+        "jobId": 130273561648,
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 268222,
+        "logCharacters": 271714,
         "errorMarkers": 0,
-        "checkoutSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
+        "checkoutSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+        "reviewedDdl30": true,
         "relationship24": true,
-        "schema18": true,
         "valueParity12": true,
-        "populatedEncryptedRecovery": true
+        "populatedEncryptedRecovery": true,
+        "capture26Max5": true
       },
       {
-        "runId": 42942107063,
-        "jobId": 130266122086,
+        "runId": 42944398915,
+        "jobId": 130273583662,
         "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 10,
+        "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16168,
+        "logCharacters": 273669,
         "errorMarkers": 0,
-        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
-        "sourceShaPresent": true
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "reviewedDdl30": true,
+        "relationship24": true,
+        "valueParity12": true,
+        "populatedEncryptedRecovery": true,
+        "capture26Max5": true
       },
       {
-        "runId": 42942106763,
-        "jobId": 130266120753,
+        "runId": 42944398828,
+        "jobId": 130273582738,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "completeDecodedLogInspected": true,
-        "logCharacters": 25085,
+        "logCharacters": 24998,
         "errorMarkers": 0,
-        "checkoutSha": "130714e9e43199710ebfc7d75349db27fa51698b",
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "sourceShaPresent": true
+      },
+      {
+        "runId": 42944398818,
+        "jobId": 130273582659,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16167,
+        "errorMarkers": 0,
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
         "sourceShaPresent": true
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json",
   "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "e1e1a6ccccc02dac5f083722fea90acc05343f1c",
+  "lastMergeQualifiedSourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
