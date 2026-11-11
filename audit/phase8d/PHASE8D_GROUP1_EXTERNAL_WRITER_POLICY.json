@@ -361,6 +361,18 @@
     "scripts/test-phase8d-operator-launcher.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Fresh local Node operator modules and signed native authority with an explicit synthetic provider/HTTPS bridge; test name alone does not exclude effects, credentials, source or subprocess review."
+    },
+    "scripts/phase8d-synthetic-pitr.mjs": {
+      "classification": "STAGED_SYNTHETIC_D1_DRILL",
+      "reason": "Explicitly disarmed new/unbound synthetic D1 operator drill; no production controller install or generic continue authority. Two create responses only, pinned account/protected IDs, fixed SQL, no network retries/deletes. Requires separately approved exact manual scope."
+    },
+    "scripts/test-phase8d-synthetic-pitr.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Offline injected SQLite provider and private CLI fault tests only; source references do not exclude harness filesystem/subprocess effects or qualify real Cloudflare mutation."
+    },
+    ".github/workflows/phase8d-synthetic-pitr.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Staged manual-only false-default write workflow using existing operator credential only after separate exact-source scope approval; registration and live execution unapproved. Not installed runtime writer coverage."
     }
   }
 }

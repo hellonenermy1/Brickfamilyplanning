@@ -3,20 +3,20 @@
   "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "53ec6a3ec43e09e76e1ad696f996bb0d44a67d2c167a7cf7c330f7692d9c59fd",
+  "policySha256": "fcdd3c212d2ac2acdd993fbd9d11bcf79e243a8cc8b5fcdcdd6e2de8dc708b23",
   "summary": {
-    "selectedFiles": 328,
-    "filesWithManagementSignals": 78,
-    "explicitClassifications": 90,
+    "selectedFiles": 331,
+    "filesWithManagementSignals": 81,
+    "explicitClassifications": 93,
     "stagedOperatorLaunchers": 1,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 5,
-    "unresolvedDynamicImports": 147
+    "unresolvedDynamicImports": 148
   },
-  "sourceSetSha256": "b9cbdf9b0598b2c6372bb1ad46b4641869902c7cf582c6b24462c96910985ca7",
+  "sourceSetSha256": "c67c34509cf7a9939c6969e16aa32bea7a1f11a1a3ecc9b11b44101621412b0c",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -142,6 +142,7 @@
         "scripts/phase8d-b2-fixture.mjs",
         "scripts/phase8d-external-writer-inventory.mjs",
         "scripts/phase8d-operator-entry.mjs",
+        "scripts/phase8d-synthetic-pitr.mjs",
         "scripts/publish-beta-d1-release.mjs",
         "scripts/setup-beta-d1.mjs",
         "scripts/test-beta-deployment.mjs",
@@ -163,6 +164,7 @@
         "scripts/test-phase8d-operator-launcher.mjs",
         "scripts/test-phase8d-provisioner-ownership.mjs",
         "scripts/test-phase8d-route-live.mjs",
+        "scripts/test-phase8d-synthetic-pitr.mjs",
         "scripts/test-phase8d-watchdog.mjs",
         "scripts/test-phase8d-workerd-integration.mjs",
         "scripts/verify-beta-live.mjs"
@@ -178,6 +180,13 @@
         "scripts/phase8d-remediation-plan.mjs",
         "scripts/test-phase8d-cloudflare-readonly.mjs",
         "scripts/test-phase8d-d1-catalog-readonly.mjs"
+      ]
+    },
+    {
+      "entry": ".github/workflows/phase8d-synthetic-pitr.yml",
+      "reachableClassifiedManagementCandidates": [
+        ".github/workflows/phase8d-synthetic-pitr.yml",
+        "scripts/phase8d-synthetic-pitr.mjs"
       ]
     },
     {
@@ -949,6 +958,11 @@
     },
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-synthetic-pitr.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-urgent-request.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
@@ -1035,6 +1049,11 @@
     {
       "from": ".github/workflows/phase8d-cloudflare-readonly.yml",
       "to": "scripts/test-phase8d-live-parent-denial.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-synthetic-pitr.yml",
+      "to": "scripts/phase8d-synthetic-pitr.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -3073,6 +3092,16 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-synthetic-pitr.mjs",
+      "to": "scripts/phase8d-synthetic-pitr.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-synthetic-pitr.mjs",
+      "to": "scripts/phase8d-synthetic-pitr.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-urgent-request.mjs",
       "to": "scripts/phase8d-do-state-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3476,8 +3505,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "5647945cc0f814c9dd8bcc39019baedfcb331b0e7fad1ba010e97504835e59a5",
-      "gitBlobSha": "3cc12c1c417108340609fb9bbd5ccf442193bda5",
+      "sha256": "e573db5c5064ee93cec8a77514b950bd63d81f7c5c78cae629f88ced26e62779",
+      "gitBlobSha": "b66d4dd37d1873fc114c2aa04bf05a8c10742ef4",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3566,6 +3595,7 @@
         "scripts/test-phase8d-runtime-installation.mjs",
         "scripts/test-phase8d-scheduler-capture.mjs",
         "scripts/test-phase8d-scope-outage.mjs",
+        "scripts/test-phase8d-synthetic-pitr.mjs",
         "scripts/test-phase8d-urgent-request.mjs",
         "scripts/test-phase8d-watchdog-state.mjs",
         "scripts/test-phase8d-watchdog.mjs",
@@ -3625,6 +3655,26 @@
         "scripts/test-phase8d-cloudflare-readonly.mjs",
         "scripts/test-phase8d-d1-catalog-readonly.mjs",
         "scripts/test-phase8d-live-parent-denial.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": ".github/workflows/phase8d-synthetic-pitr.yml",
+      "sha256": "74d2852a2a3db31e7377c9b3d8b54b0a0a43f0b4fae9785d73ee0300b1c5efd6",
+      "gitBlobSha": "24126d66d6df4153e7a17040a0fdc49b7540c63f",
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Staged manual-only false-default write workflow using existing operator credential only after separate exact-source scope approval; registration and live execution unapproved. Not installed runtime writer coverage.",
+      "signals": [
+        {
+          "line": 57,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [],
+      "referencedScriptCandidates": [
+        "scripts/phase8d-synthetic-pitr.mjs"
       ],
       "npmScriptReferences": []
     },
@@ -5408,8 +5458,8 @@
     },
     {
       "path": "scripts/phase8d-external-writer-inventory.mjs",
-      "sha256": "60166988b299c9028bd46f551aed56d19df1192f360e6bc68f2cb5e078ffb5d3",
-      "gitBlobSha": "4ce4c0844b9bb8bcf67aa59eddd64788da91ab10",
+      "sha256": "ee768cc408e106735d4d32cae46af9e1dfed72e2f85f3be7d956825894593409",
+      "gitBlobSha": "1e8b4674600d00cf13da8e16c1039b6aa5d00b09",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion.",
       "signals": [
@@ -5668,6 +5718,28 @@
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [],
       "imports": [],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/phase8d-synthetic-pitr.mjs",
+      "sha256": "5b89391d4b578bc0f2a8a3981daf26a21ea85b24f568523c6aa6aaa16494581e",
+      "gitBlobSha": "4f1b34a7ffecb3dd53d869effc93d6bb94672b28",
+      "classification": "STAGED_SYNTHETIC_D1_DRILL",
+      "reason": "Explicitly disarmed new/unbound synthetic D1 operator drill; no production controller install or generic continue authority. Two create responses only, pinned account/protected IDs, fixed SQL, no network retries/deletes. Requires separately approved exact manual scope.",
+      "signals": [
+        {
+          "line": 6,
+          "kind": "MANAGEMENT_API_LITERAL"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:crypto",
+        "node:fs",
+        "node:url"
+      ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
     },
@@ -10673,6 +10745,44 @@
         "node:sqlite"
       ],
       "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-synthetic-pitr.mjs",
+      "sha256": "6c20536666eb4ff5d41f4bc98b1dd3a59ccb231bb7a8f3f2d531f79e88f9b769",
+      "gitBlobSha": "1ffd04669f547b62b006d03aae2c03d78e0681fd",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Offline injected SQLite provider and private CLI fault tests only; source references do not exclude harness filesystem/subprocess effects or qualify real Cloudflare mutation.",
+      "signals": [
+        {
+          "line": 28,
+          "kind": "MANAGEMENT_API_LITERAL"
+        },
+        {
+          "line": 142,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        },
+        {
+          "line": 148,
+          "kind": "CLOUDFLARE_TOKEN_REFERENCE"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-synthetic-pitr.mjs",
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:sqlite"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/phase8d-synthetic-pitr.mjs"
+      ],
       "npmScriptReferences": []
     },
     {

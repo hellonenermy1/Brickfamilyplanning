@@ -6,7 +6,7 @@ const patterns=[['MANAGEMENT_API_LITERAL',/api\.cloudflare\.com/],['CLOUDFLARE_T
 export function externalWriterInventory(files,policy,basisCommitSha){
  if(!/^[a-f0-9]{40}$/.test(basisCommitSha))throw Error('Exact basis SHA required');
  if(policy?.format!=='brick-external-writer-policy-v1'||!policy.entries||Array.isArray(policy.entries))throw Error('Invalid source policy');
- const allowed=new Set(['BETA_MUTATOR_UNFENCED','LEGACY_MUTATOR_NOT_BETA_APPROVED','GET_ONLY_MANAGEMENT_SOURCE','READ_ONLY_QUERY_POST_SOURCE','LOCAL_TOOL_SOURCE','TEST_HARNESS_EFFECTS_NOT_EXCLUDED','SOURCE_DISABLED_LEGACY_BETA_TOOL','MIXED_WORKFLOW_SOURCE','STAGED_OFF_PLATFORM_DESTINATION','STAGED_OFF_PLATFORM_MONITOR','STAGED_OPERATOR_LAUNCHER']);
+ const allowed=new Set(['BETA_MUTATOR_UNFENCED','LEGACY_MUTATOR_NOT_BETA_APPROVED','GET_ONLY_MANAGEMENT_SOURCE','READ_ONLY_QUERY_POST_SOURCE','LOCAL_TOOL_SOURCE','TEST_HARNESS_EFFECTS_NOT_EXCLUDED','SOURCE_DISABLED_LEGACY_BETA_TOOL','MIXED_WORKFLOW_SOURCE','STAGED_OFF_PLATFORM_DESTINATION','STAGED_OFF_PLATFORM_MONITOR','STAGED_OPERATOR_LAUNCHER','STAGED_SYNTHETIC_D1_DRILL']);
  const names=[...files.keys()].filter(selectedPath).sort(),rows=[];const npmScripts=files.has('package.json')?JSON.parse(Buffer.from(files.get('package.json')).toString('utf8')).scripts??{}:{};
  for(const file of names){const bytes=Buffer.from(files.get(file)),code=bytes.toString('utf8'),signals=[],imports=[],callers=[],stagedExternalWriterCalls=[],stagedExternalControllerInstallCalls=[];const lines=code.split('\n');
   for(let i=0;i<lines.length;i++)for(const [kind,regex]of patterns)if(regex.test(lines[i]))signals.push({line:i+1,kind});
