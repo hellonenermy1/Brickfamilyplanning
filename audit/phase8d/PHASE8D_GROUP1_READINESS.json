@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+  "sourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 317,
-      "explicitManagementClassifications": 87,
+      "selectedTrackedFiles": 324,
+      "explicitManagementClassifications": 90,
       "knownBetaMutatorsUnfenced": 4,
-      "syntheticProfileCases": 21,
-      "unresolvedRelativeImportCandidates": 4,
-      "filesWithDynamicImportExpressions": 142,
+      "syntheticProfileCases": 23,
+      "unresolvedRelativeImportCandidates": 5,
+      "filesWithDynamicImportExpressions": 144,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -458,7 +458,7 @@
     {
       "id": "PINNED_EXTERNAL_OPERATOR_CLI_ENTRY",
       "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_QUALIFIED_NOT_PRODUCTION_INSTALLED",
-      "focusedNativeCases": 28,
+      "focusedNativeCases": 35,
       "inventoryCases": 23,
       "actualFreshNodeCliProcesses": true,
       "knownToolSelectors": 4,
@@ -467,9 +467,24 @@
       "defaultWorkflowActivated": false,
       "completeRawCredentialCoverage": false,
       "productionInstalled": false,
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
-      "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
-      "buildEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_BUILD_EVIDENCE.json"
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "buildEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "nativeLauncherCases": 35,
+      "physicalCheckoutCases": 12,
+      "physicalByteVerification": true,
+      "buildWorkingDirectoryIndependent": true,
+      "previousEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json"
+    },
+    {
+      "id": "PINNED_OPERATOR_PHYSICAL_BYTE_INTEGRITY",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_INSTALLED",
+      "physicalCheckoutCases": 12,
+      "nativeLauncherCases": 35,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "pointInTimeOnly": true,
+      "immutableHostProven": false,
+      "completeCredentialCoverage": false
     }
   ],
   "remaining": [
@@ -529,37 +544,63 @@
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42853192049,
-        "jobId": 129960175159,
+        "runId": 42939916495,
+        "jobId": 130259000363,
+        "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 33
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 267353,
+        "errorMarkers": 0,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "launcher35": true,
+        "byteIntegrity12": true,
+        "populatedRecovery": true
       },
       {
-        "runId": 42853206870,
-        "jobId": 129959174620,
+        "runId": 42939907480,
+        "jobId": 130258972237,
+        "event": "push",
         "conclusion": "success",
-        "passedSteps": 14
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 265400,
+        "errorMarkers": 0,
+        "checkoutSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+        "launcher35": true,
+        "byteIntegrity12": true,
+        "populatedRecovery": true
       },
       {
-        "runId": 42853206865,
-        "jobId": 129959174575,
+        "runId": 42939916498,
+        "jobId": 130259000547,
+        "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 10
+        "passedSteps": 10,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "completeDecodedLogInspected": true,
+        "errorMarkers": 0,
+        "logCharacters": 16248
       },
       {
-        "runId": 42853207021,
-        "jobId": 129961261972,
+        "runId": 42939916515,
+        "jobId": 130259000188,
+        "event": "pull_request",
         "conclusion": "success",
-        "passedSteps": 33
+        "passedSteps": 14,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "completeDecodedLogInspected": true,
+        "errorMarkers": 0,
+        "logCharacters": 25079
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_HOSTED_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
   "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "d6b3c4a1846945a8ec9e4c888c06bbd9df3efb6e",
+  "lastMergeQualifiedSourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
