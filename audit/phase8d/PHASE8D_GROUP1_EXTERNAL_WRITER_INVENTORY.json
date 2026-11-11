@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "53ec6a3ec43e09e76e1ad696f996bb0d44a67d2c167a7cf7c330f7692d9c59fd",
   "summary": {
-    "selectedFiles": 327,
+    "selectedFiles": 328,
     "filesWithManagementSignals": 78,
     "explicitClassifications": 90,
     "stagedOperatorLaunchers": 1,
@@ -14,9 +14,9 @@
     "stagedOffPlatformDestinations": 1,
     "legacyMutatorsNotBetaApproved": 13,
     "unresolvedRelativeImportCandidates": 5,
-    "unresolvedDynamicImports": 146
+    "unresolvedDynamicImports": 147
   },
-  "sourceSetSha256": "ceb0eb62c972529c5f8acd0d4e8ab3541f606a08d38cc8e540a3b89618dbd2f4",
+  "sourceSetSha256": "b9cbdf9b0598b2c6372bb1ad46b4641869902c7cf582c6b24462c96910985ca7",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -930,6 +930,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-rpc-writers.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-runtime-installation.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -3471,8 +3476,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "eccd8d35cbfee016bd18c13f36caaf02dbb3274bb7fa515a96f49c455874722f",
-      "gitBlobSha": "cc850785e3e28f14e7fde7e74a992aa54b55b98c",
+      "sha256": "5647945cc0f814c9dd8bcc39019baedfcb331b0e7fad1ba010e97504835e59a5",
+      "gitBlobSha": "3cc12c1c417108340609fb9bbd5ccf442193bda5",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3558,6 +3563,7 @@
         "scripts/test-phase8d-route-lookup.mjs",
         "scripts/test-phase8d-rpc-parent.mjs",
         "scripts/test-phase8d-rpc-writers.mjs",
+        "scripts/test-phase8d-runtime-installation.mjs",
         "scripts/test-phase8d-scheduler-capture.mjs",
         "scripts/test-phase8d-scope-outage.mjs",
         "scripts/test-phase8d-urgent-request.mjs",
@@ -5654,8 +5660,8 @@
     },
     {
       "path": "scripts/phase8d-signed-writer-fixture.mjs",
-      "sha256": "bc9003e49123b87e3cef5f8c6d122b3308ece55f726d5230c8747abcd286552b",
-      "gitBlobSha": "c0934093767d4bfa7e97d3c521e301b3c9a97cd3",
+      "sha256": "5cbe475a6b5e3a093b3304ca842723af7aa96683132aebcb3e434efc594c4031",
+      "gitBlobSha": "f2915250980e367af6f5200dbbafb36249cadd23",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10456,8 +10462,8 @@
     },
     {
       "path": "scripts/test-phase8d-rpc-writers.mjs",
-      "sha256": "98b48b2140d16b3de8b11e7d43bceb192af3b67f7733f352aebd823b3e3fddff",
-      "gitBlobSha": "08f455a0e9a917ea917c2ba6152291aacfad4ddf",
+      "sha256": "68256e1a3714eaa449c0ad80d5e5ab81ad3d45dbb8996fa79d017e4acaadaea1",
+      "gitBlobSha": "5c131a84e06e8e10c34d98b4c2490931219b4012",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10473,6 +10479,27 @@
         "node:fs",
         "node:os",
         "node:path"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-runtime-installation.mjs",
+      "sha256": "4312704fccf9b357a044d315d2b10e9c5f32797fa5f21e617408649d030956db",
+      "gitBlobSha": "3eecc7b30ea611d1f1b2dbaeb01519ebd71c9f9d",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "<DYNAMIC_IMPORT_UNRESOLVED>",
+        "esbuild",
+        "node:assert/strict",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []
@@ -10552,8 +10579,8 @@
     },
     {
       "path": "scripts/test-phase8d-scheduler-capture.mjs",
-      "sha256": "ab84c3caf1ebf2d889f543420ee97498e2037e7f0ba07a63edfb3157a9a31b96",
-      "gitBlobSha": "4fdba03c401f0acbd66a60ad6455a24a5af174b5",
+      "sha256": "dfa1209706b8bf641296ad0c8b8bee3fd7ded3dc628da5981174726542f03d7b",
+      "gitBlobSha": "c4471132c89b7b573651fb67008d2effea7c2b6a",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10741,8 +10768,8 @@
     },
     {
       "path": "scripts/test-phase8d-worker-device-capture.mjs",
-      "sha256": "930d8bebf67bed9fd05bbd7065cad7b1d8fa5a0babd90079ae2fc17594517d2c",
-      "gitBlobSha": "fc3fb6466d7057bf5048d56aaef4aff588199208",
+      "sha256": "065e6640aec62c09ef7410c3306ea3b7788f1cbb9dc0240cb12c4c1adf1ff880",
+      "gitBlobSha": "c914afe88df3fed5041345f5af9a1224f66fc318",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -10884,8 +10911,8 @@
     },
     {
       "path": "scripts/test-phase8d-writer-surface.mjs",
-      "sha256": "aa89fa6c8e48fff7b2c2708c2ba09f9d3daf157cbc20537d1317acb4a66771e7",
-      "gitBlobSha": "5a363150628fa4223488e3823df2e954cea1c7bc",
+      "sha256": "0b9d3eac0d44ba8bd6574986abc32410cea0b5918ec6a17f850791f3b3e27746",
+      "gitBlobSha": "99171913b02f1cdf5342a5b0606b0d2e67498cf0",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],

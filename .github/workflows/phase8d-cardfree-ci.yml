@@ -83,6 +83,7 @@ jobs:
           node scripts/test-phase8d-urgent-request.mjs
           node scripts/test-phase8d-outage-quarantine.mjs
           node scripts/test-phase8d-capture-writer-boundary.mjs
+          node scripts/test-phase8d-runtime-installation.mjs
           node scripts/test-phase8d-capture-d1-boundary.mjs
           node scripts/test-phase8d-writer-scopes.mjs
           node scripts/test-phase8d-scheduler-capture.mjs

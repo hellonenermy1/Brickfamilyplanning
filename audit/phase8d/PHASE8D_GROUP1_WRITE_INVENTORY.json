@@ -13,7 +13,7 @@
     "actorClasses": 3,
     "unresolvedLocalImports": 0
   },
-  "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
+  "runtimeSourceSetSha256": "8082dc0c556bce0056484bdf9007a143a3d7e72d311de650be12a649af154980",
   "stagedAuthorityImportedByProduction": false,
   "stagedWriterBoundaryCalls": [
     {
@@ -28,12 +28,12 @@
     },
     {
       "file": "src/capture-writer-boundary.ts",
-      "line": 61,
+      "line": 72,
       "column": 27
     },
     {
       "file": "src/capture-writer-boundary.ts",
-      "line": 65,
+      "line": 76,
       "column": 37
     },
     {
@@ -1014,12 +1014,12 @@
     },
     {
       "path": "src/capture-writer-boundary.ts",
-      "sha256": "978bfc4e1ad7ad4bb75f96b94ae1ffe345c5d4c4ee60751ab4b457329287e565",
-      "gitBlobSha": "82ebbb3285e4fdea7c3037abb059ce06712940c5",
+      "sha256": "ef03cdae7452a9d1817becf6c32cacfbf2faf1e31179c657d4bbc2b5772b84a4",
+      "gitBlobSha": "1e1f666c5caef4d7047c2888561794b32c2d045d",
       "imports": [],
       "sites": [
         {
-          "line": 45,
+          "line": 56,
           "column": 166,
           "kind": "DEFERRED_WORK_CANDIDATE",
           "method": "waitUntil",

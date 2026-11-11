@@ -32,13 +32,24 @@ export function stagedCaptureWriterConfigured(owner:object){return controllers.h
 const hex32=(x:unknown)=>typeof x==='string'&&/^[a-f0-9]{32}$/.test(x);
 function validTicket(x:unknown,writerId:string):x is Ticket{return x!==null&&typeof x==='object'&&Object.keys(x).sort().join(',')==='authorityEpoch,tracked,writerId'&&hex32((x as Ticket).authorityEpoch)&&(x as Ticket).writerId===writerId&&typeof (x as Ticket).tracked==='boolean';}
 export function installStagedCaptureWriterController(owner:object,controller:CaptureWriterController){
+ installStagedCaptureWriterControllers([owner],controller);
+}
+// One synchronous local enrollment boundary. Validate every owner/controller
+// before changing any WeakMap entry; no asynchronous/network work occurs here.
+export function installStagedCaptureWriterControllers(owners:object[],controller:CaptureWriterController){
+ if(!Array.isArray(owners))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ const selected=[...owners];
  const timeout=controller?.timeoutMs??1000;
- if(!owner||typeof owner!=='object'||controllers.has(owner)||typeof controller?.enterWriter!=='function'||typeof controller.exitWriter!=='function'||typeof controller.notice!=='function'||!Number.isSafeInteger(timeout)||timeout<5||timeout>15000)throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ if(!selected.length||selected.length>64||new Set(selected).size!==selected.length||selected.some(owner=>!owner||typeof owner!=='object'||controllers.has(owner))||typeof controller?.enterWriter!=='function'||typeof controller.exitWriter!=='function'||typeof controller.notice!=='function'||!Number.isSafeInteger(timeout)||timeout<5||timeout>15000)throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if((controller.startWriter!==undefined||controller.cancelReservation!==undefined)&&(typeof controller.startWriter!=='function'||typeof controller.cancelReservation!=='function'))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if(controller.quarantineUrgent!==undefined&&typeof controller.quarantineUrgent!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if(controller.enterDescendantWriter!==undefined&&typeof controller.enterDescendantWriter!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
  if(controller.getScope!==undefined&&typeof controller.getScope!=='function')throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
- controllers.set(owner,Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.enterDescendantWriter?{descendant:controller.enterDescendantWriter.bind(controller)}:{}),...(controller.getScope?{getScope:controller.getScope.bind(controller)}:{}),...(controller.quarantineUrgent?{quarantine:controller.quarantineUrgent.bind(controller)}:{}),...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})}));
+ const installed=Object.freeze({enter:controller.enterWriter.bind(controller),exit:controller.exitWriter.bind(controller),notice:controller.notice.bind(controller),timeoutMs:timeout,...(controller.enterDescendantWriter?{descendant:controller.enterDescendantWriter.bind(controller)}:{}),...(controller.getScope?{getScope:controller.getScope.bind(controller)}:{}),...(controller.quarantineUrgent?{quarantine:controller.quarantineUrgent.bind(controller)}:{}),...(controller.startWriter?{start:controller.startWriter.bind(controller),cancel:controller.cancelReservation!.bind(controller)}:{})});
+ // Trusted capability getters may reenter installation; never overwrite an
+ // owner enrolled during controller materialization.
+ if(selected.some(owner=>controllers.has(owner)))throw Error('CAPTURE_WRITER_CONTROLLER_INVALID');
+ for(const owner of selected)controllers.set(owner,installed);
 }
 function report(c:Installed,code:CaptureWriterNotice,operation:string){try{Promise.resolve(c.notice(code,operation)).catch(()=>{});}catch{} }
 async function bounded<T>(p:Promise<T>,ms:number){let timer:ReturnType<typeof setTimeout>|undefined;const deadline=performance.now()+ms;try{const result=await Promise.race([p,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT')),ms);})]);if(performance.now()>=deadline)throw Error('CAPTURE_WRITER_TRANSPORT_TIMEOUT');return result;}finally{clearTimeout(timer);}}
