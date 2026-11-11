@@ -1,0 +1,459 @@
+{
+  "format": "brick-group1-synthetic-pitr-live-attempt-v1",
+  "recordedDate": "2026-11-11",
+  "timeZone": "Asia/Singapore",
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "authorization": {
+    "userMessage": "approve",
+    "scope": "Previous concrete PR62 launcher merge and two named new/unbound synthetic D1 canary restore/undo drill with existing operator secret and900-second target; retain candidates, no retries/deletes. Not PR32 merge or production/family-data operations.",
+    "syntheticGoalSeconds": 900,
+    "fullProductionRtoOrTimeBasedRpoAgreed": false,
+    "initialAuthorizedAttemptExecuted": true,
+    "repeatWriteRunAuthorized": false
+  },
+  "launcherRegistration": {
+    "prNumber": 62,
+    "headSha": "4b6815bc9539dfbc7eaef751ffbb11a0b3aa9a8c",
+    "baseSha": "cb380fe821b16cf5304843af2ce713d21f575788",
+    "mergeSha": "ff6a803242040acecb74cb58b99c75e0408faa85",
+    "mergedAt": "2026-11-11T05:18:05Z",
+    "oneFileOnly": ".github/workflows/phase8d-synthetic-pitr.yml",
+    "originalWorkflowBlobSha": "24126d66d6df4153e7a17040a0fdc49b7540c63f",
+    "associatedMainMergeRunsObserved": []
+  },
+  "creationAttempt": {
+    "runId": 42965057341,
+    "jobId": 130340241343,
+    "attempt": 1,
+    "sourceSha": "0b0ff69e2aa77388b73d56d9243f306bb9cfde33",
+    "qualifiedExecutableSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+    "conclusion": "failure",
+    "completeDecodedLogInspected": true,
+    "artifactId": 13830319296,
+    "artifactZipSha256": "6b13bd600ee758f8bc01b280024b844af3a905fce1fcd8cbb89e52c26ae0bb27",
+    "artifactHashVerified": true,
+    "result": {
+      "format": "brick-synthetic-d1-pitr-v1",
+      "sourceSha": "0b0ff69e2aa77388b73d56d9243f306bb9cfde33",
+      "runId": "20261111-c004458eeca590ce",
+      "scope": "NEW_UNBOUND_SYNTHETIC_D1_ONLY",
+      "status": "MUTATION_OUTCOME_UNKNOWN",
+      "fullBrickRecoveryQualified": false,
+      "requestsMade": 1,
+      "plannedNames": [
+        "brick-g1-20261111-c004458eeca590ce-primary",
+        "brick-g1-20261111-c004458eeca590ce-diagnostics"
+      ],
+      "targets": [],
+      "events": [
+        {
+          "stage": "primary:CREATE",
+          "mutation": true,
+          "requestNumber": 1,
+          "mayHaveBeenSent": false,
+          "state": "STARTED"
+        },
+        {
+          "stage": "primary:CREATE",
+          "mutation": true,
+          "requestNumber": 1,
+          "mayHaveBeenSent": true,
+          "state": "UNKNOWN_DO_NOT_RETRY"
+        }
+      ],
+      "rtoGoalSeconds": 900,
+      "checkpointRowsLost": null,
+      "syntheticPairRecoveryMs": null,
+      "resourceDeletionAttempted": false,
+      "code": "RESPONSE_REFUSED",
+      "stoppedAt": "primary:CREATE"
+    },
+    "persistedProgress": [
+      {
+        "state": "PLAN",
+        "sourceSha": "0b0ff69e2aa77388b73d56d9243f306bb9cfde33",
+        "runId": "20261111-c004458eeca590ce",
+        "names": [
+          "brick-g1-20261111-c004458eeca590ce-primary",
+          "brick-g1-20261111-c004458eeca590ce-diagnostics"
+        ]
+      },
+      {
+        "stage": "primary:CREATE",
+        "mutation": true,
+        "requestNumber": 1,
+        "mayHaveBeenSent": false,
+        "state": "STARTED"
+      },
+      {
+        "state": "RESULT",
+        "status": "MUTATION_OUTCOME_UNKNOWN"
+      }
+    ],
+    "httpStatusNotRetainedByOriginalChecker": true,
+    "exactProviderRejectionCause": "UNKNOWN_DO_NOT_GUESS_TOKEN_PERMISSION_QUOTA_BILLING_OR_PAYLOAD",
+    "verifiedDatabaseCreation": false,
+    "restoreRequestsAttempted": 0,
+    "retryRequestsAttempted": 0,
+    "expectedExit2ErrorMarkers": 1,
+    "sourceShaPresentInDecodedLog": true
+  },
+  "reconciliation": {
+    "runId": 42965776188,
+    "jobId": 130342540219,
+    "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+    "conclusion": "success",
+    "writeJobId": 130342542197,
+    "writeJobConclusion": "skipped",
+    "completeDecodedLogInspected": true,
+    "artifactId": 13830652627,
+    "artifactZipSha256": "214d2011477801ec27ff4f759538558356f54695bdd8a56fea97349a7f308b7c",
+    "artifactHashVerified": true,
+    "result": {
+      "format": "brick-synthetic-d1-reconciliation-v1",
+      "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+      "runId": "20261111-c004458eeca590ce",
+      "writeRequests": 0,
+      "requestsMade": 2,
+      "status": "READ_ONLY_OBSERVATION_COMPLETED_NO_RETRY",
+      "observations": [
+        {
+          "name": "brick-g1-20261111-c004458eeca590ce-primary",
+          "httpStatus": 200,
+          "providerErrorCodes": [],
+          "exactMatches": [],
+          "searchComplete": true,
+          "accountDatabaseCountReported": 0,
+          "state": "NO_EXACT_NAME_IN_COMPLETED_SEARCH"
+        },
+        {
+          "name": "brick-g1-20261111-c004458eeca590ce-diagnostics",
+          "httpStatus": 200,
+          "providerErrorCodes": [],
+          "exactMatches": [],
+          "searchComplete": true,
+          "accountDatabaseCountReported": 0,
+          "state": "NO_EXACT_NAME_IN_COMPLETED_SEARCH"
+        }
+      ],
+      "originalMutationOutcome": "UNQUALIFIED_NO_RETRY",
+      "fullBrickRecoveryQualified": false
+    },
+    "interpretation": "Neither exact proposed name observed in two completed filtered searches at this read. Does not recover original HTTP status, prove perpetual absence or authorize another write. total_count values are preserved as reported; do not infer the account has no existing beta databases.",
+    "errorMarkers": 0,
+    "sourceShaPresentInDecodedLog": true
+  },
+  "source": {
+    "sha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+    "treeSha": "c744adc210196d8456df25314732f92eae790d87",
+    "manifest": [
+      {
+        "path": "scripts/reconcile-phase8d-synthetic-pitr.mjs",
+        "sha256": "8887da86dec416b43f12c4bfe3534488c48ce6bdb0634b9400955c8f7e69216f",
+        "gitBlobSha": "daa646543525e05832f787751ff87a7b024f9aae"
+      },
+      {
+        "path": "scripts/test-phase8d-synthetic-pitr-reconcile.mjs",
+        "sha256": "3c1ff103417b2ab58d2c073e00e635b72d8336f82d626c672249068085950de1",
+        "gitBlobSha": "b7349a2e625b853512cab9250c923de601fb8d26"
+      },
+      {
+        "path": ".github/workflows/phase8d-synthetic-pitr.yml",
+        "sha256": "36f6c73824ee20a89de63ffc4b7703453792c013e666ce323cf24e89912629a3",
+        "gitBlobSha": "790599806335ea5c12bd6059a00ff6d7b1d56da9"
+      },
+      {
+        "path": "scripts/phase8d-synthetic-pitr.mjs",
+        "sha256": "daf7feb29065a9e7899414ff973943f856db37e4a5727a1c6770b3ab60414ec9",
+        "gitBlobSha": "5b1c2755e7a7773a90ad7bd5f21758998909918c"
+      },
+      {
+        "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+        "sha256": "1fff5c2ad2ca4639425836e1707cdd8f4c6d6c4950cee97dbd25c8a7f84e9bbc",
+        "gitBlobSha": "cab51d652136906f3d569eb01e62020f532fe023"
+      },
+      {
+        "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+        "sha256": "0fe0c403ac443adc80cea82267d68b68574b9f1cf693624e655d182a580fc25c",
+        "gitBlobSha": "3c6f05c61eecc690da346c93c4ad75d745f4ebda"
+      }
+    ],
+    "localCases": [
+      {
+        "suite": "synthetic-d1-pitr-reconciliation",
+        "passed": 17,
+        "failed": 0,
+        "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
+      },
+      {
+        "suite": "synthetic-d1-pitr",
+        "passed": 40,
+        "failed": 0,
+        "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+      }
+    ],
+    "hostedQualified": true,
+    "hostedRuns": [
+      {
+        "runId": 42965672332,
+        "jobId": 130342198905,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 283036,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 77,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "cardfree-beta-readonly",
+            "passed": 44,
+            "failed": 0,
+            "scope": "synthetic GET-only Worker version/D1/DO/host/PITR metadata, exact pins/privacy/deadlines/private CLI; no real provider access, code provenance, continuous stability, writer coverage, independent custody or recovery acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr",
+            "passed": 40,
+            "failed": 0,
+            "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr-reconciliation",
+            "passed": 17,
+            "failed": 0,
+            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
+          },
+          {
+            "suite": "external-writer-inventory",
+            "passed": 23,
+            "failed": 0,
+            "scope": "synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance"
+          },
+          {
+            "suite": "parent-credential-recovery",
+            "passed": 6,
+            "failed": 0,
+            "scope": "actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance"
+          },
+          {
+            "suite": "runtime-owner-installation",
+            "passed": 26,
+            "failed": 0,
+            "scope": "explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls"
+          },
+          {
+            "suite": "durable-recovery-selection",
+            "passed": 40,
+            "failed": 0,
+            "scope": "actual private local fsync/readback, derived-key HMAC, exact caller digest pin and fresh-process synthetic provider authentication; no key persistence, independent custody/domain, real B2 credential/schedule or cloud restore acceptance"
+          },
+          {
+            "suite": "recovery-schema-native",
+            "passed": 18,
+            "failed": 0,
+            "scope": "actual native D1 approved migrations/triggers, restore/capture, generated columns and excluded-state postflight; controlled fresh targets/faults, no live schema/isolated cloud/quiescence/custody/RTO acceptance"
+          },
+          {
+            "suite": "recovery-reviewed-ddl-native",
+            "passed": 30,
+            "failed": 0,
+            "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
+          },
+          {
+            "suite": "recovery-foreign-key-native",
+            "passed": 24,
+            "failed": 0,
+            "scope": "actual native D1 declared relationship/cascade schema, source capture and fresh restore only; no live cloud, quiescence, custody or recovery acceptance"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          },
+          {
+            "suite": "backup-alert-receipt-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual signed native41+4/deviceDO encrypted B2-fixture recovery, private monitor and real Ed25519 proof/restart/no-resend; synthetic signer/sinks, no real recipient, authority/key custody or independent delivery qualification"
+          },
+          {
+            "suite": "backup-monitor-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual private SQLite monitor and signed native41+4/deviceDO encrypted B2-fixture recovery archive; persisted fresh/stale/restart and uncertain synthetic alert delivery; no installed schedule or real alert/provider/custody qualification"
+          },
+          {
+            "suite": "b2-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+          }
+        ]
+      },
+      {
+        "runId": 42965678159,
+        "jobId": 130342218307,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 284917,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 77,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "cardfree-beta-readonly",
+            "passed": 44,
+            "failed": 0,
+            "scope": "synthetic GET-only Worker version/D1/DO/host/PITR metadata, exact pins/privacy/deadlines/private CLI; no real provider access, code provenance, continuous stability, writer coverage, independent custody or recovery acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr",
+            "passed": 40,
+            "failed": 0,
+            "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr-reconciliation",
+            "passed": 17,
+            "failed": 0,
+            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
+          },
+          {
+            "suite": "external-writer-inventory",
+            "passed": 23,
+            "failed": 0,
+            "scope": "synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance"
+          },
+          {
+            "suite": "parent-credential-recovery",
+            "passed": 6,
+            "failed": 0,
+            "scope": "actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance"
+          },
+          {
+            "suite": "runtime-owner-installation",
+            "passed": 26,
+            "failed": 0,
+            "scope": "explicit local private-capability atomic owner/DB enrollment and existing scope rules only; no installed runtime/bootstrap, actual binding identity, independent guard/custody or complete account writer controls"
+          },
+          {
+            "suite": "durable-recovery-selection",
+            "passed": 40,
+            "failed": 0,
+            "scope": "actual private local fsync/readback, derived-key HMAC, exact caller digest pin and fresh-process synthetic provider authentication; no key persistence, independent custody/domain, real B2 credential/schedule or cloud restore acceptance"
+          },
+          {
+            "suite": "recovery-schema-native",
+            "passed": 18,
+            "failed": 0,
+            "scope": "actual native D1 approved migrations/triggers, restore/capture, generated columns and excluded-state postflight; controlled fresh targets/faults, no live schema/isolated cloud/quiescence/custody/RTO acceptance"
+          },
+          {
+            "suite": "recovery-reviewed-ddl-native",
+            "passed": 30,
+            "failed": 0,
+            "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
+          },
+          {
+            "suite": "recovery-foreign-key-native",
+            "passed": 24,
+            "failed": 0,
+            "scope": "actual native D1 declared relationship/cascade schema, source capture and fresh restore only; no live cloud, quiescence, custody or recovery acceptance"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          },
+          {
+            "suite": "backup-alert-receipt-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual signed native41+4/deviceDO encrypted B2-fixture recovery, private monitor and real Ed25519 proof/restart/no-resend; synthetic signer/sinks, no real recipient, authority/key custody or independent delivery qualification"
+          },
+          {
+            "suite": "backup-monitor-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual private SQLite monitor and signed native41+4/deviceDO encrypted B2-fixture recovery archive; persisted fresh/stale/restart and uncertain synthetic alert delivery; no installed schedule or real alert/provider/custody qualification"
+          },
+          {
+            "suite": "b2-full-recovery",
+            "passed": 3,
+            "failed": 0,
+            "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+          }
+        ]
+      },
+      {
+        "runId": 42965678151,
+        "jobId": 130342218021,
+        "conclusion": "success",
+        "passedSteps": 10,
+        "totalSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16168,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": []
+      },
+      {
+        "runId": 42965678177,
+        "jobId": 130342217850,
+        "conclusion": "success",
+        "passedSteps": 14,
+        "totalSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 24999,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": []
+      }
+    ],
+    "prMerge": {
+      "sha": "b6ceb91e707c04ef0edc8afe51474c0a295ed39e",
+      "tree": "c744adc210196d8456df25314732f92eae790d87",
+      "parents": [
+        "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d"
+      ]
+    }
+  },
+  "remainingNextStep": "Retain original failure as UNKNOWN and never rerun it. Correct source diagnostics to retain only bounded numeric HTTP/provider error codes without exposing tokens/bodies; test it and prepare a fresh named operation before obtaining any genuinely missing repeat-write authority. Existing metadata token/name pins and PR62 approval are not requested again.",
+  "runtimeOrFamilyDataChanged": false,
+  "productionDeployment": false,
+  "resourceDeletion": false,
+  "credentialPermissionOrBillingChange": false,
+  "fullBrickCloudRecoveryPassed": false,
+  "canonical525OrAcceptanceLedgerChanged": false,
+  "status": "SOURCE_QUALIFIED_INITIAL_LIVE_CREATE_UNKNOWN_RECONCILIATION_COMPLETED_NO_RESTORE_PASS"
+}

@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+  "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,12 +55,12 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 331,
-      "explicitManagementClassifications": 93,
+      "selectedTrackedFiles": 333,
+      "explicitManagementClassifications": 95,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 23,
       "unresolvedRelativeImportCandidates": 5,
-      "filesWithDynamicImportExpressions": 148,
+      "filesWithDynamicImportExpressions": 149,
       "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
       "stagedOffPlatformDestinations": 1,
       "stagedOffPlatformMonitors": 1
@@ -559,14 +559,27 @@
     },
     {
       "id": "SYNTHETIC_D1_PITR_OPERATOR_DRILL",
-      "state": "SOURCE_AND_OFFLINE_CI_QUALIFIED_LIVE_SCOPE_UNAPPROVED",
+      "state": "APPROVED_INITIAL_CREATE_ATTEMPT_UNKNOWN_NO_RETRY_RESTORE_NOT_REACHED",
       "nativeCases": 40,
       "maximumNewUnboundDatabases": 2,
       "maximumRequests": 44,
       "maximumRestores": 6,
-      "registrationDraftPr": 62,
-      "liveExecuted": false,
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json"
+      "liveExecuted": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
+      "livePassed": false,
+      "initialWriteRequests": 1,
+      "registrationMerged": true,
+      "operationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+      "registrationPr": 62
+    },
+    {
+      "id": "UNCERTAIN_SYNTHETIC_CREATE_RECONCILIATION",
+      "state": "GET_ONLY_SOURCE_NATIVE_HOSTED_AND_TWO_PROVIDER_SEARCHES_OBSERVED_NO_RESTORE_PASS",
+      "nativeCases": 17,
+      "providerGetRequests": 2,
+      "providerWriteRequests": 0,
+      "exactProposedNamesObserved": 0,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json"
     }
   ],
   "remaining": [
@@ -613,30 +626,31 @@
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
-      "state": "NOT_RUN_ISOLATED_OPERATIONAL_AUTHORITY_AND_CRITERIA_OPEN",
-      "needed": "Explicit isolated target parity, interruption, rollback and measured RTO/RPO."
+      "state": "APPROVED_CREATE_ATTEMPT_UNKNOWN_RECONCILED_NO_NAMES_RESTORE_NOT_REACHED",
+      "needed": "PR62 merged and initial bounded900-second synthetic operation approved. One create response was refused/unknown; never retried. Two dedicated read-token filtered GETs later found neither exact name. No verified creation/restore/elapsed recovery. Preserve evidence, correct bounded numeric response diagnostics in source, then prepare a fresh reviewed named operation before any repeat-write authority. Full41+4/deviceDO live parity/interruption and full-production criteria/review remain open."
     }
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42961731486,
-        "jobId": 130330505229,
+        "runId": 42965672332,
+        "jobId": 130342198905,
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 281128,
+        "logCharacters": 283036,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "checkoutSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
         "checkoutShaPresent": true,
+        "nativeSuiteCount": 77,
+        "allParsedNativeSuitesZeroFailures": true,
         "nativeSuites": [
           {
             "suite": "cardfree-beta-readonly",
@@ -649,6 +663,12 @@
             "passed": 40,
             "failed": 0,
             "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr-reconciliation",
+            "passed": 17,
+            "failed": 0,
+            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
           },
           {
             "suite": "external-writer-inventory",
@@ -687,12 +707,6 @@
             "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
           },
           {
-            "suite": "do-restore-postflight-native",
-            "passed": 25,
-            "failed": 0,
-            "scope": "native SQLite DO + D1 controlled identity/storage faults and persistent quarantine only; no cloud recovery, full quiescence, cross-store atomicity or custody acceptance"
-          },
-          {
             "suite": "recovery-foreign-key-native",
             "passed": 24,
             "failed": 0,
@@ -728,22 +742,21 @@
             "failed": 0,
             "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
           }
-        ],
-        "nativeSuiteCount": 76,
-        "allParsedNativeSuitesZeroFailures": true
+        ]
       },
       {
-        "runId": 42961737179,
-        "jobId": 130330059841,
+        "runId": 42965678159,
+        "jobId": 130342218307,
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 283080,
+        "logCharacters": 284917,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "checkoutSha": "a585f1bdc83424449462c25ab8fa7b9bb740b60f",
         "checkoutShaPresent": true,
+        "nativeSuiteCount": 77,
+        "allParsedNativeSuitesZeroFailures": true,
         "nativeSuites": [
           {
             "suite": "cardfree-beta-readonly",
@@ -756,6 +769,12 @@
             "passed": 40,
             "failed": 0,
             "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+          },
+          {
+            "suite": "synthetic-d1-pitr-reconciliation",
+            "passed": 17,
+            "failed": 0,
+            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
           },
           {
             "suite": "external-writer-inventory",
@@ -794,12 +813,6 @@
             "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
           },
           {
-            "suite": "do-restore-postflight-native",
-            "passed": 25,
-            "failed": 0,
-            "scope": "native SQLite DO + D1 controlled identity/storage faults and persistent quarantine only; no cloud recovery, full quiescence, cross-store atomicity or custody acceptance"
-          },
-          {
             "suite": "recovery-foreign-key-native",
             "passed": 24,
             "failed": 0,
@@ -835,61 +848,65 @@
             "failed": 0,
             "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
           }
-        ],
-        "nativeSuiteCount": 76,
-        "allParsedNativeSuitesZeroFailures": true
+        ]
       },
       {
-        "runId": 42961737193,
-        "jobId": 130329624045,
+        "runId": 42965678151,
+        "jobId": 130342218021,
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16167,
+        "logCharacters": 16168,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "mergeShaPresent": true
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": []
       },
       {
-        "runId": 42961737190,
-        "jobId": 130329623686,
+        "runId": 42965678177,
+        "jobId": 130342217850,
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "completeDecodedLogInspected": true,
-        "logCharacters": 25079,
+        "logCharacters": 24999,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "mergeShaPresent": true
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": []
       }
     ],
-    "previousSourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
-    "scope": "Source/native/offline synthetic evidence only. New cloud drill and launcher merge unapproved; no live recovery/activation."
+    "previousSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+    "scope": "Exact source/native/offline qualification only; actual initial cloud create failed unknown. Successful name reconciliation is GET-only, not restore acceptance."
   },
-  "lastHostedQualifiedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+  "lastMergeQualifiedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+      "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-      "previousRecordedSourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
-      "testedPrMergeSha": "a585f1bdc83424449462c25ab8fa7b9bb740b60f"
+      "previousRecordedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+      "testedPrMergeSha": "b6ceb91e707c04ef0edc8afe51474c0a295ed39e"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+      "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-      "previousRecordedSourceSha": "c1a1a5c1905e3edc77e77579e53fd26cca97def8",
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
-      "testedPrMergeSha": "a585f1bdc83424449462c25ab8fa7b9bb740b60f"
+      "previousRecordedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+      "testedPrMergeSha": "b6ceb91e707c04ef0edc8afe51474c0a295ed39e"
     }
   ],
   "executionForecast": {
@@ -949,10 +966,12 @@
       }
     ]
   },
-  "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
+  "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
   "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
   "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
-  "localVerificationStatus": "FOCUSED_40_PASSED_NO_FULL_EXACT_FINAL_SOURCE_LOCAL_CAMPAIGN_CLAIM",
-  "preparedCloudDrillReviewPath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md"
+  "localVerificationStatus": "FOCUSED_17_AND_40_PASSED_NO_FULL_EXACT_SOURCE_LOCAL_CAMPAIGN_CLAIM",
+  "preparedCloudDrillReviewPath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md",
+  "previousOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
+  "latestSyntheticReconciliationSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d"
 }
