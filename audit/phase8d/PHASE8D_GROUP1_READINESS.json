@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+  "sourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -55,7 +55,7 @@
     {
       "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
       "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
-      "selectedTrackedFiles": 326,
+      "selectedTrackedFiles": 327,
       "explicitManagementClassifications": 90,
       "knownBetaMutatorsUnfenced": 4,
       "syntheticProfileCases": 23,
@@ -519,6 +519,24 @@
       "liveProviderSchemaOrRestoreProven": false,
       "independentReviewer": null,
       "completeWriterQuiescenceProven": false
+    },
+    {
+      "id": "DEVICE_RESTORE_IDENTITY_AND_STATE_POSTFLIGHT",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 25,
+      "healthyD1IdentityReads": 2,
+      "supportedStateKeysCompared": 8,
+      "postAttemptUncertaintyReturnsSuccess": false,
+      "persistentFenceGuaranteed": false,
+      "uncertainRemoteOperationsProvenStopped": false,
+      "nativeCompletedFenceSurvivedRestart": true,
+      "existingTargetsPreservedOnPreflightFailure": true,
+      "changedRuntimePaths": [
+        "src/do-recovery.ts"
+      ],
+      "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json",
+      "liveProviderRestoreOrQuiescenceProven": false
     }
   ],
   "remaining": [
@@ -578,69 +596,71 @@
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42944392314,
-        "jobId": 130273561648,
+        "runId": 42947680587,
+        "jobId": 130284305518,
         "event": "push",
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 271714,
+        "logCharacters": 274482,
         "errorMarkers": 0,
-        "checkoutSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+        "checkoutSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
+        "doPostflight25": true,
         "reviewedDdl30": true,
         "relationship24": true,
         "valueParity12": true,
         "populatedEncryptedRecovery": true,
-        "capture26Max5": true
+        "remainingWriter20": true
       },
       {
-        "runId": 42944398915,
-        "jobId": 130273583662,
+        "runId": 42947687154,
+        "jobId": 130284325775,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 273669,
+        "logCharacters": 276442,
         "errorMarkers": 0,
-        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
+        "doPostflight25": true,
         "reviewedDdl30": true,
         "relationship24": true,
         "valueParity12": true,
         "populatedEncryptedRecovery": true,
-        "capture26Max5": true
+        "remainingWriter20": true
       },
       {
-        "runId": 42944398828,
-        "jobId": 130273582738,
+        "runId": 42947687126,
+        "jobId": 130284325679,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 14,
         "completeDecodedLogInspected": true,
-        "logCharacters": 24998,
+        "logCharacters": 25000,
         "errorMarkers": 0,
-        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
         "sourceShaPresent": true
       },
       {
-        "runId": 42944398818,
-        "jobId": 130273582659,
+        "runId": 42947687240,
+        "jobId": 130284326370,
         "event": "pull_request",
         "conclusion": "success",
         "passedSteps": 10,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16167,
+        "logCharacters": 16247,
         "errorMarkers": 0,
-        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "checkoutSha": "5eb721ced151deaadf6c4d18bb5ba721eddd2fd7",
         "sourceShaPresent": true
       }
     ],
-    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json"
+    "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json"
   },
-  "lastHostedQualifiedSourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json",
   "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+  "lastMergeQualifiedSourceSha": "6f167ab3af2ee6f304b2d948b7a6385dfb6c8997",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
