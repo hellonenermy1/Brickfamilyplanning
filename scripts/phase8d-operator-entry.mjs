@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {execFileSync} from 'node:child_process';
+import {assertPinnedOperatorCheckout} from './pinned-operator-checkout.mjs';
 import {createCaptureBrokerClient} from '../src/capture-broker-client';
 // BRICK_OPERATOR_SOURCE_SHA is supplied by the clean-checkout build.
 const tools={publication:'publish-beta-d1-release.mjs',probe:'verify-beta-live.mjs',schema:'ensure-beta-d1-columns.mjs',deployment:'setup-beta-d1.mjs'};
@@ -34,10 +34,7 @@ async function main(){
  if(path.basename(self)!=='.brick-operator-launcher.mjs'||fs.realpathSync(self)!==self||fs.realpathSync(root)!==root)fail();
  const relativeConfig=path.relative(root,fs.realpathSync(args[1]));
  if(relativeConfig===''||!path.isAbsolute(relativeConfig)&&relativeConfig!=='..'&&!relativeConfig.startsWith('..'+path.sep))fail();
- const git=(args)=>execFileSync('git',args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
- if(git(['rev-parse','HEAD'])!==BRICK_OPERATOR_SOURCE_SHA)fail();
- git(['diff','--quiet','HEAD','--']);
- if(git(['ls-files','--others','--exclude-standard','--','src','scripts','schema']).split('\n').filter(v=>v&&v!=='scripts/.brick-operator-launcher.mjs').length)fail();
+ assertPinnedOperatorCheckout(root,BRICK_OPERATOR_SOURCE_SHA);
  const key=Buffer.from(c.key.base64,'base64');if(key.length!==32||key.toString('base64')!==c.key.base64){key.fill(0);fail();}
  try{
   const client=await createCaptureBrokerClient({url:c.url,pin:c.pin,key:{id:c.key.id,role:'external-writer',bytes:key},request:fetch});

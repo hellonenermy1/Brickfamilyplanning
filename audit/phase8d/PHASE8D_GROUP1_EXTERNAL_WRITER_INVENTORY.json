@@ -5,7 +5,7 @@
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
   "policySha256": "53ec6a3ec43e09e76e1ad696f996bb0d44a67d2c167a7cf7c330f7692d9c59fd",
   "summary": {
-    "selectedFiles": 322,
+    "selectedFiles": 324,
     "filesWithManagementSignals": 78,
     "explicitClassifications": 90,
     "stagedOperatorLaunchers": 1,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 144
   },
-  "sourceSetSha256": "189763ea8403e0d5448ba6df8c56f7aed6797bb30c9eafc143756897bcd58871",
+  "sourceSetSha256": "542511f274cc6eea0e737b4b491a91a67583f8fea6f6cb6f09ed166a282bf91b",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -820,6 +820,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-parent-credential-recovery.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-pinned-checkout.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -1659,6 +1664,11 @@
     },
     {
       "from": "scripts/build-phase8d-operator-launcher.mjs",
+      "to": "scripts/pinned-operator-checkout.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/build-phase8d-operator-launcher.mjs",
       "to": "scripts/phase8d-operator-entry.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
@@ -1985,6 +1995,11 @@
     {
       "from": "scripts/phase8d-native-fixture.mjs",
       "to": "scripts/beta-compat-columns.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/phase8d-operator-entry.mjs",
+      "to": "scripts/pinned-operator-checkout.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
@@ -2729,6 +2744,11 @@
     },
     {
       "from": "scripts/test-phase8d-operator-launcher.mjs",
+      "to": "scripts/pinned-operator-checkout.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-operator-launcher.mjs",
       "to": "scripts/staged-external-writer.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
@@ -2745,6 +2765,11 @@
     {
       "from": "scripts/test-phase8d-parent-query-inputs.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-pinned-checkout.mjs",
+      "to": "scripts/pinned-operator-checkout.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
@@ -3411,8 +3436,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "e234baeece8abfd54fec930a44f368bde958424e4995c85b2ab35def1b9d30e4",
-      "gitBlobSha": "278981770e1e82d9df7e4734b4d2fb6f8124f206",
+      "sha256": "6f6d15cc69f2a20b781e950d4e82861392b164b275d8d216c3fa58eaad82c8fd",
+      "gitBlobSha": "6f71b443bdcc051c45920195dde27c7fb3194a51",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3476,6 +3501,7 @@
         "scripts/test-phase8d-operator-launcher.mjs",
         "scripts/test-phase8d-outage-quarantine.mjs",
         "scripts/test-phase8d-parent-credential-recovery.mjs",
+        "scripts/test-phase8d-pinned-checkout.mjs",
         "scripts/test-phase8d-pitr-lifecycle.mjs",
         "scripts/test-phase8d-private-archive-files.mjs",
         "scripts/test-phase8d-process-completion.mjs",
@@ -4239,14 +4265,15 @@
     },
     {
       "path": "scripts/build-phase8d-operator-launcher.mjs",
-      "sha256": "ec24c95204c2bdec0f8091cdab6c9c984a94cc11b23e9934ab6b19b4a942b91a",
-      "gitBlobSha": "8278557f3f6269dc695b45e69d2a6423de7466fe",
+      "sha256": "7b7ebf5c6d256ee29c9667b4af9bc97127f7b57f514b884ff0919dba04fab83a",
+      "gitBlobSha": "6fb721e9e08272190269e1d38fdd31fc70f36ac8",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Explicit local clean-checkout bundle creation only; no operator import/execution, key file read, provider request or production activation.",
       "signals": [],
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [],
       "imports": [
+        "./pinned-operator-checkout.mjs",
         "esbuild",
         "node:child_process",
         "node:crypto",
@@ -5426,8 +5453,8 @@
     },
     {
       "path": "scripts/phase8d-operator-entry.mjs",
-      "sha256": "e2f9a81b26c9084ffb02470f20a7c56055d1d72733a16e9a830d7edf658c1711",
-      "gitBlobSha": "56770ce54beb857b7affe156c4636e2144f62aca",
+      "sha256": "714638d9221d39bc1c5e694be79763826ad400a1230e98fa77060383bbd174f2",
+      "gitBlobSha": "4e4e9bcd2debd961a5beb5281b44cd0757f3522c",
       "classification": "STAGED_OPERATOR_LAUNCHER",
       "reason": "Explicit pinned local launcher may configure signed ownership for four actual beta tools. Source/native proof only; no installed host, immutable artifact, restricted credentials, bypass prevention or production activation.",
       "signals": [
@@ -5439,19 +5466,18 @@
       "stagedExternalWriterCalls": [],
       "stagedExternalControllerInstallCalls": [
         {
-          "line": 48
+          "line": 45
         }
       ],
       "imports": [
         "../src/capture-broker-client",
+        "./pinned-operator-checkout.mjs",
         "<DYNAMIC_IMPORT_UNRESOLVED>",
-        "node:child_process",
         "node:fs",
         "node:path",
         "node:url"
       ],
       "referencedScriptCandidates": [
-        "scripts/.brick-operator-launcher.mjs",
         "scripts/staged-external-writer.mjs"
       ],
       "npmScriptReferences": []
@@ -5617,6 +5643,26 @@
       ],
       "referencedScriptCandidates": [
         "scripts/test-phase8d-writer-surface.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/pinned-operator-checkout.mjs",
+      "sha256": "193d6f6ef99d3755db074b2d5b6af9b019446d66e0e6926529d1d8b4068b7013",
+      "gitBlobSha": "f7ffe843f3425e592a8f5438f4cdb356d7df3608",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/.brick-operator-launcher.mjs"
       ],
       "npmScriptReferences": []
     },
@@ -9367,8 +9413,8 @@
     },
     {
       "path": "scripts/test-phase8d-operator-launcher.mjs",
-      "sha256": "b1be1628c11c74b8b5a094f8a328dba0bded5ee08eff6af6ab85ea29d7660d01",
-      "gitBlobSha": "a5222095e7560881004a62703682e466657bd7b5",
+      "sha256": "3bf30b357ee7b8616f833fa439d897f726c4c975f80a7e612287a1b0586d920a",
+      "gitBlobSha": "aa9a784bf95c9582af56f8619e4873bc2d3a19eb",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Fresh local Node operator modules and signed native authority with an explicit synthetic provider/HTTPS bridge; test name alone does not exclude effects, credentials, source or subprocess review.",
       "signals": [
@@ -9393,7 +9439,15 @@
           "kind": "WRANGLER_LITERAL"
         },
         {
-          "line": 49,
+          "line": 52,
+          "kind": "PINNED_OPERATOR_LAUNCHER_CAPABILITY"
+        },
+        {
+          "line": 53,
+          "kind": "PINNED_OPERATOR_LAUNCHER_CAPABILITY"
+        },
+        {
+          "line": 54,
           "kind": "PINNED_OPERATOR_LAUNCHER_CAPABILITY"
         }
       ],
@@ -9413,7 +9467,9 @@
       "referencedScriptCandidates": [
         "scripts/.brick-operator-launcher.mjs",
         "scripts/build-phase8d-operator-launcher.mjs",
+        "scripts/ignored-fixture.mjs",
         "scripts/phase8d-operator-entry.mjs",
+        "scripts/pinned-operator-checkout.mjs",
         "scripts/staged-external-writer.mjs",
         "scripts/untracked-fixture.mjs",
         "scripts/verify-beta-live.mjs"
@@ -9587,6 +9643,29 @@
         "node:url"
       ],
       "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-pinned-checkout.mjs",
+      "sha256": "9b884cd18efce9ca348afa8c8ee016b4f238a60e6d763444b9c43ae00d8ae88f",
+      "gitBlobSha": "ab01063713d3706cabc6908a95e96c29c68e1c28",
+      "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
+      "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./pinned-operator-checkout.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/hidden.mjs",
+        "scripts/operator.mjs"
+      ],
       "npmScriptReferences": []
     },
     {
