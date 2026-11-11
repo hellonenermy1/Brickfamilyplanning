@@ -15,6 +15,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ANDROID_PHASE2_SHA: 9d1d04532abc52b679075fe2e330c3d2daafab3b
+
 concurrency:
   group: brick-v1-phase2-evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -41,6 +44,9 @@ jobs:
           set -euo pipefail
           node --check scripts/setup-v1-phase2.mjs
           node --check scripts/test-phase2-evidence.mjs
+          node --check scripts/test-phase2-evidence-link-integrity.mjs
+          node --check scripts/test-phase2-evidence-route.mjs
+          node --check scripts/verify-cloudflare-deployment.mjs
           npm run typecheck
           npx tsc -p tsconfig.web.json --noEmit
           grep -F '"main": "src/worker-v7.ts"' wrangler.template.jsonc >/dev/null
@@ -51,6 +57,31 @@ jobs:
           grep -F 'witness_authorizations' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'device_commands' schema/008_v1_phase2_evidence.sql >/dev/null
           grep -F 'refined_history_runs' schema/008_v1_phase2_evidence.sql >/dev/null
+          grep -F '"INSERT INTO evidence_batches(' src/evidence-ingest.ts >/dev/null
+          ! grep -F 'INSERT OR IGNORE INTO evidence_batches' src/evidence-ingest.ts >/dev/null
+          grep -F '"INSERT INTO evidence_records(' src/evidence-ingest.ts >/dev/null
+          ! grep -F 'INSERT OR IGNORE INTO evidence_records' src/evidence-ingest.ts >/dev/null
+          grep -F '${batch.batchId}-${batchSha}.brev' src/evidence-ingest.ts >/dev/null
+          grep -F 'duplicateRecords: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'allowRaceRetry' src/evidence-ingest.ts >/dev/null
+          grep -F 'raced: true' src/evidence-ingest.ts >/dev/null
+          grep -F 'stored batch link does not match evidence record identity' src/evidence-ingest.ts >/dev/null
+          grep -F 'readBoundedBody(req, EVIDENCE_MAX_BATCH_BYTES)' src/evidence-route.ts >/dev/null
+          ! grep -F 'await req.arrayBuffer()' src/evidence-route.ts >/dev/null
+          grep -F 'error instanceof EvidenceConflict' src/evidence-route.ts >/dev/null
+          grep -F 'evidence-attempt:' src/evidence-route.ts >/dev/null
+          grep -F 'evidence-device:${deviceId}' src/evidence-route.ts >/dev/null
+          grep -F 'DEVICE_ID_RE' src/evidence-route.ts >/dev/null
+          grep -F 'handleEvidenceRequest(req, env, deviceId)' src/worker-v7.ts >/dev/null
+          grep -F 'p1363ToDer' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'signLikeAndroid' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'Buffer.alloc(65_537' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'response.status, 409' scripts/test-phase2-evidence-route.mjs >/dev/null
+          grep -F 'identical requests racing' scripts/test-phase2-evidence.mjs >/dev/null
+          grep -F 'mixed-race' scripts/test-phase2-evidence.mjs >/dev/null
+          grep -F 'batch link does not match evidence record identity' scripts/test-phase2-evidence-link-integrity.mjs >/dev/null
+          grep -F 'invalidEvidencePath.status === 400' scripts/verify-cloudflare-deployment.mjs >/dev/null
+          grep -F 'unauthorizedEvidence.status === 401 || unauthorizedEvidence.status === 429' scripts/verify-cloudflare-deployment.mjs >/dev/null
 
       - name: Phase 2 protocol + durable idempotency integration tests
         shell: bash
@@ -59,6 +90,14 @@ jobs:
           npx esbuild src/evidence-protocol.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-protocol.mjs
           npx esbuild src/evidence-ingest.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-ingest.mjs
           node scripts/test-phase2-evidence.mjs /tmp/brick-evidence-protocol.mjs /tmp/brick-evidence-ingest.mjs
+          node scripts/test-phase2-evidence-link-integrity.mjs /tmp/brick-evidence-ingest.mjs
+
+      - name: Phase 2 signed HTTP route integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx esbuild src/evidence-route.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-evidence-route.mjs
+          node scripts/test-phase2-evidence-route.mjs /tmp/brick-evidence-route.mjs
 
       - name: Existing Phase 6 regression gates
         shell: bash
@@ -94,7 +133,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v1-p2-evidence-android
+          ref: ${{ env.ANDROID_PHASE2_SHA }}
+
+      - name: Verify exact paired Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ANDROID_PHASE2_SHA"
+          echo "Phase 2 Android source $(git rev-parse HEAD)"
 
       - uses: actions/setup-java@v5
         with:
@@ -119,18 +165,74 @@ jobs:
       - name: Compile app and Phase 2 instrumentation tests
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --stacktrace
 
-      - name: Verify evidence code did not replace the live V2 protocol
+      - name: Verify evidence code did not replace Brick Core or weaken priority
         shell: bash
         run: |
           set -euo pipefail
           grep -F 'const val VERSION: Byte = 2' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
           grep -F 'const val LIVE_PACKET_BYTES = 90' app/src/main/java/com/brick/safety/data/Protocol.kt >/dev/null
-          grep -F 'journal.appendNew(epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'private fun pairedDeviceId()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'UUID.fromString(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'parsed.version() == 4' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'parsed.variant() == 2' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'private fun pairedApiBase()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'EvidenceApi.normalizeBase(value)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'fun normalizeBase(baseUrl: String)' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'MAX_RESPONSE_BYTES = 65_536' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'class EvidenceUploadConflict' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'fun parseAckResponse' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'Evidence ACK sequence outside allowed range' app/src/main/java/com/brick/safety/evidence/EvidenceApi.kt >/dev/null
+          grep -F 'journal.appendNew(deviceId, epoch, observation)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'journal.ensureDeviceOwner(deviceId)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'quarantineConflictBatch' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'fun quarantineConflictBatch' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'EvidenceDrainStop.JOURNAL_FAILURE' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'DATABASE_VERSION = 3' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'CREATE TABLE evidence_owner' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'fun ensureDeviceOwner(deviceId: String)' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceIdentityQuarantinedRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'QUARANTINE_RETENTION_MS = 30L * 24L * 60L * 60L * 1_000L' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'QUARANTINE_MAX_ROWS = 2_048' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceQuarantinePurgedRecordsTotal' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'evidenceServerConflictRecordsTotal' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'evidenceQuarantinePurgedRecordsTotal' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'evidenceUploadFailureStreak' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
           grep -F 'SafetyDispatcher.pendingCount(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'locationJournal.stats().pendingCount' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
           grep -F 'CrashOutbox(appContext)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
-          grep -F 'EvidenceDispatcher(applicationContext).use' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
-          grep -F 'dispatcher.drainIfSafe(maxBatches = 2)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'scheduleEvidenceSoon(appContext, 5)' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'fun drainDetailed' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'acked.size != expected.size || acked.toSet() != expected.toSet()' app/src/main/java/com/brick/safety/evidence/EvidenceDispatcher.kt >/dev/null
+          grep -F 'ORDER BY epoch,seq,id' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'fun refreshHealth()' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'SELECT COUNT(*) FROM evidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          ! grep -F 'hasQuarantinedEvidence' app/src/main/java/com/brick/safety/evidence/EvidenceJournal.kt >/dev/null
+          grep -F 'val healthy = journal.refreshHealth()' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'journal.stats() to healthy' app/src/main/java/com/brick/safety/reliability/HealthEvidence.kt >/dev/null
+          grep -F 'testPendingRowsAreReadInWireOrderAfterRecoveryInsert' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
+          grep -F 'testQuarantineDoesNotPermanentlyPoisonRecoveredJournalHealth' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceInstrumentedTest.kt >/dev/null
+          grep -F 'testQuietReadableJournalRecoversAfterFailureHoldWithoutDroppingQuarantineHistory' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
+          grep -F 'testExpiredQuarantinePurgesAutomaticallyWithoutReusingSequence' app/src/androidTest/java/com/brick/safety/evidence/Phase2JournalHealthInstrumentedTest.kt >/dev/null
+          grep -F 'testStringOrFractionalAckNumbersCannotAuthorizeDeletion' app/src/androidTest/java/com/brick/safety/evidence/Phase2EvidenceApiInstrumentedTest.kt >/dev/null
+          grep -F 'testPairingChangeQuarantinesOldPendingEvidenceBeforeNewIdentityCanUpload' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testCorruptApiOriginCannotCreateUnsendableEvidenceBacklog' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'testServerConflictIsolatesOnlyConflictingRecordAndDoesNotBlockLaterEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
+          grep -F 'CORE_BACKLOG_DELAY_SECONDS = 60L' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'testCoreBacklogDeferralDoesNotAggressivelyPoll' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
+          grep -F 'OneTimeWorkRequestBuilder<EvidenceUploadWorker>()' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'ExistingWorkPolicy.KEEP' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'ExistingWorkPolicy.APPEND_OR_REPLACE' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'NetworkType.CONNECTED' app/src/main/java/com/brick/safety/reliability/RecoveryScheduler.kt >/dev/null
+          grep -F 'dispatcher.drainDetailed(maxBatches = 8)' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'MAX_FAILURE_DELAY_SECONDS = 15 * 60L' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'scheduleEvidenceFollowUp' app/src/main/java/com/brick/safety/reliability/EvidenceUploadWorker.kt >/dev/null
+          grep -F 'ServiceControl.ensureTracking(applicationContext)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'RecoveryScheduler.scheduleEvidenceSoon(applicationContext, 1)' app/src/main/java/com/brick/safety/reliability/RecoveryWorker.kt >/dev/null
+          grep -F 'testCorruptOrNonV4DeviceIdCannotPersistOrDrainEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2PairingGuardInstrumentedTest.kt >/dev/null
+          grep -F 'Phase2SequenceAllocatorInstrumentedTest' app/src/androidTest/java/com/brick/safety/evidence/Phase2SequenceAllocatorInstrumentedTest.kt >/dev/null
+          grep -F 'testWrongOrMissingAckNeverDeletesPendingEvidence' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
+          grep -F 'testPersistentFailureBackoffIsBounded' app/src/androidTest/java/com/brick/safety/evidence/Phase2DrainReliabilityInstrumentedTest.kt >/dev/null
 
   android-instrumentation:
     name: Android evidence journal / protocol instrumentation
@@ -140,7 +242,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: v1-p2-evidence-android
+          ref: ${{ env.ANDROID_PHASE2_SHA }}
+
+      - name: Verify exact paired Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ANDROID_PHASE2_SHA"
+          echo "Phase 2 Android source $(git rev-parse HEAD)"
 
       - uses: actions/setup-java@v5
         with:
