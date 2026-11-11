@@ -54,12 +54,14 @@ export async function runSyntheticPitr({plan: input, approved = false, token, re
     // Only private target handles created by this invocation can produce a suffix.
     const controller = new AbortController();
     let timer, reader;
-    pending = {stage, mutation: mutates, requestNumber: ++result.requestsMade, mayHaveBeenSent: false};
+    pending = {stage, mutation: mutates, requestNumber: result.requestsMade + 1, mayHaveBeenSent: false};
     lastCall = pending;
     const startEvent = {...pending, state: 'STARTED'};
     result.events.push(startEvent);
     // CLI fsyncs this sanitized intent before any request. A persistence failure stops dispatch.
     await record(startEvent);
+    if (now() - started > 900000) fail('BUDGET_EXCEEDED');
+    result.requestsMade++;
     pending.mayHaveBeenSent = true;
     const work = (async () => {
       const response = await request(url, {method, redirect: 'error', signal: controller.signal,

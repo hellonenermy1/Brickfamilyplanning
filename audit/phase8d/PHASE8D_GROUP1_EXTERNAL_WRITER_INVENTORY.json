@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 148
   },
-  "sourceSetSha256": "c67c34509cf7a9939c6969e16aa32bea7a1f11a1a3ecc9b11b44101621412b0c",
+  "sourceSetSha256": "8efd139fc0593a1b0e914557b4169a34b703f2921bc6fecf2a91e4ec84a6bfd8",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -5723,8 +5723,8 @@
     },
     {
       "path": "scripts/phase8d-synthetic-pitr.mjs",
-      "sha256": "5b89391d4b578bc0f2a8a3981daf26a21ea85b24f568523c6aa6aaa16494581e",
-      "gitBlobSha": "4f1b34a7ffecb3dd53d869effc93d6bb94672b28",
+      "sha256": "daf7feb29065a9e7899414ff973943f856db37e4a5727a1c6770b3ab60414ec9",
+      "gitBlobSha": "5b1c2755e7a7773a90ad7bd5f21758998909918c",
       "classification": "STAGED_SYNTHETIC_D1_DRILL",
       "reason": "Explicitly disarmed new/unbound synthetic D1 operator drill; no production controller install or generic continue authority. Two create responses only, pinned account/protected IDs, fixed SQL, no network retries/deletes. Requires separately approved exact manual scope.",
       "signals": [
@@ -10749,8 +10749,8 @@
     },
     {
       "path": "scripts/test-phase8d-synthetic-pitr.mjs",
-      "sha256": "6c20536666eb4ff5d41f4bc98b1dd3a59ccb231bb7a8f3f2d531f79e88f9b769",
-      "gitBlobSha": "1ffd04669f547b62b006d03aae2c03d78e0681fd",
+      "sha256": "6c90cf1d91899d6da9bbbd3d25da422473a766ddb238435d3bb0905dec4c663a",
+      "gitBlobSha": "45a56f681c6d0e2594a6ff3e787d2c8f3e978bca",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Offline injected SQLite provider and private CLI fault tests only; source references do not exclude harness filesystem/subprocess effects or qualify real Cloudflare mutation.",
       "signals": [

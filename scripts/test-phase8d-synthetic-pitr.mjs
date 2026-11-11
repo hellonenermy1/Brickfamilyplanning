@@ -97,7 +97,7 @@ try {
   });
   await test('intent journal failure refuses before network dispatch',async()=>{
     let called=0;const r=await run({plan:input,approved:true,token,request:()=>called++,record:()=>{throw Error('disk full');}});
-    assert.equal(called,0);assert.equal(r.status,'STOPPED_UNQUALIFIED');assert.equal(r.events[0].mayHaveBeenSent,false);
+    assert.equal(called,0);assert.equal(r.requestsMade,0);assert.equal(r.status,'STOPPED_UNQUALIFIED');assert.equal(r.events[0].mayHaveBeenSent,false);
   });
   await test('lost journal ACK after mutation stops without retry',async()=>{
     const {result:r,calls}=await execute(undefined,{record:e=>{if(e.state==='ENVELOPE_ACKNOWLEDGED')throw Error('disk full');}});
