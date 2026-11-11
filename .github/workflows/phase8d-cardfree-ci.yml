@@ -127,6 +127,7 @@ jobs:
       - name: Destroy source and recover both D1 stores and beta DO from encrypted package
         run: |
           node scripts/test-phase8d-recovery-schema.mjs
+          node scripts/test-phase8d-recovery-ddl.mjs
           node scripts/test-phase8d-recovery-foreign-keys.mjs
           node scripts/test-phase8d-restore-value-parity.mjs
           node scripts/test-phase8d-cardfree-recovery.mjs

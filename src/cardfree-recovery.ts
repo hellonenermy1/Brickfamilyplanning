@@ -3,6 +3,7 @@ import { restoreBackupToFreshD1, retirePendingRecoveryCommands } from './backup-
 import { canonicalizeHistoricalDeviceRows } from './phase8-device-identity';
 import { CHUNK_BYTES, MAX_OBJECT_BYTES } from './dev-free-runtime';
 import { assertRecoveryForeignKeys, assertRecoveryRelationships } from './cardfree-recovery-foreign-keys';
+import { assertRecoveryDDL } from './cardfree-recovery-ddl';
 
 // Internal/off-platform recovery building block. No HTTP route, scheduled call or
 // live configuration enables restore. The operator must independently quiesce
@@ -64,15 +65,16 @@ async function columns(db: D1Database, table: string): Promise<Column[]> {
 }
 async function inventory(db: D1Database, durable: readonly string[], excluded: readonly string[]) {
   // One query preserves the bounded capture invocation's existing SQL envelope.
-  const objects=(await db.prepare("SELECT type,name,tbl_name,sql,(SELECT json_group_array(json_object('id',f.id,'seq',f.seq,'table',f.\"table\",'from',f.\"from\",'to',f.\"to\",'on_update',f.on_update,'on_delete',f.on_delete,'match',f.match)) FROM pragma_foreign_key_list(sqlite_master.name) f) recoveryForeignKeys FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND (type IN ('view','trigger') OR type='table' AND name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations'))").all<{type:string;name:string;tbl_name:string;sql:string;recoveryForeignKeys:string}>()).results;
+  const objects=(await db.prepare("SELECT type,name,tbl_name,sql,(SELECT json_group_array(json_object('id',f.id,'seq',f.seq,'table',f.\"table\",'from',f.\"from\",'to',f.\"to\",'on_update',f.on_update,'on_delete',f.on_delete,'match',f.match)) FROM pragma_foreign_key_list(sqlite_master.name) f) recoveryForeignKeys FROM sqlite_master WHERE substr(lower(name),1,7)<>'sqlite_' AND (type IN ('view','trigger') OR type IN ('table','index') AND tbl_name NOT IN ('_cf_METADATA','d1_migrations','brick_dev_migrations'))").all<{type:string;name:string;tbl_name:string;sql:string;recoveryForeignKeys:string}>()).results;
   const expected=durable.includes('evidence_batch_records')?APPROVED_RECOVERY_TRIGGERS:{};
-  const behavior=objects.filter(o=>o.type!=='table');
+  const behavior=objects.filter(o=>o.type==='trigger'||o.type==='view');
   if(behavior.length!==Object.keys(expected).length||behavior.some(o=>o.type!=='trigger'||!Object.hasOwn(expected,o.name)||o.tbl_name!==expected[o.name].table||o.sql!==expected[o.name].sql))throw Error('unclassified recovery schema trigger/view');
   const actual=objects.filter(o=>o.type==='table').map(o=>o.name).sort();
   const metadata = (await db.prepare('PRAGMA table_xinfo(brick_dev_migrations)').all<Column & {hidden:number}>()).results;
   if (metadata.length && (metadata.some(c=>c.hidden!==0) || metadata.length !== 2 || metadata[0].name !== 'name' || metadata[0].type !== 'TEXT' || metadata[0].pk !== 1 || metadata[1].name !== 'applied_at' || metadata[1].type !== 'INTEGER' || metadata[1].notnull !== 1)) throw Error('invalid migration bookkeeping schema');
   if (JSON.stringify(actual) !== JSON.stringify([...durable, ...excluded].sort())) throw Error('unclassified recovery schema');
   for(const table of objects.filter(o=>o.type==='table'))assertRecoveryForeignKeys(table.name,table.recoveryForeignKeys,durable.includes('evidence_batch_records'));
+  await assertRecoveryDDL(objects,durable.includes('evidence_batch_records'));
 }
 async function capture(db: D1Database, durable: readonly string[], excluded: readonly string[]): Promise<Store> {
   await inventory(db, durable, excluded);
