@@ -1,0 +1,71 @@
+name: Staged isolated synthetic D1 PITR (manual writes, unapproved)
+on:
+  workflow_dispatch:
+    inputs:
+      execute_new_synthetic_d1:
+        description: Explicitly authorize 2 new unbound synthetic D1 databases and 6 restores; retain them
+        type: boolean
+        default: false
+      approved_source_sha:
+        description: Exact reviewed audit branch executable SHA (40 lowercase hex)
+        type: string
+        required: true
+      run_id:
+        description: Fresh approved run identity, 20261111- followed by 16 random lowercase hex digits
+        type: string
+        required: true
+      rto_goal_seconds:
+        description: Agreed synthetic pair fault-to-first-restored-parity target (60 to 900 seconds)
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: phase8d-synthetic-pitr
+  cancel-in-progress: false
+jobs:
+  isolated-synthetic-pitr:
+    if: github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == true && github.ref == 'refs/heads/audit/phase8d-d1-qualification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+      - name: Validate private exact-source plan before any cloud token is available
+        shell: bash
+        env:
+          DRILL_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';import path from 'node:path';
+          import {syntheticPitrPlan} from './scripts/phase8d-synthetic-pitr.mjs';
+          const inputs=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')).inputs;
+          if(inputs.approved_source_sha!==process.env.GITHUB_SHA)throw Error('Exact approved checkout required');
+          const value={accountId:process.env.DRILL_ACCOUNT_ID,sourceSha:inputs.approved_source_sha,
+            runId:inputs.run_id,rtoGoalSeconds:Number(inputs.rto_goal_seconds)};
+          syntheticPitrPlan(value);
+          fs.writeFileSync(path.join(process.env.RUNNER_TEMP,'synthetic-pitr-plan.json'),JSON.stringify(value),{mode:0o600,flag:'wx'});
+          JS
+      - name: Run only the explicitly approved new synthetic database drill
+        shell: bash
+        env:
+          # Operator-only credential, never installed as a runtime/archive capability.
+          # Use of this existing deployment secret for the bounded drill requires explicit approval.
+          CLOUDFLARE_D1_DRILL_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          export BRICK_SYNTHETIC_D1_APPROVED="$(node --input-type=module -e 'import fs from "node:fs";process.stdout.write(JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,"utf8")).inputs.run_id)')"
+          node scripts/phase8d-synthetic-pitr.mjs "$RUNNER_TEMP/synthetic-pitr-plan.json" --execute-new-synthetic-d1 > "$RUNNER_TEMP/synthetic-pitr-result.json"
+      - name: Retain sanitized result even after an uncertain outcome
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: phase8d-synthetic-pitr-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/synthetic-pitr-result.json
+            ${{ runner.temp }}/synthetic-pitr-plan.json.progress.jsonl
+          if-no-files-found: warn
+          retention-days: 14
