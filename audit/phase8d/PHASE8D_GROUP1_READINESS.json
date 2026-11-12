@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
+  "sourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -600,6 +600,16 @@
       "sealAndOpenShareValidator": true,
       "providerRequestsForInvalidArchive": 0,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json"
+    },
+    {
+      "id": "LIFECYCLE_JOURNAL_ADMISSION",
+      "state": "SOURCE_NATIVE_HOSTED_QUALIFIED_NOT_INDEPENDENT_CUSTODY",
+      "nativeCases": 39,
+      "literalReservedSchemaPrefix": true,
+      "exactTransactionAndPostCommitReadback": true,
+      "unknownCommitPreservesOwnership": true,
+      "sameImmutableBadJournalsRefusedUnchanged": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -652,86 +662,50 @@
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 43181998333,
-        "jobId": 131059979933,
+        "runId": 43187832945,
+        "jobId": 131079368104,
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 287503,
+        "logCharacters": 293404,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "checkoutSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
         "checkoutShaPresent": true,
-        "nativeSuiteCount": 78,
+        "nativeSuiteCount": 79,
         "allParsedNativeSuitesZeroFailures": true,
         "nativeSuites": [
           {
-            "suite": "synthetic-d1-pitr",
-            "passed": 62,
+            "suite": "durable-backup-run",
+            "passed": 47,
             "failed": 0,
-            "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
           },
           {
-            "suite": "synthetic-d1-pitr-reconciliation",
-            "passed": 18,
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
             "failed": 0,
-            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
           },
           {
-            "suite": "parent-credential-recovery",
-            "passed": 6,
+            "suite": "backup-monitor",
+            "passed": 50,
             "failed": 0,
-            "scope": "actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance"
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
           },
           {
-            "suite": "backup-device-capture-age",
-            "passed": 20,
+            "suite": "backup-alert-receipt",
+            "passed": 54,
             "failed": 0,
-            "scope": "protected package/CLI, health, synthetic B2 publication and private selection lower-bound checks only; no actual cloud, global coherent capture, target restore, live writer/custody or acceptance"
-          },
-          {
-            "suite": "backup-health",
-            "passed": 40,
-            "failed": 0,
-            "scope": "actual authenticated package checks, private files and CLI plus synthetic read/clock faults; no installed schedule, production archive/key, independent custody, full schema/restore or cloud recovery acceptance"
-          },
-          {
-            "suite": "b2-destination",
-            "passed": 91,
-            "failed": 0,
-            "scope": "actual adapter/Fetch streams/AES-GCM/archive-health with synthetic B2 responses and no real provider access; no bucket/key creation, default network, schedule, independent custody, billing/card or operational recovery acceptance"
-          },
-          {
-            "suite": "durable-recovery-selection",
-            "passed": 40,
-            "failed": 0,
-            "scope": "actual private local fsync/readback, derived-key HMAC, exact caller digest pin and fresh-process synthetic provider authentication; no key persistence, independent custody/domain, real B2 credential/schedule or cloud restore acceptance"
-          },
-          {
-            "suite": "recovery-schema-native",
-            "passed": 18,
-            "failed": 0,
-            "scope": "actual native D1 approved migrations/triggers, restore/capture, generated columns and excluded-state postflight; controlled fresh targets/faults, no live schema/isolated cloud/quiescence/custody/RTO acceptance"
-          },
-          {
-            "suite": "recovery-reviewed-ddl-native",
-            "passed": 30,
-            "failed": 0,
-            "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
-          },
-          {
-            "suite": "recovery-foreign-key-native",
-            "passed": 24,
-            "failed": 0,
-            "scope": "actual native D1 declared relationship/cascade schema, source capture and fresh restore only; no live cloud, quiescence, custody or recovery acceptance"
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
           },
           {
             "suite": "populated-recovery-relations",
@@ -744,175 +718,115 @@
             "joinedEvidence": 2,
             "joinedWitnesses": 2,
             "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
-          },
-          {
-            "suite": "backup-alert-receipt-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual signed native41+4/deviceDO encrypted B2-fixture recovery, private monitor and real Ed25519 proof/restart/no-resend; synthetic signer/sinks, no real recipient, authority/key custody or independent delivery qualification"
-          },
-          {
-            "suite": "backup-monitor-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual private SQLite monitor and signed native41+4/deviceDO encrypted B2-fixture recovery archive; persisted fresh/stale/restart and uncertain synthetic alert delivery; no installed schedule or real alert/provider/custody qualification"
-          },
-          {
-            "suite": "b2-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
           }
-        ]
+        ],
+        "nativeFullRecoveryFixturePassed": true
       },
       {
-        "runId": 43182005815,
-        "jobId": 131060003390,
-        "conclusion": "success",
-        "passedSteps": 33,
-        "totalSteps": 33,
-        "completeDecodedLogInspected": true,
-        "logCharacters": 289459,
-        "errorMarkers": 0,
-        "sourceShaPresent": true,
-        "checkoutSha": "a9800d94089cb4adea6c3131e610e2e71e9629ff",
-        "checkoutShaPresent": true,
-        "nativeSuiteCount": 78,
-        "allParsedNativeSuitesZeroFailures": true,
-        "nativeSuites": [
-          {
-            "suite": "synthetic-d1-pitr",
-            "passed": 62,
-            "failed": 0,
-            "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
-          },
-          {
-            "suite": "synthetic-d1-pitr-reconciliation",
-            "passed": 18,
-            "failed": 0,
-            "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
-          },
-          {
-            "suite": "parent-credential-recovery",
-            "passed": 6,
-            "failed": 0,
-            "scope": "actual SQLite-backed D1 and current migration with synthetic verifier/device; explicit credential exclusion, unchanged source, occupied-target refusal, no live export/password rotation/credential provisioning or recovery acceptance"
-          },
-          {
-            "suite": "backup-device-capture-age",
-            "passed": 20,
-            "failed": 0,
-            "scope": "protected package/CLI, health, synthetic B2 publication and private selection lower-bound checks only; no actual cloud, global coherent capture, target restore, live writer/custody or acceptance"
-          },
-          {
-            "suite": "backup-health",
-            "passed": 40,
-            "failed": 0,
-            "scope": "actual authenticated package checks, private files and CLI plus synthetic read/clock faults; no installed schedule, production archive/key, independent custody, full schema/restore or cloud recovery acceptance"
-          },
-          {
-            "suite": "b2-destination",
-            "passed": 91,
-            "failed": 0,
-            "scope": "actual adapter/Fetch streams/AES-GCM/archive-health with synthetic B2 responses and no real provider access; no bucket/key creation, default network, schedule, independent custody, billing/card or operational recovery acceptance"
-          },
-          {
-            "suite": "durable-recovery-selection",
-            "passed": 40,
-            "failed": 0,
-            "scope": "actual private local fsync/readback, derived-key HMAC, exact caller digest pin and fresh-process synthetic provider authentication; no key persistence, independent custody/domain, real B2 credential/schedule or cloud restore acceptance"
-          },
-          {
-            "suite": "recovery-schema-native",
-            "passed": 18,
-            "failed": 0,
-            "scope": "actual native D1 approved migrations/triggers, restore/capture, generated columns and excluded-state postflight; controlled fresh targets/faults, no live schema/isolated cloud/quiescence/custody/RTO acceptance"
-          },
-          {
-            "suite": "recovery-reviewed-ddl-native",
-            "passed": 30,
-            "failed": 0,
-            "scope": "native reviewed SQL-token definition identity, indexes, constraints and capture/restore only; not general SQL equivalence, cloud schema, installed quiescence/custody or operational acceptance"
-          },
-          {
-            "suite": "recovery-foreign-key-native",
-            "passed": 24,
-            "failed": 0,
-            "scope": "actual native D1 declared relationship/cascade schema, source capture and fresh restore only; no live cloud, quiescence, custody or recovery acceptance"
-          },
-          {
-            "suite": "populated-recovery-relations",
-            "passed": 7,
-            "failed": 0,
-            "tables": 16,
-            "rows": 33,
-            "joinedPlaces": 2,
-            "joinedSchedules": 2,
-            "joinedEvidence": 2,
-            "joinedWitnesses": 2,
-            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
-          },
-          {
-            "suite": "backup-alert-receipt-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual signed native41+4/deviceDO encrypted B2-fixture recovery, private monitor and real Ed25519 proof/restart/no-resend; synthetic signer/sinks, no real recipient, authority/key custody or independent delivery qualification"
-          },
-          {
-            "suite": "backup-monitor-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual private SQLite monitor and signed native41+4/deviceDO encrypted B2-fixture recovery archive; persisted fresh/stale/restart and uncertain synthetic alert delivery; no installed schedule or real alert/provider/custody qualification"
-          },
-          {
-            "suite": "b2-full-recovery",
-            "passed": 3,
-            "failed": 0,
-            "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
-          }
-        ]
-      },
-      {
-        "runId": 43182005512,
-        "jobId": 131060002688,
+        "runId": 43187832890,
+        "jobId": 131079367609,
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16169,
+        "logCharacters": 16167,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "checkoutSha": "a9800d94089cb4adea6c3131e610e2e71e9629ff",
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
         "checkoutShaPresent": true,
         "nativeSuiteCount": 0,
         "allParsedNativeSuitesZeroFailures": true,
-        "nativeSuites": []
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
       },
       {
-        "runId": 43182005617,
-        "jobId": 131060002801,
+        "runId": 43187832929,
+        "jobId": 131079366851,
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "completeDecodedLogInspected": true,
-        "logCharacters": 25079,
+        "logCharacters": 25078,
         "errorMarkers": 0,
         "sourceShaPresent": true,
-        "checkoutSha": "a9800d94089cb4adea6c3131e610e2e71e9629ff",
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
         "checkoutShaPresent": true,
         "nativeSuiteCount": 0,
         "allParsedNativeSuitesZeroFailures": true,
-        "nativeSuites": []
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
+      },
+      {
+        "runId": 43187825695,
+        "jobId": 131079342711,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 291448,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 79,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "durable-backup-run",
+            "passed": 47,
+            "failed": 0,
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+          },
+          {
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
+            "failed": 0,
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+          },
+          {
+            "suite": "backup-monitor",
+            "passed": 50,
+            "failed": 0,
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+          },
+          {
+            "suite": "backup-alert-receipt",
+            "passed": 54,
+            "failed": 0,
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          }
+        ],
+        "nativeFullRecoveryFixturePassed": true
       }
     ],
-    "previousSourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
-    "scope": "Protected-package capture-timestamp lower bound and native/offline consumer qualification only; no new real provider or target restore."
+    "merge": {
+      "sha": "e742df3a569ef01961146033fd07942a84ad35e4",
+      "treeSha": "0859106302ded67fa94936b76581cba2e1bde41f",
+      "parents": [
+        "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "cb372f92cd2a890d52ed713660c1b34aa583ed7c"
+      ],
+      "draft": true,
+      "merged": false
+    }
   },
-  "lastHostedQualifiedSourceSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json",
+  "lastHostedQualifiedSourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
+  "lastMergeQualifiedSourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
@@ -1001,7 +915,7 @@
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
   "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
   "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
-  "localVerificationStatus": "FOCUSED_20_AND_PACKAGE13_HEALTH40_SELECTION40_B2_91_INVENTORY23_PASSED_NO_FULL_LOCAL_CAMPAIGN_CLAIM",
+  "localVerificationStatus": "FOCUSED_JOURNAL39_RUN47_MONITOR50_RECEIPT54_INVENTORY23_CLOSURE14_LEDGER61_PASSED_NO_FULL_LOCAL_CAMPAIGN_CLAIM",
   "preparedCloudDrillReviewPath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md",
   "previousOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
   "latestSyntheticReconciliationSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
@@ -1015,5 +929,5 @@
     "syntheticGoalSeconds": 900,
     "requiresLauncherMerge": false
   },
-  "latestPreparedSourceEvidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json"
+  "latestPreparedSourceEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json"
 }

@@ -1,7 +1,14 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `667e9e6b042dcec05e91e7a1b93013c3201a803d`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-12 Singapore. Executable+inventory SHA `cb372f92cd2a890d52ed713660c1b34aa583ed7c`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
+
+## 12 November — lifecycle journal admission
+
+- [x] EXACT HOSTED: push43187825695 and PR43187832945 audits33/33 each; portal14/14+10/10. Complete logs, new39-case suite, native full recovery fixture and expected base/source/merge tree verified.
+
+- [x] SOURCE/NATIVE: reproduce and record hidden-prefix/ignored-reset UPDATE callback repetition; require literal schema checks, one changed row and exact transaction/post-COMMIT readback.39 new cases plus run47/monitor50/receipt54/inventory23 and14/61 ledger guards pass. Same immutable bad journals accepted by old code are refused unchanged by current code. No callback retry/reset or schema repair.
+- [ ] OPERATIONAL: independent current-journal custody, external rollback protection and installed delivery remain unqualified. Fresh cloud run remains unapproved/unexecuted. See PHASE8D_GROUP1_JOURNAL_ADMISSION.md/EVIDENCE.json.
 
 ## 12 November — device snapshot capture boundary
 
