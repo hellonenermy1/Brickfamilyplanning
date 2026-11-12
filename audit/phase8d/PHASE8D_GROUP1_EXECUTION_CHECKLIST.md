@@ -1,7 +1,12 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `a20acc569adcf2124b9a623051e3d50bbad6f193`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `667e9e6b042dcec05e91e7a1b93013c3201a803d`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
+
+## 12 November — device snapshot capture boundary
+
+- [x] SOURCE/OFFLINE: reproduced valid encrypted mixed-generation package and false-FRESH health before correction; shared seal/open validation now rejects device timestamps before the pinned D1 boundary.20 new cases cover package, CLI, health, zero-request B2 admission and private exact-version selection. Existing package13/health40/selection40/B2 destination91 pass. Exact immutable old ciphertext comparison preserved. Both exact hosted audits33/33 and portal14/14+10/10 verified from full logs and expected source/base/merge tree.
+- [ ] OPERATIONAL: this timestamp rule is not an installed global writer fence, trusted clock or cloud recovery proof. Existing fresh drill still awaits explicit approval; original uncertain create remains stopped. See PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY.md/EVIDENCE.json.
 
 ## 12 November — safe response diagnostics and fresh reviewed identity
 
