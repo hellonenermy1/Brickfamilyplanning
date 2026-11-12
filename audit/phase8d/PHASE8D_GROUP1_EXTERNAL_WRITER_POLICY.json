@@ -385,6 +385,10 @@
     "scripts/test-phase8d-backup-capture-age.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Local crypto, private subprocess/file and synthetic B2 fixture coverage of stale device snapshots; source references do not exclude harness effects or prove actual cloud custody, capture fencing or recovery."
+    },
+    "scripts/test-phase8d-lifecycle-journal-admission.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Native private SQLite schema/TEMP trigger, simulated driver and commit faults with local callback counters only. No actual provider/notification, hostile-host isolation or independent rollback/custody qualification."
     }
   }
 }

@@ -3,11 +3,11 @@
   "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "7e15d917c8c443e3c78ecf9e8ef64e2a528d9caa0ba4a9aa28ab46d509f8b2d4",
+  "policySha256": "a7be739decee56dab8df87e7e6d216635418e41fcc5cab2dc9e8850a9187ef2b",
   "summary": {
-    "selectedFiles": 334,
-    "filesWithManagementSignals": 83,
-    "explicitClassifications": 96,
+    "selectedFiles": 335,
+    "filesWithManagementSignals": 84,
+    "explicitClassifications": 97,
     "stagedOperatorLaunchers": 1,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 149
   },
-  "sourceSetSha256": "1abe6ad4c47444741fc4e3e94e02b6f6af0b17e6e2d6aa4c9864a662eb446332",
+  "sourceSetSha256": "4ae1572cf2b300cf8096f7ed3b118f1cdf2613088854576fd93941d37d7f921e",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -159,6 +159,7 @@
         "scripts/test-phase8d-external-writer-inventory.mjs",
         "scripts/test-phase8d-external-writer.mjs",
         "scripts/test-phase8d-full-store-recovery.mjs",
+        "scripts/test-phase8d-lifecycle-journal-admission.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
         "scripts/test-phase8d-monitor-open.mjs",
@@ -802,6 +803,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-journal-files.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2765,6 +2771,21 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
+      "to": "scripts/cardfree-backup-monitor.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
+      "to": "scripts/cardfree-backup-package.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
+      "to": "scripts/cardfree-backup-run.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-live-command-finality.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3563,8 +3584,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "99fb9280c701c1934b97f70e4cf929aa1691257b1345c1e1d8f71d32ca844379",
-      "gitBlobSha": "fb6bff64e4cb72d1998e70a377c150227cff71fa",
+      "sha256": "32e82e85a254e5ffb4e6a72e9841ec55669d1e77bb1beb2b8a82055690aa90dd",
+      "gitBlobSha": "4cfc24b6e7fce2c36edfddf29e509d9243d403dc",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3622,6 +3643,7 @@
         "scripts/test-phase8d-full-store-recovery.mjs",
         "scripts/test-phase8d-guarded-broker.mjs",
         "scripts/test-phase8d-journal-files.mjs",
+        "scripts/test-phase8d-lifecycle-journal-admission.mjs",
         "scripts/test-phase8d-maintenance-budget.mjs",
         "scripts/test-phase8d-maintenance-failure.mjs",
         "scripts/test-phase8d-maintenance-leases.mjs",
@@ -4517,8 +4539,8 @@
     },
     {
       "path": "scripts/cardfree-backup-monitor.mjs",
-      "sha256": "4d406cdf87541953a403c44c0203facd5fa1c4eeb91faa15369707915c5957a8",
-      "gitBlobSha": "4099cc209526dfb236f14887d8d004c6b296c749",
+      "sha256": "944ec1a82a176d2d1fc0f6ab9695664cfc965f052fee071782c0bded95cc54c0",
+      "gitBlobSha": "f003e53f7d6d5fbdd9e04327ae7f54127f3640cf",
       "classification": "STAGED_OFF_PLATFORM_MONITOR",
       "reason": "Explicit one-shot health checks, private local SQLite state and injected synthetic alert sink capability; no default transport, source mutation, upload, production timer/schedule/bootstrap or real delivery qualification.",
       "signals": [
@@ -4531,11 +4553,11 @@
           "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
         },
         {
-          "line": 45,
+          "line": 47,
           "kind": "BACKUP_ALERT_RECEIPT_CAPABILITY"
         },
         {
-          "line": 92,
+          "line": 94,
           "kind": "BACKUP_ALERT_RECEIPT_CAPABILITY"
         }
       ],
@@ -4570,8 +4592,8 @@
     },
     {
       "path": "scripts/cardfree-backup-run.mjs",
-      "sha256": "4a4eeef16ddba5ee72b3957c41dea3a8fbc03394cec28e259d6f6a10d5191ec4",
-      "gitBlobSha": "81cc47853ca2f82d450fcb7aeb140c31633bad05",
+      "sha256": "3a49927a34dff7a8040b75d7b35b0a9d608e999e8f636c57cd6271a46f7f12f7",
+      "gitBlobSha": "2da81cc7e2f0ebb06be3a1ae0fdfde24ebb0ce57",
       "classification": "LOCAL_TOOL_SOURCE",
       "reason": "Explicit staged one-shot durable lifecycle calls injected capture/publication/read capabilities and retains local metadata; no default transport/timer/key persistence or installer. Effects are not excluded; started uncertainty never auto expires/replays.",
       "signals": [],
@@ -9367,6 +9389,38 @@
         "node:assert/strict",
         "node:fs",
         "typescript"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
+      "sha256": "a1299ddcd00854975de9504516225ed9be59a4d8ddf5666b2f5ba42d3805c742",
+      "gitBlobSha": "0196bdcc712ddf444b0d622f8830c7648f3c3bea",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Native private SQLite schema/TEMP trigger, simulated driver and commit faults with local callback counters only. No actual provider/notification, hostile-host isolation or independent rollback/custody qualification.",
+      "signals": [
+        {
+          "line": 4,
+          "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
+        },
+        {
+          "line": 14,
+          "kind": "STAGED_BACKUP_MONITOR_CAPABILITY"
+        }
+      ],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-backup-monitor.mjs",
+        "./cardfree-backup-package.mjs",
+        "./cardfree-backup-run.mjs",
+        "node:assert/strict",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:sqlite"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

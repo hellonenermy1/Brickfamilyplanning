@@ -32,7 +32,9 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
  let db,closed=false,identity;
  function privateStat(p,directory=false){const s=fs.lstatSync(p);if(s.isSymbolicLink()||!(directory?s.isDirectory():s.isFile())||(s.mode&0o077)||!directory&&s.nlink!==1||typeof process.getuid==='function'&&s.uid!==process.getuid())refuse();return s;}
  function checkPath(){if(closed)refuse();privateStat(root,true);const s=privateStat(file);if(identity&&(s.dev!==identity.dev||s.ino!==identity.ino))refuse();for(const suffix of ['-journal','-wal','-shm']){try{privateStat(file+suffix);}catch(e){if(e.code!=='ENOENT')throw e;}}}
- function read(){checkPath();const rows=db.prepare('SELECT id,body,digest FROM monitor_state').all();if(rows.length!==1||rows[0].id!==1||rows[0].body.length>65536||hash(rows[0].body)!==rows[0].digest)refuse();const v=JSON.parse(rows[0].body);validate(v);return v;}
+ // Literal reserved-prefix check and row readback guard local admission, not hostile-host rollback.
+ function verifySchema(){const rows=db.prepare("SELECT name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*'").all();if(rows.length!==1||rows[0].name!=='monitor_state'||rows[0].sql!==TABLE)refuse();}
+ function read(expectedBody){checkPath();verifySchema();const rows=db.prepare('SELECT id,body,digest FROM monitor_state').all();if(rows.length!==1||rows[0].id!==1||rows[0].body.length>65536||hash(rows[0].body)!==rows[0].digest)refuse();if(expectedBody!==undefined&&rows[0].body!==expectedBody)refuse();const v=JSON.parse(rows[0].body);validate(v);return v;}
  function validate(v){
   if(!exact(v,['format','configSha256','target','revision','lastClockAt','nextCheckAt','claim','lastResult','lastSuccessAt','failures','incident','outbox','alertOverflow'])||v.format!=='brick-backup-monitor-state-v1'||v.configSha256!==configSha256||JSON.stringify(target(v.target))!==JSON.stringify(v.target)||!Number.isSafeInteger(v.revision)||v.revision<0||!positive(v.lastClockAt)||!positive(v.nextCheckAt)||!Number.isSafeInteger(v.failures)||v.failures<0||v.failures>32||typeof v.alertOverflow!=='boolean'||v.lastSuccessAt!==null&&(!positive(v.lastSuccessAt)||v.lastSuccessAt>v.lastClockAt))refuse();
   if(v.claim!==null&&(!exact(v.claim,['id','expiresAt','targetSha256'])||!hex(v.claim.id,32)||!positive(v.claim.expiresAt)||!hex(v.claim.targetSha256,64)||v.claim.targetSha256!==hash(JSON.stringify(v.target))))refuse();
@@ -48,8 +50,8 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
    ids.add(m.eventId);}
  }
  function now(min){const n=clock();if(!positive(n)||n<min||n>Number.MAX_SAFE_INTEGER-86400001)refuse();return n;}
- function write(v){validate(v);const body=JSON.stringify(v);if(body.length>65536)refuse();if(db.prepare('UPDATE monitor_state SET body=?,digest=? WHERE id=1').run(body,hash(body)).changes!==1)refuse();}
- function change(fn){let began=false;try{checkPath();db.exec('BEGIN IMMEDIATE');began=true;const v=read(),n=now(v.lastClockAt);v.lastClockAt=n;const r=fn(v,n);v.revision++;write(v);db.exec('COMMIT');began=false;return r;}catch{if(began)try{db.exec('ROLLBACK');}catch{}refuse();}}
+ function write(v){validate(v);const body=JSON.stringify(v);if(body.length>65536)refuse();if(db.prepare('UPDATE monitor_state SET body=?,digest=? WHERE id=1').run(body,hash(body)).changes!==1)refuse();read(body);return body;}
+ function change(fn){let began=false;try{checkPath();db.exec('BEGIN IMMEDIATE');began=true;const v=read(),n=now(v.lastClockAt);v.lastClockAt=n;const r=fn(v,n);v.revision++;const body=write(v);db.exec('COMMIT');began=false;read(body);return r;}catch{if(began)try{db.exec('ROLLBACK');}catch{}refuse();}}
  function queue(v,n,incident,kind,code){
   // Only confirmed delivered entries may be trimmed. Unknown sends never expire.
   const delivered=v.outbox.filter(r=>r.state==='DELIVERED').slice(-16),pending=v.outbox.filter(r=>r.state!=='DELIVERED');v.outbox=[...delivered,...pending];
@@ -63,7 +65,7 @@ export function openStagedBackupMonitor({directory,config:input,target:initial,c
   if(create){fs.mkdirSync(root,{mode:0o700});privateStat(root,true);const fd=fs.openSync(file,'wx',0o600);fs.closeSync(fd);}
   else{privateStat(root,true);if(privateStat(file).size===0)refuse();}
   identity=privateStat(file);checkPath();db=new DatabaseSync(file,{timeout:25,allowExtension:false});checkPath();
-  const schema=db.prepare("SELECT name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").all();if(create?schema.length!==0:!(schema.length===1&&schema[0].name==='monitor_state'&&schema[0].sql===TABLE))refuse();
+  const schema=db.prepare("SELECT name,sql FROM sqlite_master WHERE name NOT GLOB 'sqlite_*'").all();if(create?schema.length!==0:!(schema.length===1&&schema[0].name==='monitor_state'&&schema[0].sql===TABLE))refuse();
   db.exec('PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;');
   if(create){const t=initialTarget,n=initialTime,v={format:'brick-backup-monitor-state-v1',configSha256,target:t,revision:0,lastClockAt:n,nextCheckAt:n,claim:null,lastResult:null,lastSuccessAt:null,failures:0,incident:null,outbox:[],alertOverflow:false};validate(v);const body=JSON.stringify(v);db.exec('BEGIN IMMEDIATE');try{db.exec(TABLE);db.prepare('INSERT INTO monitor_state VALUES(1,?,?)').run(body,hash(body));db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}const fd=fs.openSync(root,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_DIRECTORY);try{fs.fsyncSync(fd);}finally{fs.closeSync(fd);}}
   else{const v=read();now(v.lastClockAt);if(initial!==undefined&&JSON.stringify(target(initial))!==JSON.stringify(v.target))refuse();}

@@ -125,6 +125,7 @@ jobs:
           node scripts/test-phase8d-b2-destination.mjs
           node scripts/test-phase8d-recovery-selection.mjs
           node scripts/test-phase8d-backup-run.mjs
+          node scripts/test-phase8d-lifecycle-journal-admission.mjs
           node scripts/test-phase8d-backup-monitor.mjs
           node scripts/test-phase8d-monitor-open.mjs
           node scripts/test-phase8d-backup-alert-receipt.mjs
