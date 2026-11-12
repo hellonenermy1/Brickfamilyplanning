@@ -119,6 +119,7 @@ jobs:
       - name: Protected off-platform archive authentication identity and CLI
         run: |
           node scripts/test-phase8d-protected-backup.mjs
+          node scripts/test-phase8d-backup-capture-age.mjs
           node scripts/test-phase8d-private-archive-files.mjs
           node scripts/test-phase8d-backup-health.mjs
           node scripts/test-phase8d-b2-destination.mjs

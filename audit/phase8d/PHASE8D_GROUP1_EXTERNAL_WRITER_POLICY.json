@@ -381,6 +381,10 @@
     "scripts/test-phase8d-synthetic-pitr-reconcile.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Offline injected filtered-metadata model with source/account fixture substitution and filesystem effects; no actual Cloudflare request or mutation/recovery acceptance."
+    },
+    "scripts/test-phase8d-backup-capture-age.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Local crypto, private subprocess/file and synthetic B2 fixture coverage of stale device snapshots; source references do not exclude harness effects or prove actual cloud custody, capture fencing or recovery."
     }
   }
 }

@@ -85,6 +85,9 @@ function validatePayload(payload,expected) {
     if (!exact(snapshot,['format','deviceId','keySha256','capturedAt','state']) || snapshot.format !== 'brick-do-snapshot-v1' ||
         entry.name !== 'do/'+snapshot.deviceId || !identities.has(snapshot.deviceId) || seen.has(snapshot.deviceId) ||
         snapshot.keySha256 !== identities.get(snapshot.deviceId) || !positive(snapshot.capturedAt)) throw Error('backup device identity mismatch');
+    // Match captureProtectedBackup's lower bound at every packaging/open entrypoint.
+    // An authenticated old DO snapshot must not be mixed into a newer D1 capture.
+    if (snapshot.capturedAt < expected.capturedAt) throw Error('backup device snapshot predates capture boundary');
     checkDeviceState(snapshot.state);
     seen.add(snapshot.deviceId);
     snapshots.push({id:snapshot.deviceId,serialized:bytes.toString('utf8'),sha256:entry.sha256});

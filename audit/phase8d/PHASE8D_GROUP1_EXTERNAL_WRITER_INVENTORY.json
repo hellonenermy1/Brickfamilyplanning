@@ -3,11 +3,11 @@
   "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "2835a474a82136c3d21e75027512d5ef6f035e7f796e4d59d560026187c5a355",
+  "policySha256": "7e15d917c8c443e3c78ecf9e8ef64e2a528d9caa0ba4a9aa28ab46d509f8b2d4",
   "summary": {
-    "selectedFiles": 333,
+    "selectedFiles": 334,
     "filesWithManagementSignals": 83,
-    "explicitClassifications": 95,
+    "explicitClassifications": 96,
     "stagedOperatorLaunchers": 1,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 149
   },
-  "sourceSetSha256": "43c868450edaf48e53c24ae5f1c933e6eb9c2912f46a48f587adc653324271c6",
+  "sourceSetSha256": "1abe6ad4c47444741fc4e3e94e02b6f6af0b17e6e2d6aa4c9864a662eb446332",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -637,6 +637,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-backup-alert-receipt.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-backup-capture-age.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2330,6 +2335,31 @@
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-backup-capture-age.mjs",
+      "to": "scripts/cardfree-backup-health.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-capture-age.mjs",
+      "to": "scripts/cardfree-backup-package.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-capture-age.mjs",
+      "to": "scripts/cardfree-recovery-selection.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-capture-age.mjs",
+      "to": "scripts/phase8d-b2-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
+      "from": "scripts/test-phase8d-backup-capture-age.mjs",
+      "to": "scripts/phase8d-protected-backup.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-backup-health.mjs",
       "to": "scripts/cardfree-backup-health.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3533,8 +3563,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "e287a95bac92d80395d1e3d026d36b4579f2f624e5e517fc8a2368bf1aed4e82",
-      "gitBlobSha": "18277f3cfcd2e4f045ae6e376aa6ab163fabaf9e",
+      "sha256": "99fb9280c701c1934b97f70e4cf929aa1691257b1345c1e1d8f71d32ca844379",
+      "gitBlobSha": "fb6bff64e4cb72d1998e70a377c150227cff71fa",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3559,6 +3589,7 @@
         "scripts/test-phase8d-b2-destination.mjs",
         "scripts/test-phase8d-background-receipts.mjs",
         "scripts/test-phase8d-backup-alert-receipt.mjs",
+        "scripts/test-phase8d-backup-capture-age.mjs",
         "scripts/test-phase8d-backup-health.mjs",
         "scripts/test-phase8d-backup-monitor.mjs",
         "scripts/test-phase8d-backup-run.mjs",
@@ -4524,8 +4555,8 @@
     },
     {
       "path": "scripts/cardfree-backup-package.mjs",
-      "sha256": "8ebd948507a6fa1cc3b47a80e9020a859319f3c8cdb582a151f32b168a8bf194",
-      "gitBlobSha": "8e8ca0d8e86da514a266766c619bfde5c14fe9f0",
+      "sha256": "7daa953026abd6a9e96abbc7efcb28fa3a1cf236790d5de0a0a26492b1b626c3",
+      "gitBlobSha": "799b3c452987aa4bf7f76686038d626a03ba9321",
       "classification": "NO_LITERAL_MANAGEMENT_MARKER_NOT_PROVEN_SAFE",
       "reason": "No selected literal signal; indirect/dynamic/operator effects are not ruled out.",
       "signals": [],
@@ -7626,6 +7657,32 @@
       ],
       "referencedScriptCandidates": [
         "scripts/cardfree-backup-monitor.mjs"
+      ],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-backup-capture-age.mjs",
+      "sha256": "b1299bacb6643f6ab2ac9b1deb0fb72846081c314dff9d6ccc7c7d924c178648",
+      "gitBlobSha": "754fe5e3e7dbcd90fc57757f6c256826e55d17bc",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Local crypto, private subprocess/file and synthetic B2 fixture coverage of stale device snapshots; source references do not exclude harness effects or prove actual cloud custody, capture fencing or recovery.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./cardfree-backup-health.mjs",
+        "./cardfree-backup-package.mjs",
+        "./cardfree-recovery-selection.mjs",
+        "./phase8d-b2-fixture.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ],
+      "referencedScriptCandidates": [
+        "scripts/phase8d-protected-backup.mjs"
       ],
       "npmScriptReferences": []
     },
