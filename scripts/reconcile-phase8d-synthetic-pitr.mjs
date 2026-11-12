@@ -1,15 +1,15 @@
-// Read-only reconciliation of the one approved, uncertain creation attempt. No retry/SQL/write path.
+// Read-only reconciliation of explicitly reviewed synthetic names. No retry/SQL/write path.
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {syntheticPitrPlan} from './phase8d-synthetic-pitr.mjs';
-const approvedRun = '20261111-c004458eeca590ce';
+const reviewedRuns = new Set(['20261111-c004458eeca590ce', '20261112-f28a8d6cb028d0bb']);
 const sha = s => createHash('sha256').update(s).digest('hex');
 const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const uuid = s => typeof s === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(s);
 export async function reconcileSyntheticPitr({plan:input,token,request=fetch,timeoutMs=15000}) {
   const plan = syntheticPitrPlan(input);
-  if (plan.runId !== approvedRun || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 15000) throw Error('RECONCILIATION_SCOPE_REFUSED');
+  if (!reviewedRuns.has(plan.runId) || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 15000) throw Error('RECONCILIATION_SCOPE_REFUSED');
   const result = {format:'brick-synthetic-d1-reconciliation-v1',sourceSha:plan.sourceSha,runId:plan.runId,
     writeRequests:0,requestsMade:0,status:'BLOCKED',observations:[],originalMutationOutcome:'UNQUALIFIED_NO_RETRY',fullBrickRecoveryQualified:false};
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{20,256}$/.test(token)) return {...result,code:'DEDICATED_READ_TOKEN_REQUIRED'};
@@ -31,9 +31,9 @@ export async function reconcileSyntheticPitr({plan:input,token,request=fetch,tim
         if(Array.isArray(envelope?.errors))observation.providerErrorCodes=envelope.errors.map(e=>e?.code).filter(n=>Number.isSafeInteger(n)&&n>=1000&&n<=2147483647).slice(0,8);
         if(response.status!==200 || !object(envelope) || envelope.success!==true || !Array.isArray(envelope.errors) || envelope.errors.length || !Array.isArray(envelope.result)) throw Error('READ_RESPONSE_REFUSED');
         const info=envelope.result_info;
-        // total_count is documented as unfiltered: record it, never use it to infer filtered absence.
+        // Preserve provider pagination metadata without inferring the account population or quota.
         if(!object(info)||info.page!==1||info.per_page!==100||info.count!==envelope.result.length||envelope.result.length>=100)throw Error('SEARCH_INCOMPLETE');
-        if(Number.isSafeInteger(info.total_count)&&info.total_count>=0)observation.accountDatabaseCountReported=info.total_count;
+        if(Number.isSafeInteger(info.total_count)&&info.total_count>=0)observation.paginationTotalCountReported=info.total_count;
         if(envelope.result.some(d=>!object(d)||typeof d.name!=='string'||!uuid(d.uuid)))throw Error('READ_RESPONSE_REFUSED');
         const exact=envelope.result.filter(d=>d.name===name);
         if(exact.length>1)throw Error('AMBIGUOUS_TARGET');
@@ -55,7 +55,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   try {
     const event=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,'utf8')),i=event.inputs;
     if(process.argv.length!==2 || process.env.GITHUB_EVENT_NAME!=='workflow_dispatch' || process.env.GITHUB_REF_NAME!=='audit/phase8d-d1-qualification'
-       || i?.execute_new_synthetic_d1!=='false' || i.approved_source_sha!==process.env.GITHUB_SHA || i.run_id!==approvedRun)throw Error('EXACT_READ_ONLY_SCOPE_REQUIRED');
+       || i?.execute_new_synthetic_d1!=='false' || i.approved_source_sha!==process.env.GITHUB_SHA || !reviewedRuns.has(i.run_id))throw Error('EXACT_READ_ONLY_SCOPE_REQUIRED');
     const result=await reconcileSyntheticPitr({plan:{accountId:process.env.DRILL_ACCOUNT_ID,sourceSha:i.approved_source_sha,runId:i.run_id,rtoGoalSeconds:Number(i.rto_goal_seconds)},token:process.env.CLOUDFLARE_AUDIT_READ_TOKEN});
     console.log(JSON.stringify(result));process.exitCode=result.status==='READ_ONLY_OBSERVATION_COMPLETED_NO_RETRY'?0:2;
   } catch {console.error('Exact approved synthetic-name read-only reconciliation refused.');process.exitCode=1;}

@@ -26,7 +26,7 @@ export function syntheticPitrPlan(input) {
   if (!object(input) || Object.keys(input).sort().join(',') !== 'accountId,rtoGoalSeconds,runId,sourceSha'
       || !/^[a-f0-9]{32}$/.test(input.accountId) || sha(input.accountId) !== ACCOUNT_SHA
       || !/^[a-f0-9]{40}$/.test(input.sourceSha)
-      || !/^20261111-[a-f0-9]{16}$/.test(input.runId)
+      || !/^202611(?:11|12)-[a-f0-9]{16}$/.test(input.runId)
       || !Number.isInteger(input.rtoGoalSeconds) || input.rtoGoalSeconds < 60 || input.rtoGoalSeconds > 900)
     fail('PLAN_REFUSED');
   return Object.freeze({ ...input, names: Object.freeze(['primary', 'diagnostics'].map(role => 'brick-g1-' + input.runId + '-' + role)),
@@ -40,7 +40,7 @@ export async function runSyntheticPitr({plan: input, approved = false, token, re
   const plan = syntheticPitrPlan(input);
   const result = {format: 'brick-synthetic-d1-pitr-v1', sourceSha: plan.sourceSha, runId: plan.runId,
     scope: plan.scope, status: 'NOT_EXECUTED', fullBrickRecoveryQualified: false,
-    requestsMade: 0, plannedNames: [...plan.names], targets: [], events: [], rtoGoalSeconds: plan.rtoGoalSeconds,
+    requestsMade: 0, plannedNames: [...plan.names], targets: [], events: [], providerResponses: [], rtoGoalSeconds: plan.rtoGoalSeconds,
     checkpointRowsLost: null, syntheticPairRecoveryMs: null, resourceDeletionAttempted: false};
   if (approved !== true) return result;
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{20,256}$/.test(token)) return {...result, status: 'BLOCKED', code: 'OPERATOR_DRILL_TOKEN_REQUIRED'};
@@ -68,23 +68,52 @@ export async function runSyntheticPitr({plan: input, approved = false, token, re
         headers: {authorization: 'Bearer ' + token, 'content-type': 'application/json'},
         ...(payload === undefined ? {} : {body: JSON.stringify(payload)})});
       if (controller.signal.aborted) fail('REQUEST_TIMEOUT');
-      if (response.redirected || response.url && response.url !== url ||
-          !(response.status === 200 || method === 'POST' && suffix === '' && response.status === 201)) fail('RESPONSE_REFUSED');
-      if (!response.body?.getReader) fail('RESPONSE_REFUSED');
-      reader = response.body.getReader();
-      let bytes = 0; const chunks = [];
-      while (true) {
-        const part = await reader.read();
+      const observation = {stage, requestNumber: pending.requestNumber,
+        httpStatus: Number.isInteger(response.status) && response.status >= 100 && response.status <= 599 ? response.status : null,
+        routeVerified: !response.redirected && (!response.url || response.url === url) && !(response.status >= 300 && response.status <= 399),
+        bodyStatus: 'NOT_READ', apiSuccess: null, errorsArray: null, resultPresent: null, providerErrorCodes: []};
+      result.providerResponses.push(observation);
+      const publish = async state => {
         if (controller.signal.aborted) fail('REQUEST_TIMEOUT');
-        if (part.done) break;
-        bytes += part.value.byteLength;
-        if (bytes > 65536) fail('RESPONSE_TOO_LARGE');
-        chunks.push(Buffer.from(part.value));
+        // Fixed field projection only: never retain body/message/header/URL/target values.
+        const event = {state, ...observation, providerErrorCodes: [...observation.providerErrorCodes]};
+        result.events.push(event); await record(event);
+        if (controller.signal.aborted) fail('REQUEST_TIMEOUT');
+      };
+      await publish('RESPONSE_HEADERS_OBSERVED');
+      try {
+        if (!observation.routeVerified) fail('RESPONSE_REFUSED');
+        if (!response.body?.getReader) { observation.bodyStatus = 'UNAVAILABLE'; fail('RESPONSE_REFUSED'); }
+        reader = response.body.getReader(); observation.bodyStatus = 'INCOMPLETE';
+        let bytes = 0; const chunks = [];
+        while (true) {
+          const part = await reader.read();
+          if (controller.signal.aborted) fail('REQUEST_TIMEOUT');
+          if (part.done) break;
+          bytes += part.value.byteLength;
+          if (bytes > 65536) { observation.bodyStatus = 'TOO_LARGE'; fail('RESPONSE_TOO_LARGE'); }
+          chunks.push(Buffer.from(part.value));
+        }
+        let envelope;
+        try { envelope = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch { observation.bodyStatus = 'INVALID_JSON'; fail('RESPONSE_REFUSED'); }
+        observation.bodyStatus = 'JSON_COMPLETE';
+        observation.apiSuccess = typeof envelope?.success === 'boolean' ? envelope.success : null;
+        observation.errorsArray = Array.isArray(envelope?.errors);
+        observation.resultPresent = object(envelope) && Object.hasOwn(envelope, 'result');
+        if (observation.errorsArray) for (const entry of envelope.errors) {
+          const code = entry?.code;
+          if (Number.isSafeInteger(code) && code >= 1000 && code <= 2147483647 && !observation.providerErrorCodes.includes(code)) observation.providerErrorCodes.push(code);
+          if (observation.providerErrorCodes.length === 8) break;
+        }
+        // HTTP status and envelope rules are unchanged; diagnostics never authorize continuation.
+        if (!(response.status === 200 || method === 'POST' && suffix === '' && response.status === 201)
+            || !object(envelope) || envelope.success !== true || !Array.isArray(envelope.errors) || envelope.errors.length || !Object.hasOwn(envelope, 'result')) fail('RESPONSE_REFUSED');
+        return envelope.result;
+      } finally {
+        // A timed-out/aborted response must never append a late diagnostic or advance the run.
+        if (!controller.signal.aborted) await publish('RESPONSE_DIAGNOSTICS');
       }
-      let envelope;
-      try { envelope = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { fail('RESPONSE_REFUSED'); }
-      if (!object(envelope) || envelope.success !== true || !Array.isArray(envelope.errors) || envelope.errors.length || !Object.hasOwn(envelope, 'result')) fail('RESPONSE_REFUSED');
-      return envelope.result;
     })();
     try {
       const value = await Promise.race([work, new Promise((_, reject) => {

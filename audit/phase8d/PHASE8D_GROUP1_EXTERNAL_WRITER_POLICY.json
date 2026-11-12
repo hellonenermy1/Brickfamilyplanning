@@ -364,7 +364,7 @@
     },
     "scripts/phase8d-synthetic-pitr.mjs": {
       "classification": "STAGED_SYNTHETIC_D1_DRILL",
-      "reason": "Explicitly disarmed new/unbound synthetic D1 operator drill; no production controller install or generic continue authority. Two create responses only, pinned account/protected IDs, fixed SQL, no network retries/deletes. Requires separately approved exact manual scope."
+      "reason": "Staged new/unbound synthetic D1 drill with exact account/protected IDs, fixed SQL and no retries/deletes. Original approved attempt remains UNKNOWN. Bounded fixed-field HTTP/numeric-code diagnostics and a fresh Nov12 proposal are source only; no fresh write authority or runtime installation."
     },
     "scripts/test-phase8d-synthetic-pitr.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
@@ -376,7 +376,7 @@
     },
     "scripts/reconcile-phase8d-synthetic-pitr.mjs": {
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
-      "reason": "Exactly two approved uncertain-drill-name filtered D1 metadata GETs with dedicated read token, no SQL/write/retry/fallback, bounded body and sanitized identities/status/error codes. Native source is not live reconciliation or proof of original mutation failure."
+      "reason": "Dedicated-read-token GET-only lookup of two generated names for exactly two reviewed run identities, original and fresh proposed. No SQL/write/retry/fallback. Fixed sanitized fields and pagination totals without account population inference; proposal is not authority."
     },
     "scripts/test-phase8d-synthetic-pitr-reconcile.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",

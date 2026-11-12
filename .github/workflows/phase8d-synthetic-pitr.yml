@@ -11,7 +11,7 @@ on:
         type: string
         required: true
       run_id:
-        description: Fresh approved run identity, 20261111- followed by 16 random lowercase hex digits
+        description: Reviewed run identity, 20261111- or 20261112- followed by 16 lowercase hex digits
         type: string
         required: true
       rto_goal_seconds:
@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile-uncertain-synthetic-create:
-    if: github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == false && inputs.run_id == '20261111-c004458eeca590ce' && github.ref == 'refs/heads/audit/phase8d-d1-qualification'
+    if: github.event_name == 'workflow_dispatch' && inputs.execute_new_synthetic_d1 == false && (inputs.run_id == '20261111-c004458eeca590ce' || inputs.run_id == '20261112-f28a8d6cb028d0bb') && github.ref == 'refs/heads/audit/phase8d-d1-qualification'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     steps:

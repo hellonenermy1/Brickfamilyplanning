@@ -77,6 +77,10 @@ try {
   await test('unknown fields and existing-target selection are refused', async()=>{
     for(const bad of [{...input,primaryId:'11111111-1111-4111-8111-000000000001'},{...input,runId:'../../beta'},{...input,rtoGoalSeconds:0},{...input,sourceSha:'HEAD'},{...input,accountId:account.toUpperCase()+'f'}]) assert.throws(()=>planForTest(bad),/PLAN_REFUSED/);
   });
+  await test('fresh reviewed November12 plan preserves isolation and older evidence identities',async()=>{
+    const p=planForTest({...input,runId:'20261112-f28a8d6cb028d0bb'});assert.deepEqual(p.names,['brick-g1-20261112-f28a8d6cb028d0bb-primary','brick-g1-20261112-f28a8d6cb028d0bb-diagnostics']);assert.equal(p.maximumRequests,44);assert.equal(p.maximumCreates,2);assert.equal(p.maximumRestores,6);assert.equal(p.fullBrickRecoveryQualified,false);
+    assert.throws(()=>planForTest({...input,runId:'20261113-f28a8d6cb028d0bb'}),/PLAN_REFUSED/);
+  });
   await test('default disarmed invocation has zero requests',async()=>{let calls=0;const r=await run({plan:input,token,request:()=>calls++});assert.equal(r.status,'NOT_EXECUTED');assert.equal(calls,0);});
   await test('missing drill token has zero requests and no fallback',async()=>{const r=await run({plan:input,approved:true,request:()=>assert.fail()});assert.equal(r.code,'OPERATOR_DRILL_TOKEN_REQUIRED');});
   await test('real SQLite two-store restore undo and re-restore verifies every row',async()=>{
@@ -113,6 +117,66 @@ try {
   await test('post-restore identity drift cannot pass',async()=>{const {result:r}=await execute(s=>{if(s.call.index===23)s.result.name='rebound';});assert.equal(r.code,'TARGET_IDENTITY_REFUSED');assert.notEqual(r.status,'SYNTHETIC_SUBGATE_PASSED');});
   await test('restore missing previous bookmark stops before undo',async()=>{const {result:r,calls}=await execute(s=>{if(s.call.index===22)delete s.result.previous_bookmark;});assert.equal(r.code,'RESTORE_RESPONSE_REFUSED');assert.equal(calls.length,22);});
   await test('malformed bookmark is rejected before corruption',async()=>{const {result:r,calls}=await execute(s=>{if(s.call.index===6)s.result.bookmark='../../beta';});assert.equal(r.code,'BOOKMARK_REFUSED');assert.equal(calls.length,6);});
+  await test('denied create retains bounded numeric response diagnostics without leaking provider text',async()=>{
+    const journal=[];const {result:r,calls}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:false,errors:[{code:10000,message:token}],result:null},{status:403});},{record:e=>journal.push(e)});
+    assert.deepEqual(r.providerResponses?.map(x=>({httpStatus:x.httpStatus,providerErrorCodes:x.providerErrorCodes})),[{httpStatus:403,providerErrorCodes:[10000]}]);
+    assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert.equal(calls.length,1);assert(!JSON.stringify({r,journal}).includes(token));
+  });
+  for(const status of [400,401,409,429,500,503]) await test('HTTP '+status+' refusal records metadata but never retries',async()=>{
+    const journal=[];const {result:r,calls}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:false,errors:[{code:10000,message:token,documentation_url:'https://invalid/'+token}],result:null},{status});},{record:e=>journal.push(e)});
+    assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert.equal(r.code,'RESPONSE_REFUSED');assert.equal(calls.length,1);
+    assert.equal(r.providerResponses[0].httpStatus,status);assert.deepEqual(r.providerResponses[0].providerErrorCodes,[10000]);
+    assert(journal.some(e=>e.state==='RESPONSE_HEADERS_OBSERVED'&&e.httpStatus===status));assert(journal.some(e=>e.state==='RESPONSE_DIAGNOSTICS'&&e.providerErrorCodes[0]===10000));
+    assert(!journal.some(e=>e.state==='ENVELOPE_ACKNOWLEDGED'));assert(!JSON.stringify({r,journal}).includes(token));
+  });
+  await test('numeric error projection deduplicates bounds and omits arbitrary strings',async()=>{
+    const errors=[{code:token,message:token},{code:'10000'},{code:999},{code:-1000},{code:1000.5},{code:2147483648},{code:10000},{code:10000},...Array.from({length:12},(_,i)=>({code:11000+i,message:token}))];
+    const {result:r}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:false,errors,result:null},{status:403});});
+    assert.deepEqual(r.providerResponses[0].providerErrorCodes,[10000,11000,11001,11002,11003,11004,11005,11006]);assert(!JSON.stringify(r).includes(token));
+  });
+  await test('HTTP200 error envelope preserves codes and remains UNKNOWN',async()=>{
+    const {result:r,calls}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:true,errors:[{code:7500,message:token}],result:s.result});});
+    assert.equal(r.providerResponses[0].httpStatus,200);assert.equal(r.providerResponses[0].apiSuccess,true);assert.deepEqual(r.providerResponses[0].providerErrorCodes,[7500]);assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert.equal(calls.length,1);
+  });
+  await test('malformed error body preserves HTTP without storing text',async()=>{
+    const {result:r}=await execute(s=>{if(s.call.index===1)s.response=new Response(token,{status:403});});assert.equal(r.providerResponses[0].httpStatus,403);assert.equal(r.providerResponses[0].bodyStatus,'INVALID_JSON');assert(!JSON.stringify(r).includes(token));
+  });
+  await test('oversized error body keeps size bound and header evidence',async()=>{
+    const {result:r}=await execute(s=>{if(s.call.index===1)s.response=new Response(token.repeat(3000),{status:403});});assert.equal(r.code,'RESPONSE_TOO_LARGE');assert.equal(r.providerResponses[0].bodyStatus,'TOO_LARGE');assert.equal(r.providerResponses[0].httpStatus,403);assert(!JSON.stringify(r).includes(token));
+  });
+  await test('redirect status body is not read or retained',async()=>{
+    let response;const {result:r}=await execute(s=>{if(s.call.index===1){response=Response.json({success:false,errors:[{code:10000,message:token}]},{status:302});s.response=response;}});
+    assert.equal(response.bodyUsed,false);assert.equal(r.providerResponses[0].routeVerified,false);assert.equal(r.providerResponses[0].bodyStatus,'NOT_READ');assert.deepEqual(r.providerResponses[0].providerErrorCodes,[]);assert(!JSON.stringify(r).includes(token));
+  });
+  await test('changed final URL is never logged or consumed',async()=>{
+    let response;const {result:r}=await execute(s=>{if(s.call.index===1){response=Response.json({success:false,errors:[{code:10000,message:token}]});Object.defineProperty(response,'url',{value:'https://invalid/'+token});s.response=response;}});
+    assert.equal(response.bodyUsed,false);assert.equal(r.providerResponses[0].routeVerified,false);assert(!JSON.stringify(r).includes(token));
+  });
+  await test('unexpected202 mutation response is diagnostic evidence only',async()=>{
+    const {result:r,calls}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:true,errors:[],result:s.result},{status:202});});assert.equal(r.providerResponses[0].httpStatus,202);assert.equal(r.providerResponses[0].apiSuccess,true);assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert.equal(calls.length,1);
+  });
+  await test('201 remains accepted only for collection creation',async()=>{
+    const {result:r}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:true,errors:[],result:s.result},{status:201});});assert.equal(r.status,'SYNTHETIC_SUBGATE_PASSED');assert.equal(r.providerResponses[0].httpStatus,201);assert.equal(r.providerResponses.length,44);
+    const bad=await execute(s=>{if(s.call.index===2)s.response=Response.json({success:true,errors:[],result:s.result},{status:201});});assert.equal(bad.result.status,'STOPPED_UNQUALIFIED');assert.equal(bad.calls.length,2);assert.equal(bad.result.providerResponses[1].httpStatus,201);
+  });
+  await test('missing errors array is distinguishable without accepting the envelope',async()=>{
+    const {result:r}=await execute(s=>{if(s.call.index===1)s.response=Response.json({success:true,result:s.result});});assert.equal(r.providerResponses[0].errorsArray,false);assert.equal(r.providerResponses[0].resultPresent,true);assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');
+  });
+  await test('headers persist before a stalled body times out',async()=>{
+    const journal=[];const {result:r,calls}=await execute(s=>{if(s.call.index===1)s.response=new Response(new ReadableStream({start(){},cancel(){}}),{status:403});},{timeoutMs:5,record:e=>journal.push(e)});
+    assert.equal(r.code,'REQUEST_TIMEOUT');assert.equal(calls.length,1);assert.equal(r.providerResponses[0].httpStatus,403);assert.equal(r.providerResponses[0].bodyStatus,'INCOMPLETE');assert(journal.some(e=>e.state==='RESPONSE_HEADERS_OBSERVED'&&e.httpStatus===403));assert(!journal.some(e=>e.state==='ENVELOPE_ACKNOWLEDGED'));
+  });
+  for(const state of ['RESPONSE_HEADERS_OBSERVED','RESPONSE_DIAGNOSTICS']) await test('journal failure at '+state+' cannot acknowledge or retry mutation',async()=>{
+    const {result:r,calls}=await execute(undefined,{record:e=>{if(e.state===state)throw Error('private disk '+token);}});assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert.equal(calls.length,1);assert.equal(r.providerResponses[0].httpStatus,200);assert(!JSON.stringify(r).includes(token));
+  });
+  await test('lost response has no invented status or provider cause',async()=>{
+    const {result:r}=await execute(s=>{if(s.call.index===1)throw Error(token);});assert.deepEqual(r.providerResponses,[]);assert.equal(r.status,'MUTATION_OUTCOME_UNKNOWN');assert(!JSON.stringify(r).includes(token));
+  });
+  await test('all successful request observations are fixed-shape and bounded',async()=>{
+    const {result:r}=await execute();const keys='apiSuccess,bodyStatus,errorsArray,httpStatus,providerErrorCodes,requestNumber,resultPresent,routeVerified,stage';
+    assert.equal(r.providerResponses.length,44);assert(r.providerResponses.every((x,i)=>Object.keys(x).sort().join(',')===keys&&x.requestNumber===i+1&&x.bodyStatus==='JSON_COMPLETE'&&x.apiSuccess===true&&x.providerErrorCodes.length===0));
+    assert(!JSON.stringify(r.providerResponses).includes('baseline-a'));assert(!JSON.stringify(r.providerResponses).includes('11111111-1111'));
+  });
   for(const kind of ['redirect','denied','oversize','invalid-json','errors','false-success']) await test('bounded response rejects '+kind,async()=>{
     const {result:r,calls}=await execute(s=>{if(s.call.index!==1)return;
       if(kind==='redirect')s.response=new Response('',{status:302});

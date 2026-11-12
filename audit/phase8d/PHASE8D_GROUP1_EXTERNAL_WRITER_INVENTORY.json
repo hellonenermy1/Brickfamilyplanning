@@ -3,7 +3,7 @@
   "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "33ddd2be225284926109e72aaf063c635d9cec5f5f069340fb45071b8e6859b6",
+  "policySha256": "2835a474a82136c3d21e75027512d5ef6f035e7f796e4d59d560026187c5a355",
   "summary": {
     "selectedFiles": 333,
     "filesWithManagementSignals": 83,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 149
   },
-  "sourceSetSha256": "e59670b8a9133da5971b43ede73e6cf6040f6d19fffc77272e5d4796f7ca3f79",
+  "sourceSetSha256": "43c868450edaf48e53c24ae5f1c933e6eb9c2912f46a48f587adc653324271c6",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -3689,8 +3689,8 @@
     },
     {
       "path": ".github/workflows/phase8d-synthetic-pitr.yml",
-      "sha256": "36f6c73824ee20a89de63ffc4b7703453792c013e666ce323cf24e89912629a3",
-      "gitBlobSha": "790599806335ea5c12bd6059a00ff6d7b1d56da9",
+      "sha256": "5b181915308d45c964e36ebb770a3575f0aa74951f8e8ac4d47fd244492b6b7d",
+      "gitBlobSha": "e2053832778ac794940e3c0037ae2a381b2aa449",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Manual write gate and separately scoped false-input GET-only reconciliation; registration PR62 merged after explicit user approval, original one-request write attempt outcome UNKNOWN and never retried. Reconciliation uses only dedicated metadata read token; no runtime installation.",
       "signals": [
@@ -5753,10 +5753,10 @@
     },
     {
       "path": "scripts/phase8d-synthetic-pitr.mjs",
-      "sha256": "daf7feb29065a9e7899414ff973943f856db37e4a5727a1c6770b3ab60414ec9",
-      "gitBlobSha": "5b1c2755e7a7773a90ad7bd5f21758998909918c",
+      "sha256": "7dd0ffdb8ab1ffa4346cefe3e52339ac6aaf7c12be759ee8e1892e42da3b9940",
+      "gitBlobSha": "1333c141ab85c80de1bafdac3a1fbd56c156942e",
       "classification": "STAGED_SYNTHETIC_D1_DRILL",
-      "reason": "Explicitly disarmed new/unbound synthetic D1 operator drill; no production controller install or generic continue authority. Two create responses only, pinned account/protected IDs, fixed SQL, no network retries/deletes. Requires separately approved exact manual scope.",
+      "reason": "Staged new/unbound synthetic D1 drill with exact account/protected IDs, fixed SQL and no retries/deletes. Original approved attempt remains UNKNOWN. Bounded fixed-field HTTP/numeric-code diagnostics and a fresh Nov12 proposal are source only; no fresh write authority or runtime installation.",
       "signals": [
         {
           "line": 6,
@@ -5857,10 +5857,10 @@
     },
     {
       "path": "scripts/reconcile-phase8d-synthetic-pitr.mjs",
-      "sha256": "8887da86dec416b43f12c4bfe3534488c48ce6bdb0634b9400955c8f7e69216f",
-      "gitBlobSha": "daa646543525e05832f787751ff87a7b024f9aae",
+      "sha256": "3c249c4a54c32a3ab19d0f6e64de7d5daf85271a5ea5e3f53fa9e282cc566457",
+      "gitBlobSha": "d2ce2885d5469884bb2363a802bb2c15d98e2dd0",
       "classification": "GET_ONLY_MANAGEMENT_SOURCE",
-      "reason": "Exactly two approved uncertain-drill-name filtered D1 metadata GETs with dedicated read token, no SQL/write/retry/fallback, bounded body and sanitized identities/status/error codes. Native source is not live reconciliation or proof of original mutation failure.",
+      "reason": "Dedicated-read-token GET-only lookup of two generated names for exactly two reviewed run identities, original and fresh proposed. No SQL/write/retry/fallback. Fixed sanitized fields and pagination totals without account population inference; proposal is not authority.",
       "signals": [
         {
           "line": 20,
@@ -10802,13 +10802,13 @@
     },
     {
       "path": "scripts/test-phase8d-synthetic-pitr-reconcile.mjs",
-      "sha256": "3c1ff103417b2ab58d2c073e00e635b72d8336f82d626c672249068085950de1",
-      "gitBlobSha": "b7349a2e625b853512cab9250c923de601fb8d26",
+      "sha256": "965f912881e192e32d191b41afb08d1d35315a2222ed91a64444b9c07557052b",
+      "gitBlobSha": "55a5f936d8948f401192bbf65ae841628402c7b4",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Offline injected filtered-metadata model with source/account fixture substitution and filesystem effects; no actual Cloudflare request or mutation/recovery acceptance.",
       "signals": [
         {
-          "line": 22,
+          "line": 23,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
@@ -10831,8 +10831,8 @@
     },
     {
       "path": "scripts/test-phase8d-synthetic-pitr.mjs",
-      "sha256": "34063a7612f028f6ce9dbad0493ac2b0585ef5a4fa5add99af06d4fd4500bcd6",
-      "gitBlobSha": "b9c515e3fa1cc7dfcd209982003b43793d96e1dd",
+      "sha256": "cfc4bd47dd5ecc62072847a8b49469986d812d7ac57eba0b0e103fefee39750f",
+      "gitBlobSha": "f53652a925b4ea94a6be4f9ef23c3a30f5d66e5f",
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Offline injected SQLite provider and private CLI fault tests only; source references do not exclude harness filesystem/subprocess effects or qualify real Cloudflare mutation.",
       "signals": [
@@ -10841,11 +10841,11 @@
           "kind": "MANAGEMENT_API_LITERAL"
         },
         {
-          "line": 142,
+          "line": 206,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         },
         {
-          "line": 148,
+          "line": 212,
           "kind": "CLOUDFLARE_TOKEN_REFERENCE"
         }
       ],
