@@ -1,7 +1,7 @@
 {
   "format": "brick-phase8d-group1-readiness-v1",
   "selectedGroup": 1,
-  "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+  "sourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
   "status": "IN_PROGRESS_NOT_READY",
   "p8d002": "P1_OPEN",
   "proceedToAnotherGroup": false,
@@ -580,6 +580,17 @@
       "providerWriteRequests": 0,
       "exactProposedNamesObserved": 0,
       "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json"
+    },
+    {
+      "id": "BOUNDED_SYNTHETIC_RESPONSE_DIAGNOSTICS",
+      "state": "SOURCE_NATIVE_HOSTED_QUALIFIED_NOT_NEW_PROVIDER_OBSERVATION",
+      "drillCases": 62,
+      "reconciliationCases": 18,
+      "additionalCasesComparedToPrior": 23,
+      "freshProcessCliJournalReadback": true,
+      "maximumProviderErrorCodes": 8,
+      "rawProviderContentRetained": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json"
     }
   ],
   "remaining": [
@@ -626,26 +637,26 @@
     },
     {
       "id": "ISOLATED_CLOUD_RESTORE",
-      "state": "APPROVED_CREATE_ATTEMPT_UNKNOWN_RECONCILED_NO_NAMES_RESTORE_NOT_REACHED",
-      "needed": "PR62 merged and initial bounded900-second synthetic operation approved. One create response was refused/unknown; never retried. Two dedicated read-token filtered GETs later found neither exact name. No verified creation/restore/elapsed recovery. Preserve evidence, correct bounded numeric response diagnostics in source, then prepare a fresh reviewed named operation before any repeat-write authority. Full41+4/deviceDO live parity/interruption and full-production criteria/review remain open."
+      "state": "ORIGINAL_CREATE_UNKNOWN_FRESH_DIAGNOSTIC_SOURCE_PREPARED_NOT_EXECUTED",
+      "needed": "Original one-create UNKNOWN and completed old-name GET observations remain unchanged. Bounded response diagnostics corrected; fresh Nov12 two-new-D1 identities/scope prepared but unapproved/unexecuted. Approve and observe that fresh bounded operation before any real subgate claim. Full encrypted41+4/deviceDO cloud recovery/interruption/rollback, production criteria and independent review remain open."
     }
   ],
   "remainingProductTestCount": null,
   "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
-  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json",
   "hostedStatus": {
     "currentSourcePushCiQualified": true,
     "currentPrMergeCheckoutVerified": true,
     "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
     "runs": [
       {
-        "runId": 42965672332,
-        "jobId": 130342198905,
+        "runId": 43176560542,
+        "jobId": 131042090110,
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 283036,
+        "logCharacters": 285212,
         "errorMarkers": 0,
         "sourceShaPresent": true,
         "checkoutShaPresent": true,
@@ -660,13 +671,13 @@
           },
           {
             "suite": "synthetic-d1-pitr",
-            "passed": 40,
+            "passed": 62,
             "failed": 0,
             "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
           },
           {
             "suite": "synthetic-d1-pitr-reconciliation",
-            "passed": 17,
+            "passed": 18,
             "failed": 0,
             "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
           },
@@ -745,13 +756,13 @@
         ]
       },
       {
-        "runId": 42965678159,
-        "jobId": 130342218307,
+        "runId": 43176568086,
+        "jobId": 131042115025,
         "conclusion": "success",
         "passedSteps": 33,
         "totalSteps": 33,
         "completeDecodedLogInspected": true,
-        "logCharacters": 284917,
+        "logCharacters": 287170,
         "errorMarkers": 0,
         "sourceShaPresent": true,
         "checkoutShaPresent": true,
@@ -766,13 +777,13 @@
           },
           {
             "suite": "synthetic-d1-pitr",
-            "passed": 40,
+            "passed": 62,
             "failed": 0,
             "scope": "offline SQLite provider model only; no live creation, restore, elapsed cloud RTO, full Brick recovery or acceptance"
           },
           {
             "suite": "synthetic-d1-pitr-reconciliation",
-            "passed": 17,
+            "passed": 18,
             "failed": 0,
             "scope": "offline GET-only filtered metadata, exact names, redaction, paging and timeout checks; no provider, writes or recovery acceptance"
           },
@@ -851,13 +862,13 @@
         ]
       },
       {
-        "runId": 42965678151,
-        "jobId": 130342218021,
+        "runId": 43176568101,
+        "jobId": 131042115495,
         "conclusion": "success",
         "passedSteps": 10,
         "totalSteps": 10,
         "completeDecodedLogInspected": true,
-        "logCharacters": 16168,
+        "logCharacters": 16169,
         "errorMarkers": 0,
         "sourceShaPresent": true,
         "checkoutShaPresent": true,
@@ -866,13 +877,13 @@
         "nativeSuites": []
       },
       {
-        "runId": 42965678177,
-        "jobId": 130342217850,
+        "runId": 43176568095,
+        "jobId": 131042114814,
         "conclusion": "success",
         "passedSteps": 14,
         "totalSteps": 14,
         "completeDecodedLogInspected": true,
-        "logCharacters": 24999,
+        "logCharacters": 25000,
         "errorMarkers": 0,
         "sourceShaPresent": true,
         "checkoutShaPresent": true,
@@ -881,46 +892,47 @@
         "nativeSuites": []
       }
     ],
-    "previousSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
-    "scope": "Exact source/native/offline qualification only; actual initial cloud create failed unknown. Successful name reconciliation is GET-only, not restore acceptance."
+    "previousSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+    "scope": "Source/native/offline diagnostics qualification only; no new cloud operation and no original response-cause recovery."
   },
-  "lastHostedQualifiedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
-  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
-  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+  "lastHostedQualifiedSourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json",
   "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-  "lastMergeQualifiedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+  "lastMergeQualifiedSourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
   "completedIntegrationGates": [
     {
       "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+      "sourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-      "previousRecordedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
-      "testedPrMergeSha": "b6ceb91e707c04ef0edc8afe51474c0a295ed39e"
+      "previousRecordedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json",
+      "testedPrMergeSha": "c8ce1866c26b479e4968316fe5a938b669a2bf23"
     },
     {
       "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
       "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
-      "sourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+      "sourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
       "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
-      "previousRecordedSourceSha": "a5713ae7578120d8d0c5fb7946a25677a285abe8",
-      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
-      "testedPrMergeSha": "b6ceb91e707c04ef0edc8afe51474c0a295ed39e"
+      "previousRecordedSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json",
+      "testedPrMergeSha": "c8ce1866c26b479e4968316fe5a938b669a2bf23"
     }
   ],
   "executionForecast": {
     "target": "FOUR_ACTIVE_WORKDAYS",
-    "state": "AT_RISK",
+    "state": "FOUR_DAY_TARGET_MISSED_EXIT_GATES_OPEN",
     "reasons": [
       "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
       "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete.",
       "Pinned live metadata is verified; complete writer/custody/schedule and isolated cloud restore/rollback with agreed RTO/RPO remain open."
     ],
     "nextPreparedProviderAction": {
-      "previousAction": "APPROVED_AND_EXECUTED",
-      "bucketName": "brick-recovery-jayvian-20261107",
-      "scope": "Private bucket + bounded encrypted synthetic roundtrip/local restore only; no repeat authorization needed for the granted scope."
+      "scope": "Fresh reviewed two-new-D1 synthetic restore/undo proposal; initial one-create UNKNOWN never retried.",
+      "runId": "20261112-f28a8d6cb028d0bb",
+      "approval": "NOT_GRANTED",
+      "reviewPath": "audit/phase8d/PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md"
     },
     "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery.",
     "nextUnqualifiedActions": [
@@ -964,14 +976,30 @@
         "evidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARD_HOST_PREFLIGHT_2026-11-11.md",
         "replacementSelected": false
       }
-    ]
+    ],
+    "checkedDate": "2026-11-12",
+    "previousPreparedProviderAction": {
+      "previousAction": "APPROVED_AND_EXECUTED",
+      "bucketName": "brick-recovery-jayvian-20261107",
+      "scope": "Private bucket + bounded encrypted synthetic roundtrip/local restore only; no repeat authorization needed for the granted scope."
+    }
   },
   "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
   "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
   "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
   "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
-  "localVerificationStatus": "FOCUSED_17_AND_40_PASSED_NO_FULL_EXACT_SOURCE_LOCAL_CAMPAIGN_CLAIM",
+  "localVerificationStatus": "FOCUSED_62_18_44_23_AND_FRESH_PROCESS_PRIVATE_CLI_JOURNAL_PASSED_NO_FULL_LOCAL_CAMPAIGN_CLAIM",
   "preparedCloudDrillReviewPath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md",
   "previousOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
-  "latestSyntheticReconciliationSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d"
+  "latestSyntheticReconciliationSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+  "freshCloudDrillProposal": {
+    "state": "PREPARED_NOT_APPROVED_NOT_EXECUTED",
+    "runId": "20261112-f28a8d6cb028d0bb",
+    "reviewPath": "audit/phase8d/PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md",
+    "maximumCreates": 2,
+    "maximumRequests": 44,
+    "maximumRestores": 6,
+    "syntheticGoalSeconds": 900,
+    "requiresLauncherMerge": false
+  }
 }

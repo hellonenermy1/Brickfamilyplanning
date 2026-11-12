@@ -1,7 +1,13 @@
 # Phase 8D — Group 1 executable closure checklist
-Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `c2e0dddfc38c38de5b7910a46e1dbb62f84d866d`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
+Updated: 2026-11-11 Singapore. Exact verified executable+inventory SHA `a20acc569adcf2124b9a623051e3d50bbad6f193`. Source: Group 1 activation/restart packet, canonical readiness and historical PITR/B2 evidence. **This is a tracking checklist, not a blanket PASS.**
 
 Rules: [x] means the specifically named **bounded** evidence exists, not that the whole parent category is complete. Distinguish SOURCE/CI/PROVIDER/OPERATIONAL. Historical failures remain visible. Never use R2, card/billing, production family-data exports or destructive production drills. PR #32 remains draft/unmerged; source CI is not deployment.
+
+## 12 November — safe response diagnostics and fresh reviewed identity
+
+- [x] SOURCE/OFFLINE: reproduced missing status/code at04b3c1cf before correction. Fixed bounded numeric/status/shape diagnostics and fsynced header/completion observations;62 drill +18 reconciliation cases,44 metadata +23 inventory checks pass. Fresh-process private journal readback passes with synthetic fetch/account only. Exact push/PR audits33/33 each and portal14/14+10/10 are verified from complete logs and expected source/base/merge tree.
+- [x] REVIEW PREPARATION: fresh run20261112-f28a8d6cb028d0bb and two generated D1 names prepared; no new launcher merge needed. See PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md and RESPONSE_DIAGNOSTICS_EVIDENCE.json.
+- [ ] FRESH OPERATION: new write attempt is unapproved/unexecuted. Original one-request create remains UNKNOWN and must not be retried; no actual new response/cause/cloud restore or full Group1 acceptance is inferred from source tests.
 
 ## 11 November — approved operation attempted, restore not reached
 
