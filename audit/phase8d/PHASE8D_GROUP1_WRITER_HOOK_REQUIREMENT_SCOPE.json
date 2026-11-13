@@ -1,0 +1,35 @@
+{
+  "format": "brick-phase8d-group1-writer-hook-scope-v1",
+  "sourceSha": "4f0e143fe3856793b78385a4c0b55a6a5f454595",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Sixteen inert actor mutation hooks and a scoped deferred-work lifetime helper are present. Twenty-one controlled helper cases and native actor retention/preemption/restore scenarios are verified. Eighty-eight runtime source blobs match the exact source; zero production controller installs. Full Worker/D1/external coverage and urgent-outage fallback remain incomplete.",
+      "remaining": "Real ingress/RPC/alarm/deferred and external-writer hooks, urgent authority-outage fallback, authenticated resource-pinned transport, independent destination/key/schedule/current PITR/cloud recovery still required.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "classification": "MANDATORY",
+      "requirement": "Backup is actually restored into a fresh test target and devices/history/config are verified, not merely created.",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Actual native41+4/deviceDO encrypted destruction/restore now exercises hooked retention refusal, an actual health write preempting capture at release, and exact archived DO-state parity after isolated restore. A controlled outer writer still covers otherwise unhooked fixture writes.",
+      "remaining": "Controlled synthetic/native fixture is not a production fence, independent custody or an isolated live cloud restore/interruption/RTO/RPO/rollback acceptance.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Group1 staged component/controlled native proof only; no other group advanced and no canonical status/owner/review/criterion/final disposition changed."
+}

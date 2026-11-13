@@ -1,0 +1,10 @@
+{
+  "format": "brick-group1-commit-boundary-red-v1",
+  "interimStagedSourceSha": "687a36f15c492ce63f71c48b94f497b7bb7d7438",
+  "scope": "actual local coordinator, actual41+4/deviceDO capture and native durable authority in a controlled synthetic writer-envelope fixture; no live writers or provider requests",
+  "scenario": "Urgent writer admitted between final assertHeld and authority.release; capture was PREEMPTED but release returned true for its known closed generation.",
+  "observed": "assert.rejects(captureProtectedBackup, /CAPTURE_RELEASE_FAILED/) failed with Missing expected rejection: coordinator returned a sealed capture.",
+  "rootCause": "Cleanup acknowledgement did not distinguish invalidated capture from valid release/commit boundary.",
+  "correction": "Known PREEMPTED/EXPIRED closure returns released=false; only active matching release or prior successful RELEASED closure acknowledges a valid boundary.",
+  "finalQualification": "Requires new exact-source native and full hosted verification; interim source is not current qualified source."
+}

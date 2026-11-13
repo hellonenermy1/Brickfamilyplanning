@@ -1,0 +1,90 @@
+{
+  "format": "brick-phase8d-pitr-lifecycle-hosted-v1",
+  "sourceSha": "2d9a3073288a304b4820fe0b30f27a5f8a3fd843",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newCases": {
+    "pitrReadLifecycle": 34,
+    "total": 34
+  },
+  "inheritedPitrCases": 8,
+  "runs": [
+    {
+      "runId": 42159958817,
+      "jobId": 127703013340,
+      "event": "pull_request",
+      "steps": 33,
+      "conclusion": "success",
+      "checkoutSha": "fdc2635504486d8ece7f29d322b8c6b82ba3625b",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T04:02:00.1476670Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-06T04:02:03.6173704Z {\"suite\":\"pitr-readonly-lifecycle\",\"passed\":34,\"failed\":0,\"scope\":\"synthetic HTTP capabilities and actual local CLI files; no live identity, retention, provider, restore or browser acceptance\"}",
+        "2026-11-06T04:02:42.1807080Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T04:02:46.2501679Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T04:02:46.2955317Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T04:02:46.3021101Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    },
+    {
+      "runId": 42159959107,
+      "jobId": 127703014835,
+      "event": "pull_request",
+      "steps": 10,
+      "conclusion": "success",
+      "checkoutSha": "fdc2635504486d8ece7f29d322b8c6b82ba3625b",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42159953719,
+      "jobId": 127703147573,
+      "event": "push",
+      "steps": 33,
+      "conclusion": "success",
+      "checkoutSha": "2d9a3073288a304b4820fe0b30f27a5f8a3fd843",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T04:02:48.7566532Z {\"suite\":\"cardfree-pitr-readonly\",\"passed\":8,\"failed\":0,\"scope\":\"synthetic GET transport contract; no live token, account requests, SQL or restore; metadata is not PITR window/recovery proof\"}",
+        "2026-11-06T04:02:52.3730659Z {\"suite\":\"pitr-readonly-lifecycle\",\"passed\":34,\"failed\":0,\"scope\":\"synthetic HTTP capabilities and actual local CLI files; no live identity, retention, provider, restore or browser acceptance\"}",
+        "2026-11-06T04:03:41.5772933Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T04:03:47.9304435Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T04:03:47.9825252Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T04:03:48.0124265Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    }
+  ],
+  "initialHostedFixtureFailure": {
+    "format": "brick-phase8d-pitr-hosted-fixture-adjustment-v1",
+    "initialSourceSha": "c0b33ce12f699d57f9378517e479b4fded931629",
+    "failedRunId": 42159687245,
+    "failedJobId": 127702143085,
+    "observation": "First healthy fixture asserted checksPassed=true but received false; suite exited at test-phase8d-pitr-lifecycle.mjs:14 after inherited PITR8 passed.",
+    "interpretation": "25ms normal fixture per-request budget is too tight for hosted cold startup (inference); parallel push passed this boundary. Explicit synchronous-late tests retain 10ms and aggregate test retains85ms total.",
+    "adjustment": "Normal synthetic fixture budget250ms, total2000ms; test watchdog4000ms. No production timeout, proof flags, network permission or runtime logic weakened.",
+    "finalQualification": "Fresh exact-source workflow required; initial failed run not counted as success."
+  },
+  "providerAccess": {
+    "dashboardVerified": false,
+    "userCompletedPhoneApprovals": true,
+    "observedGoogleFailure": "Unable to sign in. Try again or use your email and password.",
+    "observedUserControlledLoginStatus": 403,
+    "furtherFreshPageRetry": "USER_REPORTED_UNSUCCESSFUL",
+    "cookieReset": "BROWSER_POLICY_REFUSED_NOT_PERFORMED",
+    "cause": "UNDETERMINED",
+    "newAccountOrTokenOrPermissionsCreated": false,
+    "liveDedicatedReadRetried": false,
+    "broadDeploymentCredentialFallback": false
+  },
+  "scope": "Synthetic HTTP capabilities and actual local CLI private files; current full hosted no-cloud-write regression only. No live account identity/PITR-window/bindings, actual external fence/transport/destination/key/schedule/cloud restore/RTO/RPO acceptance.",
+  "ledgerScope": [
+    "OPS-002"
+  ],
+  "canonicalStatusOwnerReviewDispositionChanged": false,
+  "noMergeOrDeployment": true,
+  "existingWarning": "Miniflare restore RPC stub disposal warning remains; local/native restore is not live recovery proof."
+}

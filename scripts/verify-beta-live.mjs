@@ -1,8 +1,11 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
 import fs from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 const state=JSON.parse(await fs.readFile('beta-setup-state.json','utf8'));
-if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9-]{36}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
+if(!/^[a-f0-9]{32}$/i.test(state.accountId??'')||!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(state.d1Id??''))throw Error('Verified beta account/database provenance missing');
+if(typeof process.env.CLOUDFLARE_API_TOKEN!=='string'||!process.env.CLOUDFLARE_API_TOKEN.length)throw Error('Dedicated D1 management credential required');
 if(state.sourceGitSha!==process.env.GITHUB_SHA||state.resources.DB!=='brick-family-beta'||state.storageMode!=='d1-chunked-no-r2'||!/^brick-family-beta\.[a-z0-9-]+\.workers\.dev$/.test(state.workerHost))throw Error('Card-free beta deployment provenance mismatch');
+await runStagedExternalWriter('probe',{sourceSha:state.sourceGitSha,accountId:state.accountId,databaseId:state.d1Id,workerName:'brick-family-beta',workerHost:state.workerHost},async()=>{
 const origin='https://'+state.workerHost,checks=[];
 for(const route of ['/parent','/parent/change-password','/parent/beta/download/apk','/parent/beta/download/manifest','/parent/api/devices']){
  const r=await fetch(origin+route,{headers:{'X-Brick-Dev-Parent-Verified':'session-v1'},redirect:'manual',signal:AbortSignal.timeout(20000)});
@@ -12,7 +15,17 @@ for(const route of ['/parent','/parent/change-password','/parent/beta/download/a
  checks.push({route,status:r.status,forgedHeaderDenied:true});
 }
 const session=randomBytes(32).toString('base64url'),hash=createHash('sha256').update(session).digest('hex'),now=Date.now();
-async function query(sql,params){const r=await fetch('https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});const b=await r.json();if(!r.ok||b.success!==true)throw Error('D1 smoke session request failed');return b.result;}
+async function query(sql,params){
+ const url='https://api.cloudflare.com/client/v4/accounts/'+state.accountId+'/d1/database/'+state.d1Id+'/query';
+ if(typeof process.env.CLOUDFLARE_API_TOKEN!=='string'||!process.env.CLOUDFLARE_API_TOKEN.length)throw Error('Dedicated D1 management credential required');
+ const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sql,params}),redirect:'error',signal:AbortSignal.timeout(20000)});
+ if(r?.status!==200||!r.ok||r.redirected||r.url&&r.url!==url)throw Error('Scoped D1 session metadata unavailable');
+ const b=await r.json().catch(()=>null);
+ if(!b||b.success!==true||!Array.isArray(b.result))throw Error('Scoped D1 session response invalid');
+ // SQL errors can be embedded inside otherwise successful API envelopes.
+ if(b.result.some(x=>!x||x.success===false||!Array.isArray(x.results)))throw Error('Scoped D1 session statement unqualified');
+ return b.result;
+}
 const schema=await query("SELECT 1 AS ok FROM sqlite_master WHERE type='table' AND name='dev_parent_credentials' LIMIT 1",[]);
 if(schema?.[0]?.results?.[0]?.ok!==1)throw Error('Additive parent credential migration not present in live beta D1');
 checks.push({route:'d1_parent_credential_schema',status:'PASS'});
@@ -37,3 +50,4 @@ try{
 const r=await fetch(origin+'/api/device/beta-unpaired/beta/readiness',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',redirect:'manual',signal:AbortSignal.timeout(20000)});if(r.status!==401)throw Error('Unsigned beta device request not denied: '+r.status);
 await fs.writeFile('beta-live-verification.json',JSON.stringify({sourceSha:process.env.GITHUB_SHA,origin,storage:'D1',queues:'NONE',access:'D1_PARENT_SESSION',checks,actualParentBrowser:'PENDING',realPhoneReadiness:'PENDING',endurance72h:'NOT_STARTED'},null,2));
 console.log('Verified private card-free beta portal: '+origin+'/parent');
+});

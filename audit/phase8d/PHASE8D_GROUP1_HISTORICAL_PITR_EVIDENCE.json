@@ -1,0 +1,145 @@
+{
+  "format": "brick-phase8d-group1-historical-pitr-observation-v1",
+  "date": "2026-11-10",
+  "executionSourceSha": "6d1111407b043ea9f0f2a50012563165066d3f80",
+  "qualifiedExecutableSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "executableDiffFromQualifiedSourceEmpty": true,
+  "status": "HISTORICAL_AND_CURRENT_BOOKMARKS_OBSERVED_EXPECTED_DO_PINS_REQUIRED",
+  "historicalTarget": {
+    "timestamp": "2026-11-06T16:51:22.000Z",
+    "reason": "Exact annotation deployment completion time in recorded successful beta deployment job; after both D1 creation times. A sampled point, not an agreed recovery objective.",
+    "deploymentRunId": 42255984279,
+    "deploymentJobId": 128023597262,
+    "deploymentSourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "deploymentCheckoutVerified": true,
+    "deploymentDecodedLogSha256": "7fef66d792ff2430ed63c60d9398aa7339569dd8dbba36f8bb7e7d7b7efa287d",
+    "namespaceIdsPresentInDeploymentLog": false,
+    "automaticObservedNamespacePromotion": false
+  },
+  "workflow": {
+    "runId": 42823302330,
+    "runAttempt": 1,
+    "event": "workflow_dispatch",
+    "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42823302330",
+    "metadataJobId": 129854046117,
+    "metadataJobConclusion": "failure",
+    "metadataJobCheckoutVerified": true,
+    "cliExitCode": 2,
+    "metadataJobErrorMarkers": 1,
+    "metadataDecodedLogSha256": "6e710c037ef3ebf08466fb63263e5991e69807b591737e24a9cbcae03c6c88db",
+    "artifactId": 13766479107,
+    "artifactZipSha256": "e66df998f60ac1b82d7e52d41cd9ffabd2ad485a60f9ec6439af79ceb2b89660",
+    "sanitizedResultSha256": "635002a7211a822e7d3350bd52e17e9dcbd46a253f62b6458e95a57de242274c",
+    "artifactExpiresAt": "2026-11-24T13:18:33Z",
+    "nativeJobId": 129854046388,
+    "nativeStatus": "SUCCESS",
+    "nativePassedSteps": 33,
+    "nativeTotalSteps": 33,
+    "nativeCheckoutVerified": true,
+    "nativeErrorMarkers": 0,
+    "nativeStartedAt": "2026-11-10T13:18:26Z",
+    "nativeCompletedAt": "2026-11-10T13:23:37Z",
+    "nativeDecodedLogSha256": "4052a3ef8b2b9019e0f538f6479d124945a567b91e6bb5a040ebf7f8f1cf8071",
+    "overallConclusion": "failure"
+  },
+  "observedResult": {
+    "format": "brick-cardfree-beta-readiness-v1",
+    "checkedAt": "2026-11-10T13:18:29.335Z",
+    "checksPassed": false,
+    "operationalRecoveryProven": false,
+    "installedWriterCoverageProven": false,
+    "independentCustodyProven": false,
+    "credentialLeastPrivilegeProven": false,
+    "executedCodeMatchesSourceProven": false,
+    "atomicCrossServiceSnapshotProven": false,
+    "activeVersionBindingMetadataVerified": false,
+    "metadataReadCompleted": true,
+    "requestsMade": 11,
+    "checks": [
+      {
+        "status": "ATTESTED",
+        "code": "ACTIVE_D1_BETA_VERSION_AND_BINDINGS"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "PINNED_WORKERS_DEV_HOST"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "D1_BOOKMARK_METADATA_AND_MATCHING_DEPLOYMENT_READS"
+      },
+      {
+        "status": "BLOCKED",
+        "code": "DO_NAMESPACE_PINS_REQUIRED"
+      }
+    ],
+    "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83",
+    "planSha256": "7bafbfabacfaae571163d1c7040ada5343b41e778917cec0be4c7978bd62ba8c",
+    "active": {
+      "deploymentSha256": "a18f9fdb1ac3f8aeaf0ae4d754dc36ff7feff66479b32125d42b1f413ef2a844",
+      "versionSha256": "b5d87f0c2bee431930f1524d327788541d488b1fe956ba606e038bca456dab56",
+      "sourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "primarySha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+      "diagnosticSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+      "deviceNamespaceSha256": "fb8fccb5ec3e2c3d737ab7773c3f2158727d92c8fef21f75b699eb3cbc4986b2",
+      "schedulerNamespaceSha256": "9662662badbf80ea628c1b0460ecf7ad6876ba0958cc55893feec42f4ac4134a"
+    },
+    "workerHostSha256": "cbfb4ec4c2013b82ac719fd4803bdc87e164f9dac4607355a7945081b5e89b60",
+    "pitr": {
+      "format": "brick-cardfree-pitr-metadata-v1",
+      "checkedAt": "2026-11-10T13:18:29.335Z",
+      "checksPassed": true,
+      "recoveryProven": false,
+      "retentionWindowVerified": false,
+      "activeWorkerBindingsVerified": false,
+      "requestsMade": 6,
+      "resources": [
+        {
+          "role": "primary",
+          "resourceSha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:17.913Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "3002f3408c0392949bbaaf9d00ff40f30a262ed2cd213343e8a4348cab38d2e3"
+          },
+          "historical": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "bf424b9f7705d2f398e9616dba6952ecfd1efc61ca100dedec5678d15ca99c99",
+            "requestedAt": "2026-11-06T16:51:22.000Z"
+          }
+        },
+        {
+          "role": "diagnostics",
+          "resourceSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+          "status": "ATTESTED",
+          "identity": "ATTESTED",
+          "createdAt": "2026-11-05T05:40:18.808Z",
+          "current": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "ec731b1a0f6eeb24d06172079b320ac736d05d4bbeab7f0a0749408c2850d6ab"
+          },
+          "historical": {
+            "status": "ATTESTED",
+            "bookmarkSha256": "e4055697812e0eedc2ebef99bb8b265d83eab8b4a23b589279285c7369cea147",
+            "requestedAt": "2026-11-06T16:51:22.000Z"
+          }
+        }
+      ],
+      "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83"
+    }
+  },
+  "limits": [
+    "Both current and one historical bookmark are metadata observations, not successful restores or full retention-window proof.",
+    "Both expected Durable Object namespace pins remain null; metadata gate intentionally exits2.",
+    "Deployment source variable is self-reported, not bytecode provenance; matching deployment reads are not atomic cross-service snapshot proof.",
+    "No complete installed writers, independent custody, schedule/recipient, measured RTO/RPO or real acceptance review."
+  ],
+  "group1Status": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false
+}

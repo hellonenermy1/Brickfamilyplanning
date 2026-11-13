@@ -1,0 +1,72 @@
+FAIL same-size concurrent replacement cannot combine old metadata with new bytes: returned ETag must authenticate returned complete bytes
++ actual - expected
+
++ '099d90cbee62f89e6478e153eb3240efcbe4ac2231bedc3e84549bbeaaba87e8'
+- 'a253ff09c5a8678e1fd1962b2c329245e139e45f9cc6ced4e5d7ad42c4108fc0'
+
+FAIL same-length stored chunk corruption is refused: Missing expected rejection.
+FAIL missing and noncontiguous chunk indices are refused: Missing expected rejection.
+FAIL conditional create cannot overwrite an existing object: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   checksums: {},
++   customMetadata: {},
++   etag: '95713e9cbdd1dfcb2d4080c2537f418d43ca0da25f0d7d6631f4f7c97b89dc47',
++   httpEtag: '"95713e9cbdd1dfcb2d4080c2537f418d43ca0da25f0d7d6631f4f7c97b89dc47"',
++   httpMetadata: {},
++   key: 'create',
++   size: 11,
++   uploaded: 2026-11-05T09:53:55.256Z,
++   version: '95713e9cbdd1dfcb2d4080c2537f418d43ca0da25f0d7d6631f4f7c97b89dc47',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL stale conditional update preserves original bytes and metadata: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   checksums: {},
++   customMetadata: {},
++   etag: '7b080b2635f342a22076ec954c695121571448bf34df078009153f6794e7d84a',
++   httpEtag: '"7b080b2635f342a22076ec954c695121571448bf34df078009153f6794e7d84a"',
++   httpMetadata: {},
++   key: 'cas',
++   size: 8,
++   uploaded: 2026-11-05T09:53:55.305Z,
++   version: '7b080b2635f342a22076ec954c695121571448bf34df078009153f6794e7d84a',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL two concurrent same-ETag writers have exactly one winner: Expected values to be strictly equal:
+
+2 !== 1
+
+PASS conditional writes do not swallow unrelated database failures
+FAIL Headers create-only and quoted ETag conditions are honored: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   checksums: {},
++   customMetadata: {},
++   etag: '16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4',
++   httpEtag: '"16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4"',
++   httpMetadata: {},
++   key: 'headers',
++   size: 6,
++   uploaded: 2026-11-05T09:53:55.409Z,
++   version: '16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL unknown or empty condition forms are rejected before any overwrite: Missing expected rejection.
+PASS empty objects retain correct hash and no chunks
+FAIL invalid object size refuses allocation: The input did not match the regular expression /metadata/. Input:
+
+'RangeError: Array buffer allocation failed'
+
+PASS multi-chunk bytes, metadata and boundary range survive readback
+{"suite":"phase8d-d1-object-integrity","passed":3,"failed":9,"scope":"actual local Miniflare D1; synthetic objects only"}

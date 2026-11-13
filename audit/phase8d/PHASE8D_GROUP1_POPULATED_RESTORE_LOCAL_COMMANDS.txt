@@ -1,0 +1,93 @@
+set -euo pipefail
+printf %s\n 'LOCAL_AUDIT_STEP 1 npm run typecheck'
+npm run typecheck
+printf %s\n 'LOCAL_AUDIT_STEP 2 Beta provisioner and shared compatibility schema syntax'
+node --check scripts/setup-beta-d1.mjs
+node --check scripts/ensure-beta-d1-columns.mjs
+node --check scripts/beta-compat-columns.mjs
+node --check scripts/beta-deployment-contract.mjs
+node scripts/test-beta-deployment.mjs
+node scripts/test-phase8d-beta-config.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 3 npm run build:parent-assets'
+npm run build:parent-assets
+printf %s\n 'LOCAL_AUDIT_STEP 4 Optional route-map isolation deadlines and signed live recovery'
+node scripts/test-phase8d-route-lookup.mjs
+node scripts/test-phase8d-route-live.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 5 Canonical acceptance worksheet and closure inventory guards'
+node scripts/test-phase8d-release-acceptance.mjs
+node scripts/test-phase8d-requirements-ledger.mjs
+node scripts/test-phase8d-acceptance-worksheet.mjs
+node scripts/test-phase8d-closure-inventory.mjs
+node scripts/test-phase8d-external-writer-inventory.mjs
+node scripts/phase8d-external-writer-inventory.mjs 50c0fc8886985817b525e31e40d7594b1b6688ab --source-index /tmp/brick-relations-source-index.json > /tmp/group1-external-writer-inventory.json
+cmp audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json /tmp/group1-external-writer-inventory.json
+node scripts/audit-phase8d-requirements.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 6 Bounded coherent capture source and encrypted coordinator'
+node scripts/test-phase8d-capture-admission.mjs
+node scripts/test-phase8d-capture-reservations.mjs
+node scripts/test-phase8d-external-writer.mjs
+node scripts/test-phase8d-capture-broker.mjs
+node scripts/test-phase8d-edge-client.mjs
+node scripts/test-phase8d-capture-writer-boundary.mjs
+node scripts/test-phase8d-capture-d1-boundary.mjs
+node scripts/phase8d-capture-write-inventory.mjs 50c0fc8886985817b525e31e40d7594b1b6688ab > /tmp/group1-write-inventory.json
+cmp audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json /tmp/group1-write-inventory.json
+node scripts/phase8d-capture-hook-profile.mjs > /tmp/group1-actor-hook-profile.json
+cmp audit/phase8d/PHASE8D_GROUP1_ACTOR_HOOK_PROFILE.json /tmp/group1-actor-hook-profile.json
+node scripts/test-phase8d-capture-baseline.mjs
+node scripts/test-phase8d-capture-coordinator.mjs
+node scripts/test-phase8d-capture-lifecycle.mjs
+node scripts/test-phase8d-journal-files.mjs
+node scripts/test-phase8d-cardfree-pitr.mjs
+node scripts/test-phase8d-pitr-lifecycle.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 7 Watchdog bounded fleet RPC delivery retry and state races'
+node scripts/test-phase8d-watchdog.mjs
+node scripts/test-phase8d-watchdog-state.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 8 Bounded cleanup backlog progress and policy regressions'
+node scripts/test-phase8d-cleanup-backlog.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 9 Resumable D1 commute history paging regression'
+node scripts/test-phase8d-commute-paging.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 10 D1 object read integrity and atomic conditional-write regressions'
+node scripts/test-phase8d-d1-object-integrity.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 11 Protected off-platform archive authentication identity and CLI'
+node scripts/test-phase8d-protected-backup.mjs
+node scripts/test-phase8d-private-archive-files.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 12 Destroy source and recover both D1 stores and beta DO from encrypted package'
+node scripts/test-phase8d-cardfree-recovery.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 13 Signed D1 history ACK partial-batch retry and exact revoke race'
+node scripts/test-phase8d-d1-ack-faults.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 14 Receipt-age retention cleanup race and bounded statement envelope'
+node scripts/test-phase8d-d1-retention.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 15 Scheduler delayed failure and automatic retry'
+node scripts/test-phase8d-maintenance-failure.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 16 Versioned leases nested work and release-outage recovery'
+node scripts/test-phase8d-maintenance-leases.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 17 Durable derived-work leases backoff privacy and fair device rotation'
+node scripts/test-phase8d-background-receipts.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 18 Real scheduler enrichment failure isolation and durable evidence ACK'
+node scripts/test-phase8d-enrichment-failure.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 19 Corrupt refinement input and healthy peer isolation'
+node scripts/test-phase8d-refinement-corruption.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 20 Rotating poison input quarantine repair and operational reconstruction'
+node scripts/test-phase8d-refinement-lifecycle.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 21 Conservative D1 computation guard and durable failure reserve'
+node scripts/test-phase8d-d1-work-budget.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 22 Populated maintenance RPC statement envelope and alarm isolation'
+node scripts/test-phase8d-maintenance-budget.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 23 Original refined history against actual production-migration SQLite'
+node_modules/.bin/esbuild src/phase5-refined-history.ts --bundle --platform=node --format=esm --outfile=/tmp/brick-refined-existing.mjs
+node scripts/test-phase5-refined-history.mjs /tmp/brick-refined-existing.mjs
+
+printf %s\n 'LOCAL_AUDIT_STEP 24 Existing beta auth history map and WebSocket regressions'
+node scripts/test-beta-workerd.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 25 Original production DO and multi-store recovery regressions'
+node scripts/test-phase8d-full-store-recovery.mjs
+printf %s\n 'LOCAL_AUDIT_STEP 26 Existing native production trust-boundary regressions'
+node scripts/test-phase8d-workerd-integration.mjs
+printf %s\n 'LOCAL_AUDIT_COMPLETED 26 executable test/build groups; existing dependencies; explicit source index; no CI attestation'

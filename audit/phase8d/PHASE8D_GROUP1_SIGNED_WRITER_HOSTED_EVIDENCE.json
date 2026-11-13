@@ -1,0 +1,153 @@
+{
+  "format": "brick-phase8d-group1-signed-writer-hosted-v1",
+  "sourceSha": "3c8b239db9823fa408c7edf6a66cf59f1bdf8718",
+  "batchParentSha": "37873dff58df94c691993c64ee7c406374d544d3",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "qualification": "EXACT_SOURCE_EDGE_COMPATIBILITY_AND_ACTUAL_SIGNED_NATIVE_CLI_WRITERS_CI_VERIFIED_NOT_INSTALLED",
+  "finding": "P8D-094",
+  "redEvidence": {
+    "path": "audit/phase8d/PHASE8D_GROUP1_EDGE_CLIENT_RED.json",
+    "sha256": "29b38de9d44c84a77eed9fb3cea1dd6857b0a442a7103c044259b2c39df8b514"
+  },
+  "edgeCases": 3,
+  "actualSignedNativeControllerFaultCases": 5,
+  "nativeBrokerClientCases": 44,
+  "externalHelperActualCliCases": 27,
+  "legacyNativeAuthorityCases": 34,
+  "reservationCases": 23,
+  "runtimeHelperCases": 29,
+  "d1AdapterCases": 22,
+  "newCasesThisBatch": 15,
+  "relevantCasesTotal": 187,
+  "correction": "Manual redirect handling is accepted by actual edge Request;3xx is refused without Location follow or body wait; existing URL/response/HMAC/pin/request bindings retained",
+  "nativeFullRestore": "Actual device/D1/scheduler writer operations and capture operations use signed V2 HMAC/native durable replay/authority; committed STARTED before actual source mutation; actual41+4/deviceDO encrypted destruction/fresh restore retains exact bytes/state/credential exclusions/interruption/restart and max5 source SQL/call",
+  "actualToolIntegration": "Four actual CLI modules use signed external reservation/start/cancel; held capture refuses; lost admission ACK cancels only unstarted work and fresh retry succeeds; lost start ACK starts no synthetic HTTP/process work and retains STARTED ownership/quarantine; publication/readback/session cleanup remain owned",
+  "fixtureIoScope": "Native synthetic writer transport obtains a fresh authority stub per request rather than reusing a stub created in another Durable Object I/O context; no production bootstrap is introduced",
+  "inventories": {
+    "matchedRuntimeGitBlobs": 89,
+    "runtimeSourceSetSha256": "3bdac81b0df8db967e21e28af3641d72cd38cadbf0d2db54c22859d3a7d63fcc",
+    "matchedExternalGitBlobs": 263,
+    "externalSourceSetSha256": "1154152bde6c729f62dccd5517070a2dabb1fb1217f6ce5121029995de7ea286",
+    "externalSummary": {
+      "selectedFiles": 263,
+      "filesWithManagementSignals": 64,
+      "explicitClassifications": 66,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 1,
+      "unresolvedDynamicImports": 126
+    },
+    "brokerImportedByProductionGraph": false,
+    "productionControllerInstallCalls": 0
+  },
+  "prCheckout": {
+    "sha": "6c1a4fb71db2eadda720206ed7128a75e7c62ffc",
+    "verifiedParents": [
+      "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+      "3c8b239db9823fa408c7edf6a66cf59f1bdf8718"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42204232071,
+      "jobId": 127846729590,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "6c1a4fb71db2eadda720206ed7128a75e7c62ffc",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42204231762,
+      "jobId": 127846727949,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "6c1a4fb71db2eadda720206ed7128a75e7c62ffc",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T10:39:08.5556579Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T10:39:10.4666041Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-06T10:39:12.0377226Z {\"suite\":\"external-writer\",\"passed\":27,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T10:39:13.9501165Z {\"suite\":\"capture-broker-native\",\"passed\":44,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T10:39:14.6031282Z {\"suite\":\"edge-client-compatibility\",\"passed\":3,\"failed\":0,\"scope\":\"actual workerd Request/WebCrypto client with synthetic response capabilities and forbidden outbound network; native authority/full restore qualified separately; no real endpoint or production activation\"}",
+        "2026-11-06T10:39:14.8414136Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T10:39:14.9715962Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T10:40:59.2475633Z {\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+        "2026-11-06T10:41:01.8993496Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T10:41:09.6969665Z PASS actual device/D1/scheduler controllers reserve and confirm STARTED through signed V2 broker/native replay before source writes",
+        "2026-11-06T10:41:09.7384130Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T10:41:26.0635338Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    },
+    {
+      "runId": 42204225236,
+      "jobId": 127846708825,
+      "event": "push",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "3c8b239db9823fa408c7edf6a66cf59f1bdf8718",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T10:39:01.8588405Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T10:39:03.3750670Z {\"suite\":\"capture-reservations-native\",\"passed\":23,\"failed\":0,\"scope\":\"actual SQLite-backed authority transactions, races, rollback, legacy upgrade and restart; synthetic declared writers; no production installer, urgent-outage fallback or started-writer reconciliation\"}",
+        "2026-11-06T10:39:04.6236235Z {\"suite\":\"external-writer\",\"passed\":27,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual HMAC V2 reservation/start/cancel client/handler with native durable replay/authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T10:39:06.2919136Z {\"suite\":\"capture-broker-native\",\"passed\":44,\"failed\":0,\"scope\":\"actual WebCrypto HMAC client/handler and SQLite-backed replay/authority persistence with synthetic keys/callbacks; no production route/controller/key, real TLS/provider/fleet/latency or operational recovery acceptance\"}",
+        "2026-11-06T10:39:06.7996344Z {\"suite\":\"edge-client-compatibility\",\"passed\":3,\"failed\":0,\"scope\":\"actual workerd Request/WebCrypto client with synthetic response capabilities and forbidden outbound network; native authority/full restore qualified separately; no real endpoint or production activation\"}",
+        "2026-11-06T10:39:06.9823836Z {\"suite\":\"capture-writer-boundary\",\"passed\":29,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T10:39:07.0970314Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T10:40:31.9932497Z {\"suite\":\"signed-writer-native-integration\",\"passed\":5,\"failed\":0,\"scope\":\"actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback\"}",
+        "2026-11-06T10:40:34.1591307Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T10:40:40.3827033Z PASS actual device/D1/scheduler controllers reserve and confirm STARTED through signed V2 broker/native replay before source writes",
+        "2026-11-06T10:40:40.3923543Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T10:40:53.3647290Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "limits": [
+    "Controllers/authority keys/routes/bindings remain uninstalled. Synthetic local/native/CLI fixtures and blocked provider/process capabilities do not qualify live TLS/endpoint/provider/key custody/rotation/rate or operator credentials.",
+    "Full restore now carries actual actor/D1/scheduler writer reservations, start, cancellation and completion through signed V2 native replay/authority. A legacy outer synthetic writer envelope, trusted fixture bootstrap/control, paused synthetic scheduler and direct fixture seeding remain; complete writer coverage is not claimed.",
+    "Lost START ACK after commit, STARTED/legacy unknown outcomes and rejected work still retain ownership. No automatic mutation replay, writer expiry, cancellation of started work or quarantine reset.",
+    "Urgent authority/storage/transport-outage fallback remains NOT_IMPLEMENTED. Complete raw/independent operator/credential/lifecycle/deferred/process-tree coverage and started/legacy outcome reconciliation remain.",
+    "Independent private card-free destination and separate key/context custody, schedule/readback/age/failure monitoring, usable least-privilege current PITR and isolated live-cloud restore/interruption/rollback/RTO/RPO are still unqualified. Existing login/denied-read barriers were not retried.",
+    "Existing Miniflare RPC-stub disposal warnings remain. No Group1/Phase8D PASS; P8D-002 P1 OPEN. No other group, canonical criteria/status/owner/review/disposition, APK/UI/phone, live family-data/schema/permission/credential, R2/card/billing, merge or deployment change.",
+    "Only OPS-002/OPS-003 gain partial proof. P8D-094 is a reproduced staged-source edge compatibility defect, corrected in source/native/CI, not a live-provider incident. The user-referenced document tab is still unidentified/unreconciled; current repository ledger/Group1 plan is used."
+  ],
+  "planCrossCheck": {
+    "name": "Brick V1 Phase 8 Full Audit Execution Plan(8).pdf",
+    "pages": 76,
+    "readSection": "8D.16",
+    "sectionPage": 52,
+    "requiredChecks": [
+      "actual backup",
+      "restore into isolated target",
+      "schema",
+      "devices",
+      "history",
+      "places/config",
+      "relationships"
+    ],
+    "status": "SECTION_TEXT_RECHECKED_SCOPE_ONLY_NOT_ACCEPTED",
+    "limits": "This does not identify or reconcile the separately referenced Yes tab, prove populated config/relationship parity, validate every PDF section or provide live-cloud acceptance."
+  }
+}

@@ -5,8 +5,7 @@ import { EvidenceConflict, persistEvidenceBatch } from "./evidence-ingest";
 import { Phase5SemanticError, phase5EvidenceStatements } from "./phase5-evidence";
 import {
   Phase5RefinedHistoryError,
-  persistHypothesisFrameIfPresent,
-  processRefinementsForDevice
+  persistHypothesisFrameIfPresent
 } from "./phase5-refined-history";
 
 export type EvidenceRateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
@@ -92,15 +91,14 @@ export async function handleEvidenceRequest(req: Request, env: EvidenceRouteEnv,
     const persisted = await persistEvidenceBatch(env, deviceId, body);
     const semantic: D1PreparedStatement[] = [];
     const now = Date.now();
-    let hypothesisFrameSeen = false;
     for (const record of decoded.records) {
-      if (await persistHypothesisFrameIfPresent(env, deviceId, record, now)) hypothesisFrameSeen = true;
+      await persistHypothesisFrameIfPresent(env, deviceId, record, now);
       semantic.push(...await phase5EvidenceStatements(env.DB, deviceId, record, now));
     }
     if (semantic.length) await env.DB.batch(semantic);
-    // Endpoint and hypothesis uploads may arrive in either order. Re-running this bounded operation
-    // on a hypothesis upload closes any interval whose precise endpoints are already available.
-    if (hypothesisFrameSeen) await processRefinementsForDevice(env, deviceId, now);
+    // Pending normalized inputs are the durable work index. The automatic
+    // scheduler refines them after either upload order; optional derivation
+    // cannot delay or change the exact ACK for required durable ingest.
     return json(persisted);
   } catch (error) {
     if (error instanceof EvidenceConflict) return json({ error: error.message }, 409);

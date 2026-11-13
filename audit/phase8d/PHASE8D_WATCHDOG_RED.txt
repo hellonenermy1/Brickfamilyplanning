@@ -1,0 +1,15 @@
+FAIL 64-device offline sweep advances across bounded invocations without exceeding50 statements: bounded watchdog must not fail: beta_maintenance_failed
+
+false !== true
+
+FAIL one failed notification retains retry and does not stop healthy peers: Expected values to be strictly equal:
++ actual - expected
+
++ 1794009883978
+- null
+
+FAIL failed push retries existing durable event after automatic retry interval: Expected values to be strictly equal:
+
+0 !== 1
+
+{"suite":"watchdog","passed":0,"failed":3,"scope":"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance"}

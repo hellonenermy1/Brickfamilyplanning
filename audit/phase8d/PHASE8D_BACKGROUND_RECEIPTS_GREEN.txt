@@ -1,0 +1,13 @@
+PASS success receipt cooldown redacted status and30-day expiry
+PASS failure stores fixed code with backoff and never raw provider errors
+PASS retry failure increases capped delay; eventual success clears streak retains attempts
+PASS concurrent claim runs one worker and retains winner
+PASS expired lease takeover cannot be overwritten by stale completion or failure
+PASS receipt write outage stays RUNNING until bounded lease expires then recovers
+PASS malformed receipt and unavailable D1 refuse before expensive work
+PASS revoked device cannot claim derived work; global cleanup still works
+PASS failure after earlier success preserves last success without misreporting new success
+PASS pending refinement rotation reaches devices beyond first20 and skips revoked
+PASS missing endpoints is explicit WAITING without a fabricated last success
+PASS non-OK history response is failed refresh rather than created-zero success
+{"suite":"background-receipts","passed":12,"failed":0,"scope":"actual local D1, synthetic tasks and controlled clock; no cloud data"}

@@ -1,0 +1,3 @@
+PASS beta portal preserves existing UI, CSP and authenticated private downloads; generated scripts parse
+PASS native signed D1 primary/chunked-object readback, D1 direct event persistence, real device DO/current state, normal location history and selected-device WebSocket ACK; no canned PASS
+PASS durable exact batch ACK/idempotency/conflict, privacy rejection, private export import, corrupt APK refusal and revoked-device isolation

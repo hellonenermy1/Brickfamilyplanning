@@ -1,0 +1,33 @@
+{
+  "format": "brick-phase8d-group1-independent-namespace-pin-attestation-v1",
+  "recordedOn": "2026-11-10",
+  "provenance": "User-provided namespace ID + class association independently of the previous read-only metadata observation. SHA-256 of exact lower-case hexadecimal namespace ID strings. No raw IDs in repository.",
+  "referenceEvidence": "audit/phase8d/PHASE8D_GROUP1_HISTORICAL_PITR_EVIDENCE.json",
+  "sourceNamespaceValuesStored": false,
+  "liveMetadataWithExpectedPinsRun": false,
+  "namespacePins": [
+    {
+      "worker": "brick-family-beta",
+      "className": "BrickDevice",
+      "binding": "BRICK_DEVICE",
+      "idFormat": "hex32",
+      "independentlySuppliedSha256": "fb8fccb5ec3e2c3d737ab7773c3f2158727d92c8fef21f75b699eb3cbc4986b2",
+      "observedEvidenceField": "deviceNamespaceSha256",
+      "match": "MATCH"
+    },
+    {
+      "worker": "brick-family-beta",
+      "className": "BetaScheduler",
+      "binding": "BETA_SCHEDULER",
+      "idFormat": "hex32",
+      "independentlySuppliedSha256": "9662662badbf80ea628c1b0460ecf7ad6876ba0958cc55893feec42f4ac4134a",
+      "observedEvidenceField": "schedulerNamespaceSha256",
+      "match": "MATCH"
+    }
+  ],
+  "verifiedScope": "INDEPENDENT_HASH_COMPARISON_ONLY",
+  "readiness": "NOT_READY",
+  "phase8dStatus": "NOT_PASS",
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false
+}

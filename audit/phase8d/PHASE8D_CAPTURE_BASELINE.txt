@@ -1,0 +1,1 @@
+{"observation":"legacy-monolithic-export-does-not-fit44-statement-source-invocation","executedBeforeRejection":43,"scope":"empty actual synthetic Miniflare D1; legacy off-platform API unchanged; new bounded source path required, not a deployed incident"}

@@ -1,6 +1,9 @@
 import phase8, { BrickDevice } from "./worker-v8";
 import { handleGroundReceiverRequest, type GroundReceiverEnv } from "./ground-receiver";
 import { cleanupPhase5SemanticIndexes } from "./phase5-maintenance";
+import { runBackgroundWork } from './background-work';
+import { nextRefinementCandidates } from './refinement-scheduler';
+import {dispatchDerivedWork,type BackgroundDispatchEnv} from './derived-work-dispatch';
 import { augmentHealthWithLearnedPlaces } from "./phase5-places";
 import { augmentHealthWithCoarseNetwork } from "./phase5-coarse-network";
 import { listCurrentExternalConstraints } from "./phase5-external-constraints";
@@ -26,7 +29,7 @@ import {
 export { BrickDevice };
 
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
-type Env = GroundReceiverEnv & FastLiveEnv & AccessAuthEnv & {
+type Env = GroundReceiverEnv & FastLiveEnv & AccessAuthEnv & BackgroundDispatchEnv & {
   HISTORY: R2Bucket;
   MAPS: R2Bucket;
   EVENTS: Queue;
@@ -176,12 +179,26 @@ export default {
   },
   async queue(batch: MessageBatch<unknown>, env: Env, ctx: ExecutionContext) { if (base.queue) return base.queue(batch, env, ctx); },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    if (base.scheduled) await base.scheduled(controller, env, ctx);
-    try { await cleanupPhase5SemanticIndexes(env.DB); } catch {}
+    let failed = false;
+    try { if (base.scheduled) await base.scheduled(controller, env, ctx); } catch { failed = true; }
+    // Daily backup is independently leased. Do not make a successful backup
+    // retry every minute because unrelated minute enrichment is failing.
+    if (controller.cron === '17 3 * * *') {
+      if (failed) throw Error('base daily maintenance failed');
+      return;
+    }
+    try { await runBackgroundWork(env.DB, 'semantic-indexes', 'global', () => cleanupPhase5SemanticIndexes(env.DB)); } catch { failed = true; }
     try {
-      const pending = await env.DB.prepare("SELECT DISTINCT device_id FROM phase5_hypothesis_frames WHERE refined_run_id IS NULL ORDER BY device_id LIMIT 20").all<{ device_id: string }>();
-      for (const row of pending.results) { try { await processRefinementsForDevice(env, row.device_id); } catch {} }
-      await cleanupPhase5RefinedHistory(env);
-    } catch {}
+      let pending: string[] = [];
+      await runBackgroundWork(env.DB, 'refinement-scan', 'global', async () => { pending = await nextRefinementCandidates(env.DB); });
+      // A failed device backs off individually; it must not back off the cursor
+      // scan and thereby delay every other pending device for the same interval.
+      for (const deviceId of pending) {
+        try { await dispatchDerivedWork(env, 'refinement', deviceId, () => processRefinementsForDevice(env, deviceId)); }
+        catch { failed = true; }
+      }
+    } catch { failed = true; }
+    try { if(env.BACKGROUND_WORK?.cleanup)await env.BACKGROUND_WORK.cleanup();else await runBackgroundWork(env.DB, 'refined-retention', 'global', () => cleanupPhase5RefinedHistory(env)); } catch { failed = true; }
+    if (failed) throw Error('derived maintenance failed');
   }
 } satisfies ExportedHandler<Env>;

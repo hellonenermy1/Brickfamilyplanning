@@ -1,0 +1,33 @@
+{
+  "format": "brick-phase8d-group1-current-base-scope-v1",
+  "sourceSha": "abfc3f412ab865d93441dbe2342f9b1c9d47ae71",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Current portal base integrated into audit candidate with both migration branches preserved. The new parent-verifier table is explicitly excluded from source logical capture and stays untouched; unknown credential-like tables remain fail-closed. Exact-source push/current-base PR audit, portal and Phase2 preservation CI pass. No live migration, credential rotation, controller, schedule or independent destination qualification.",
+      "remaining": "Complete production writer/operator/raw/credential/lifecycle/deferred/process-tree coverage and started/legacy reconciliation; urgent-outage fallback; actual private independent card-free destination/separate key/context; installed schedule/readback/age/failure/alert evidence; current PITR and isolated cloud recovery/RTO/RPO.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "classification": "MANDATORY",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Current-schema native signed encrypted41+4/deviceDO destruction/fresh restore and persistence restart pass with populated config/relationship parity, archive health and credential exclusions. Six actual native credential-recovery cases prove no verifier capture/revival, untouched source, injected-table refusal and occupied-target refusal before device writes. Current-base merge-checkout and preservation CI pass; no isolated live-cloud restore/RTO/RPO acceptance.",
+      "remaining": "Complete production writer/operator/raw/credential/lifecycle/deferred/process-tree coverage and started/legacy reconciliation; urgent-outage fallback; actual private independent card-free destination/separate key/context; installed schedule/readback/age/failure/alert evidence; current PITR and isolated cloud recovery/RTO/RPO.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Scoped source/native/current-base CI support, not authenticated independent acceptance, other-group closure or document-tab reconciliation."
+}

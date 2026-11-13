@@ -1,0 +1,64 @@
+{
+  "finding": "P8D-091",
+  "sourceSha": "2d9a3073288a304b4820fe0b30f27a5f8a3fd843",
+  "scope": "actual validator with synthetic rendered configs; no Wrangler deploy, account access or cloud mutation",
+  "results": [
+    {
+      "name": "destructive DO deletion",
+      "accepted": true
+    },
+    {
+      "name": "DO transfer",
+      "accepted": true
+    },
+    {
+      "name": "migration tag drift",
+      "accepted": true
+    },
+    {
+      "name": "alternate routes",
+      "accepted": true
+    },
+    {
+      "name": "nested paid-service environment",
+      "accepted": true
+    },
+    {
+      "name": "unapproved KV binding",
+      "accepted": true
+    },
+    {
+      "name": "public asset binding override",
+      "accepted": true
+    },
+    {
+      "name": "observability log activation",
+      "accepted": true
+    },
+    {
+      "name": "rate name misbinding",
+      "accepted": true
+    },
+    {
+      "name": "rate quota weakening",
+      "accepted": true
+    },
+    {
+      "name": "different runtime date",
+      "accepted": true
+    },
+    {
+      "name": "invalid rendered UUID shape",
+      "accepted": true
+    },
+    {
+      "name": "case-aliased same D1",
+      "accepted": true
+    },
+    {
+      "name": "unapproved variable",
+      "accepted": true
+    }
+  ],
+  "acceptedByExistingValidator": 14
+}

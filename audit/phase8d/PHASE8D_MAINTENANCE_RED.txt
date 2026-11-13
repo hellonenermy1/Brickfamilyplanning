@@ -1,0 +1,12 @@
+SYNTHETIC first result {"ok":true}
+SYNTHETIC attempts {"attempts":1}
+FAIL deferred scheduled backup failure rejects maintenance instead of succeeding early: Expected values to be strictly equal:
+
+true !== false
+
+FAIL failed daily claim is released for automatic next-tick retry: Expected values to be strictly equal:
+
+1 !== 0
+
+PASS successful daily work is not repeated by another immediate tick
+{"suite":"maintenance-failure","passed":1,"failed":2,"scope":"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup"}

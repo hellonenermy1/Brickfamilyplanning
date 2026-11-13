@@ -1,0 +1,291 @@
+{
+  "format": "brick-phase8d-group1-real-b2-proof-v1",
+  "date": "2026-11-09",
+  "authorization": "User approved the previously proposed allPrivate bucket and bounded encrypted synthetic upload/exact-version readback test. No repeat permission needed within this scope.",
+  "baselineSha": "c91bb63dd67a884c16375724351468ee3797f1e0",
+  "provider": "Backblaze B2 Native API through connected app",
+  "bucketName": "brick-recovery-jayvian-20261107",
+  "bucketIdSha256": "439e249b4b8ba15c3ca094ed937b5a9096bd67267da2497336b943a1e8b72373",
+  "createdBucket": true,
+  "createdType": "allPrivate",
+  "postReadbackPrivate": true,
+  "defaultServerEncryption": {
+    "algorithm": "AES256",
+    "mode": "SSE-B2"
+  },
+  "archiveBytes": 3260838,
+  "archiveSha256": "054be9f7ff2a5f20135a074421aad354f7854d9a730f6deed93def2633b6b729",
+  "transfer": "One AES-256-GCM protected native recovery archive split into7 opaque objects because connector reads are capped at1MiB; chunks are512KiB or less. Operator-mediated chunk transfer, not staged single-object B2 adapter qualification.",
+  "parts": [
+    {
+      "index": 0,
+      "bytes": 524288,
+      "sha1": "ed2ced66f5eda375fa01d367c289a44164f8fca0",
+      "sha256": "0adbd09bf81cf3e4ae35698113ca620bc9e919c1df06cb15047be0fd089e075e",
+      "fileIdSha256": "2ac30ea1e12ec48c04f1678823cea554bd0ad8ca80d8c152ded90c51694eed48",
+      "fileNameSha256": "6b5e7b6f2890e3691547e71669ea18d688d17aef88219767a3f20edd2813871a",
+      "uploadTimestamp": 1794209741566
+    },
+    {
+      "index": 1,
+      "bytes": 524288,
+      "sha1": "7038d4d54316f9abfd7925d17099848a5b0a64b3",
+      "sha256": "0eaa8935d3b255f8ef97307baa0e3243a91061e89c2ba0ab7267cb836ec2c2f3",
+      "fileIdSha256": "d1f5b678a86f9ae4f32ea17ae48349bc6de65b0957578b6a334a47e1eaf9df8f",
+      "fileNameSha256": "4d8390a53a65c3a8822405d9c2cc4a7d47f729be785824b6b2a84b853dc93006",
+      "uploadTimestamp": 1794209775465
+    },
+    {
+      "index": 2,
+      "bytes": 524288,
+      "sha1": "04acdb2c764ffc26d380333a9732f3c8febb04a1",
+      "sha256": "5288aebf00ea73d49bf40e7843a605e77b73739d63a2468db07365e9f8b52c06",
+      "fileIdSha256": "abd2759f6a175ff8f346f913c074bf3de2950dfa8fd567c9bcab924d05a6e0e5",
+      "fileNameSha256": "524be0c6121bbc155f3f0122ad3077acc4cf1a0356bdbdb695e017673a1c56dc",
+      "uploadTimestamp": 1794209812227
+    },
+    {
+      "index": 3,
+      "bytes": 524288,
+      "sha1": "72b4943cf0d031fa2d5e9c59d06ac0aede4bc22f",
+      "sha256": "a2208cc57aa7ec4cb9831b7bcfaf4b68168d337beb8b4c1c3a7ab2b41b8c2501",
+      "fileIdSha256": "1b0d6f95fc29ef6d4377fc3bed1512798f12a82db0b7e2fd704fe5ff2915df65",
+      "fileNameSha256": "fce8ba2b326df226a83685d9c48610be6ef94e2adff4efb2eec868836f49e911",
+      "uploadTimestamp": 1794209848408
+    },
+    {
+      "index": 4,
+      "bytes": 524288,
+      "sha1": "aba750f92e0394fadfbf39472ae1251629514753",
+      "sha256": "aa160409dd591bbab2e255cbecfb0f0ccd43733b682833ad4fbfb5b4794070bc",
+      "fileIdSha256": "65095ed0d270bb5e944f96046d69cd1d2d948bbe96b682d7c15876cce49a0d0d",
+      "fileNameSha256": "728e6479d4b9e15e5fc3d2bd75b781f2faa0a5379907480de424c5518ca881f0",
+      "uploadTimestamp": 1794209888665
+    },
+    {
+      "index": 5,
+      "bytes": 524288,
+      "sha1": "b6ad74b0668b2ed8a72b68b603891bd7fa20f582",
+      "sha256": "60f8951c765f255456b84e3aec8d54478e93c08f9d03db18d2fc195dda42d4dc",
+      "fileIdSha256": "7a579af6769b6fe08eb623d1ec4be6769db2d41695adeeb7b4c47f34d2802757",
+      "fileNameSha256": "1cbc3b971d1c3fdf84e48100134262351cec775cf423625c4f85ae8d8f09d448",
+      "uploadTimestamp": 1794209927520
+    },
+    {
+      "index": 6,
+      "bytes": 115110,
+      "sha1": "a05b03c4be8f00ecc29f03d7cadff9e6ab93a791",
+      "sha256": "8ccc059142edd8a8f5039594d8bceb7f7085f83e7010a161d8437507901e5cd5",
+      "fileIdSha256": "c4de28fb8cf3637ea4281fb770df63440e9810afe7375d71d40d6db1a59339e6",
+      "fileNameSha256": "f319507e2ced2cfa1aa0158070d65813f63bdea923f40142b0800068eb6e172f",
+      "uploadTimestamp": 1794209963120
+    }
+  ],
+  "uploadsVerified": 7,
+  "exactVersionMetadataChecks": 7,
+  "independentReadbackRounds": 2,
+  "exactVersionDownloads": 14,
+  "allPartSha1Sha256AndLengthsVerified": true,
+  "reassembledArchiveHashesMatched": true,
+  "outboundLocalArchiveRemovedBeforeRestore": true,
+  "sourceLocalD1AndDevicePersistenceDestroyed": true,
+  "actualB2ReturnedBytesSelectedForRestore": true,
+  "archiveAuthenticatedBeforeRestore": true,
+  "wrongKeyTamperContextRejectedBeforeWrites": true,
+  "freshLocalPrimaryTables": 41,
+  "freshLocalDiagnosticsTables": 4,
+  "restoredLocalDeviceObjects": 2,
+  "populatedRelationTables": 16,
+  "populatedRelationRows": 33,
+  "restartParityVerified": true,
+  "credentialExclusionsAndCommandRetirementVerified": true,
+  "maxSourceStatementsPerCaptureCall": 5,
+  "fixtureExitCode": 0,
+  "fixtureLogSha256": "84893d534088013f350da2deb14e02824cecc6eb07eeeb040648b4869c64e0ef",
+  "fixtureSummaries": [
+    {
+      "suite": "signed-writer-native-integration",
+      "passed": 5,
+      "failed": 0,
+      "scope": "actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback"
+    },
+    {
+      "suite": "populated-recovery-relations",
+      "passed": 7,
+      "failed": 0,
+      "tables": 16,
+      "rows": 33,
+      "joinedPlaces": 2,
+      "joinedSchedules": 2,
+      "joinedEvidence": 2,
+      "joinedWitnesses": 2,
+      "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+    },
+    {
+      "suite": "backup-alert-receipt-full-recovery",
+      "passed": 3,
+      "failed": 0,
+      "scope": "actual signed native41+4/deviceDO encrypted B2-fixture recovery, private monitor and real Ed25519 proof/restart/no-resend; synthetic signer/sinks, no real recipient, authority/key custody or independent delivery qualification"
+    },
+    {
+      "suite": "backup-monitor-full-recovery",
+      "passed": 3,
+      "failed": 0,
+      "scope": "actual private SQLite monitor and signed native41+4/deviceDO encrypted B2-fixture recovery archive; persisted fresh/stale/restart and uncertain synthetic alert delivery; no installed schedule or real alert/provider/custody qualification"
+    },
+    {
+      "suite": "b2-full-recovery",
+      "passed": 3,
+      "failed": 0,
+      "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+    }
+  ],
+  "keyAndContextCustody": {
+    "syntheticKeyGeneratedInFixtureOnly": true,
+    "encryptionKeyExported": false,
+    "encryptionKeyUploaded": false,
+    "contextUploaded": false,
+    "keyRetainedAfterFixtureExit": false,
+    "independentProductionKeyContextCustodyQualified": false
+  },
+  "attemptHistory": [
+    {
+      "attempt": "initial1MiB local handoff guard",
+      "outcome": "Refused archive larger than connector whole-file read. No provider upload in this local attempt."
+    },
+    {
+      "attempt": "5minute manual handoff",
+      "uploadedParts": 7,
+      "outcome": "Upload checks passed; fixture timed out before reassembled readback/restore. Not counted as restore pass. Encryption key exited with fixture.",
+      "partialExactVersionDownloadCallsAfterFixtureExit": 1
+    },
+    {
+      "attempt": "30minute operator window",
+      "uploadedParts": 7,
+      "exactVersionDownloads": 14,
+      "outcome": "Two reassembled provider copies authenticated; actual bytes restored fresh local targets and passed parity/restart."
+    }
+  ],
+  "retainedTestObjects": 14,
+  "totalSyntheticCiphertextBytesUploaded": 6521676,
+  "noProviderDeletion": true,
+  "noPublicOrBearerSharing": true,
+  "realFamilyDataUsed": false,
+  "restrictedRuntimeKeyInstalled": false,
+  "scheduleInstalled": false,
+  "realRecipientDeliveryQualified": false,
+  "cloudflareReadOrPitrQualified": false,
+  "isolatedCloudflareRestoreRun": false,
+  "rtoRpoOrSlaQualified": false,
+  "group1": "NOT_READY",
+  "phase8d": "NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "scope": "Actual private B2 publication/version metadata/two readbacks plus source-destruction/fresh local native restore. Controlled fixture health clock isolates package checks; no real elapsed-age/schedule or RTO/RPO claim. Existing synthetic B2 adapter/monitor controls remain synthetic; local stub-provider files also remain during fixture checks. Complete writer/outage/bootstrap/runtime custody and Cloudflare recovery remain open.",
+  "harnessSha256": "a7905b4f1c01a99f06e6c87b21e2777f2ddab1863fae43a429cc406ce5e22875",
+  "defaultModeExitCode": 0,
+  "defaultModeLogSha256": "6c6fc84a854782566abd8dd8584d62a22af1b1db3e52a2197d8182392474ac2c",
+  "noExistingKeyPermissionRetentionOrBillingMutation": true,
+  "testedSourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+  "testedSourceTreeSha": "0505067c6e7097bbb12cadbf9c1540fc2ced308b",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "mergeCheckoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "502b7ddc264695db9bc209ba41ccb53c51c45e29"
+  ],
+  "ciRuns": [
+    {
+      "runId": 42581635130,
+      "jobId": 129041490233,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635130",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:30.2778430Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.9573612Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:31.0272182Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:31.1351128Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "8e629c6091ccd192263afd3a63773ab215b7361c5bbb9eefb9ebd1c62172b488"
+    },
+    {
+      "runId": 42581635205,
+      "jobId": 129041490510,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635205",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:30.0971623Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.6865944Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:30.7687316Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:30.7765976Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "474289191e95c43e42ceee8820096bab2fa57a03dd90c0c11cfbbd448d24b026"
+    },
+    {
+      "runId": 42581635128,
+      "jobId": 129041489839,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581635128",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a91c5b36708af547947b7d6c2a229863b0945b41",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:29.4459835Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a91c5b36708af547947b7d6c2a229863b0945b41:refs/remotes/pull/32/merge",
+        "2026-11-09T07:48:30.1723288Z  * [new ref]         a91c5b36708af547947b7d6c2a229863b0945b41 -> pull/32/merge",
+        "2026-11-09T07:48:30.2361504Z HEAD is now at a91c5b3 Merge 502b7ddc264695db9bc209ba41ccb53c51c45e29 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-09T07:48:30.2447006Z a91c5b36708af547947b7d6c2a229863b0945b41"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "1efecaa141f94ad9000a2dcbc99b6cf01e6d509f0edcb12975f4c702509fb155"
+    },
+    {
+      "runId": 42581630474,
+      "jobId": 129041475307,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42581630474",
+      "sourceSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "502b7ddc264695db9bc209ba41ccb53c51c45e29",
+      "checkoutEvidence": [
+        "2026-11-09T07:48:27.4900037Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +502b7ddc264695db9bc209ba41ccb53c51c45e29:refs/remotes/origin/audit/phase8d-d1-qualification",
+        "2026-11-09T07:48:28.1963196Z  * [new ref]         502b7ddc264695db9bc209ba41ccb53c51c45e29 -> origin/audit/phase8d-d1-qualification",
+        "2026-11-09T07:48:28.2598392Z 502b7ddc264695db9bc209ba41ccb53c51c45e29"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Current source/default-mode CI and preservation checks only; actual approved B2 operations ran separately through authenticated app calls.",
+      "capturedLogSha256": "877f305bae9490f35d5d46a1c40155a15b29c5751eed9f9eb469b0ce61656b3a"
+    }
+  ],
+  "ciDefaultModeQualified": true,
+  "productionRuntimeFilesChanged": false
+}

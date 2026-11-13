@@ -1,0 +1,264 @@
+{
+  "format": "brick-phase8d-group1-provisioner-targets-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+  "sourceTreeSha": "98af73454b6c90dff5a320aeb96623f564ea832b",
+  "baselineSha": "55d64d3e862114adbf5c08f26f4232a963bf0464",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "PROVISIONER_FINAL_TARGET_AND_ACTUAL_SQL_SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 16,
+  "implementationCheckpointSha": "cff9009538e01c9060a472a47e8050a45558cbce",
+  "initialHostedFailure": {
+    "runs": [
+      42741445139,
+      42741455125
+    ],
+    "reason": "New baseline reproduction assumed historical file contents available on checkout. Both jobs failed git show before new16 regression cases.",
+    "correction": "Historical reproduction is explicit --baseline only; recurring16-case regression uses checked-out source with no historical object dependency. No production code or timeout changed.",
+    "failedLogSha256": [
+      "945b18d4997d5ce1eae3e4d47db9eec5baaf20bbbd8d95ed7fb8ad64de1a4240",
+      "4e1a1ff26a7561dd3ebbdbc8535ddb469217932b12081a4837e835f5aa07e6ce"
+    ],
+    "correctedFocusedLogSha256": "f3af44fd26167b67a22cfe68e194986203b908c73962404ed151f88690216997"
+  },
+  "baselineReproduction": {
+    "sourceSha": "55d64d3e862114adbf5c08f26f4232a963bf0464",
+    "module": "scripts/setup-beta-d1.mjs",
+    "observation": "Exact previous provisioner selected an undeclared UUID by allowed database name and created brick_dev_migrations in that foreign fixture SQLite database before first schema-child refusal. Native STARTED writer retained.",
+    "scope": "Synthetic provider/CLI capabilities under explicitly installed test controller, not a deployed or live-data incident."
+  },
+  "correction": "Work callback receives frozen target validators from installed pin; actual deployment verifies selected primary/diagnostic UUID before creation/SQL/child work and deployed hostname before secrets/session revocation/success state. Unconfigured ordinary setup behavior is preserved by inert validators.",
+  "verifiedBehavior": [
+    "Missing/foreign primary or diagnostic resource refuses before management mutation and child execution; uncertain attempt remains STARTED/quarantined.",
+    "Actual compatibility SQL adds required columns preserving seeded rows; completed verification releases ownership, never clears schema quarantine. Committed ALTER reply loss preserves partial schema and ownership across full native authority/database restart.",
+    "Actual fresh provisioner applies all21 migration receipts and diagnostic schema, runs actual compatibility module in a real Node child process, deploy-output fixture and writes exact non-secret target state only at completion.",
+    "Actual partially applied schema16 reentry avoids duplicate ALTER, recorded migrations skip, unchanged verifier preserves prior session, requested verifier install precedes session revocation.",
+    "Committed migration journal reply loss, committed schema/failed child and secret failure retain ownership and forbid successful setup reporting; wrong deployed host prevents secret/session change. No timeout/initialize call clears quarantine or unresolved ownership."
+  ],
+  "nativeScope": "Actual SQL in isolated Node SQLite and actual HMAC/native SQLite DO authority/replay, real local Node compatibility child; provider HTTP and Wrangler/build/deploy/secret subprocess responses are explicit synthetic capabilities. Not native Cloudflare D1 statement/quota or live provider/deployment qualification.",
+  "optionalMetadataNetwork": {
+    "identifiedCaller": "installed Miniflare setupCf defaultCfFetchEndpoint GET https://workers.cloudflare.com/cf.json, no application request body in inspected implementation",
+    "initialAutomaticReview": "A test command was blocked because the external request payload/purpose was not established.",
+    "saferCorrection": "cf:false on new native fixtures; CLOUDFLARE_CF_FETCH_ENABLED=false across workflow and local campaign, disabling optional Request.cf metadata fetch before re-running checks. No denied action was bypassed.",
+    "applicationProviderRequests": "synthetic/injected only"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "ff64b9d51b495b3d9b072c77335839039413f32207c1c0928d6a0504e4d15318"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "e0ff5368dd17a4b8fb50f3cb00023bf92c32271f6f26133f7aa58b1407b395c1"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "f284d84240f0d6952293f875b03a29cb19258c9f654af6e057083cc7928cf51e"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "140d53468a01185dc0b384a2e023755fc876f5bc5258fbbfe81a4c4ee8454c3e"
+    },
+    {
+      "path": "scripts/setup-beta-d1.mjs",
+      "sha256": "27cf37b13cebd8baeb30fde44f452cff3b979a771036c39a45d5a54c32420a50"
+    },
+    {
+      "path": "scripts/staged-external-writer.mjs",
+      "sha256": "cb2a2b8732afcbd61faff5316543b77be6407b348cb5240f00e51e91fdfdd6a5"
+    },
+    {
+      "path": "scripts/test-phase8d-provisioner-ownership.mjs",
+      "sha256": "1423ba42c00201a89e00cb4287b2b20e06cd555339a6d39b2090d26a27a12a29"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "implementationCheckpointSha": "cff9009538e01c9060a472a47e8050a45558cbce",
+    "finalImplementationByteIdentical": true,
+    "finalTestOnlyCorrectionFocusedCases": 16,
+    "exactFinalFullHostedChecksRequired": true,
+    "resultsSha256": "6d9ed08cf357dc7ac369c2eb6b882f894a3b9be7161bcd87ec1765a1083683a6",
+    "optionalCfFetchEnabled": false,
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "c1219d552b59cd924f8b6c9d29f7ced8268e4fed8687e6178fb0d8bbad91c741"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "3861ef12ad91021e6c12b4c844bfd2d51712299e58e32ee12b4f3ac651345eae"
+      },
+      {
+        "group": 12,
+        "sha256": "05215322c512b16429bd89fe7a2531a6d63f02d1b23248e8889090d91ff7389f"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "hostedRuns": [
+    {
+      "runId": 42741771713,
+      "jobId": 129584292139,
+      "name": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+      "logSha256": "5d38d35231794063bc5433d0212636128cfacafcd55fe2364361e517b5b6f362"
+    },
+    {
+      "runId": 42741772160,
+      "jobId": 129584297311,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+      "logSha256": "d669b7ee58293bf6fd6bf686a108f96b0bc1d926786bb4f35cf4b358ed904811"
+    },
+    {
+      "runId": 42741771763,
+      "jobId": 129584292486,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+      "logSha256": "41d1daf44730ce494fd8b45232d6db5d10a85b6b0d2be47aa8996adfcc3014fb"
+    },
+    {
+      "runId": 42741765006,
+      "jobId": 129584273281,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "208a49054a1331b5c929b9c542a320635c7972e3",
+      "logSha256": "e34e3b38d3cc7f790f437afb707d088914bfba5845965a97be3e26a3124cb28e"
+    }
+  ],
+  "verifiedMergeCheckoutSha": "3decde14085a43fd9a4b3edb677324479f600e37",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "208a49054a1331b5c929b9c542a320635c7972e3"
+  ],
+  "remaining": [
+    "Actual trusted installation/TLS/key custody/independent failure-domain proof and complete declared writer/operator/credential/raw bypass enforcement. Four beta-tool hooks remain uninstalled; source fixture proof is not operational installation.",
+    "STARTED/legacy unknown-outcome reconciliation and reviewed authority installation/rollback compatibility; schema/deployment quarantine has no automatic clear.",
+    "Restricted B2 runtime credential and separately durable version manifest/key/context; installed schedule/readback/age/failure and real-recipient monitoring.",
+    "Current scoped least-privilege PITR evidence and isolated cloud restore/interruption/rollback with measured RTO/RPO."
+  ],
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "productionControllerInstalls": 0,
+  "providerTestRepeated": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "liveCloudflareWrites": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false
+}

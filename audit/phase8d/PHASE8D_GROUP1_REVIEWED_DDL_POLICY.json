@@ -1,0 +1,721 @@
+{
+  "format": "brick-recovery-reviewed-ddl-source-policy-v1",
+  "basisCommitSha": "591424bb59e5f7d5e01fc2b78d8dcd28ea47639b",
+  "scope": "Effective checked-in primary migrations plus beta compatibility columns and beta diagnostics SQL, applied to disposable SQLite; no live provider observation or independent acceptance",
+  "primaryTableCount": 49,
+  "primaryIndexCount": 59,
+  "diagnosticTableCount": 6,
+  "diagnosticIndexCount": 3,
+  "independentReviewer": null,
+  "productionSchemaObserved": false,
+  "digests": {
+    "primary": "3bd9901c9432c41fe9483b2d9dca31f0f9b41bf2ffd5c2dd856a807ea3bba7be",
+    "diagnostics": "a2f985b2ab01091eac21a2ae3397e35ce8d3071bbe64d2b043662e4b6986b943"
+  },
+  "primary": [
+    {
+      "type": "table",
+      "name": "devices",
+      "tbl_name": "devices",
+      "sql": "CREATE TABLE devices (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  public_key_spki_b64 TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  last_seen_at INTEGER,\n  revoked_at INTEGER,\n  last_epoch INTEGER NOT NULL DEFAULT 0,\n  last_sequence INTEGER NOT NULL DEFAULT 0\n, last_health_at INTEGER, health_status TEXT NOT NULL DEFAULT 'unknown', recovery_count INTEGER NOT NULL DEFAULT 0, pending_records INTEGER NOT NULL DEFAULT 0, app_version TEXT)"
+    },
+    {
+      "type": "table",
+      "name": "pairing_tokens",
+      "tbl_name": "pairing_tokens",
+      "sql": "CREATE TABLE pairing_tokens (\n  token_hash TEXT PRIMARY KEY,\n  device_name TEXT NOT NULL,\n  expires_at INTEGER NOT NULL,\n  consumed_at INTEGER\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_events",
+      "tbl_name": "device_events",
+      "sql": "CREATE TABLE device_events (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  device_id TEXT NOT NULL,\n  epoch INTEGER NOT NULL,\n  sequence INTEGER NOT NULL,\n  kind TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  UNIQUE(device_id, epoch, sequence)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_device_events_device_time",
+      "tbl_name": "device_events",
+      "sql": "CREATE INDEX idx_device_events_device_time ON device_events(device_id, created_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pairing_expiry",
+      "tbl_name": "pairing_tokens",
+      "sql": "CREATE INDEX idx_pairing_expiry ON pairing_tokens(expires_at)"
+    },
+    {
+      "type": "table",
+      "name": "device_health_events",
+      "tbl_name": "device_health_events",
+      "sql": "CREATE TABLE device_health_events (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  device_id TEXT NOT NULL,\n  status TEXT NOT NULL,\n  reason TEXT NOT NULL,\n  created_at INTEGER NOT NULL\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_device_health_events_device_time",
+      "tbl_name": "device_health_events",
+      "sql": "CREATE INDEX idx_device_health_events_device_time\n  ON device_health_events(device_id, created_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "safety_events",
+      "tbl_name": "safety_events",
+      "sql": "CREATE TABLE safety_events (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  kind TEXT NOT NULL,\n  device_created_at INTEGER NOT NULL,\n  server_created_at INTEGER NOT NULL,\n  latitude REAL,\n  longitude REAL,\n  accuracy_m REAL,\n  detail_json TEXT NOT NULL DEFAULT '{}',\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_safety_events_device_time",
+      "tbl_name": "safety_events",
+      "sql": "CREATE INDEX idx_safety_events_device_time ON safety_events(device_id, server_created_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_safety_events_kind_time",
+      "tbl_name": "safety_events",
+      "sql": "CREATE INDEX idx_safety_events_kind_time ON safety_events(kind, server_created_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "geofences",
+      "tbl_name": "geofences",
+      "sql": "CREATE TABLE geofences (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  name TEXT NOT NULL,\n  latitude REAL NOT NULL,\n  longitude REAL NOT NULL,\n  radius_m REAL NOT NULL CHECK(radius_m >= 25 AND radius_m <= 5000),\n  enabled INTEGER NOT NULL DEFAULT 1,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_geofences_device",
+      "tbl_name": "geofences",
+      "sql": "CREATE INDEX idx_geofences_device ON geofences(device_id, enabled)"
+    },
+    {
+      "type": "table",
+      "name": "geofence_state",
+      "tbl_name": "geofence_state",
+      "sql": "CREATE TABLE geofence_state (\n  geofence_id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  stable_state TEXT NOT NULL DEFAULT 'unknown',\n  candidate_state TEXT,\n  candidate_since INTEGER,\n  candidate_count INTEGER NOT NULL DEFAULT 0,\n  last_distance_m REAL,\n  updated_at INTEGER NOT NULL,\n  last_epoch INTEGER NOT NULL DEFAULT 0,\n  last_sequence INTEGER NOT NULL DEFAULT 0,\n  FOREIGN KEY(geofence_id) REFERENCES geofences(id),\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_geofence_state_device",
+      "tbl_name": "geofence_state",
+      "sql": "CREATE INDEX idx_geofence_state_device ON geofence_state(device_id, updated_at)"
+    },
+    {
+      "type": "table",
+      "name": "trips",
+      "tbl_name": "trips",
+      "sql": "CREATE TABLE trips (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  state TEXT NOT NULL,\n  destination_name TEXT,\n  destination_latitude REAL,\n  destination_longitude REAL,\n  destination_radius_m REAL NOT NULL DEFAULT 120,\n  expected_arrival_at INTEGER,\n  started_at INTEGER NOT NULL,\n  ended_at INTEGER,\n  arrival_candidate_since INTEGER,\n  arrival_candidate_count INTEGER NOT NULL DEFAULT 0,\n  last_alert_at INTEGER,\n  stationary_since INTEGER,\n  last_stop_alert_at INTEGER,\n  last_eval_epoch INTEGER NOT NULL DEFAULT 0,\n  last_eval_sequence INTEGER NOT NULL DEFAULT 0,\n  last_distance_to_destination_m REAL,\n  last_location_at INTEGER,\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_trips_device_state",
+      "tbl_name": "trips",
+      "sql": "CREATE INDEX idx_trips_device_state ON trips(device_id, state, started_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "retention_settings",
+      "tbl_name": "retention_settings",
+      "sql": "CREATE TABLE retention_settings (\n  device_id TEXT PRIMARY KEY,\n  safety_event_days INTEGER NOT NULL DEFAULT 180 CHECK(safety_event_days BETWEEN 30 AND 3650),\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_health_samples",
+      "tbl_name": "device_health_samples",
+      "sql": "CREATE TABLE device_health_samples (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  device_id TEXT NOT NULL,\n  received_at INTEGER NOT NULL,\n  service_active INTEGER NOT NULL,\n  location_enabled INTEGER NOT NULL,\n  location_subscribed INTEGER NOT NULL,\n  fine_location_permission INTEGER,\n  background_location_permission INTEGER,\n  activity_recognition_permission INTEGER,\n  battery_optimization_exempt INTEGER,\n  background_restricted INTEGER,\n  network TEXT NOT NULL,\n  network_validated INTEGER,\n  power_save_mode INTEGER,\n  pending_records INTEGER NOT NULL,\n  pending_safety_events INTEGER NOT NULL DEFAULT 0,\n  oldest_pending_age_ms INTEGER,\n  location_age_ms INTEGER,\n  ack_age_ms INTEGER,\n  battery_pct INTEGER,\n  charging INTEGER,\n  recovery_count INTEGER NOT NULL,\n  position_available INTEGER NOT NULL,\n  health_status TEXT NOT NULL,\n  health_reason TEXT NOT NULL,\n  app_version TEXT,\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_health_samples_device_time",
+      "tbl_name": "device_health_samples",
+      "sql": "CREATE INDEX idx_health_samples_device_time\n  ON device_health_samples(device_id, received_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "health_incidents",
+      "tbl_name": "health_incidents",
+      "sql": "CREATE TABLE health_incidents (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  kind TEXT NOT NULL,\n  severity TEXT NOT NULL,\n  started_at INTEGER NOT NULL,\n  last_seen_at INTEGER NOT NULL,\n  ended_at INTEGER,\n  alerted_at INTEGER,\n  auto_recovered INTEGER NOT NULL DEFAULT 0,\n  detail_json TEXT NOT NULL DEFAULT '{}',\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_health_incidents_device_time",
+      "tbl_name": "health_incidents",
+      "sql": "CREATE INDEX idx_health_incidents_device_time\n  ON health_incidents(device_id, started_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_health_incidents_open",
+      "tbl_name": "health_incidents",
+      "sql": "CREATE INDEX idx_health_incidents_open\n  ON health_incidents(device_id, ended_at, started_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "crash_reports",
+      "tbl_name": "crash_reports",
+      "sql": "CREATE TABLE crash_reports (\n  report_id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  app_version TEXT NOT NULL,\n  module TEXT NOT NULL,\n  exception_signature TEXT NOT NULL,\n  device_created_at INTEGER NOT NULL,\n  received_at INTEGER NOT NULL,\n  FOREIGN KEY(device_id) REFERENCES devices(id)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_crash_reports_device_time",
+      "tbl_name": "crash_reports",
+      "sql": "CREATE INDEX idx_crash_reports_device_time\n  ON crash_reports(device_id, received_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "audit_log",
+      "tbl_name": "audit_log",
+      "sql": "CREATE TABLE audit_log (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  event_type TEXT NOT NULL,\n  method TEXT NOT NULL,\n  path TEXT NOT NULL,\n  status INTEGER NOT NULL,\n  created_at INTEGER NOT NULL,\n  detail_json TEXT NOT NULL DEFAULT '{}'\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_audit_log_time",
+      "tbl_name": "audit_log",
+      "sql": "CREATE INDEX idx_audit_log_time\n  ON audit_log(created_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "device_replay_state",
+      "tbl_name": "device_replay_state",
+      "sql": "CREATE TABLE device_replay_state (\n  device_id TEXT PRIMARY KEY,\n  last_health_sequence INTEGER NOT NULL DEFAULT 0,\n  updated_at INTEGER NOT NULL DEFAULT 0,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "ble_anchors",
+      "tbl_name": "ble_anchors",
+      "sql": "CREATE TABLE ble_anchors (\n  geofence_id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  beacon_uuid TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY(geofence_id) REFERENCES geofences(id) ON DELETE CASCADE,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ble_anchors_device_uuid",
+      "tbl_name": "ble_anchors",
+      "sql": "CREATE UNIQUE INDEX idx_ble_anchors_device_uuid\n  ON ble_anchors(device_id, beacon_uuid)"
+    },
+    {
+      "type": "table",
+      "name": "evidence_batches",
+      "tbl_name": "evidence_batches",
+      "sql": "CREATE TABLE evidence_batches (\n  device_id TEXT NOT NULL,\n  batch_id TEXT NOT NULL,\n  protocol INTEGER NOT NULL,\n  record_count INTEGER NOT NULL,\n  byte_length INTEGER NOT NULL,\n  payload_sha256 TEXT NOT NULL,\n  r2_key TEXT NOT NULL,\n  received_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, batch_id),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_evidence_batches_device_time",
+      "tbl_name": "evidence_batches",
+      "sql": "CREATE INDEX idx_evidence_batches_device_time\n  ON evidence_batches(device_id, received_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "evidence_records",
+      "tbl_name": "evidence_records",
+      "sql": "CREATE TABLE evidence_records (\n  device_id TEXT NOT NULL,\n  epoch INTEGER NOT NULL,\n  sequence INTEGER NOT NULL,\n  record_id TEXT NOT NULL,\n  provider INTEGER NOT NULL,\n  family INTEGER NOT NULL,\n  capability INTEGER NOT NULL,\n  health INTEGER NOT NULL,\n  quality INTEGER NOT NULL,\n  independence_group TEXT NOT NULL,\n  elapsed_realtime_ms INTEGER NOT NULL,\n  wall_time_ms INTEGER NOT NULL,\n  payload_sha256 TEXT NOT NULL,\n  first_seen_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, epoch, sequence),\n  UNIQUE(device_id, record_id),\n  UNIQUE(device_id, record_id, epoch, sequence),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_evidence_records_device_time",
+      "tbl_name": "evidence_records",
+      "sql": "CREATE INDEX idx_evidence_records_device_time\n  ON evidence_records(device_id, wall_time_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_evidence_records_provider_time",
+      "tbl_name": "evidence_records",
+      "sql": "CREATE INDEX idx_evidence_records_provider_time\n  ON evidence_records(device_id, provider, wall_time_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_evidence_records_family_time",
+      "tbl_name": "evidence_records",
+      "sql": "CREATE INDEX idx_evidence_records_family_time\n  ON evidence_records(device_id, family, wall_time_ms DESC)"
+    },
+    {
+      "type": "table",
+      "name": "evidence_batch_records",
+      "tbl_name": "evidence_batch_records",
+      "sql": "CREATE TABLE evidence_batch_records (\n  device_id TEXT NOT NULL,\n  batch_id TEXT NOT NULL,\n  record_id TEXT NOT NULL,\n  epoch INTEGER NOT NULL,\n  sequence INTEGER NOT NULL,\n  PRIMARY KEY(device_id, batch_id, record_id),\n  FOREIGN KEY(device_id, batch_id) REFERENCES evidence_batches(device_id, batch_id) ON DELETE CASCADE,\n  FOREIGN KEY(device_id, record_id, epoch, sequence)\n    REFERENCES evidence_records(device_id, record_id, epoch, sequence) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_evidence_state",
+      "tbl_name": "device_evidence_state",
+      "sql": "CREATE TABLE device_evidence_state (\n  device_id TEXT PRIMARY KEY,\n  last_epoch INTEGER NOT NULL DEFAULT 0,\n  last_sequence INTEGER NOT NULL DEFAULT 0,\n  last_received_at INTEGER,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "evidence_provider_health",
+      "tbl_name": "evidence_provider_health",
+      "sql": "CREATE TABLE evidence_provider_health (\n  device_id TEXT NOT NULL,\n  provider INTEGER NOT NULL,\n  capability INTEGER NOT NULL,\n  health INTEGER NOT NULL,\n  reason TEXT,\n  last_epoch INTEGER NOT NULL,\n  last_sequence INTEGER NOT NULL,\n  observed_wall_ms INTEGER NOT NULL,\n  received_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, provider),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "atlas_models",
+      "tbl_name": "atlas_models",
+      "sql": "CREATE TABLE atlas_models (\n  device_id TEXT NOT NULL,\n  model_key TEXT NOT NULL,\n  model_version INTEGER NOT NULL DEFAULT 1,\n  state TEXT NOT NULL DEFAULT 'empty',\n  r2_key TEXT,\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, model_key),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "witness_authorizations",
+      "tbl_name": "witness_authorizations",
+      "sql": "CREATE TABLE witness_authorizations (\n  device_id TEXT NOT NULL,\n  witness_device_id TEXT NOT NULL,\n  enabled INTEGER NOT NULL DEFAULT 1,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, witness_device_id),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE,\n  FOREIGN KEY(witness_device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "ground_receivers",
+      "tbl_name": "ground_receivers",
+      "sql": "CREATE TABLE ground_receivers (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  name TEXT NOT NULL,\n  latitude REAL,\n  longitude REAL,\n  radius_m REAL,\n  public_key_spki_b64 TEXT,\n  enabled INTEGER NOT NULL DEFAULT 1,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_commands",
+      "tbl_name": "device_commands",
+      "sql": "CREATE TABLE device_commands (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  command_type TEXT NOT NULL,\n  payload_json TEXT NOT NULL DEFAULT '{}',\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  status TEXT NOT NULL DEFAULT 'pending',\n  acknowledged_at INTEGER,\n  result_json TEXT,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_device_commands_pending",
+      "tbl_name": "device_commands",
+      "sql": "CREATE INDEX idx_device_commands_pending\n  ON device_commands(device_id, status, created_at)"
+    },
+    {
+      "type": "table",
+      "name": "refined_history_runs",
+      "tbl_name": "refined_history_runs",
+      "sql": "CREATE TABLE refined_history_runs (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  from_ms INTEGER NOT NULL,\n  to_ms INTEGER NOT NULL,\n  model_version TEXT NOT NULL,\n  r2_key TEXT,\n  created_at INTEGER NOT NULL,\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_refined_history_device_time",
+      "tbl_name": "refined_history_runs",
+      "sql": "CREATE INDEX idx_refined_history_device_time\n  ON refined_history_runs(device_id, from_ms, to_ms)"
+    },
+    {
+      "type": "table",
+      "name": "witness_aliases",
+      "tbl_name": "witness_aliases",
+      "sql": "CREATE TABLE witness_aliases (\n  alias TEXT PRIMARY KEY CHECK(length(alias)=16),\n  child_device_id TEXT NOT NULL,\n  slot INTEGER NOT NULL,\n  valid_from_ms INTEGER NOT NULL,\n  valid_to_ms INTEGER NOT NULL,\n  source_record_id TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  UNIQUE(child_device_id, slot),\n  FOREIGN KEY(child_device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_witness_alias_child_time",
+      "tbl_name": "witness_aliases",
+      "sql": "CREATE INDEX idx_witness_alias_child_time\n  ON witness_aliases(child_device_id, valid_from_ms, valid_to_ms)"
+    },
+    {
+      "type": "index",
+      "name": "idx_witness_alias_expiry",
+      "tbl_name": "witness_aliases",
+      "sql": "CREATE INDEX idx_witness_alias_expiry\n  ON witness_aliases(expires_at)"
+    },
+    {
+      "type": "table",
+      "name": "witness_sightings",
+      "tbl_name": "witness_sightings",
+      "sql": "CREATE TABLE witness_sightings (\n  record_id TEXT PRIMARY KEY,\n  alias TEXT NOT NULL,\n  witness_device_id TEXT NOT NULL,\n  child_device_id TEXT,\n  observed_wall_ms INTEGER NOT NULL,\n  witness_latitude REAL NOT NULL,\n  witness_longitude REAL NOT NULL,\n  witness_accuracy_m REAL NOT NULL,\n  rssi INTEGER,\n  tx_power INTEGER,\n  proximity_allowance_m REAL NOT NULL,\n  uncertainty_m REAL NOT NULL,\n  authorised INTEGER NOT NULL DEFAULT 0,\n  received_at INTEGER NOT NULL,\n  FOREIGN KEY(witness_device_id) REFERENCES devices(id) ON DELETE CASCADE,\n  FOREIGN KEY(child_device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_witness_sightings_alias_time",
+      "tbl_name": "witness_sightings",
+      "sql": "CREATE INDEX idx_witness_sightings_alias_time\n  ON witness_sightings(alias, observed_wall_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_witness_sightings_child_time",
+      "tbl_name": "witness_sightings",
+      "sql": "CREATE INDEX idx_witness_sightings_child_time\n  ON witness_sightings(child_device_id, authorised, observed_wall_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_witness_sightings_unresolved",
+      "tbl_name": "witness_sightings",
+      "sql": "CREATE INDEX idx_witness_sightings_unresolved\n  ON witness_sightings(authorised, child_device_id, received_at)"
+    },
+    {
+      "type": "table",
+      "name": "ground_sightings",
+      "tbl_name": "ground_sightings",
+      "sql": "CREATE TABLE ground_sightings (\n  receiver_id TEXT NOT NULL,\n  sighting_id TEXT NOT NULL,\n  alias TEXT NOT NULL,\n  child_device_id TEXT,\n  observed_wall_ms INTEGER NOT NULL,\n  receiver_latitude REAL NOT NULL,\n  receiver_longitude REAL NOT NULL,\n  receiver_radius_m REAL NOT NULL,\n  rssi INTEGER,\n  tx_power INTEGER,\n  proximity_allowance_m REAL NOT NULL,\n  uncertainty_m REAL NOT NULL,\n  resolved INTEGER NOT NULL DEFAULT 0,\n  payload_sha256 TEXT NOT NULL CHECK(length(payload_sha256)=64),\n  received_at INTEGER NOT NULL,\n  PRIMARY KEY(receiver_id, sighting_id),\n  FOREIGN KEY(receiver_id) REFERENCES ground_receivers(id) ON DELETE CASCADE,\n  FOREIGN KEY(child_device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ground_sightings_alias_time",
+      "tbl_name": "ground_sightings",
+      "sql": "CREATE INDEX idx_ground_sightings_alias_time\n  ON ground_sightings(alias, observed_wall_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ground_sightings_child_time",
+      "tbl_name": "ground_sightings",
+      "sql": "CREATE INDEX idx_ground_sightings_child_time\n  ON ground_sightings(child_device_id, resolved, observed_wall_ms DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_ground_sightings_received",
+      "tbl_name": "ground_sightings",
+      "sql": "CREATE INDEX idx_ground_sightings_received\n  ON ground_sightings(received_at)"
+    },
+    {
+      "type": "table",
+      "name": "learned_place_models",
+      "tbl_name": "learned_place_models",
+      "sql": "CREATE TABLE learned_place_models (\n  device_id TEXT NOT NULL,\n  geofence_id TEXT NOT NULL,\n  model_version INTEGER NOT NULL DEFAULT 1,\n  trusted_visits INTEGER NOT NULL DEFAULT 0,\n  last_trusted_visit_ms INTEGER,\n  last_match_ms INTEGER,\n  state TEXT NOT NULL DEFAULT 'learning',\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, geofence_id),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE,\n  FOREIGN KEY(geofence_id) REFERENCES geofences(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "phase5_refined_intervals",
+      "tbl_name": "phase5_refined_intervals",
+      "sql": "CREATE TABLE phase5_refined_intervals (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  from_ms INTEGER NOT NULL,\n  to_ms INTEGER NOT NULL,\n  model_version TEXT NOT NULL,\n  source_r2_key TEXT,\n  refined_r2_key TEXT,\n  created_at INTEGER NOT NULL,\n  CHECK(to_ms >= from_ms),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_phase5_refined_device_time",
+      "tbl_name": "phase5_refined_intervals",
+      "sql": "CREATE INDEX idx_phase5_refined_device_time\n  ON phase5_refined_intervals(device_id, from_ms, to_ms)"
+    },
+    {
+      "type": "table",
+      "name": "phase5_hypothesis_frames",
+      "tbl_name": "phase5_hypothesis_frames",
+      "sql": "CREATE TABLE phase5_hypothesis_frames (\n  device_id TEXT NOT NULL,\n  record_id TEXT NOT NULL,\n  wall_time_ms INTEGER NOT NULL,\n  r2_key TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  refined_run_id TEXT,\n  PRIMARY KEY(device_id, record_id),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_phase5_hypothesis_device_time",
+      "tbl_name": "phase5_hypothesis_frames",
+      "sql": "CREATE INDEX idx_phase5_hypothesis_device_time\n  ON phase5_hypothesis_frames(device_id, wall_time_ms)"
+    },
+    {
+      "type": "index",
+      "name": "idx_phase5_hypothesis_unrefined",
+      "tbl_name": "phase5_hypothesis_frames",
+      "sql": "CREATE INDEX idx_phase5_hypothesis_unrefined\n  ON phase5_hypothesis_frames(device_id, refined_run_id, wall_time_ms)"
+    },
+    {
+      "type": "table",
+      "name": "phase5_precise_endpoints",
+      "tbl_name": "phase5_precise_endpoints",
+      "sql": "CREATE TABLE phase5_precise_endpoints (\n  device_id TEXT NOT NULL,\n  epoch INTEGER NOT NULL,\n  sequence INTEGER NOT NULL,\n  wall_time_ms INTEGER NOT NULL,\n  latitude REAL NOT NULL,\n  longitude REAL NOT NULL,\n  uncertainty_m REAL NOT NULL,\n  created_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, epoch, sequence),\n  FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_phase5_precise_endpoint_time",
+      "tbl_name": "phase5_precise_endpoints",
+      "sql": "CREATE INDEX idx_phase5_precise_endpoint_time\n  ON phase5_precise_endpoints(device_id, wall_time_ms)"
+    },
+    {
+      "type": "table",
+      "name": "device_location_control",
+      "tbl_name": "device_location_control",
+      "sql": "CREATE TABLE device_location_control (\n  device_id TEXT PRIMARY KEY,\n  desired_enabled INTEGER NOT NULL CHECK (desired_enabled IN (0,1)),\n  command_id TEXT NOT NULL UNIQUE,\n  issued_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  last_actual_enabled INTEGER CHECK (last_actual_enabled IS NULL OR last_actual_enabled IN (0,1)),\n  last_actual_at INTEGER,\n  last_acked_command_id TEXT, command_status TEXT NOT NULL DEFAULT 'pending', completed_at INTEGER, result_actual_enabled INTEGER CHECK (result_actual_enabled IS NULL OR result_actual_enabled IN (0,1)), result_success INTEGER CHECK (result_success IS NULL OR result_success IN (0,1)), result_reason TEXT,\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_location_control_updated",
+      "tbl_name": "device_location_control",
+      "sql": "CREATE INDEX idx_location_control_updated\n  ON device_location_control(updated_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "idx_devices_public_key_spki_unique",
+      "tbl_name": "devices",
+      "sql": "CREATE UNIQUE INDEX idx_devices_public_key_spki_unique\nON devices(public_key_spki_b64)"
+    },
+    {
+      "type": "table",
+      "name": "device_live_track_control",
+      "tbl_name": "device_live_track_control",
+      "sql": "CREATE TABLE device_live_track_control (\n  device_id TEXT PRIMARY KEY,\n  command_id TEXT NOT NULL UNIQUE,\n  requested_active INTEGER NOT NULL CHECK (requested_active IN (0,1)),\n  issued_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  command_status TEXT NOT NULL CHECK (command_status IN ('pending','completed','failed','expired')),\n  last_actual_active INTEGER CHECK (last_actual_active IS NULL OR last_actual_active IN (0,1)),\n  completed_at INTEGER,\n  result_reason TEXT,\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_wifi_schedules",
+      "tbl_name": "device_wifi_schedules",
+      "sql": "CREATE TABLE device_wifi_schedules (\n  id TEXT NOT NULL,\n  device_id TEXT NOT NULL,\n  enabled INTEGER NOT NULL CHECK (enabled IN (0,1)),\n  target_enabled INTEGER NOT NULL CHECK (target_enabled IN (0,1)),\n  local_minute_of_day INTEGER NOT NULL CHECK (local_minute_of_day BETWEEN 0 AND 1439),\n  days_mask INTEGER NOT NULL CHECK (days_mask BETWEEN 1 AND 127),\n  grace_minutes INTEGER NOT NULL CHECK (grace_minutes BETWEEN 1 AND 120),\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id,id),\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_wifi_schedule_result",
+      "tbl_name": "device_wifi_schedule_result",
+      "sql": "CREATE TABLE device_wifi_schedule_result (\n  device_id TEXT PRIMARY KEY,\n  schedule_id TEXT NOT NULL,\n  target_enabled INTEGER NOT NULL CHECK (target_enabled IN (0,1)),\n  actual_enabled INTEGER CHECK (actual_enabled IS NULL OR actual_enabled IN (0,1)),\n  status TEXT NOT NULL,\n  attempted_at INTEGER NOT NULL,\n  detail TEXT,\n  received_at INTEGER NOT NULL,\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "device_capability_profile",
+      "tbl_name": "device_capability_profile",
+      "sql": "CREATE TABLE device_capability_profile (\n  device_id TEXT PRIMARY KEY,\n  profile_version INTEGER NOT NULL,\n  profile_json TEXT NOT NULL,\n  device_updated_at INTEGER NOT NULL,\n  received_at INTEGER NOT NULL,\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "screen_time_daily",
+      "tbl_name": "screen_time_daily",
+      "sql": "CREATE TABLE screen_time_daily (\n  device_id TEXT NOT NULL,\n  local_day TEXT NOT NULL,\n  total_foreground_ms INTEGER NOT NULL,\n  session_count INTEGER NOT NULL,\n  summary_json TEXT NOT NULL,\n  received_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id,local_day),\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "table",
+      "name": "commute_summaries",
+      "tbl_name": "commute_summaries",
+      "sql": "CREATE TABLE commute_summaries (\n  id TEXT PRIMARY KEY,\n  device_id TEXT NOT NULL,\n  started_at INTEGER NOT NULL,\n  ended_at INTEGER NOT NULL,\n  distance_m REAL NOT NULL,\n  duration_ms INTEGER NOT NULL,\n  transport_mode TEXT NOT NULL,\n  mode_confidence REAL NOT NULL,\n  start_label TEXT,\n  end_label TEXT,\n  provenance TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  UNIQUE(device_id,started_at,ended_at),\n  FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_commute_device_time",
+      "tbl_name": "commute_summaries",
+      "sql": "CREATE INDEX idx_commute_device_time ON commute_summaries(device_id,started_at DESC)"
+    },
+    {
+      "type": "table",
+      "name": "provider_cache",
+      "tbl_name": "provider_cache",
+      "sql": "CREATE TABLE provider_cache (\n  provider TEXT NOT NULL,\n  cache_key TEXT NOT NULL,\n  value_json TEXT NOT NULL,\n  expires_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  PRIMARY KEY(provider,cache_key)\n)"
+    },
+    {
+      "type": "table",
+      "name": "provider_rate_window",
+      "tbl_name": "provider_rate_window",
+      "sql": "CREATE TABLE provider_rate_window (\n  provider TEXT PRIMARY KEY,\n  window_start INTEGER NOT NULL,\n  request_count INTEGER NOT NULL CHECK (request_count >= 0),\n  updated_at INTEGER NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "pairing_pin_sessions",
+      "tbl_name": "pairing_pin_sessions",
+      "sql": "CREATE TABLE pairing_pin_sessions (\n  id TEXT PRIMARY KEY,\n  pin_hash TEXT NOT NULL UNIQUE,\n  device_name TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  claimed_at INTEGER,\n  pending_public_key_spki_b64 TEXT,\n  claim_secret_hash TEXT,\n  confirmed_at INTEGER,\n  device_id TEXT,\n  cancelled_at INTEGER,\n  CHECK (length(id) BETWEEN 8 AND 64),\n  CHECK (length(device_name) BETWEEN 1 AND 64),\n  CHECK (expires_at > created_at)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pairing_pin_active_hash",
+      "tbl_name": "pairing_pin_sessions",
+      "sql": "CREATE INDEX idx_pairing_pin_active_hash\n  ON pairing_pin_sessions(pin_hash, expires_at, claimed_at, confirmed_at, cancelled_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_pairing_pin_parent_status",
+      "tbl_name": "pairing_pin_sessions",
+      "sql": "CREATE INDEX idx_pairing_pin_parent_status\n  ON pairing_pin_sessions(created_at DESC, expires_at)"
+    },
+    {
+      "type": "table",
+      "name": "dev_object_store",
+      "tbl_name": "dev_object_store",
+      "sql": "CREATE TABLE dev_object_store (\n  key TEXT PRIMARY KEY,\n  size INTEGER NOT NULL CHECK(size >= 0),\n  etag TEXT NOT NULL,\n  uploaded_at INTEGER NOT NULL,\n  http_metadata_json TEXT NOT NULL DEFAULT '{}',\n  custom_metadata_json TEXT NOT NULL DEFAULT '{}'\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_object_store_uploaded",
+      "tbl_name": "dev_object_store",
+      "sql": "CREATE INDEX idx_dev_object_store_uploaded\n  ON dev_object_store(uploaded_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_object_store_key_uploaded",
+      "tbl_name": "dev_object_store",
+      "sql": "CREATE INDEX idx_dev_object_store_key_uploaded\n  ON dev_object_store(key, uploaded_at)"
+    },
+    {
+      "type": "table",
+      "name": "dev_object_chunks",
+      "tbl_name": "dev_object_chunks",
+      "sql": "CREATE TABLE dev_object_chunks (\n  key TEXT NOT NULL,\n  chunk_index INTEGER NOT NULL CHECK(chunk_index >= 0),\n  body BLOB NOT NULL,\n  PRIMARY KEY(key, chunk_index),\n  FOREIGN KEY(key) REFERENCES dev_object_store(key) ON DELETE CASCADE\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_object_chunks_key",
+      "tbl_name": "dev_object_chunks",
+      "sql": "CREATE INDEX idx_dev_object_chunks_key\n  ON dev_object_chunks(key, chunk_index)"
+    },
+    {
+      "type": "table",
+      "name": "dev_parent_login_tokens",
+      "tbl_name": "dev_parent_login_tokens",
+      "sql": "CREATE TABLE dev_parent_login_tokens (\n  token_hash TEXT PRIMARY KEY CHECK(length(token_hash)=64),\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  consumed_at INTEGER,\n  CHECK(expires_at > created_at)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_parent_login_tokens_expiry",
+      "tbl_name": "dev_parent_login_tokens",
+      "sql": "CREATE INDEX idx_dev_parent_login_tokens_expiry\n  ON dev_parent_login_tokens(expires_at, consumed_at)"
+    },
+    {
+      "type": "table",
+      "name": "dev_parent_sessions",
+      "tbl_name": "dev_parent_sessions",
+      "sql": "CREATE TABLE dev_parent_sessions (\n  session_hash TEXT PRIMARY KEY CHECK(length(session_hash)=64),\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  revoked_at INTEGER,\n  CHECK(expires_at > created_at)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_parent_sessions_expiry",
+      "tbl_name": "dev_parent_sessions",
+      "sql": "CREATE INDEX idx_dev_parent_sessions_expiry\n  ON dev_parent_sessions(expires_at, revoked_at)"
+    },
+    {
+      "type": "table",
+      "name": "dev_maintenance_state",
+      "tbl_name": "dev_maintenance_state",
+      "sql": "CREATE TABLE dev_maintenance_state (\n  task TEXT PRIMARY KEY,\n  last_run_at INTEGER NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "dev_location_history",
+      "tbl_name": "dev_location_history",
+      "sql": "CREATE TABLE dev_location_history (\n  device_id TEXT NOT NULL,\n  safe_device_id TEXT NOT NULL,\n  epoch INTEGER NOT NULL,\n  sequence INTEGER NOT NULL,\n  wall_time_ms INTEGER NOT NULL,\n  segment_start_ms INTEGER NOT NULL,\n  trusted_packet_json TEXT NOT NULL,\n  raw_packet_json TEXT NOT NULL,\n  created_at INTEGER NOT NULL,\n  PRIMARY KEY(device_id, epoch, sequence)\n)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_location_history_segment",
+      "tbl_name": "dev_location_history",
+      "sql": "CREATE INDEX idx_dev_location_history_segment\n  ON dev_location_history(safe_device_id, segment_start_ms, epoch, sequence)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_location_history_time",
+      "tbl_name": "dev_location_history",
+      "sql": "CREATE INDEX idx_dev_location_history_time\n  ON dev_location_history(device_id, wall_time_ms, epoch, sequence)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_location_history_created",
+      "tbl_name": "dev_location_history",
+      "sql": "CREATE INDEX idx_dev_location_history_created\n  ON dev_location_history(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_history_commute_cursor",
+      "tbl_name": "dev_location_history",
+      "sql": "CREATE INDEX idx_dev_history_commute_cursor ON dev_location_history(device_id,wall_time_ms,sequence,epoch)"
+    },
+    {
+      "type": "index",
+      "name": "idx_p5_frames_retention",
+      "tbl_name": "phase5_hypothesis_frames",
+      "sql": "CREATE INDEX idx_p5_frames_retention ON phase5_hypothesis_frames(created_at,device_id,record_id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_p5_frames_object",
+      "tbl_name": "phase5_hypothesis_frames",
+      "sql": "CREATE INDEX idx_p5_frames_object ON phase5_hypothesis_frames(r2_key)"
+    },
+    {
+      "type": "index",
+      "name": "idx_p5_runs_retention",
+      "tbl_name": "phase5_refined_intervals",
+      "sql": "CREATE INDEX idx_p5_runs_retention ON phase5_refined_intervals(to_ms,id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_p5_runs_object",
+      "tbl_name": "phase5_refined_intervals",
+      "sql": "CREATE INDEX idx_p5_runs_object ON phase5_refined_intervals(refined_r2_key)"
+    },
+    {
+      "type": "index",
+      "name": "idx_p5_endpoints_retention",
+      "tbl_name": "phase5_precise_endpoints",
+      "sql": "CREATE INDEX idx_p5_endpoints_retention ON phase5_precise_endpoints(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_safety_global_retention",
+      "tbl_name": "safety_events",
+      "sql": "CREATE INDEX idx_safety_global_retention ON safety_events(server_created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_events_global_retention",
+      "tbl_name": "device_events",
+      "sql": "CREATE INDEX idx_events_global_retention ON device_events(created_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_crashes_retention",
+      "tbl_name": "crash_reports",
+      "sql": "CREATE INDEX idx_crashes_retention ON crash_reports(received_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_health_retention",
+      "tbl_name": "device_health_samples",
+      "sql": "CREATE INDEX idx_health_retention ON device_health_samples(received_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_incident_retention",
+      "tbl_name": "health_incidents",
+      "sql": "CREATE INDEX idx_incident_retention ON health_incidents(ended_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_dev_parent_revoked",
+      "tbl_name": "dev_parent_sessions",
+      "sql": "CREATE INDEX idx_dev_parent_revoked ON dev_parent_sessions(revoked_at)"
+    },
+    {
+      "type": "index",
+      "name": "idx_watchdog_active_devices",
+      "tbl_name": "devices",
+      "sql": "CREATE INDEX idx_watchdog_active_devices ON devices(revoked_at,id)"
+    },
+    {
+      "type": "index",
+      "name": "idx_watchdog_due_incidents",
+      "tbl_name": "health_incidents",
+      "sql": "CREATE INDEX idx_watchdog_due_incidents ON health_incidents(device_id,ended_at,alerted_at,started_at,id)"
+    },
+    {
+      "type": "table",
+      "name": "dev_parent_credentials",
+      "tbl_name": "dev_parent_credentials",
+      "sql": "CREATE TABLE dev_parent_credentials (\n  id TEXT PRIMARY KEY NOT NULL CHECK (id = 'primary'),\n  verifier TEXT NOT NULL CHECK (length(verifier) BETWEEN 80 AND 256),\n  rotated_at INTEGER NOT NULL CHECK (rotated_at > 0)\n)"
+    }
+  ],
+  "diagnostics": [
+    {
+      "type": "table",
+      "name": "beta_requests",
+      "tbl_name": "beta_requests",
+      "sql": "CREATE TABLE beta_requests(nonce TEXT PRIMARY KEY, device_id TEXT NOT NULL, expires_at INTEGER NOT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "beta_latest",
+      "tbl_name": "beta_latest",
+      "sql": "CREATE TABLE beta_latest(device_id TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "beta_challenges",
+      "tbl_name": "beta_challenges",
+      "sql": "CREATE TABLE beta_challenges(device_id TEXT PRIMARY KEY, token TEXT NOT NULL, expires_at INTEGER NOT NULL, queue_at INTEGER, portal_at INTEGER)"
+    },
+    {
+      "type": "table",
+      "name": "beta_runs",
+      "tbl_name": "beta_runs",
+      "sql": "CREATE TABLE beta_runs(device_id TEXT NOT NULL, run_id TEXT NOT NULL, metadata TEXT NOT NULL, readiness TEXT, dropped INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(device_id,run_id))"
+    },
+    {
+      "type": "table",
+      "name": "beta_records",
+      "tbl_name": "beta_records",
+      "sql": "CREATE TABLE beta_records(device_id TEXT NOT NULL, run_id TEXT NOT NULL, record_id INTEGER NOT NULL, payload TEXT NOT NULL, received_at INTEGER NOT NULL, PRIMARY KEY(device_id,run_id,record_id))"
+    },
+    {
+      "type": "table",
+      "name": "beta_reviews",
+      "tbl_name": "beta_reviews",
+      "sql": "CREATE TABLE beta_reviews(device_id TEXT NOT NULL, run_id TEXT NOT NULL, payload TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(device_id,run_id))"
+    },
+    {
+      "type": "index",
+      "name": "beta_records_retention",
+      "tbl_name": "beta_records",
+      "sql": "CREATE INDEX beta_records_retention ON beta_records(received_at)"
+    },
+    {
+      "type": "index",
+      "name": "beta_requests_expiry",
+      "tbl_name": "beta_requests",
+      "sql": "CREATE INDEX beta_requests_expiry ON beta_requests(expires_at)"
+    },
+    {
+      "type": "index",
+      "name": "beta_records_device_time",
+      "tbl_name": "beta_records",
+      "sql": "CREATE INDEX beta_records_device_time ON beta_records(device_id,received_at DESC,record_id DESC)"
+    }
+  ]
+}

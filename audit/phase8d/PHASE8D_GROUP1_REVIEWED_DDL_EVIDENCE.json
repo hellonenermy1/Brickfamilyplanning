@@ -1,0 +1,270 @@
+{
+  "format": "brick-group1-reviewed-ddl-evidence-v1",
+  "sourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+  "sourceTreeSha": "7ce2510ae3db9259952785f34b3a5cbeedcd91ca",
+  "baselineSha": "591424bb59e5f7d5e01fc2b78d8dcd28ea47639b",
+  "baselineReproductions": {
+    "missingUniqueDeviceKeyIndexAcceptedByRestore": true,
+    "duplicateRestoredIdentityKeyInsertAccepted": true,
+    "weakenedGeofenceCheckAcceptedByRestore": true,
+    "radius1InsertAcceptedDespiteReviewedMinimum25": true,
+    "populatedSqliteWildcardPrefixApplicationTableOmittedByExport": true,
+    "scope": "controlled native disposable D1 only",
+    "log": "BASELINE restore accepted missing unique key index; restored identity key could be reused by another device\nBASELINE restore accepted weakened CHECK; target subsequently accepted radius1 where reviewed minimum is25\nBASELINE export ignored populated sqliteXshadow because LIKE sqlite_% treated underscore as wildcard"
+  },
+  "focusedNativeCasesPassed": 30,
+  "reviewedApplicationDefinitions": {
+    "primaryTables": 49,
+    "primaryIndexes": 59,
+    "diagnosticTables": 6,
+    "diagnosticIndexes": 3,
+    "totalDefinitions": 117,
+    "digests": {
+      "primary": "3bd9901c9432c41fe9483b2d9dca31f0f9b41bf2ffd5c2dd856a807ea3bba7be",
+      "diagnostics": "a2f985b2ab01091eac21a2ae3397e35ce8d3071bbe64d2b043662e4b6986b943"
+    },
+    "definitionPolicyPath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_POLICY.json",
+    "policySha256": "95e3be26075813ec8de0cd3110f8171a9efc9808c6a715acac3ebab93202e1c3",
+    "independentReviewer": null,
+    "liveProviderObserved": false
+  },
+  "existingRelationshipCasesPassed": 24,
+  "existingCaptureCoordinatorCasesPassed": 26,
+  "sourceSqlCallsPerPageMaximum": 5,
+  "externalInventorySummary": {
+    "selectedFiles": 326,
+    "filesWithManagementSignals": 78,
+    "explicitClassifications": 90,
+    "stagedOperatorLaunchers": 1,
+    "betaMutatorsUnfenced": 4,
+    "stagedOffPlatformMonitors": 1,
+    "stagedOffPlatformDestinations": 1,
+    "legacyMutatorsNotBetaApproved": 13,
+    "unresolvedRelativeImportCandidates": 5,
+    "unresolvedDynamicImports": 146
+  },
+  "unchangedSha256": {
+    "audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv": "1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228",
+    "audit/phase8d/release-evidence/PHASE8D_REQUIREMENTS_LEDGER.json": "27a159ca14fc25baaf81b304ab76d6750ba64611d805963124f2434459ba63fa",
+    "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json": "75def2c359f1db2359341ffcacd871958cd4f58ea87e5569469f9def019e0d86"
+  },
+  "limits": [
+    "Pinned SQL-token definition identity, not a general SQLite semantic-equivalence parser",
+    "Provider/migration bookkeeping and SQLite-owned automatic indexes retain their explicitly stated bounds",
+    "Actual provider schema/support and complete installed writer quiescence remain unqualified",
+    "No trusted independent key/destination/journal custody or installed schedule/alerts",
+    "No live isolated cloud recovery/interruption/rollback or agreed measured RTO/RPO acceptance"
+  ],
+  "productionActivated": false,
+  "cloudWritesPerformed": false,
+  "familyDataOperations": false,
+  "applicationDeployed": false,
+  "merged": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "localCampaign": {
+    "sourceSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+    "groups": [
+      {
+        "name": "npm run typecheck",
+        "exitCode": 0,
+        "seconds": 2.56
+      },
+      {
+        "name": "Beta provisioner and shared compatibility schema syntax",
+        "exitCode": 0,
+        "seconds": 0.83
+      },
+      {
+        "name": "npm run build:parent-assets",
+        "exitCode": 0,
+        "seconds": 0.36
+      },
+      {
+        "name": "Optional route-map isolation deadlines and signed live recovery",
+        "exitCode": 0,
+        "seconds": 3.53
+      },
+      {
+        "name": "Canonical acceptance worksheet and closure inventory guards",
+        "exitCode": 0,
+        "seconds": 4.37
+      },
+      {
+        "name": "Bounded coherent capture source and encrypted coordinator",
+        "exitCode": 0,
+        "seconds": 114.14
+      },
+      {
+        "name": "Watchdog bounded fleet RPC delivery retry and state races",
+        "exitCode": 0,
+        "seconds": 20.23
+      },
+      {
+        "name": "Bounded cleanup backlog progress and policy regressions",
+        "exitCode": 0,
+        "seconds": 4.42
+      },
+      {
+        "name": "Resumable D1 commute history paging regression",
+        "exitCode": 0,
+        "seconds": 6.98
+      },
+      {
+        "name": "D1 object read integrity and atomic conditional-write regressions",
+        "exitCode": 0,
+        "seconds": 5.3
+      },
+      {
+        "name": "Protected off-platform archive authentication identity and CLI",
+        "exitCode": 0,
+        "seconds": 5.44
+      },
+      {
+        "name": "Destroy source and recover both D1 stores and beta DO from encrypted package",
+        "exitCode": 0,
+        "seconds": 161.68
+      },
+      {
+        "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+        "exitCode": 0,
+        "seconds": 1.9
+      },
+      {
+        "name": "Receipt-age retention cleanup race and bounded statement envelope",
+        "exitCode": 0,
+        "seconds": 2.65
+      },
+      {
+        "name": "Scheduler delayed failure and automatic retry",
+        "exitCode": 0,
+        "seconds": 2.15
+      },
+      {
+        "name": "Versioned leases nested work and release-outage recovery",
+        "exitCode": 0,
+        "seconds": 1.16
+      },
+      {
+        "name": "Durable derived-work leases backoff privacy and fair device rotation",
+        "exitCode": 0,
+        "seconds": 2.53
+      },
+      {
+        "name": "Real scheduler enrichment failure isolation and durable evidence ACK",
+        "exitCode": 0,
+        "seconds": 2.49
+      },
+      {
+        "name": "Corrupt refinement input and healthy peer isolation",
+        "exitCode": 0,
+        "seconds": 2.07
+      },
+      {
+        "name": "Rotating poison input quarantine repair and operational reconstruction",
+        "exitCode": 0,
+        "seconds": 5.91
+      },
+      {
+        "name": "Conservative D1 computation guard and durable failure reserve",
+        "exitCode": 0,
+        "seconds": 1.36
+      },
+      {
+        "name": "Populated maintenance RPC statement envelope and alarm isolation",
+        "exitCode": 0,
+        "seconds": 2.4
+      },
+      {
+        "name": "Original refined history against actual production-migration SQLite",
+        "exitCode": 0,
+        "seconds": 0.15
+      },
+      {
+        "name": "Existing beta auth history map and WebSocket regressions",
+        "exitCode": 0,
+        "seconds": 5.82
+      },
+      {
+        "name": "Original production DO and multi-store recovery regressions",
+        "exitCode": 0,
+        "seconds": 5.86
+      },
+      {
+        "name": "Existing native production trust-boundary regressions",
+        "exitCode": 0,
+        "seconds": 15.77
+      }
+    ],
+    "passed": true,
+    "dependencyInstall": "Unchanged installed dependencies reused; clean hosted npm ci passed"
+  },
+  "hosted": {
+    "records": [
+      {
+        "runId": 42944392314,
+        "jobId": 130273561648,
+        "event": "push",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 271714,
+        "errorMarkers": 0,
+        "checkoutSha": "b68dfaf182dd0c758ce84b72e89dbe0fa5589623",
+        "reviewedDdl30": true,
+        "relationship24": true,
+        "valueParity12": true,
+        "populatedEncryptedRecovery": true,
+        "capture26Max5": true
+      },
+      {
+        "runId": 42944398915,
+        "jobId": 130273583662,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 273669,
+        "errorMarkers": 0,
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "reviewedDdl30": true,
+        "relationship24": true,
+        "valueParity12": true,
+        "populatedEncryptedRecovery": true,
+        "capture26Max5": true
+      },
+      {
+        "runId": 42944398828,
+        "jobId": 130273582738,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 24998,
+        "errorMarkers": 0,
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "sourceShaPresent": true
+      },
+      {
+        "runId": 42944398818,
+        "jobId": 130273582659,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16167,
+        "errorMarkers": 0,
+        "checkoutSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+        "sourceShaPresent": true
+      }
+    ],
+    "prMergeSha": "03e5938118735ec1b08cf3c705411aebff5e2e91",
+    "prMergeTreeSha": "7ce2510ae3db9259952785f34b3a5cbeedcd91ca",
+    "prMergeParents": [
+      "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "b68dfaf182dd0c758ce84b72e89dbe0fa5589623"
+    ]
+  },
+  "manualMetadataJobs": "SKIPPED; no unchanged provider read repeated"
+}

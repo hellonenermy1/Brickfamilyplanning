@@ -1,0 +1,29 @@
+# Group 1 — classified admission and parent revocation
+
+Baseline: `b423a22372dd9ac32cfbf9bc689d8ecc9632cef7`, unchanged PR32 base `141cbf42efaa61873c4fa87138ca5a0a19d404a2`, draft/unmerged. The prior handoff explicitly left broad normal-admission urgency and parent revocation unfinished under P8D-002/OPS-002/OPS-003. This batch addresses those staged source gaps, not production activation or complete recovery acceptance.
+
+## Reproduced normal-admission gap
+
+The previous actual Worker-root test proved an anonymous login GET preempted a drained capture: every fetch was marked urgent before route authentication. A focused baseline reproduction uses that exact native fixture and the old Worker/boundary/eligibility source from b423a223. This is controlled source/native behavior with explicit controller installation, not a claim about the deployed unconfigured runtime. The previous manual-SOS authorization protected the outage fallback but did not classify healthy admission.
+
+`runCaptureWriter` now accepts a bounded lazy priority capability. With a controller installed, classification must finish and return an exact allowed priority before admission; exceptions, invalid results and timeout start no admission/work. Without an installed controller the callback is not executed. The actual fetch root grants urgent admission only after its read-only request proof; other requests use ordinary admission and cannot preempt an already-held capture. A real authenticated SOS still preempts and persists. The proof is checked again for outage fallback; late/uncertain authorization cannot quarantine or start effects. Scheduled service entry retains its existing priority and refuses a blanket outage fallback.
+
+This proves root admission classification at that boundary. It does not classify all nested D1, actor or maintenance descendants: an already admitted ordinary invocation may still reach independently urgent children while a newly requested capture is draining. No global flood/availability, fairness, latency or complete writer claim follows.
+
+## Parent revocation
+
+The same root proof now admits the exact parent device-revoke POST only in the D1-session development mode, with an exact same-origin Origin, bounded cloned body, valid unexpired/unrevoked hashed D1 session, existing target and accepting parent rate capability. A client-supplied internal verification header cannot replace the session lookup. Proof performs only source reads plus the scoped edge rate check, and preserves the original request. The real route repeats its normal session/Origin/lifecycle checks and performs its original transaction; no authentication or durability control is removed.
+
+An already revoked target remains eligible for a legitimate retry: D1 revocation may have committed while closing the actual device object failed. The existing route truthfully returns503 with revoked=true in that case. A later authenticated retry closes/persists the device fence while retaining the original revocation timestamp. Injected failure of the D1 device/trip transaction rolls both changes back and never produces a success ACK. Restart retains D1 revocation, the device fence, the earlier accepted SOS/device marker and permanent capture quarantine. No transient parent session is exported as recovery evidence.
+
+## Verification and remaining scope
+
+The eligibility/native suite now has69 cases (30 new), including18 parent eligibility cases, healthy-authority capture protection/authorized preemption, actual unauthorized parent paths, real D1 rollback and DO-failure/retry. The writer-boundary suite has41 cases (6 new) for lazy classification and conservative failure. Existing Worker-root coverage remains12 with the old anonymous-preemption expectation corrected. New cases total36. The actual composed Worker, signed broker, independent SQLite guard, native D1 and actual device object are exercised; no real cloud/provider/key/schedule operation runs.
+
+Normal unconfigured product behavior remains unchanged. Under an installed partial controller, unclassified location/health/other routes receive ordinary admission and may be refused during a held capture; this is an explicit activation blocker, not full urgent availability. Other urgent ingestion/watchdog/maintenance paths, nested ownership/priority, raw/operator/credential/lifecycle/process coverage, STARTED/legacy reconciliation and every matched capture/export/resume/seal/release guard path remain open. Trusted bootstrap/transport/guard failure-domain qualification, restricted runtime B2 capability and separate durable selection-manifest/key/context custody, installed schedules/real-recipient monitoring, current PITR and isolated cloud recovery/interruption/rollback/RTO/RPO remain unqualified.
+
+The previously supplied PDF9 and matching four-day plan remain the authority recorded in PHASE8D_GROUP1_AUTHORIZED_URGENT.md. No requirements are waived or accepted by these source results. Group1 NOT READY, P8D-002 P1 OPEN, Phase8D NOT PASS and four-day forecast AT RISK. No merge/deploy, live Cloudflare/provider write, family-data export, credential/permission/billing change, R2/card or APK/UI/phone change.
+
+## Exact-source qualification
+
+Source `0760e47e0ac59996c7458821297af21afe4c9ba7` passed all26 local audit/build groups, including full encrypted41+4/deviceDO destruction/fresh restore. Hosted push42622328015 and current-base PR42622336018 each33/33, Phase2 run42622336031 14/14, portal/map42622335960 10/10. Full decoded logs show exact git-log checkout and zero error markers; existing Miniflare RPC-disposal warning persists. PR checkout9baf16b05218c63fb2deeedff13294e9653b2f80 has inspected base141cbf42 +source0760e47e parents and matching source tree. Companion JSON records hashes/limits and the source-baseline anonymous200/preempted=true observation. Following persistence is Markdown/JSON only, no runtime/deployment/acceptance change.

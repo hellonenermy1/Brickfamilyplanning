@@ -1,0 +1,41 @@
+# Current lifecycle control
+
+P8D-088 adds per-call deadlines to journal operations, retry pause and final validation, a240s total budget and cooperative AbortSignal cancellation. Release receives its own per-call budget even after cancellation/deadline; late acknowledgements cannot report success.35 new lifecycle cases qualify the source protocol, not a live writer fence. See PHASE8D_CAPTURE_LIFECYCLE.md. Earlier22 source/adapter cases remain inherited. Private CLI publication is separately strengthened by P8D-089/22 cases. Actual account access and the finite live prerequisites are recorded in PHASE8D_LIVE_RECOVERY_PREREQUISITES.md.
+
+---
+
+# Bounded coherent capture source and operator contract
+
+Exact source: c2ecb88c9d34a429512de28d9a6aeedd3063b650. P8D-085 is source/CI qualification only. P8D-002 remains P1 OPEN.
+
+## Source interface and trust boundary
+
+src/cardfree-capture.ts exports readCardfreeCapturePage. Each request identifies a primary/diagnostic durable table and rowid cursor, pinned schema hash and CaptureFence (captureId, generation, resourceSetSha256, sourceSha, pausedAt). The supplied authority must assert the same identity, state DRAINED, zero active writers and an unexpired lease bounded to five minutes after pausedAt. Checks occur before and after each read. This is a protocol for a trusted external fence; an assertion alone cannot establish real writer quiescence.
+
+The production adapter is NOT implemented or installed. Before operational use it must enumerate every mutating HTTP/WebSocket/RPC/alarm/request-fallback path across both DBs and every relevant device DO, stop normal admission, drain in-flight writes and invalidate stale generations. Urgent safety/SOS work must preempt/abort a capture and resume normal processing rather than wait behind a blanket pause. Retrying a stale generation must never execute a delayed mutation or release another capture's fence. Capability deadlines stop waiting; they do not cancel remote effects. Authentication, least privilege and actual resource identity must be independently checked at the transport boundary. No route, service binding, account permission or production pause is supplied by this change.
+
+## Bounded extraction
+
+The separate source reader fixes45-table coverage at41 primary and4 diagnostics; credential/transient tables are excluded. Recursive backups/d1 objects and chunks are excluded. Provider-cache retry/cursor history is reconstructible and intentionally excluded. The schema/catalog is checked on every page and schema hashes are pinned. Up to64 rows and2MiB are admitted; a metadata size query runs before object bodies are fetched. The cursor uses safe-integer rowids; oversized rows fail closed. Actual synthetic SQLite/BLOB tests measure at most5 statements per populated page,4 for empty pages, under a44-statement wrapper. This does not establish production rows-read/CPU/fleet/storage quotas. The legacy exportCardfreeD1 whole-call API still refuses its41-statement batch after43 prior statements under that wrapper; it is not silently rewritten or relabelled qualified.
+
+## Off-platform coordinator and encrypted progress
+
+scripts/cardfree-capture-coordinator.mjs accepts trusted runtime, source, authority and journal adapters plus pinned context/fence and a separate key. Source adapters implement readPage and deviceSnapshot. Runtime validates the fence and finalizes the full snapshot. Complete durable table inventory, column/type/row identities and object chunk/hash integrity are validated before encryption. Every durable device, including revoked devices, requires a matching DO snapshot; missing or changed devices cannot produce a complete result.
+
+privateCaptureJournal uses a0700 directory and0600 files, refuses symlinks/path traversal, creates immutable entries with exclusive temporary files, fsync, hard-link publication and readback. AES256GCM uses fresh nonces and AAD bound to the exact context, fence and item name. Wrong key/context/generation, tamper, incomplete pages and substituted snapshots fail closed. Resume is permitted only under the same still-held fence; a new generation cannot reuse a prior journal. Plaintext exists in process memory; no plaintext journal is written.
+
+Read failures retry at most twice with50/100ms backoff; capability calls default to15s deadlines. Max100000 rows/table,1000 devices,2MiB page,16MiB decoded capture and existing32MiB protected-package bounds are enforced. These are explicit refusal envelopes, not arbitrary dataset support. Full finalization precedes protected seal and authenticated reopen. Fenced release is attempted in finally; failed or timed-out release reports CAPTURE_RELEASE_FAILED and never success. A returned SEALED_SOURCE_CAPTURE means a validated encrypted source package, not delivery to an independent destination or proof of a live scheduled backup. A real adapter must persist durable failure/recovery state if the process dies.
+
+## PITR metadata check
+
+scripts/cardfree-pitr-readonly.mjs accepts one private0600 JSON file (max16KiB), with accountId, primaryId, diagnosticId and optional asOf. IDs must be explicitly verified privately; never copy them into public instructions/logs. It reads only CLOUDFLARE_AUDIT_READ_TOKEN. There is no deploy-token fallback. The resource names must exactly match brick-family-beta and brick-family-beta-diagnostics and IDs must differ. It uses fixed GET database-metadata and time_travel/bookmark paths only:4 requests for current bookmarks, at most6 with a historical target. HTTP401/403 or any error stops the run; no retries or broader catalog probing. Responses cap64KiB, redirects are refused and request timeouts are15s. Raw bookmarks/resource IDs/tokens are not logged.
+
+Run only after the dedicated D1 Read capability and exact resource plan have been verified; invoke node scripts/cardfree-pitr-readonly.mjs /private/path/pitr-plan.json with the token provided through the existing private secret channel. Do not place token values on a command line or commit plan/key/private archive contents. The checker restricts historical targets to the past7 days; an earlier-than-database-creation target is NOT_APPLICABLE. This policy limit and metadata are not proof of account retention. recoveryProven, retentionWindowVerified and activeWorkerBindingsVerified remain false even after metadata success. A separate isolated restore drill is required.
+
+Prior real read-only run41839919454/job126994211457 returned D1 catalog GET HTTP401; new code tests do not erase that blocker. No live invocation was made for this checkpoint and no permission expansion was requested.
+
+## Qualification and remaining operational acceptance
+
+22 coordinator cases cover real synthetic Miniflare D1/BLOB paging plus supplied authority/journal failures;8 PITR cases use synthetic HTTP responses. The strengthened existing drill pauses a disposable scheduler, captures41+4 and actual device DOs, compares the legacy logical oracle, seals the package, destroys source persistence, decrypts from disk and restores fresh stores/DO state. Wrong key, tampering and unexpected identity leave fresh targets untouched. These are synthetic resources, not production fencing or independent custody proof. The existing Miniflare RPC-stub disposal warning remains recorded.
+
+Before P8D-002 closure: verified private source transport and safety-preemptive writer fencing; independently controlled card-free private destination and separately retained key/recovery context; scheduled capture/readback/failure and age alarms; interruption/resume and stale-generation drills; actual scoped PITR metadata/window evidence; isolated cloud recovery of both DBs and all DO state with measured RTO/RPO and rollback, followed by owner and independent acceptance. Current scheduled legacy38-table snapshots remain in the same D1 and do not meet this requirement. Existing destination/key configuration is unverified, not proven absent.

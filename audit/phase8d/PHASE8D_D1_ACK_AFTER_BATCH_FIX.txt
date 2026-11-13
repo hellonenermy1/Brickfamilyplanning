@@ -1,0 +1,22 @@
+PASS no ACK when direct D1 history persistence fails after durable device-event insert
+PASS retry/response loss converges on exactly one immutable history row
+PASS interrupted second D1 history group has no range ACK; full retry fills holes without duplicating committed rows
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: revoked device must not add D1 history between prior liveness check and direct append
+
+1 !== 0
+
+    at file:///workspace/scratch/e1379dfe94d5/brick/scripts/test-phase8d-d1-ack-faults.mjs:31:111
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

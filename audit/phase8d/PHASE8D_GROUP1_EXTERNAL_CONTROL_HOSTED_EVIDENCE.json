@@ -1,0 +1,168 @@
+{
+  "format": "brick-phase8d-group1-external-control-hosted-v1",
+  "sourceSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
+  "parentSha": "a3917dee247f2ae9a405bd6dab08c712b6d2b072",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "p8d093": "STAGED_SOURCE_CI_CORRECTED_NOT_PRODUCTION_INCIDENT",
+  "qualification": "EXACT_SOURCE_NATIVE_CLI_AND_CI_VERIFIED_NOT_ACTIVATED",
+  "nativeAdmissionCases": 34,
+  "newNativeAdmissionCases": 8,
+  "runtimeWriterHelperCases": 22,
+  "newLostResponseRegressionCases": 1,
+  "d1AdapterCases": 22,
+  "newExternalHelperAndActualCliCases": 21,
+  "actualCliBoundaries": [
+    {
+      "path": "scripts/ensure-beta-d1-columns.mjs",
+      "calls": [
+        {
+          "line": 43,
+          "operation": "schema"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/publish-beta-d1-release.mjs",
+      "calls": [
+        {
+          "line": 7,
+          "operation": "publication"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/setup-beta-d1.mjs",
+      "calls": [
+        {
+          "line": 83,
+          "operation": "deployment"
+        }
+      ],
+      "controllerInstallCalls": []
+    },
+    {
+      "path": "scripts/verify-beta-live.mjs",
+      "calls": [
+        {
+          "line": 7,
+          "operation": "probe"
+        }
+      ],
+      "controllerInstallCalls": []
+    }
+  ],
+  "sourceChangingAdmission": "DURABLE_PERMANENT_CAPTURE_QUARANTINE_NO_AUTOMATIC_RESET",
+  "rejectedWork": "RETAIN_UNCERTAIN_OWNERSHIP_NO_REPLAY_OR_EXPIRY",
+  "runtimeInventory": {
+    "matchedExactSourceGitBlobs": 89,
+    "runtimeSourceSetSha256": "ffad62308abb43cb7e4340c610a3375ac3d974a32fb47743c22e77a93770ec50",
+    "productionControllerInstallCalls": 0,
+    "stagedAuthorityImportedByProduction": false
+  },
+  "externalInventory": {
+    "matchedExactSourceGitBlobs": 259,
+    "sourceSetSha256": "06b0da18fdb65cd93bf53173b6a10e00dc5367c157d3c5864557dbc9556bebfe",
+    "policySha256": "d9b53bcf5425f8163e3b52501491be70d7252eaf2338022dace11202eae4e724",
+    "summary": {
+      "selectedFiles": 259,
+      "filesWithManagementSignals": 64,
+      "explicitClassifications": 65,
+      "betaMutatorsUnfenced": 4,
+      "legacyMutatorsNotBetaApproved": 13,
+      "unresolvedRelativeImportCandidates": 1,
+      "unresolvedDynamicImports": 125
+    }
+  },
+  "prCheckout": {
+    "sha": "188c78b1e446158419d361e723b6d19eec8498ec",
+    "verifiedParents": [
+      "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+      "5e48f065e16bdd79085519d13f864cbb40a70dc9"
+    ]
+  },
+  "runs": [
+    {
+      "runId": 42184899128,
+      "jobId": 127782810366,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "188c78b1e446158419d361e723b6d19eec8498ec",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42184899064,
+      "jobId": 127782811495,
+      "event": "pull_request",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "188c78b1e446158419d361e723b6d19eec8498ec",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T08:03:28.8699442Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T08:03:29.6092724Z PASS actual publication lost cleanup result leaves native capture draining for reconciliation",
+        "2026-11-06T08:03:29.6094648Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T08:03:29.6684060Z OUTCOME_OBSERVATION {\"activeWriters\":1,\"exits\":0,\"remoteEffectPending\":true}",
+        "2026-11-06T08:03:29.7338933Z {\"suite\":\"capture-writer-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T08:03:29.8426055Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T08:04:07.8958421Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T08:04:52.5249997Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T08:05:13.5678886Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    },
+    {
+      "runId": 42184893315,
+      "jobId": 127782790723,
+      "event": "push",
+      "reportedRunStatus": "completed",
+      "reportedRunConclusion": "success",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T08:03:23.8009639Z {\"suite\":\"capture-admission-native\",\"passed\":34,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T08:03:24.8879852Z PASS actual publication lost cleanup result leaves native capture draining for reconciliation",
+        "2026-11-06T08:03:24.8882401Z {\"suite\":\"external-writer\",\"passed\":21,\"failed\":0,\"scope\":\"actual helper and four CLI modules with blocked/synthetic HTTP/process capabilities; actual native durable authority controls admission/cleanup; no live cloud, deployment, APK-signature, provider or complete external-credential qualification\"}",
+        "2026-11-06T08:03:24.9781131Z OUTCOME_OBSERVATION {\"activeWriters\":1,\"exits\":0,\"remoteEffectPending\":true}",
+        "2026-11-06T08:03:25.0436170Z {\"suite\":\"capture-writer-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"actual compiled TS helper with controlled admission/deferred capabilities; actual native actor integration separately qualified; no production controller/bootstrap or urgent-outage fallback installed\"}",
+        "2026-11-06T08:03:25.1651414Z {\"suite\":\"capture-d1-boundary\",\"passed\":22,\"failed\":0,\"scope\":\"compiled actual adapter with controlled DB methods; native D1/admission/full restore separately exercised; no production controller, complete external-writer coverage or urgent-outage fallback\"}",
+        "2026-11-06T08:04:10.8687839Z {\"suite\":\"capture-lifecycle\",\"passed\":35,\"failed\":0,\"scope\":\"actual schema SQLite and encryption with supplied authority/DO/journal capabilities; cooperative cancellation/deadlines, no real writer-fence installation, cloud source pause or RTO/RPO acceptance\"}",
+        "2026-11-06T08:05:05.9150629Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T08:05:33.6657268Z PASS fresh41-table primary +4-table diagnostics restore; exact history/object bytes, original retention timestamps, command expiry, credentials/nonces excluded, DO revocation and restart, scheduler independently reconstructed"
+      ]
+    }
+  ],
+  "limits": [
+    "All four actual CLI hooks remain inactive in production; no trusted bootstrap/broker/authenticated transport or authority binding was installed.",
+    "Actual CLI module tests use synthetic HTTP responses, a synthetic unsigned byte fixture, blocked spawn and a native local authority. Their emitted success messages do not qualify live portal, APK signature, Cloudflare provisioning/deploy or provider operation.",
+    "P8D-093 is reproduced in the exact previous compiled helper using controlled lost-response/delayed-effect capabilities. No live provider incident or production sealed archive is claimed.",
+    "Rejected primary/deferred/tool/cleanup work retains ownership. Unknown-outcome reconciliation is unfinished; neither error nor caller timeout proves remote effects stopped.",
+    "Source-changing quarantine protects capture, not schema/urgent-write isolation. It persists after completion/restart/init and cannot automatically reset.",
+    "Independent operators/credentials, raw bindings, exported helpers, detached/deferred/process trees, target transitions and operational transport remain incompletely covered.",
+    "Safe urgent authority/storage/transport-outage fallback NOT_IMPLEMENTED; configured urgent admission uncertainty still refuses the operation.",
+    "Independent private destination/separate key/context, schedule/monitoring, current least-privilege PITR and isolated cloud restore/interruption/rollback/RTO/RPO remain open.",
+    "Existing Miniflare RPC-stub disposal warning remains; no Group1/Phase8D PASS, canonical criteria/owners/reviews/dispositions, other group, live data/schema/credential/APK/UI/R2/billing/merge/deployment changes.",
+    "Only OPS-002 gains partial proof and P8D-093 navigation. Overall implementation-completion percentage remains unmeasured; accepted-status and evidence-reference percentages are separately defined worksheet metrics."
+  ]
+}

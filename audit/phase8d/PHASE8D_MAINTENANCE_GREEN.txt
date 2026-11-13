@@ -1,0 +1,6 @@
+PASS deferred scheduled backup failure rejects maintenance instead of succeeding early
+PASS failed daily claim is released for automatic next-tick retry
+PASS successful daily work is not repeated by another immediate tick
+PASS an outstanding lease is PENDING rather than a fresh success
+PASS request kick records background failure inside scheduler ownership
+{"suite":"maintenance-failure","passed":5,"failed":0,"scope":"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup"}

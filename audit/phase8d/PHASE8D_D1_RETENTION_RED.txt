@@ -1,0 +1,265 @@
+{"suite":"d1-retention","passed":0,"failed":10,"scope":"synthetic native D1 only; logical deletion, no physical flash/PITR erasure claim"}
+FAIL trusted40-day history remains readable before and after cleanup: advertised90-day trusted history was deleted early
+FAIL expired raw is unavailable even before cleanup and not listed: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   arrayBuffer: [AsyncFunction: arrayBuffer],
++   blob: [AsyncFunction: blob],
++   body: <ref *1> ReadableStream {
++     Symbol(kState): ReadableStreamState {
++       closedPromise: undefined,
++       controller: ReadableByteStreamController {
++         Symbol(kState): {
++           autoAllocateChunkSize: undefined,
++           byobRequest: null,
++           cancelAlgorithm: [AsyncFunction (anonymous)],
++           closeRequested: false,
++           highWaterMark: 0,
++           pendingPullIntos: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           pullAgain: false,
++           pullAlgorithm: [Function (anonymous)],
++           pullFulfilled: undefined,
++           pullRejected: undefined,
++           pulling: false,
++           queue: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           queueTotalSize: 0,
++           started: true,
++           stream: [Circular *1]
++         },
++         Symbol(kType): 'ReadableByteStreamController'
++       },
++       disturbed: false,
++       reader: undefined,
++       state: 'readable',
++       storedError: undefined,
++       transfer: ReadableStreamTransferState {
++         port1: undefined,
++         port2: undefined,
++         promise: undefined,
++         writable: undefined
++       }
++     },
++     Symbol(kType): 'ReadableStream'
++   },
++   bodyUsed: false,
++   checksums: {},
++   customMetadata: {
++     codec: 'json-gzip-v4-virtual',
++     deviceId: 'raw31',
++     epoch: '1',
++     kind: 'raw',
++     segmentMinutes: '15',
++     storage: 'd1-append-virtual'
++   },
++   etag: '8ac469ca78fcf0c9aa6f5b5a3d242e537d37dc165e7c81d82edad6015e6c3bbe',
++   httpEtag: '"8ac469ca78fcf0c9aa6f5b5a3d242e537d37dc165e7c81d82edad6015e6c3bbe"',
++   httpMetadata: {
++     contentEncoding: 'gzip',
++     contentType: 'application/json'
++   },
++   json: [AsyncFunction: json],
++   key: 'history/raw/raw31/2026-10-05/10-30-e1.json.gz',
++   range: undefined,
++   size: 386,
++   text: [AsyncFunction: text],
++   uploaded: 2026-10-05T10:39:52.519Z,
++   version: '8ac469ca78fcf0c9aa6f5b5a3d242e537d37dc165e7c81d82edad6015e6c3bbe',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL expired trusted is unavailable before cleanup: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   arrayBuffer: [AsyncFunction: arrayBuffer],
++   blob: [AsyncFunction: blob],
++   body: <ref *1> ReadableStream {
++     Symbol(kState): ReadableStreamState {
++       closedPromise: undefined,
++       controller: ReadableByteStreamController {
++         Symbol(kState): {
++           autoAllocateChunkSize: undefined,
++           byobRequest: null,
++           cancelAlgorithm: [AsyncFunction (anonymous)],
++           closeRequested: false,
++           highWaterMark: 0,
++           pendingPullIntos: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           pullAgain: false,
++           pullAlgorithm: [Function (anonymous)],
++           pullFulfilled: undefined,
++           pullRejected: undefined,
++           pulling: false,
++           queue: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           queueTotalSize: 0,
++           started: true,
++           stream: [Circular *1]
++         },
++         Symbol(kType): 'ReadableByteStreamController'
++       },
++       disturbed: false,
++       reader: undefined,
++       state: 'readable',
++       storedError: undefined,
++       transfer: ReadableStreamTransferState {
++         port1: undefined,
++         port2: undefined,
++         promise: undefined,
++         writable: undefined
++       }
++     },
++     Symbol(kType): 'ReadableStream'
++   },
++   bodyUsed: false,
++   checksums: {},
++   customMetadata: {
++     codec: 'delta-gzip-v4-virtual',
++     deviceId: 'trusted91',
++     epoch: '1',
++     kind: 'trusted',
++     segmentMinutes: '15',
++     storage: 'd1-append-virtual'
++   },
++   etag: 'ad80829fc6bbbe96a2f48288a432fc74c890f2f063716077048a290de813e6fb',
++   httpEtag: '"ad80829fc6bbbe96a2f48288a432fc74c890f2f063716077048a290de813e6fb"',
++   httpMetadata: {
++     contentEncoding: 'gzip',
++     contentType: 'application/json'
++   },
++   json: [AsyncFunction: json],
++   key: 'history/trusted/trusted91/2026-08-06/10-30-e1.json.gz',
++   range: undefined,
++   size: 158,
++   text: [AsyncFunction: text],
++   uploaded: 2026-08-06T10:39:52.519Z,
++   version: 'ad80829fc6bbbe96a2f48288a432fc74c890f2f063716077048a290de813e6fb',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL raw expiry scrubs raw copy and embedded raw coordinates while preserving trusted delta: Expected values to be strictly equal:
++ actual - expected
+
++ '[2,1,1,1000,1791196792519,11111111,22222222,200,13500000,1038000000,300,0,0,0,0,50,100,80,2,2,90,1,1,4,6,400,1,null]'
+- 'null'
+
+FAIL retention age uses original first receipt rather than delayed capture time: The expression evaluated to a falsy value:
+
+  assert.ok(await store.get(k.trusted))
+
+FAIL hypotheses30/refined90/backup30 match existing authoritative policies: premature deletion: history/hypotheses/test.json
+FAIL cleanup cannot delete a refreshed object selected under an old age: Cannot read properties of null (reading 'text')
+FAIL exact30/90-day receipt boundaries remain available until expiry: Expected values to be strictly equal:
++ actual - expected
+
++ {
++   arrayBuffer: [AsyncFunction: arrayBuffer],
++   blob: [AsyncFunction: blob],
++   body: <ref *1> ReadableStream {
++     Symbol(kState): ReadableStreamState {
++       closedPromise: undefined,
++       controller: ReadableByteStreamController {
++         Symbol(kState): {
++           autoAllocateChunkSize: undefined,
++           byobRequest: null,
++           cancelAlgorithm: [AsyncFunction (anonymous)],
++           closeRequested: false,
++           highWaterMark: 0,
++           pendingPullIntos: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           pullAgain: false,
++           pullAlgorithm: [Function (anonymous)],
++           pullFulfilled: undefined,
++           pullRejected: undefined,
++           pulling: false,
++           queue: Queue {
++             capacityMask: -1,
++             dequeuedSize: 0,
++             head: 0,
++             length: 0,
++             list: [],
++             tail: 0
++           },
++           queueTotalSize: 0,
++           started: true,
++           stream: [Circular *1]
++         },
++         Symbol(kType): 'ReadableByteStreamController'
++       },
++       disturbed: false,
++       reader: undefined,
++       state: 'readable',
++       storedError: undefined,
++       transfer: ReadableStreamTransferState {
++         port1: undefined,
++         port2: undefined,
++         promise: undefined,
++         writable: undefined
++       }
++     },
++     Symbol(kType): 'ReadableStream'
++   },
++   bodyUsed: false,
++   checksums: {},
++   customMetadata: {
++     codec: 'json-gzip-v4-virtual',
++     deviceId: 'raw-edge',
++     epoch: '1',
++     kind: 'raw',
++     segmentMinutes: '15',
++     storage: 'd1-append-virtual'
++   },
++   etag: 'ae7d504f1c47e39024b22e4198773c2b736685b752d7d2b6324da6db90090e85',
++   httpEtag: '"ae7d504f1c47e39024b22e4198773c2b736685b752d7d2b6324da6db90090e85"',
++   httpMetadata: {
++     contentEncoding: 'gzip',
++     contentType: 'application/json'
++   },
++   json: [AsyncFunction: json],
++   key: 'history/raw/raw-edge/2026-10-06/10-30-e1.json.gz',
++   range: undefined,
++   size: 389,
++   text: [AsyncFunction: text],
++   uploaded: 2026-10-06T10:39:52.519Z,
++   version: 'ae7d504f1c47e39024b22e4198773c2b736685b752d7d2b6324da6db90090e85',
++   writeHttpMetadata: [Function: writeHttpMetadata]
++ }
+- null
+
+FAIL generic listing supports long literal prefixes and wildcard characters: D1_ERROR: LIKE or GLOB pattern too complex: SQLITE_ERROR
+FAIL bulk cleanup uses bounded statement count and cascades chunk deletion: cleanup issued 127 statements

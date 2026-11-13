@@ -1,0 +1,22 @@
+{
+  "format": "brick-phase8d-group1-external-writer-scope-v1",
+  "sourceSha": "beaa99683d26948576bbc6deabf18e5dbdf0ab16",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "A read-only external management source/CI drift guard now pins257 tracked script/tool/workflow/package files,63 explicit source classifications and four known unfenced beta management tools. Seventeen synthetic source-map cases pass. This narrows source accounting; it does not enforce maintenance exclusion, implement urgent-outage fallback or qualify cloud recovery.",
+      "remaining": "Enforce actual external maintenance/admission across known and independent operators/credentials, complete runtime/raw/deferred/lifecycle coverage and urgent authority/storage/transport-outage fallback, then authenticated transport/private independent custody/schedule/current PITR/isolated cloud recovery.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only OPS-002 gains source-profile/CI supporting proof; OPS-003 and all canonical criteria/statuses/owners/reviews/dispositions and other groups unchanged."
+}

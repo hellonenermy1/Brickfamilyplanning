@@ -1,0 +1,33 @@
+# Group 1: admitted D1 descendants and scheduled watchdog outage
+
+Source `bf8951c41895b1ead1b74e783d89e08c7f91405f`, tree `e12e25b16a639b4b224b57cd7d4f23f315d0327d`, parent `e70e2c3bcc3d51e512dbbb0e4935e9589356b568`. Integration base remains `141cbf42efaa61873c4fa87138ca5a0a19d404a2`. This is staged source/native qualification, not production activation or Group 1 acceptance. Companion EVIDENCE.json records final qualification.
+
+## Reproduced problem and ownership contract
+
+The preceding handoff already identified nested D1/maintenance priority and scheduled outage policy as open. The new native scheduler drain case compiled with the exact preceding writer boundary, D1 adapter, broker client, scheduler and Worker modules reproduces `CAPTURE_UNAVAILABLE`: an ordinary parent is admitted, capture enters DRAINING with one active writer, then the parent's separately urgent D1 child preempts that capture. Corrected modules finish the actual SQLite update, preserve capture generation and reach DRAINED after the parent and registered descendants settle.
+
+A broker client now creates a private opaque scope capability bound to its validated authority epoch/source/resource pin. Its runtime controllers share that capability within the client instance. The boundary validates the capability against a private WeakMap, checks admission ticket epoch and registers D1 descendants synchronously before their asynchronous scope resolution or work. All six owned D1 execution methods, including sessions, may reuse the admitted parent only with the exact registered capability and a still-open parent context. A copied object, distinct token with identical pin, missing token, failed/hung getter or mismatched epoch cannot establish inherited permission. Getter resolution has a bounded deadline; source work does not gain an ownership expiry.
+
+Pending descendants, including unawaited and nested writes, keep the parent owned until they settle. A rejected descendant keeps uncertain parent ownership even when its caller catches the rejection. Hung work keeps ownership; a closed context refuses a late write before executing it. No elapsed time proves that a source write stopped. D1 adapters can rebind a constructor-wrapped database to the admitted scoped context without double wrapping. Foreign statements still refuse. Read-only SELECT behavior remains as before.
+
+Scheduler watchdog/group/derived/retention/backup methods now build their D1 wrappers and statement budgets inside their admitted scoped callbacks. Routine minute/daily groups are ordinary; watchdog operations remain urgent. Cross-object RPCs retain independent tickets: no serialized token/header or unauthenticated scope inheritance was introduced.
+
+## Trusted scheduled outage behavior
+
+The existing platform scheduled callback may use urgent fallback only after the installed controller commits the independent permanent quarantine. There is no new HTTP route, production installer, binding, schedule or environment activation switch. Missing/unavailable guard still refuses before watchdog source effects. Routine minute/daily, retention and backup methods cannot borrow urgent fallback.
+
+The actual Worker scheduled entry, actual scheduler RPCs, watchdog, device object, signed broker, SQLite source/guard and persistence restart are exercised together. With a synthetic broker outage and valid independent guard, the real watchdog records the offline incident and safety event and persists the same event in the device object. Routine groups defer; aggregate maintenance truthfully reports failure and the scheduler alarm records FAILED, retains null success and rearms. A watchdog retry creates no duplicate incident/event. Source safety, device state and quarantine survive full native restart, and a previously held capture remains unusable after quarantine.
+
+## Verification scope
+
+The two new suites add 35 cases: 27 scope/ownership cases and 8 actual scheduler/native integration cases. Existing writer41, D1 adapter22, eligibility/native116 and Worker-root12 checks remain; the urgent-request scheduled assertion uses a controlled scheduler stub and is not evidence that actual routine groups run during outage. The separate actual scheduler suite proves their refusal. CI runs both new suites in the existing blocking coherent-capture step. Static profiles are regenerated for 10 D1 placement sites, including six scheduler scoped rebindings; counts are source drift guards, not complete enforced coverage.
+
+## Remaining blockers
+
+Cross-RPC descendants, remaining command/receiver/diagnostic writers, raw/operator/credential/lifecycle/deferred/process-tree accounting and STARTED/legacy reconciliation remain incomplete. An ordinary cross-object child can still refuse during capture drain; availability and unknown ownership reconciliation need qualification. This batch does not establish complete writer coverage, fairness, production traffic quotas/latency, phone delivery or installed schedules. No partial fence activation.
+
+Every capture/export/resume/seal/release needs the same authenticated protected independent guard and trusted bootstrap/transport/failure-domain proof. Restricted B2 runtime capability, separately durable selection manifest/key/context custody, installed capture/readback/age/failure and real-recipient monitoring, current scoped PITR, and isolated cloud restore/interruption/rollback/RTO/RPO remain open. Prior PDF9/four-day authority and real private B2 synthetic readback/local restore proof are preserved without another provider operation. Group 1 NOT READY, P8D-002 P1 OPEN, Phase 8D NOT PASS; four-day forecast AT RISK. No merge/deploy, live Cloudflare/provider mutation, family-data export, credential/permission/billing change, R2/card dependency or APK/UI/phone change. Canonical525 acceptance/owners/reviews/dispositions and214/311 applicability remain unchanged.
+
+## Next batch entry points
+
+Start with the existing `cardfreeRuntime` BACKGROUND_WORK RPCs in `src/worker-beta-cardfree.ts`: `runDerivedWork`, `runRetentionWork` and `runDailyBackup`, called through separate named scheduler objects. Reproduce an already-admitted ordinary parent starting one of those children after capture enters DRAINING. Establish authenticated durable ownership or explicit safe deferral without releasing uncertain work; do not serialize the private in-isolate capability or erase STARTED ownership. Also inspect device `restoreRecoveryState` and constructor-bound D1 work independently: this batch rebinds scheduler callbacks, not the base device object's environment. Preserve exact-source encrypted recovery and all safety/retention budgets while qualifying those paths.

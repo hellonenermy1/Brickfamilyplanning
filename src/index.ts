@@ -30,6 +30,7 @@ export { BrickDevice };
 type RateLimit = { limit(input: { key: string }): Promise<{ success: boolean }> };
 type Env = {
   DB: D1Database;
+  WATCHDOG_MANAGED_BY_ROOT?: boolean;
   HISTORY: R2Bucket;
   EVENTS: Queue;
   BRICK_DEVICE: DurableObjectNamespace<BrickDevice>;
@@ -150,7 +151,7 @@ async function ingest(req: Request, env: Env, id: string) {
   return json({ ack: packet.sequence, duplicate: !isNew, liveAdvanced: isNewest });
 }
 
-function validHealth(x: unknown): x is DeviceHealth {
+export function validHealth(x: unknown): x is DeviceHealth {
   if (!x || typeof x !== "object") return false;
   const h = x as Record<string, unknown>, n = h.network;
   if (!(h.protocol === 1 && typeof h.elapsedRealtimeMs === "number" && h.elapsedRealtimeMs >= 0 &&
@@ -207,7 +208,7 @@ async function ingestHealth(req: Request, env: Env, id: string) {
   return json({ ok: true, receivedAt: now, healthStatus: classification.status, healthReason: classification.reason });
 }
 
-function validSafetyEvent(x: unknown): x is SafetyEvent {
+export function validSafetyEvent(x: unknown): x is SafetyEvent {
   if (!x || typeof x !== "object") return false;
   const e = x as Record<string, unknown>;
   if (e.protocol !== 1 || typeof e.eventId !== "string" || !/^[0-9a-fA-F-]{36}$/.test(e.eventId)) return false;
@@ -277,6 +278,7 @@ async function parentDeviceProxy(req: Request, env: Env, id: string, kind: "stat
 }
 
 async function runOpsWatchdog(env: Env) {
+  if(env.WATCHDOG_MANAGED_BY_ROOT)return; // Card-free root owns bounded, isolated watchdog RPCs.
   const now = Date.now();
   const devices = await env.DB.prepare("SELECT id,created_at,last_health_at FROM devices WHERE revoked_at IS NULL").all<{ id: string; created_at: number; last_health_at: number | null }>();
   for (const device of devices.results) {

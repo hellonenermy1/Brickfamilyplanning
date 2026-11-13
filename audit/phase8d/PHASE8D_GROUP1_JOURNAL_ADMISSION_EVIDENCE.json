@@ -1,0 +1,293 @@
+{
+  "format": "brick-group1-lifecycle-journal-admission-v1",
+  "recordedDate": "2026-11-12",
+  "timeZone": "Asia/Singapore",
+  "sourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+  "sourceTreeSha": "0859106302ded67fa94936b76581cba2e1bde41f",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "EXACT_SOURCE_NATIVE_AND_HOSTED_QUALIFIED_NO_LIVE_OPERATION",
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "reproductionBeforeCorrection": {
+    "sourceSha": "ae4ebc9a1b40e6038b00ede67728213483514bad",
+    "unexpectedSqliteXTriggersAcceptedAtReopen": true,
+    "runCapturesWithoutPersistedStarted": 2,
+    "runStage": "NEW",
+    "monitorSyntheticSendsWithoutPersistedStarted": 2,
+    "monitorPending": 1,
+    "realProviderOrNotificationCalls": 0,
+    "scope": "Native private SQLite schema/write-refusal reproduction with local counters only; no host-compromise or independent anti-rollback qualification."
+  },
+  "local": {
+    "summaries": [
+      {
+        "suite": "lifecycle-journal-admission",
+        "passed": 39,
+        "failed": 0,
+        "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+      },
+      {
+        "suite": "durable-backup-run",
+        "passed": 47,
+        "failed": 0,
+        "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+      },
+      {
+        "suite": "backup-monitor",
+        "passed": 50,
+        "failed": 0,
+        "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+      },
+      {
+        "suite": "backup-alert-receipt",
+        "passed": 54,
+        "failed": 0,
+        "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+      },
+      {
+        "suite": "external-writer-inventory",
+        "passed": 23,
+        "failed": 0,
+        "scope": "synthetic source/change-detection and conservative reference tests only; no writer enforcement, authenticated independent review, live call or cloud acceptance"
+      }
+    ],
+    "canonicalClosureCases": 14,
+    "perIdAcceptanceCases": 61
+  },
+  "manifest": [
+    {
+      "path": "scripts/cardfree-backup-run.mjs",
+      "sha256": "3a49927a34dff7a8040b75d7b35b0a9d608e999e8f636c57cd6271a46f7f12f7",
+      "gitBlobSha": "2da81cc7e2f0ebb06be3a1ae0fdfde24ebb0ce57"
+    },
+    {
+      "path": "scripts/cardfree-backup-monitor.mjs",
+      "sha256": "944ec1a82a176d2d1fc0f6ab9695664cfc965f052fee071782c0bded95cc54c0",
+      "gitBlobSha": "f003e53f7d6d5fbdd9e04327ae7f54127f3640cf"
+    },
+    {
+      "path": "scripts/test-phase8d-lifecycle-journal-admission.mjs",
+      "sha256": "a1299ddcd00854975de9504516225ed9be59a4d8ddf5666b2f5ba42d3805c742",
+      "gitBlobSha": "0196bdcc712ddf444b0d622f8830c7648f3c3bea"
+    },
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "32e82e85a254e5ffb4e6a72e9841ec55669d1e77bb1beb2b8a82055690aa90dd",
+      "gitBlobSha": "4cfc24b6e7fce2c36edfddf29e509d9243d403dc"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "c46cad641b058e612675103996775f9fd17aa7db13583dd26cac0f1bf5171ee9",
+      "gitBlobSha": "f1b1c388b46249727b9df84d8b130a6287910dd3"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "8ee03239e5a6051ff92b85b55cc929b6a833878ef4bde55ca29916ee789fbd60",
+      "gitBlobSha": "9d0397c45f0a786273b354906a646e8dbae357d7"
+    }
+  ],
+  "limits": [
+    "Native private SQLite integrity/admission only; not hostile-host protection, external anti-rollback, independent current-journal custody or power-loss qualification.",
+    "Local callback counters only; no actual cloud/provider/notification/family-data operation.",
+    "No schema repair/drop, automatic reset/retry, storage-format change or new credential."
+  ],
+  "production": {
+    "runtimeFileCount": 90,
+    "runtimeSourceSetSha256": "8082dc0c556bce0056484bdf9007a143a3d7e72d311de650be12a649af154980",
+    "startup": "UNWIRED",
+    "directBetaMutators": "FOUR_UNFENCED",
+    "externalInventory": {
+      "files": 335,
+      "managementMarkers": 84,
+      "classifications": 97,
+      "dynamicExpressions": 149
+    }
+  },
+  "pendingFreshCloudDrill": {
+    "reviewPath": "audit/phase8d/PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md",
+    "runId": "20261112-f28a8d6cb028d0bb",
+    "approved": false,
+    "executed": false
+  },
+  "originalLiveAttemptUnchanged": true,
+  "immutableBeforeAfterComparison": {
+    "beforeSourceSha": "ae4ebc9a1b40e6038b00ede67728213483514bad",
+    "afterSourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+    "stores": [
+      {
+        "kind": "run",
+        "oldCallbacks": 2,
+        "oldStage": "NEW",
+        "currentReopenRefused": true,
+        "journalBytesUnchanged": true,
+        "currentCallbacks": 0
+      },
+      {
+        "kind": "monitor",
+        "oldCallbacks": 2,
+        "oldStage": "PENDING",
+        "currentReopenRefused": true,
+        "journalBytesUnchanged": true,
+        "currentCallbacks": 0
+      }
+    ],
+    "realProviderOrNotificationCalls": 0
+  },
+  "hosted": {
+    "runs": [
+      {
+        "runId": 43187832945,
+        "jobId": 131079368104,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 293404,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 79,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "durable-backup-run",
+            "passed": 47,
+            "failed": 0,
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+          },
+          {
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
+            "failed": 0,
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+          },
+          {
+            "suite": "backup-monitor",
+            "passed": 50,
+            "failed": 0,
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+          },
+          {
+            "suite": "backup-alert-receipt",
+            "passed": 54,
+            "failed": 0,
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          }
+        ],
+        "nativeFullRecoveryFixturePassed": true
+      },
+      {
+        "runId": 43187832890,
+        "jobId": 131079367609,
+        "conclusion": "success",
+        "passedSteps": 10,
+        "totalSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16167,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
+      },
+      {
+        "runId": 43187832929,
+        "jobId": 131079366851,
+        "conclusion": "success",
+        "passedSteps": 14,
+        "totalSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 25078,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
+      },
+      {
+        "runId": 43187825695,
+        "jobId": 131079342711,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 291448,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 79,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "durable-backup-run",
+            "passed": 47,
+            "failed": 0,
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+          },
+          {
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
+            "failed": 0,
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+          },
+          {
+            "suite": "backup-monitor",
+            "passed": 50,
+            "failed": 0,
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+          },
+          {
+            "suite": "backup-alert-receipt",
+            "passed": 54,
+            "failed": 0,
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          }
+        ],
+        "nativeFullRecoveryFixturePassed": true
+      }
+    ],
+    "merge": {
+      "sha": "e742df3a569ef01961146033fd07942a84ad35e4",
+      "treeSha": "0859106302ded67fa94936b76581cba2e1bde41f",
+      "parents": [
+        "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "cb372f92cd2a890d52ed713660c1b34aa583ed7c"
+      ],
+      "draft": true,
+      "merged": false
+    }
+  }
+}

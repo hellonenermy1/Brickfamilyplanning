@@ -1,3 +1,5 @@
+import {runStagedExternalWriter} from './staged-external-writer.mjs';
+import {BETA_COMPAT_COLUMNS} from './beta-compat-columns.mjs';
 const API = 'https://api.cloudflare.com/client/v4';
 const D1_NAME = 'brick-family-beta';
 
@@ -6,18 +8,28 @@ const explicitAccount = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
 if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
 
 async function cf(path, init = {}) {
+  const method = init.method ?? 'GET';
+  // Exact endpoint, bounded read: do not follow authorization-bearing redirects
+  // or permit indefinite remote waits while a writer reservation is held.
   const response = await fetch(API + path, {
     ...init,
+    redirect: 'error',
+    signal: AbortSignal.timeout(20000),
     headers: {
       authorization: `Bearer ${token}`,
       'content-type': 'application/json',
       ...(init.headers || {})
     }
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || body.success === false) {
-    throw new Error(`Cloudflare API ${response.status} for ${path}: ${JSON.stringify(body.errors || body)}`);
-  }
+  if (response.redirected || response.url && response.url !== API + path)
+    throw new Error('Cloudflare API response target changed');
+  if (!response.ok) throw new Error(`Cloudflare API ${response.status} for ${path}`);
+  // Cloudflare may return 201 when a resource is created, never for a GET.
+  if (response.status !== 200 && !(method === 'POST' && response.status === 201))
+    throw new Error('Cloudflare API unexpected success status');
+  const body = await response.json().catch(() => null);
+  if (!body || body.success !== true || !Object.hasOwn(body, 'result'))
+    throw new Error('Cloudflare API invalid response envelope');
   return body.result;
 }
 
@@ -38,6 +50,7 @@ const databases = await cf(`/accounts/${accountId}/d1/database?per_page=100`);
 const db = Array.isArray(databases) ? databases.find(x => x.name === D1_NAME) : null;
 if (!db?.uuid) throw new Error(`${D1_NAME} D1 database not found.`);
 
+await runStagedExternalWriter('schema',{sourceSha:process.env.GITHUB_SHA,accountId,databaseId:db.uuid,workerName:'brick-family-beta',workerHost:null},async()=>{
 async function d1Query(sql, params = []) {
   return cf(`/accounts/${accountId}/d1/database/${db.uuid}/query`, {
     method: 'POST',
@@ -63,31 +76,8 @@ async function ensureColumns(table, columns) {
   return added;
 }
 
-const added = [
-  ...await ensureColumns('devices', [
-    ['last_health_at', 'INTEGER'],
-    ['health_status', "TEXT NOT NULL DEFAULT 'unknown'"],
-    ['recovery_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['pending_records', 'INTEGER NOT NULL DEFAULT 0'],
-    ['app_version', 'TEXT']
-  ]),
-  ...await ensureColumns('geofence_state', [
-    ['last_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_sequence', 'INTEGER NOT NULL DEFAULT 0']
-  ]),
-  ...await ensureColumns('trips', [
-    ['destination_radius_m', 'REAL NOT NULL DEFAULT 120'],
-    ['arrival_candidate_since', 'INTEGER'],
-    ['arrival_candidate_count', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_alert_at', 'INTEGER'],
-    ['stationary_since', 'INTEGER'],
-    ['last_stop_alert_at', 'INTEGER'],
-    ['last_eval_epoch', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_eval_sequence', 'INTEGER NOT NULL DEFAULT 0'],
-    ['last_distance_to_destination_m', 'REAL'],
-    ['last_location_at', 'INTEGER']
-  ])
-];
+const added = [];
+for(const [table, columns] of Object.entries(BETA_COMPAT_COLUMNS)) added.push(...await ensureColumns(table, columns));
 
 const verify = await d1Query('PRAGMA table_info(devices)');
 const deviceColumns = new Set((verify?.[0]?.results || []).map(row => row.name));
@@ -96,3 +86,4 @@ for (const required of ['last_health_at','health_status','recovery_count','pendi
 }
 
 console.log(added.length ? `Development D1 compatibility columns added: ${added.join(', ')}` : 'Development D1 compatibility columns already present.');
+});

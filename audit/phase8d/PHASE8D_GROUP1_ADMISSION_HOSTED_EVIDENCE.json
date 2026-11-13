@@ -1,0 +1,118 @@
+{
+  "format": "brick-phase8d-group1-admission-hosted-v1",
+  "sourceSha": "ecd6c2aaf95cf3c5747cef9151de33912054ecdd",
+  "baseSha": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "phaseStatus": "IN_PROGRESS_NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "newNativeAuthorityCases": 26,
+  "newEndToEndScenario": "actual41+4/deviceDO capture refuses urgent preemption between final held check and durable release acknowledgement; then fresh controlled capture/destruction/restore succeeds",
+  "qualification": "EXACT_SOURCE_PUSH_CI_VERIFIED_PR_STEPS_VERIFIED_FINALIZATION_PENDING",
+  "pendingOverallRunIds": [
+    42169612222
+  ],
+  "runs": [
+    {
+      "runId": 42169612470,
+      "jobId": 127734086202,
+      "event": "pull_request",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "overallJobCompletionVerified": true,
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "f4ccc540c7004c0d7e60be5d63d4aaa2d5da503b",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": []
+    },
+    {
+      "runId": 42169612222,
+      "jobId": 127734084922,
+      "event": "pull_request",
+      "reportedJobStatus": "in_progress",
+      "reportedJobConclusion": null,
+      "overallJobCompletionVerified": false,
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "f4ccc540c7004c0d7e60be5d63d4aaa2d5da503b",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T05:38:48.1924214Z {\"suite\":\"capture-admission-native\",\"passed\":26,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T05:40:04.8194495Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T05:40:09.8992528Z PASS urgent preemption after final held-check refuses sealed capture at the durable release boundary",
+        "2026-11-06T05:40:12.2287503Z PASS durable admission authority controls the declared synthetic source-writer envelope and confirms capture release; production writer hooks are not installed",
+        "2026-11-06T05:40:12.2288330Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T05:40:12.2819385Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T05:40:12.2887667Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    },
+    {
+      "runId": 42169606706,
+      "jobId": 127734066852,
+      "event": "push",
+      "reportedJobStatus": "completed",
+      "reportedJobConclusion": "success",
+      "overallJobCompletionVerified": true,
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "ecd6c2aaf95cf3c5747cef9151de33912054ecdd",
+      "exactSourceConfirmed": true,
+      "errorMarkers": 0,
+      "extract": [
+        "2026-11-06T05:38:46.9740839Z {\"suite\":\"capture-admission-native\",\"passed\":26,\"failed\":0,\"scope\":\"actual SQLite-backed Durable Object transactions/persistence/restarts; declared synthetic writers, staged component not connected to production ingress/RPC/alarms or authenticated transport; no live fence or recovery acceptance\"}",
+        "2026-11-06T05:40:09.4170646Z An RPC stub was not disposed properly. You must call dispose() on all stubs in order to let the other side know that you are no longer using them. You cannot rely on the garbage collector for this because it may take arbitrarily long before actually collecting unreachable objects. As a shortcut, calling dispose() on the result of an RPC call disposes all stubs within it.",
+        "2026-11-06T05:40:15.4372374Z PASS urgent preemption after final held-check refuses sealed capture at the durable release boundary",
+        "2026-11-06T05:40:18.4450639Z PASS durable admission authority controls the declared synthetic source-writer envelope and confirms capture release; production writer hooks are not installed",
+        "2026-11-06T05:40:18.4452305Z PASS paged41+4 capture plus actual device DOs under paused synthetic scheduler, encrypted journal and max5 SQL statements per source call",
+        "2026-11-06T05:40:18.5091829Z PASS encrypted both D1 stores and every device DO, then destroyed actual source persistence and discarded plaintext restore inputs",
+        "2026-11-06T05:40:18.5165938Z PASS restore inputs obtained only from authenticated encrypted on-disk package plus separately retained ephemeral key and trusted context"
+      ]
+    }
+  ],
+  "sourceInventory": {
+    "basisCommit": "0d61bcde05b7c64bfeda156a316fd54712b4be2b",
+    "matchedActualRuntimeGitBlobs": 87,
+    "summary": {
+      "sourceFiles": 87,
+      "sqlPrepareCandidates": 298,
+      "sqlWriteOrUnknown": 169,
+      "mutationOrWrapperCandidates": 69,
+      "deferredWorkCandidates": 20,
+      "actorClasses": 3,
+      "unresolvedLocalImports": 0
+    },
+    "unresolvedLocalImports": 0,
+    "stagedAuthorityImportedByProduction": false,
+    "inventorySha256": "e9b8e0704c4cd61d1a8583d5299d2266574baeefa4917ac406fa58439c241802",
+    "authoritySha256": "7784f7b0bc77b469ca52fdf4d04d97f26f3a0635cb3ce2ef3f28e71ebacae118"
+  },
+  "interimDesignRace": {
+    "format": "brick-group1-commit-boundary-red-v1",
+    "interimStagedSourceSha": "687a36f15c492ce63f71c48b94f497b7bb7d7438",
+    "scope": "actual local coordinator, actual41+4/deviceDO capture and native durable authority in a controlled synthetic writer-envelope fixture; no live writers or provider requests",
+    "scenario": "Urgent writer admitted between final assertHeld and authority.release; capture was PREEMPTED but release returned true for its known closed generation.",
+    "observed": "assert.rejects(captureProtectedBackup, /CAPTURE_RELEASE_FAILED/) failed with Missing expected rejection: coordinator returned a sealed capture.",
+    "rootCause": "Cleanup acknowledgement did not distinguish invalidated capture from valid release/commit boundary.",
+    "correction": "Known PREEMPTED/EXPIRED closure returns released=false; only active matching release or prior successful RELEASED closure acknowledges a valid boundary.",
+    "finalQualification": "Requires new exact-source native and full hosted verification; interim source is not current qualified source."
+  },
+  "limits": [
+    "Declared synthetic writer accounting only; production ingress/RPC/alarms/constructors/deferred/external writer coverage is not installed.",
+    "Authority/storage/transport-outage fallback for urgent work remains unimplemented; do not fail open by merely ignoring registry errors.",
+    "No production import, activation flag, HTTP capture route, binding, credential or class/schema migration was added.",
+    "Source capture transport, independently controlled private destination/separate key/schedule/current PITR/cloud restore/RTO/RPO remain unverified.",
+    "Actual native source destruction/restore uses a controlled declared writer envelope and paused synthetic scheduler; it is not a live operational fence.",
+    "Existing Miniflare RPC-stub disposal warning remains.",
+    "A reported in-progress/null PR job is not relabelled completed even when all33 steps and decoded logs are successful; final release must recheck overall run status."
+  ],
+  "ledgerScope": [
+    "OPS-002",
+    "OPS-003"
+  ],
+  "canonicalStatusOwnerReviewDispositionChanged": false,
+  "noOtherGroupAdvanced": true,
+  "noMergeOrDeployment": true
+}

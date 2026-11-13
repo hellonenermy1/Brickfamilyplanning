@@ -1,0 +1,17 @@
+{
+  "format": "brick-phase8d-group1-process-completion-scope-v1",
+  "sourceSha": "7988b78094b49ada0a8a66980c851ee96918a4dc",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Source/CI supporting evidence only: inherited output-pipe completion under real subprocess and signed SQLite-backed authority fixtures.",
+      "remaining": "Complete source/operator/raw/credential/lifecycle/deferred/process-tree coverage, started/legacy reconciliation, urgent-outage fallback, production trust/bootstrap/custody/schedule/PITR and isolated cloud recovery.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only OPS-002 supporting evidence changes; all525 canonical acceptance fields and214/311 scope mappings unchanged."
+}

@@ -155,7 +155,7 @@ export async function listAudit(env: Phase5CEnv, limit = 100) {
 
 export async function cleanupPhase5C(env: Phase5CEnv, now = Date.now()) {
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM crash_reports WHERE received_at<?1").bind(now - 365 * 86_400_000),
-    env.DB.prepare("DELETE FROM audit_log WHERE created_at<?1").bind(now - 90 * 86_400_000)
+    env.DB.prepare("DELETE FROM crash_reports WHERE rowid IN(SELECT rowid FROM crash_reports WHERE received_at<?1 ORDER BY received_at,rowid LIMIT 200)").bind(now - 365 * 86_400_000),
+    env.DB.prepare("DELETE FROM audit_log WHERE rowid IN(SELECT rowid FROM audit_log WHERE created_at<?1 ORDER BY created_at,rowid LIMIT 200)").bind(now - 90 * 86_400_000)
   ]);
 }

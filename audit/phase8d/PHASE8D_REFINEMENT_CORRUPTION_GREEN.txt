@@ -1,0 +1,6 @@
+PASS missing is failed work while healthy peer still refines
+PASS malformed-json is failed work while healthy peer still refines
+PASS wrong-envelope is failed work while healthy peer still refines
+PASS invalid-hypotheses is failed work while healthy peer still refines
+PASS no endpoints remains intentional pending rather than failed or fabricated completion
+{"suite":"refinement-corruption","passed":5,"failed":0,"scope":"actual local D1/object adapter; synthetic frames only"}

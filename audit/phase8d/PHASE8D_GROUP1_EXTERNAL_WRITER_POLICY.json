@@ -1,0 +1,398 @@
+{
+  "format": "brick-external-writer-policy-v1",
+  "scope": "SOURCE PROFILE ONLY; not independent approval, writer enforcement, target identity or release acceptance",
+  "entries": {
+    ".github/workflows/beta-backend.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/deploy-brick-development.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/deploy-brick.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/phase2-parent-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Inherited Phase2 test/build workflow includes a Wrangler dry-run source command. Indexed for drift; this is not independent safety exclusion, complete writer accounting or permission/credential qualification."
+    },
+    ".github/workflows/phase8d-cloudflare-readonly.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/v1-phase8b-remediation-cloud-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    ".github/workflows/v1-phase8d-backend-audit-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    "package.json": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Source command container; source references/indirection are profiled, not runtime branch conditions or account write exclusion."
+    },
+    "scripts/audit-phase8d-contract.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/beta-cloud-preflight.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/beta-deployment-contract.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/cardfree-b2-destination.mjs": {
+      "classification": "STAGED_OFF_PLATFORM_DESTINATION",
+      "reason": "Injected capability can upload authenticated ciphertext and read back exact file version; no CLI/default fetch, production controller, provider credentials, bucket creation or automatic retries. Not installed or independently qualified."
+    },
+    "scripts/cardfree-backup-alert-receipt.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Pure bounded Ed25519/pin/domain/canonical receipt verifier; no private signer key, default trust root, recipient, network or source mutation. Used only by explicitly staged monitor configuration."
+    },
+    "scripts/cardfree-backup-monitor.mjs": {
+      "classification": "STAGED_OFF_PLATFORM_MONITOR",
+      "reason": "Explicit one-shot health checks, private local SQLite state and injected synthetic alert sink capability; no default transport, source mutation, upload, production timer/schedule/bootstrap or real delivery qualification."
+    },
+    "scripts/cardfree-backup-run.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit staged one-shot durable lifecycle calls injected capture/publication/read capabilities and retains local metadata; no default transport/timer/key persistence or installer. Effects are not excluded; started uncertainty never auto expires/replays."
+    },
+    "scripts/cardfree-pitr-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/cardfree-recovery-selection.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit private fsynced exact-version selection record and injected read-only archive capability; no provider writes/default network/CLI/key persistence or installation. Local retention/authentication does not prove independent custody."
+    },
+    "scripts/codespaces-check.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/ensure-beta-d1-columns.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/ensure-development-legacy-columns.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/external-process-completion.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Awaited subprocess output-pipe closure with redacted failure status; no production writer bootstrap, detached-descendant or remote rollback proof."
+    },
+    "scripts/install-beta-map.mjs": {
+      "classification": "SOURCE_DISABLED_LEGACY_BETA_TOOL",
+      "reason": "Current first executable statement throws the obsolete-R2 refusal. Historical body/import dependencies stay indexed; do not execute or reactivate for D1 beta."
+    },
+    "scripts/install-private-map-development.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/install-private-map.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8-cloud-usage-metrics.mjs": {
+      "classification": "READ_ONLY_QUERY_POST_SOURCE",
+      "reason": "POST submits a metrics GraphQL query; HTTP POST alone is not a D1/config mutation. Account and runtime state still require separate qualification."
+    },
+    "scripts/phase8-live-brick-backup-restore.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8-live-identity-preflight.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/phase8d-b2-fixture.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Explicit synthetic B2 Fetch capability and local ciphertext only. Never imports real provider credentials or defaults to network; test name is not independent safety exclusion."
+    },
+    "scripts/phase8d-cloudflare-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-d1-catalog-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-external-writer-inventory.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/phase8d-live-parent-denial.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Current management requests are GET-only by source inspection; Worker HTTP denial probes can still trigger server-side maintenance and are not globally read-only."
+    },
+    "scripts/phase8d-remediation-plan.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/publish-beta-d1-release.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/setup-beta-cloud.mjs": {
+      "classification": "SOURCE_DISABLED_LEGACY_BETA_TOOL",
+      "reason": "Current first executable statement throws the obsolete-R2 refusal. Historical body/import dependencies stay indexed; do not execute or reactivate for D1 beta."
+    },
+    "scripts/setup-beta-d1.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/setup-v1-phase6-development-cardfree-v2.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6-development-free.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6-development.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/setup-v1-phase6.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/source-inventory.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Current source performs local validation/source/profile or environment checks, with management strings retained for change detection; no independent safety exclusion."
+    },
+    "scripts/staged-external-writer.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Inactive external operation ownership adapter; trusted controller injection only in fixtures, no cloud transport or production installer."
+    },
+    "scripts/test-beta-deployment.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-beta-workerd.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase6-deploy-contract.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-b2-destination.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Explicit synthetic B2 Fetch capability and local ciphertext only. Never imports real provider credentials or defaults to network; test name is not independent safety exclusion."
+    },
+    "scripts/test-phase8d-backup-alert-receipt.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual Ed25519 and private SQLite with synthetic signer/recipient/B2/sinks and disposable child exit; no real keys, provider calls or notifications. Test name is not independent safety exclusion."
+    },
+    "scripts/test-phase8d-backup-monitor.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private local SQLite, synthetic B2/crypto/clocks and alert sinks, abrupt disposable child-process exits; no live provider/account/notifications. Not independently excluded by test name."
+    },
+    "scripts/test-phase8d-backup-run.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private SQLite lifecycle/crypto/fresh process and explicit synthetic B2 capabilities; indexed source, no installed schedule/provider credential/custody or live recovery approval."
+    },
+    "scripts/test-phase8d-beta-config.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-capture-broker.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic HMAC/replay client/server and native authority with ephemeral test keys and blocked outbound network; no production endpoint/key or provider qualification."
+    },
+    "scripts/test-phase8d-cardfree-recovery.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-cloudflare-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-config-parity.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-d1-ack-faults.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-d1-catalog-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-deployment-workflow-safety.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-development-login-source.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-enrichment-failure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-external-writer-inventory.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic source-map tests contain management strings; no audited tool imported or cloud request performed by these tests."
+    },
+    "scripts/test-phase8d-external-writer.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual CLI modules exercised with synthetic HTTP and blocked spawn plus native local authority; no live cloud operation or signed APK qualification."
+    },
+    "scripts/test-phase8d-full-store-recovery.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-maintenance-budget.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-maintenance-failure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-monitor-open.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual private monitor SQLite/crypto and synthetic sink/provider explicit-open regressions, competing initializers and fresh process; optional historical baseline only, no installed monitor/real notification or custody acceptance."
+    },
+    "scripts/test-phase8d-parent-expensive-route-rate.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-parent-read-rate.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-process-completion.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual disposable local child and inherited-pipe descendants with synthetic staged writer ownership; no management/network/provider calls or complete process-tree qualification."
+    },
+    "scripts/test-phase8d-provisioner-ownership.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual schema/provisioner modules and real compatibility child use synthetic provider/CLI capabilities, native SQLite SQL and signed native authority. No real provider/credential or production controller; source remains indexed, not excluded by test name."
+    },
+    "scripts/test-phase8d-public-secret-exposure.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-public-secret-surface.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-recovery-coverage.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-recovery-selection.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual local file/crypto/fresh-process selection checks with explicit synthetic disk B2 capability only; indexed source, not excluded by test name or operational credential/custody approval."
+    },
+    "scripts/test-phase8d-release-gates.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-route-live.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-watchdog.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-worker-entry.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual composed Worker and signed SQLite authority with controlled scheduler capabilities and native deferred D1 witness writes; no provider credentials, outbound calls or complete writer/operational qualification."
+    },
+    "scripts/test-phase8d-workerd-integration.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Test-prefixed source contains management/config references. Name is not proof of harmless effects; source remains hashed and is not excluded from operator accounting."
+    },
+    "scripts/test-phase8d-writer-exit-roles.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual HMAC guarded broker/native authority/guard and scoped native D1 role-exit regressions; explicit historical source baseline only, no current live key, source installer or complete writer/domain/custody qualification."
+    },
+    "scripts/verify-beta-live.mjs": {
+      "classification": "BETA_MUTATOR_UNFENCED",
+      "reason": "Direct beta management SQL/schema or authenticated publication/probe writes; runtime database adapters cannot fence these account-level calls."
+    },
+    "scripts/verify-cloudflare-deployment.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-development-parent-live.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-phase7-development-browser.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/verify-phase7-development-live.mjs": {
+      "classification": "LEGACY_MUTATOR_NOT_BETA_APPROVED",
+      "reason": "Legacy/generic provision, map, repair or authenticated live-probe tool can mutate resources or sessions; not approved as a fenced beta writer or automatically safe target."
+    },
+    "scripts/cardfree-beta-readonly.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Explicitly invoked dedicated-token/pinned-plan current beta Worker version/subdomain and existing D1 bookmark metadata GETs only. No SQL, script content, logs, resource writes or deployment-token fallback; CI uses synthetic request callbacks only."
+    },
+    "scripts/test-phase8d-beta-readonly.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Synthetic Cloudflare metadata transport plus private CLI subprocess fixtures with dedicated token empty and fake deployment token. No real provider requests; hardcoded API URL is tested, not executed by default fetch."
+    },
+    ".github/workflows/phase8d-cardfree-ci.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback."
+    },
+    "scripts/phase8d-operator-entry.mjs": {
+      "classification": "STAGED_OPERATOR_LAUNCHER",
+      "reason": "Explicit pinned local launcher may configure signed ownership for four actual beta tools. Source/native proof only; no installed host, immutable artifact, restricted credentials, bypass prevention or production activation."
+    },
+    "scripts/build-phase8d-operator-launcher.mjs": {
+      "classification": "LOCAL_TOOL_SOURCE",
+      "reason": "Explicit local clean-checkout bundle creation only; no operator import/execution, key file read, provider request or production activation."
+    },
+    "scripts/test-phase8d-operator-launcher.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Fresh local Node operator modules and signed native authority with an explicit synthetic provider/HTTPS bridge; test name alone does not exclude effects, credentials, source or subprocess review."
+    },
+    "scripts/phase8d-synthetic-pitr.mjs": {
+      "classification": "STAGED_SYNTHETIC_D1_DRILL",
+      "reason": "Staged new/unbound synthetic D1 drill with exact account/protected IDs, fixed SQL and no retries/deletes. Original approved attempt remains UNKNOWN. Bounded fixed-field HTTP/numeric-code diagnostics and a fresh Nov12 proposal are source only; no fresh write authority or runtime installation."
+    },
+    "scripts/test-phase8d-synthetic-pitr.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Offline injected SQLite provider and private CLI fault tests only; source references do not exclude harness filesystem/subprocess effects or qualify real Cloudflare mutation."
+    },
+    ".github/workflows/phase8d-synthetic-pitr.yml": {
+      "classification": "MIXED_WORKFLOW_SOURCE",
+      "reason": "Manual write gate and separately scoped false-input GET-only reconciliation; registration PR62 merged after explicit user approval, original one-request write attempt outcome UNKNOWN and never retried. Reconciliation uses only dedicated metadata read token; no runtime installation."
+    },
+    "scripts/reconcile-phase8d-synthetic-pitr.mjs": {
+      "classification": "GET_ONLY_MANAGEMENT_SOURCE",
+      "reason": "Dedicated-read-token GET-only lookup of two generated names for exactly two reviewed run identities, original and fresh proposed. No SQL/write/retry/fallback. Fixed sanitized fields and pagination totals without account population inference; proposal is not authority."
+    },
+    "scripts/test-phase8d-synthetic-pitr-reconcile.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Offline injected filtered-metadata model with source/account fixture substitution and filesystem effects; no actual Cloudflare request or mutation/recovery acceptance."
+    },
+    "scripts/test-phase8d-backup-capture-age.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Local crypto, private subprocess/file and synthetic B2 fixture coverage of stale device snapshots; source references do not exclude harness effects or prove actual cloud custody, capture fencing or recovery."
+    },
+    "scripts/test-phase8d-lifecycle-journal-admission.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Native private SQLite schema/TEMP trigger, simulated driver and commit faults with local callback counters only. No actual provider/notification, hostile-host isolation or independent rollback/custody qualification."
+    },
+    "scripts/test-phase8d-do-export-identity.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual local SQLite DO/D1 export identity race and immutability fixture; controlled D1 changes and temporary predecessor-source build are test effects, not real cloud quiescence, custody or recovery acceptance."
+    }
+  }
+}

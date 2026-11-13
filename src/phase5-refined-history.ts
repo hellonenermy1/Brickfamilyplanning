@@ -1,16 +1,17 @@
+import {cleanupD1RefinedHistory} from './d1-refined-retention';
 import type { EvidenceRecord } from "./evidence-protocol";
 import type { LivePacket } from "./protocol";
-import { refineHypothesisInterval, type SmoothingEndpoint, type SmoothingFrame, type StoredHypothesis } from "./phase5-smoothing";
+import { refineHypothesisInterval, validateSmoothingFrame, type SmoothingEndpoint, type SmoothingFrame, type StoredHypothesis } from "./phase5-smoothing";
+import {selectRefinementFrames,loadFrameFailures,loadFrameEndpointPairs,recordFrameFailure,clearFrameFailure,RefinementInputsUnavailable} from './refinement-work-state';
 
 const FUSION_HYPOTHESES_PROVIDER = 22;
 const POSITION_FAMILY = 1;
 const FRAME_RETENTION_MS = 30 * 86_400_000;
 const REFINED_RETENTION_MS = 90 * 86_400_000;
 const MAX_SMOOTHING_INTERVAL_MS = 24 * 60 * 60_000;
-const MAX_UNREFINED_FRAMES = 100;
 const ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
-type RefinementEnv = { DB: D1Database; HISTORY: R2Bucket };
+type RefinementEnv = { DB: D1Database; HISTORY: R2Bucket; BETA_STORAGE_MODE?:string };
 type FrameRow = { record_id: string; wall_time_ms: number; r2_key: string };
 type EndpointRow = {
   epoch: number;
@@ -123,12 +124,19 @@ export async function persistHypothesisFrameIfPresent(env: RefinementEnv, device
   }
   const key = `history/hypotheses/${safeDevice(deviceId)}/${day(record.wallTimeMs)}/${record.recordId}.json`;
   const existing = await env.DB.prepare(
-    "SELECT r2_key,wall_time_ms FROM phase5_hypothesis_frames WHERE device_id=?1 AND record_id=?2"
-  ).bind(deviceId, record.recordId).first<{ r2_key: string; wall_time_ms: number }>();
+    "SELECT r2_key,wall_time_ms,created_at FROM phase5_hypothesis_frames WHERE device_id=?1 AND record_id=?2"
+  ).bind(deviceId, record.recordId).first<{ r2_key: string; wall_time_ms: number; created_at:number }>();
   if (existing) {
     if (existing.r2_key !== key || existing.wall_time_ms !== record.wallTimeMs) {
       throw new Phase5RefinedHistoryError("fusion hypothesis frame identity collision");
     }
+    if(existing.created_at<now-FRAME_RETENTION_MS)throw new Phase5RefinedHistoryError('fusion hypothesis input expired');
+    // Caller has already committed/verified the signed raw record identity.
+    // Repair only its normalized derivative; never change first receipt age.
+    const expected=JSON.stringify(frame);let same=false;
+    try{const object=await env.HISTORY.get(key);same=!!object&&await object.text()===expected;}catch{}
+    if(!same)await env.HISTORY.put(key,expected,{httpMetadata:{contentType:'application/json'},customMetadata:{kind:'phase5-hypothesis-frame',recordId:record.recordId}});
+    await clearFrameFailure(env.DB,deviceId,record.recordId);
     return true;
   }
   await env.HISTORY.put(key, JSON.stringify(frame), {
@@ -158,20 +166,22 @@ export function preciseEndpointStatements(db: D1Database, deviceId: string, pack
   return out;
 }
 
-async function readFrame(env: RefinementEnv, row: FrameRow): Promise<SmoothingFrame | null> {
+async function readFrame(env: RefinementEnv, row: FrameRow): Promise<SmoothingFrame> {
   const object = await env.HISTORY.get(row.r2_key);
-  if (!object) return null;
+  if (!object) throw Error('refinement object missing');
   let parsed: StoredFrameObject;
-  try { parsed = JSON.parse(await object.text()) as StoredFrameObject; } catch { return null; }
-  if (parsed.v !== 1 || parsed.recordId !== row.record_id || parsed.wallTimeMs !== row.wall_time_ms ||
+  try { parsed = JSON.parse(await object.text()) as StoredFrameObject; } catch { throw Error('invalid refinement object'); }
+  if (!parsed || parsed.v !== 1 || parsed.recordId !== row.record_id || parsed.wallTimeMs !== row.wall_time_ms ||
       !ID_RE.test(parsed.originalRealtimeHypothesisId) || !Number.isFinite(parsed.maxSpeedMps) ||
-      parsed.maxSpeedMps <= 0 || parsed.maxSpeedMps > 120 || !Array.isArray(parsed.hypotheses)) return null;
-  return {
+      parsed.maxSpeedMps <= 0 || parsed.maxSpeedMps > 120 || !Array.isArray(parsed.hypotheses)) throw Error('invalid refinement object');
+  const frame = {
     wallTimeMs: parsed.wallTimeMs,
     originalRealtimeHypothesisId: parsed.originalRealtimeHypothesisId,
     maxSpeedMps: parsed.maxSpeedMps,
     hypotheses: parsed.hypotheses
   };
+  validateSmoothingFrame(frame);
+  return frame;
 }
 
 function endpoint(row: EndpointRow): SmoothingEndpoint {
@@ -189,39 +199,18 @@ async function deterministicRunId(deviceId: string, start: EndpointRow, end: End
  * intentionally left pending; whichever arrives later (endpoint or evidence frame) can retry this.
  */
 export async function processRefinementsForDevice(env: RefinementEnv, deviceId: string, now = Date.now()) {
-  const frameResult = await env.DB.prepare(
-    "SELECT record_id,wall_time_ms,r2_key FROM phase5_hypothesis_frames " +
-    "WHERE device_id=?1 AND refined_run_id IS NULL ORDER BY wall_time_ms LIMIT ?2"
-  ).bind(deviceId, MAX_UNREFINED_FRAMES).all<FrameRow>();
-  const frames = frameResult.results.filter(f => Number.isSafeInteger(f.wall_time_ms));
-  if (!frames.length) return 0;
+  const selected=await selectRefinementFrames(env.DB,deviceId,now);
+  const failures=await loadFrameFailures(env.DB,deviceId,selected);
+  let failed=false;
+  const frames=selected.filter(row=>{const previous=failures.get(deviceId+'/'+row.record_id)?.state;
+    if(previous&&(previous.status==='QUARANTINED'||(previous.nextAttemptAt??0)>now)){failed=true;return false;}return Number.isSafeInteger(row.wall_time_ms);});
+  if (!frames.length) {if(failed)throw new RefinementInputsUnavailable();return 0;}
 
-  const earliest = frames[0].wall_time_ms;
-  const latest = frames[frames.length - 1].wall_time_ms;
-  const before = await env.DB.prepare(
-    "SELECT epoch,sequence,wall_time_ms,latitude,longitude,uncertainty_m FROM phase5_precise_endpoints " +
-    "WHERE device_id=?1 AND wall_time_ms<?2 ORDER BY wall_time_ms DESC LIMIT 1"
-  ).bind(deviceId, earliest).first<EndpointRow>();
-  const after = await env.DB.prepare(
-    "SELECT epoch,sequence,wall_time_ms,latitude,longitude,uncertainty_m FROM phase5_precise_endpoints " +
-    "WHERE device_id=?1 AND wall_time_ms>?2 ORDER BY wall_time_ms ASC LIMIT 1"
-  ).bind(deviceId, latest).first<EndpointRow>();
-  if (!before || !after) return 0;
-
-  const endpoints = await env.DB.prepare(
-    "SELECT epoch,sequence,wall_time_ms,latitude,longitude,uncertainty_m FROM phase5_precise_endpoints " +
-    "WHERE device_id=?1 AND wall_time_ms>=?2 AND wall_time_ms<=?3 ORDER BY wall_time_ms,epoch,sequence"
-  ).bind(deviceId, before.wall_time_ms, after.wall_time_ms).all<EndpointRow>();
-  if (endpoints.results.length < 2) return 0;
+  const endpoints=await loadFrameEndpointPairs(env.DB,deviceId,frames);
 
   const groups = new Map<string, { start: EndpointRow; end: EndpointRow; frames: FrameRow[] }>();
   for (const frame of frames) {
-    let start: EndpointRow | null = null;
-    let end: EndpointRow | null = null;
-    for (const ep of endpoints.results) {
-      if (ep.wall_time_ms < frame.wall_time_ms) start = ep;
-      if (ep.wall_time_ms > frame.wall_time_ms) { end = ep; break; }
-    }
+    const pair=endpoints.get(frame.record_id),start=pair?.before,end=pair?.after;
     if (!start || !end || end.wall_time_ms - start.wall_time_ms > MAX_SMOOTHING_INTERVAL_MS) continue;
     const key = `${start.epoch}:${start.sequence}|${end.epoch}:${end.sequence}`;
     const group = groups.get(key) ?? { start, end, frames: [] };
@@ -234,10 +223,14 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
     const smoothingFrames: SmoothingFrame[] = [];
     const usableRows: FrameRow[] = [];
     for (const row of group.frames) {
-      const frame = await readFrame(env, row);
-      if (!frame) continue;
-      smoothingFrames.push(frame);
-      usableRows.push(row);
+      try {
+        const frame = await readFrame(env, row);
+        smoothingFrames.push(frame);
+        usableRows.push(row);
+      } catch {
+        failed = true;
+        await recordFrameFailure(env.DB,deviceId,row.record_id,failures.get(deviceId+'/'+row.record_id),now);
+      }
     }
     smoothingFrames.sort((a, b) => a.wallTimeMs - b.wallTimeMs);
     usableRows.sort((a, b) => a.wall_time_ms - b.wall_time_ms);
@@ -245,7 +238,7 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
 
     let refined;
     try { refined = refineHypothesisInterval(endpoint(group.start), endpoint(group.end), smoothingFrames); }
-    catch { continue; }
+    catch { failed = true; continue; }
     const runId = await deterministicRunId(deviceId, group.start, group.end, usableRows);
     const key = `history/refined/${safeDevice(deviceId)}/${day(group.start.wall_time_ms)}/${runId}.json`;
     const run: RefinedRunObject = {
@@ -275,8 +268,10 @@ export async function processRefinementsForDevice(env: RefinementEnv, deviceId: 
       );
     }
     await env.DB.batch(statements);
+    for(const row of usableRows){const previous=failures.get(deviceId+'/'+row.record_id);if(previous)await clearFrameFailure(env.DB,deviceId,row.record_id,previous.serialized);}
     completed += usableRows.length;
   }
+  if (failed) throw new RefinementInputsUnavailable();
   return completed;
 }
 
@@ -312,6 +307,7 @@ export async function listRefinedHistory(env: RefinementEnv, deviceId: string, f
 }
 
 export async function cleanupPhase5RefinedHistory(env: RefinementEnv, now = Date.now(), limit = 100) {
+  if(env.BETA_STORAGE_MODE==='d1')return cleanupD1RefinedHistory(env.DB,now,limit);
   const bounded = Math.max(1, Math.min(250, Math.trunc(limit)));
   const frameCutoff = now - FRAME_RETENTION_MS;
   const refinedCutoff = now - REFINED_RETENTION_MS;

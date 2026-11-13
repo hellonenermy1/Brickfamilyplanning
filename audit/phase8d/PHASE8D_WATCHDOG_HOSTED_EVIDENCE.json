@@ -1,0 +1,564 @@
+{
+  "format": "brick_phase8d_watchdog_hosted_v1",
+  "date": "2026-11-06",
+  "testedSourceSha": "9911251da91002e7e9f82e39afdb8d260053eb66",
+  "previousAuditHead": "6def0f277fc3dabaaad03ac7357787674d1f21e1",
+  "phase8d": "NOT PASS",
+  "finding": "P8D-084 SOURCE/CI CORRECTION VERIFIED ONLY",
+  "newIndependentCases": {
+    "native": 6,
+    "state": 23,
+    "total": 29
+  },
+  "local": {
+    "available": true,
+    "canonicalBuildInputsVerified": 328,
+    "gitBlobMismatches": 0,
+    "tests": "29 targeted cases; applicable inherited suites; initial whole-local-check stopped on incomplete asset copy/stale6-entry expectation, then inputs/contracts corrected and relevant suites rerun. Hosted final runs are the whole-workflow qualification.",
+    "priorDirtyCheckoutPreserved": true
+  },
+  "red": [
+    {
+      "source": "6def0f277fc3dabaaad03ac7357787674d1f21e1",
+      "path": "audit/phase8d/PHASE8D_WATCHDOG_RED.txt",
+      "passed": 0,
+      "failed": 3
+    },
+    {
+      "source": "intermediate local working candidate before root tick coalescing; no remote SHA claimed",
+      "path": "audit/phase8d/PHASE8D_WATCHDOG_CONCURRENT_RED.txt",
+      "passed": 3,
+      "failed": 1
+    },
+    {
+      "source": "a22f3d338170be27d23db1bb49a1313cf21f426f",
+      "path": "audit/phase8d/PHASE8D_WATCHDOG_SLOW_RED.txt",
+      "passed": 5,
+      "failed": 1
+    }
+  ],
+  "merge": {
+    "source": "9911251da91002e7e9f82e39afdb8d260053eb66",
+    "target": "612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+    "syntheticMerge": "4195c9f49547359d768c3b81c8239ad32666f2ef",
+    "draft": true,
+    "merged": false,
+    "mergeable": true
+  },
+  "runs": [
+    {
+      "kind": "push",
+      "runId": 42136186561,
+      "jobs": [
+        {
+          "id": 127624802023,
+          "name": "d1-storage-and-recovery",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 42136186561,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Beta provisioner and shared compatibility schema syntax",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Watchdog bounded fleet RPC delivery retry and state races",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Bounded cleanup backlog progress and policy regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Resumable D1 commute history paging regression",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "D1 object read integrity and atomic conditional-write regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            },
+            {
+              "name": "Protected off-platform archive authentication identity and CLI",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12
+            },
+            {
+              "name": "Destroy source and recover both D1 stores and beta DO from encrypted package",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13
+            },
+            {
+              "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14
+            },
+            {
+              "name": "Receipt-age retention cleanup race and bounded statement envelope",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            },
+            {
+              "name": "Scheduler delayed failure and automatic retry",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16
+            },
+            {
+              "name": "Versioned leases nested work and release-outage recovery",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Durable derived-work leases backoff privacy and fair device rotation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Real scheduler enrichment failure isolation and durable evidence ACK",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            },
+            {
+              "name": "Corrupt refinement input and healthy peer isolation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20
+            },
+            {
+              "name": "Rotating poison input quarantine repair and operational reconstruction",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21
+            },
+            {
+              "name": "Conservative D1 computation guard and durable failure reserve",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22
+            },
+            {
+              "name": "Populated maintenance RPC statement envelope and alarm isolation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23
+            },
+            {
+              "name": "Original refined history against actual production-migration SQLite",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24
+            },
+            {
+              "name": "Existing beta auth history map and WebSocket regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25
+            },
+            {
+              "name": "Original production DO and multi-store recovery regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26
+            },
+            {
+              "name": "Existing native production trust-boundary regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 53
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 54
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 55
+            }
+          ]
+        }
+      ],
+      "sourceConfirmed": true,
+      "errorMarkers": 0,
+      "logExtracts": [
+        "2026-11-06T00:21:47.6010431Z {\"suite\":\"watchdog\",\"passed\":6,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance\"}",
+        "2026-11-06T00:21:51.8269181Z WATCHDOG_DEVICE_STATEMENTS 16",
+        "2026-11-06T00:21:52.8272207Z {\"suite\":\"watchdog-state\",\"passed\":23,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1; races thresholds durable retry and redacted status, not end-user notification or live latency proof\"}",
+        "2026-11-06T00:21:58.7506376Z {\"suite\":\"cleanup-backlog\",\"passed\":20,\"failed\":0,\"scope\":\"hosted actual Miniflare D1; synthetic backlog and statement bounds, not cloud CPU/day qualification\"}",
+        "2026-11-06T00:22:07.5878087Z {\"suite\":\"commute-paging\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes\"}",
+        "2026-11-06T00:22:57.2401946Z {\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}",
+        "2026-11-06T00:23:13.6286763Z MEASURE {\"f4b9736f9e404691baf90183b6e602f1bb2451b3c7a2cdeba82a779dec6aed48\":26,\"be753d8337c2662187446f0eddfde2139dc9475a17fbd4b734abb9f4c18d9140\":25,\"3159e5afa0e68daf6e2502aa40591bb20b0765810e1190822933a08f0d5e6eef\":4,\"0aeae8aad4368e0c3487f30b420aa3ed02501cd894515faf8cf83644bafeec9a\":5,\"a1f3a31fbb3ffa58dc948a405e637e6709e648a22e3c38652af4f1992c7431f1\":5,\"e1630392e549f2b24a68a81e6a93cde7a25321bbbc7f6f18a0879818de80b119\":5,\"12ff8bcbfa2d8f60c987809c2cd991968dfab03d4e8ab22c916640f43ece93e4\":5,\"2da4ed83b46ac1c7a9ab69808fe9e52a1cc8ca89008296cfbde4d00cfc5f7d30\":42,\"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef\":48,\"16986e857917ed7fc7e5dec5fcdbfa047b2516abfff737684c69e93981f592bf\":48,\"db895f68a3dc5537996986a17c723765ab3c377f85dacc62e413ca19f800ecc7\":48,\"14c06a7e4dd4fda42f365214d77e753b28f54590b5f01bf1878c964a6e117d4e\":48,\"da24c16b8d99d4fe2bfb2ff8d96a0bb6b5a73fbabcb9a0e45b1a28eaf43055e0\":10,\"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01\":1}",
+        "2026-11-06T00:23:13.7584467Z GUARD {\"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef\":47}",
+        "2026-11-06T00:23:13.8773393Z {\"suite\":\"maintenance-invocation-budget\",\"passed\":4,\"failed\":0,\"scope\":\"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU\"}"
+      ]
+    },
+    {
+      "kind": "pull_request",
+      "runId": 42136194330,
+      "jobs": [
+        {
+          "id": 127624828824,
+          "name": "d1-storage-and-recovery",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 42136194330,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Beta provisioner and shared compatibility schema syntax",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Watchdog bounded fleet RPC delivery retry and state races",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8
+            },
+            {
+              "name": "Bounded cleanup backlog progress and policy regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9
+            },
+            {
+              "name": "Resumable D1 commute history paging regression",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10
+            },
+            {
+              "name": "D1 object read integrity and atomic conditional-write regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11
+            },
+            {
+              "name": "Protected off-platform archive authentication identity and CLI",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12
+            },
+            {
+              "name": "Destroy source and recover both D1 stores and beta DO from encrypted package",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13
+            },
+            {
+              "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14
+            },
+            {
+              "name": "Receipt-age retention cleanup race and bounded statement envelope",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            },
+            {
+              "name": "Scheduler delayed failure and automatic retry",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16
+            },
+            {
+              "name": "Versioned leases nested work and release-outage recovery",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17
+            },
+            {
+              "name": "Durable derived-work leases backoff privacy and fair device rotation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 18
+            },
+            {
+              "name": "Real scheduler enrichment failure isolation and durable evidence ACK",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 19
+            },
+            {
+              "name": "Corrupt refinement input and healthy peer isolation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 20
+            },
+            {
+              "name": "Rotating poison input quarantine repair and operational reconstruction",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21
+            },
+            {
+              "name": "Conservative D1 computation guard and durable failure reserve",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22
+            },
+            {
+              "name": "Populated maintenance RPC statement envelope and alarm isolation",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23
+            },
+            {
+              "name": "Original refined history against actual production-migration SQLite",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 24
+            },
+            {
+              "name": "Existing beta auth history map and WebSocket regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 25
+            },
+            {
+              "name": "Original production DO and multi-store recovery regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 26
+            },
+            {
+              "name": "Existing native production trust-boundary regressions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 27
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 53
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 54
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 55
+            }
+          ]
+        }
+      ],
+      "sourceConfirmed": true,
+      "errorMarkers": 0,
+      "logExtracts": [
+        "2026-11-06T00:21:20.5185903Z HEAD is now at 4195c9f Merge 9911251da91002e7e9f82e39afdb8d260053eb66 into 612d4a8b16fb829f9528b06ab6448ab85ac483e6",
+        "2026-11-06T00:21:46.5821474Z {\"suite\":\"watchdog\",\"passed\":6,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1/DO RPC; bounded fleet continuation and notification retry; not live device/latency acceptance\"}",
+        "2026-11-06T00:21:50.0948923Z WATCHDOG_DEVICE_STATEMENTS 16",
+        "2026-11-06T00:21:50.9691667Z {\"suite\":\"watchdog-state\",\"passed\":23,\"failed\":0,\"scope\":\"actual synthetic Miniflare D1; races thresholds durable retry and redacted status, not end-user notification or live latency proof\"}",
+        "2026-11-06T00:21:56.1566073Z {\"suite\":\"cleanup-backlog\",\"passed\":20,\"failed\":0,\"scope\":\"hosted actual Miniflare D1; synthetic backlog and statement bounds, not cloud CPU/day qualification\"}",
+        "2026-11-06T00:22:04.5533160Z {\"suite\":\"commute-paging\",\"passed\":12,\"failed\":0,\"scope\":\"actual local D1; synthetic trusted history and44-statement computation guard; no cloud writes\"}",
+        "2026-11-06T00:22:49.4209324Z {\"suite\":\"enrichment-failure\",\"passed\":7,\"failed\":0,\"scope\":\"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes\"}",
+        "2026-11-06T00:23:03.2717466Z MEASURE {\"f4b9736f9e404691baf90183b6e602f1bb2451b3c7a2cdeba82a779dec6aed48\":26,\"be753d8337c2662187446f0eddfde2139dc9475a17fbd4b734abb9f4c18d9140\":25,\"3159e5afa0e68daf6e2502aa40591bb20b0765810e1190822933a08f0d5e6eef\":4,\"0aeae8aad4368e0c3487f30b420aa3ed02501cd894515faf8cf83644bafeec9a\":5,\"a1f3a31fbb3ffa58dc948a405e637e6709e648a22e3c38652af4f1992c7431f1\":5,\"e1630392e549f2b24a68a81e6a93cde7a25321bbbc7f6f18a0879818de80b119\":5,\"12ff8bcbfa2d8f60c987809c2cd991968dfab03d4e8ab22c916640f43ece93e4\":5,\"2da4ed83b46ac1c7a9ab69808fe9e52a1cc8ca89008296cfbde4d00cfc5f7d30\":42,\"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef\":48,\"16986e857917ed7fc7e5dec5fcdbfa047b2516abfff737684c69e93981f592bf\":48,\"db895f68a3dc5537996986a17c723765ab3c377f85dacc62e413ca19f800ecc7\":48,\"14c06a7e4dd4fda42f365214d77e753b28f54590b5f01bf1878c964a6e117d4e\":48,\"da24c16b8d99d4fe2bfb2ff8d96a0bb6b5a73fbabcb9a0e45b1a28eaf43055e0\":10,\"344807e43d66c2e875698b09087aa2e6aa891a61a43f0f362891d93e0f0e8a01\":1}",
+        "2026-11-06T00:23:03.3797663Z GUARD {\"db1e8ab846597e158cf50aa4223d913a473823cd5904c236f8592a5e6e9808ef\":47}",
+        "2026-11-06T00:23:03.4753277Z {\"suite\":\"maintenance-invocation-budget\",\"passed\":4,\"failed\":0,\"scope\":\"actual local RPC/D1 with four8-frame devices; conservative per-object aggregate statement counts across one tick, not live quotas/CPU\"}"
+      ]
+    },
+    {
+      "kind": "portal",
+      "runId": 42136194257,
+      "jobs": [
+        {
+          "id": 127624828714,
+          "name": "map-and-parent-regression",
+          "status": "completed",
+          "conclusion": "success",
+          "run_id": 42136194257,
+          "logs_url": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1
+            },
+            {
+              "name": "Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2
+            },
+            {
+              "name": "Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3
+            },
+            {
+              "name": "Run npm ci --no-audit --no-fund",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4
+            },
+            {
+              "name": "Run npm run build:parent-assets",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5
+            },
+            {
+              "name": "Run npm run typecheck",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6
+            },
+            {
+              "name": "MapLibre PMTiles ranges and portal device-list independence",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7
+            },
+            {
+              "name": "Post Run actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13
+            },
+            {
+              "name": "Post Run actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15
+            }
+          ]
+        }
+      ],
+      "sourceConfirmed": true,
+      "errorMarkers": 0,
+      "logExtracts": [
+        "2026-11-06T00:21:21.3340073Z HEAD is now at 4195c9f Merge 9911251da91002e7e9f82e39afdb8d260053eb66 into 612d4a8b16fb829f9528b06ab6448ab85ac483e6"
+      ]
+    }
+  ],
+  "measured": {
+    "watchdogComputationStatements": 16,
+    "representativeObjectAggregateMax": 48,
+    "forcedGuardFailureWithReceipt": 47
+  },
+  "limits": [
+    "Synthetic D1/DO and real Miniflare alarms, not live fleet/CPU/day/storage/phone or end-user alert timing acceptance.",
+    "Admission timeout does not cancel remote effects. Stable unique D1 event; at-least-once live relay; device-DO acceptance does not prove parent receipt/read.",
+    "Original90s offline/60s incident-age thresholds preserved; requested1s continuation is not guaranteed platform delivery timing.",
+    "provider_cache reconstructs after disaster exclusion; no restored historical retry state claimed.",
+    "Legacy non-D1 watchdog behavior unchanged; index022 staged only.",
+    "REL-007 fixed watchdog retry does not waive canonical exponential-backoff repair requirement; DAT-013 full duplicate harmlessness not accepted.",
+    "P8D-002 P1 operational private backup/PITR/cloud drill and Atlas/525 independent reviews remain OPEN. No deployment/APK/UI/cloud/family-data mutation or R2/card."
+  ]
+}

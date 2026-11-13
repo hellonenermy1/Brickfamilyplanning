@@ -1,11 +1,22 @@
 import { encodeTrustedDelta, gzipJson, trustedPoint } from "./history-codec";
 import type { LivePacket } from "./protocol";
 
-const CHUNK_BYTES = 900_000;
-const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
+export const CHUNK_BYTES = 900_000;
+export const MAX_OBJECT_BYTES = 32 * 1024 * 1024;
 const HISTORY_SEGMENT_MS = 15 * 60 * 1000;
 const MAP_KEY = "basemap/singapore.pmtiles";
 const META_KEY = "basemap/singapore.meta.json";
+const DAY_MS = 86_400_000;
+// Match the retained raw/trusted API contract, smoothing policies and backup metadata.
+export const D1_OBJECT_RETENTION = [
+  ["history/raw/", 30], ["history/trusted/", 90],
+  ["history/hypotheses/", 30], ["history/refined/", 90],
+  ["evidence/raw/", 14], ["backups/d1/", 30]
+] as const;
+function expiredObject(meta: StoredMeta, now = Date.now()) {
+  const rule = D1_OBJECT_RETENTION.find(([prefix]) => meta.key.startsWith(prefix));
+  return !!rule && meta.uploaded_at < now - rule[1] * DAY_MS;
+}
 
 type StoredMeta = {
   key: string;
@@ -16,7 +27,7 @@ type StoredMeta = {
   custom_metadata_json: string;
 };
 
-type ChunkRow = { body: ArrayBuffer | Uint8Array | number[] };
+type ChunkRow = { chunk_index: number; body: ArrayBuffer | Uint8Array | number[] };
 type RangeSpec = { offset: number; length: number } | null;
 type HistoryKind = "raw" | "trusted";
 type HistoryRow = {
@@ -205,7 +216,7 @@ function packPacket(p: LivePacket): PackedPacket {
   ];
 }
 
-function unpackPacket(text: string): LivePacket {
+export function unpackPacket(text: string): LivePacket {
   const p = JSON.parse(text) as PackedPacket;
   if (!Array.isArray(p) || p.length !== 28) throw new Error("invalid compact history packet");
   const flags = Number(p[18]);
@@ -227,11 +238,12 @@ async function virtualHistoryObject(db: D1Database, key: string) {
   if (!parsed) return null;
   const rows = await db.prepare(
     "SELECT device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at " +
-    "FROM dev_location_history WHERE safe_device_id=?1 AND segment_start_ms=?2 AND epoch=?3 ORDER BY sequence"
-  ).bind(parsed.safeDevice, parsed.start, parsed.epoch).all<HistoryRow>();
+    "FROM dev_location_history WHERE safe_device_id=?1 AND segment_start_ms=?2 AND epoch=?3 AND created_at>=?4 " +
+    (parsed.kind === "raw" ? "AND raw_packet_json<>'null' " : "") + "ORDER BY sequence"
+  ).bind(parsed.safeDevice, parsed.start, parsed.epoch, Date.now() - (parsed.kind === "raw" ? 30 : 90) * DAY_MS).all<HistoryRow>();
   if (!rows.results.length) return null;
   const trustedPackets = rows.results.map(row => unpackPacket(row.trusted_packet_json));
-  const rawPackets = rows.results.map(row => unpackPacket(row.raw_packet_json));
+  const rawPackets = parsed.kind === "raw" ? rows.results.map(row => unpackPacket(row.raw_packet_json)) : [];
   const deviceId = rows.results[0].device_id;
   const storedAt = Math.max(...rows.results.map(row => row.created_at));
   const body = parsed.kind === "raw"
@@ -262,9 +274,10 @@ async function virtualHistoryList(db: D1Database, prefix: string, offset: number
   if (!parsed) return null;
   const rows = await db.prepare(
     "SELECT segment_start_ms,epoch,MAX(created_at) AS max_created_at FROM dev_location_history " +
-    "WHERE safe_device_id=?1 AND segment_start_ms>=?2 AND segment_start_ms<?3 " +
+    "WHERE safe_device_id=?1 AND segment_start_ms>=?2 AND segment_start_ms<?3 AND created_at>=?6 " +
+    (parsed.kind === "raw" ? "AND raw_packet_json<>'null' " : "") +
     "GROUP BY segment_start_ms,epoch ORDER BY segment_start_ms,epoch LIMIT ?4 OFFSET ?5"
-  ).bind(parsed.safeDevice, parsed.dayStart, parsed.dayEnd, limit + 1, offset).all<HistorySegmentRow>();
+  ).bind(parsed.safeDevice, parsed.dayStart, parsed.dayEnd, limit + 1, offset, Date.now() - (parsed.kind === "raw" ? 30 : 90) * DAY_MS).all<HistorySegmentRow>();
   const truncated = rows.results.length > limit;
   const page = rows.results.slice(0, limit);
   return {
@@ -282,6 +295,40 @@ async function virtualHistoryList(db: D1Database, prefix: string, offset: number
   };
 }
 
+function objectWriteCondition(key: string, input: unknown): { sql: string; values: string[] } | null {
+  if (input === undefined) return null;
+  const conditions: string[] = [], values = [key];
+  const add = (raw: unknown, negate: boolean) => {
+    if (typeof raw !== "string" || !raw.trim()) throw new Error("invalid D1 object ETag condition");
+    const tags = raw.split(",").map(tag => tag.trim());
+    if (tags.includes("*")) {
+      if (tags.length !== 1) throw new Error("invalid D1 object ETag condition");
+      conditions.push((negate ? "NOT " : "") + "EXISTS(SELECT 1 FROM dev_object_store WHERE key=?1)");
+      return;
+    }
+    const refs = tags.map(tag => {
+      const plain = tag.replace(/^\"(.*)\"$/, "$1");
+      if (!plain || /[\s\"\\]/.test(plain)) throw new Error("invalid D1 object ETag condition");
+      values.push(plain); return "?" + values.length;
+    });
+    conditions.push((negate ? "NOT " : "") + "EXISTS(SELECT 1 FROM dev_object_store WHERE key=?1 AND etag IN (" + refs.join(",") + "))");
+  };
+  if (input instanceof Headers) {
+    input.forEach((_value, name) => { if (!["if-match", "if-none-match"].includes(name)) throw new Error("unsupported D1 object write condition"); });
+    if (input.has("If-Match")) add(input.get("If-Match"), false);
+    if (input.has("If-None-Match")) add(input.get("If-None-Match"), true);
+  } else {
+    if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("invalid D1 object write condition");
+    const entries = Object.entries(input);
+    for (const [name, value] of entries) {
+      if (name !== "etagMatches" && name !== "etagDoesNotMatch") throw new Error("unsupported D1 object write condition");
+      add(value, name === "etagDoesNotMatch");
+    }
+  }
+  if (!conditions.length) throw new Error("empty D1 object write condition");
+  return { sql: conditions.join(" AND "), values };
+}
+
 export class D1ObjectBucket {
   constructor(private readonly db: D1Database) {}
 
@@ -293,6 +340,7 @@ export class D1ObjectBucket {
     const now = Date.now();
     const httpMetadata = safeJson(options.httpMetadata);
     const customMetadata = safeJson(options.customMetadata);
+    const condition = objectWriteCondition(key, options.onlyIf);
     const statements: D1PreparedStatement[] = [
       this.db.prepare("DELETE FROM dev_object_chunks WHERE key=?1").bind(key),
       this.db.prepare(
@@ -304,14 +352,28 @@ export class D1ObjectBucket {
       const part = bytes.slice(offset, Math.min(bytes.byteLength, offset + CHUNK_BYTES));
       statements.push(this.db.prepare("INSERT INTO dev_object_chunks(key,chunk_index,body) VALUES(?1,?2,?3)").bind(key, index, ownBuffer(part)));
     }
-    await this.db.batch(statements);
+    if (condition) {
+      // D1 exposes transactions through batch(), not a client-side read/check/write.
+      // This first statement deliberately violates one specific NOT NULL constraint
+      // on a failed precondition, rolling back the WHOLE batch before any replacement.
+      // All normal writes below bind validated, non-null sizes. Other errors propagate.
+      statements.unshift(this.db.prepare(
+        "INSERT INTO dev_object_store(key,size,etag,uploaded_at) SELECT ?1,NULL,'',0 WHERE NOT (" + condition.sql + ")"
+      ).bind(...condition.values));
+    }
+    try { await this.db.batch(statements); }
+    catch (error) {
+      if (condition && String(error).includes("NOT NULL constraint failed: dev_object_store.size")) return null;
+      throw error;
+    }
     return headObject({ key, size: bytes.byteLength, etag, uploaded_at: now, http_metadata_json: httpMetadata, custom_metadata_json: customMetadata });
   }
 
   private async meta(key: string) {
-    return this.db.prepare(
+    const meta = await this.db.prepare(
       "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key=?1"
     ).bind(key).first<StoredMeta>();
+    return meta && !expiredObject(meta) ? meta : null;
   }
 
   async head(key: string) {
@@ -324,19 +386,33 @@ export class D1ObjectBucket {
   async get(key: string, options: { range?: unknown } = {}) {
     const virtual = await virtualHistoryObject(this.db, key);
     if (virtual) return virtual;
-    const meta = await this.meta(key);
-    if (!meta) return null;
-    const rows = await this.db.prepare("SELECT body FROM dev_object_chunks WHERE key=?1 ORDER BY chunk_index").bind(key).all<ChunkRow>();
-    const chunks = rows.results.map(row => {
-      if (row.body instanceof ArrayBuffer) return new Uint8Array(row.body);
-      if (ArrayBuffer.isView(row.body)) return new Uint8Array(row.body.buffer, row.body.byteOffset, row.body.byteLength);
-      if (Array.isArray(row.body) && row.body.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) return Uint8Array.from(row.body);
-      throw new Error("invalid D1 object chunk");
+    // Both SELECTs share a single D1 transaction; concurrent replacements cannot
+    // splice an old ETag/size together with the next version's chunks.
+    const result = await this.db.batch<StoredMeta | ChunkRow>([
+      this.db.prepare("SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key=?1").bind(key),
+      this.db.prepare("SELECT chunk_index,body FROM dev_object_chunks WHERE key=?1 ORDER BY chunk_index").bind(key)
+    ]);
+    if (result.length !== 2 || !Array.isArray(result[0]?.results) || !Array.isArray(result[1]?.results)) throw new Error("incomplete D1 object read");
+    const meta = result[0].results[0] as StoredMeta | undefined;
+    if (!meta || expiredObject(meta)) return null;
+    if (!Number.isSafeInteger(meta.size) || meta.size < 0 || meta.size > MAX_OBJECT_BYTES || !/^[a-f0-9]{64}$/.test(meta.etag)) throw new Error("invalid D1 object metadata");
+    const rows = result[1].results as ChunkRow[];
+    if (rows.length !== Math.ceil(meta.size / CHUNK_BYTES)) throw new Error("development object is incomplete");
+    const chunks = rows.map((row, index) => {
+      if (row.chunk_index !== index) throw new Error("invalid D1 object chunk index");
+      let bytes: Uint8Array;
+      if (row.body instanceof ArrayBuffer) bytes = new Uint8Array(row.body);
+      else if (ArrayBuffer.isView(row.body)) bytes = new Uint8Array(row.body.buffer, row.body.byteOffset, row.body.byteLength);
+      else if (Array.isArray(row.body) && row.body.every(v => Number.isInteger(v) && v >= 0 && v <= 255)) bytes = Uint8Array.from(row.body);
+      else throw new Error("invalid D1 object chunk");
+      if (bytes.byteLength !== Math.min(CHUNK_BYTES, meta.size - index * CHUNK_BYTES)) throw new Error("invalid D1 object chunk size");
+      return bytes;
     });
     const bytes = new Uint8Array(meta.size);
     let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     if (offset !== meta.size) throw new Error("development object is incomplete");
+    if (await sha256Hex(bytes) !== meta.etag) throw new Error("D1 object integrity hash mismatch");
     const range = parseRange(options.range, meta.size);
     return bodyObject(bytes, meta, range);
   }
@@ -358,9 +434,11 @@ export class D1ObjectBucket {
     const limit = Math.max(1, Math.min(1000, Number(options.limit ?? 1000)));
     const virtual = await virtualHistoryList(this.db, prefix, offset, limit);
     if (virtual) return virtual;
+    const upper = /^[\x20-\x7e]+$/.test(prefix) ? prefix.slice(0, -1) + String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1) : null;
+    const available = D1_OBJECT_RETENTION.map(([keyPrefix, days]) => "(substr(key,1," + keyPrefix.length + ")<>'" + keyPrefix + "' OR uploaded_at>=?4-" + days * DAY_MS + ")").join(" AND ");
     const rows = await this.db.prepare(
-      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key LIKE ?1 ESCAPE '\\' ORDER BY key LIMIT ?2 OFFSET ?3"
-    ).bind(`${prefix.replace(/[\\%_]/g, "\\$&")}%`, limit + 1, offset).all<StoredMeta>();
+      "SELECT key,size,etag,uploaded_at,http_metadata_json,custom_metadata_json FROM dev_object_store WHERE key>=?1 AND " + (upper ? "key<?5 AND " : "") + "substr(key,1,length(?1))=?1 AND " + available + " ORDER BY key LIMIT ?2 OFFSET ?3"
+    ).bind(prefix, limit + 1, offset, Date.now(), ...(upper ? [upper] : [])).all<StoredMeta>();
     const truncated = rows.results.length > limit;
     const page = rows.results.slice(0, limit);
     return {
@@ -384,26 +462,32 @@ function remoteMeta(source: string, size: number, etag: string): StoredMeta {
 }
 
 async function remoteSize(source: string) {
-  const head = await fetch(source, { method: "HEAD", redirect: "follow" });
+  const head = await fetch(source, { method: "HEAD", redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (head.ok) {
     const n = Number(head.headers.get("Content-Length"));
-    if (Number.isSafeInteger(n) && n > 0) return { size: n, etag: head.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${n}` };
+    if (Number.isSafeInteger(n) && n > 0) return { size: n, etag: head.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${n}`, versioned: !!head.headers.get('ETag') };
   }
-  const probe = await fetch(source, { headers: { Range: "bytes=0-0" }, redirect: "follow" });
+  const probe = await fetch(source, { headers: { Range: "bytes=0-0" }, redirect: "follow", signal: AbortSignal.timeout(12000) });
   if (!probe.ok && probe.status !== 206) throw new Error(`map source unavailable: HTTP ${probe.status}`);
   const contentRange = probe.headers.get("Content-Range") ?? "";
   const match = contentRange.match(/\/(\d+)$/);
   const size = match ? Number(match[1]) : Number(probe.headers.get("Content-Length"));
   if (!Number.isSafeInteger(size) || size <= 0) throw new Error("map source size unavailable");
-  return { size, etag: probe.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${size}` };
+  return { size, etag: probe.headers.get("ETag")?.replace(/^W\//, "").replaceAll('"', "") || `remote-${size}`, versioned: !!probe.headers.get('ETag') };
 }
 
 class RemoteMapBucket {
-  private info: Promise<{ size: number; etag: string }> | null = null;
+  private info: { size: number; etag: string; versioned: boolean } | null = null;
   private readonly memory = new Map<string, ArrayBuffer>();
   constructor(private readonly source: string) {}
 
-  private sourceInfo() { return this.info ??= remoteSize(this.source); }
+  private async sourceInfo() {
+    if (this.info) return this.info;
+    // Cache resolved metadata only. A timed-out/ended request must not leave
+    // another request awaiting its abandoned fetch promise indefinitely.
+    const loaded = await remoteSize(this.source);
+    return this.info ??= loaded;
+  }
 
   async head(key: string) {
     if (key !== MAP_KEY) return null;
@@ -435,8 +519,10 @@ class RemoteMapBucket {
       return bodyObject(body, meta);
     }
     if (key !== MAP_KEY) return null;
-    const { size, etag } = await this.sourceInfo();
+    const generation = await this.sourceInfo();
+    const { size, etag } = generation;
     const range = parseRange(options.range, size);
+    if (this.info !== generation) throw new Error('map metadata changed');
     if (!range) throw new Error("development map proxy requires byte-range requests");
     const cacheKey = `${range.offset}:${range.length}:${etag}`;
     const cached = this.memory.get(cacheKey);
@@ -449,14 +535,31 @@ class RemoteMapBucket {
     const response = await fetch(this.source, {
       headers: { Range: `bytes=${range.offset}-${end}` },
       redirect: "follow",
+      signal: AbortSignal.timeout(12000),
       cf: { cacheEverything: true, cacheTtl: 86400 }
     });
     if (!(response.ok || response.status === 206)) throw new Error(`map range unavailable: HTTP ${response.status}`);
+    const actualEtag = response.headers.get('ETag')?.replace(/^W\//, '').replaceAll('"', '');
+    if (actualEtag && generation.versioned && actualEtag !== generation.etag) {
+      if (this.info === generation) { this.info = null; this.memory.clear(); }
+      void response.body?.cancel().catch(() => undefined);
+      throw new Error('map range version changed');
+    }
+    if (this.info !== generation) { void response.body?.cancel().catch(() => undefined); throw new Error('map metadata changed'); }
+    // A size-only HEAD/probe is not an ETag assertion. Adopt the first real
+    // range validator rather than treating it as an incompatible revision.
+    if (actualEtag && !generation.versioned) {
+      generation.etag = actualEtag;
+      generation.versioned = true;
+      this.memory.clear();
+    }
     const buffer = await response.arrayBuffer();
+    if (this.info !== generation) throw new Error('map metadata changed');
     if (buffer.byteLength !== range.length) throw new Error("map range length mismatch");
-    this.memory.set(cacheKey, buffer.slice(0));
+    const verifiedCacheKey = `${range.offset}:${range.length}:${generation.etag}`;
+    this.memory.set(verifiedCacheKey, buffer.slice(0));
     while (this.memory.size > 128) this.memory.delete(this.memory.keys().next().value as string);
-    const obj = bodyObject(new Uint8Array(buffer), remoteMeta(this.source, size, etag), { offset: 0, length: buffer.byteLength });
+    const obj = bodyObject(new Uint8Array(buffer), remoteMeta(this.source, size, generation.etag), { offset: 0, length: buffer.byteLength });
     return { ...obj, range: { offset: range.offset, length: range.length } };
   }
 }
@@ -505,7 +608,9 @@ class DirectEventQueue {
         return `(?${base + 1},?${base + 2},?${base + 3},?${base + 4},?${base + 5},?${base + 6},?${base + 7},?${base + 8},?${base + 9})`;
       }).join(",");
       await this.db.prepare(
-        `INSERT OR IGNORE INTO dev_location_history(device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at) VALUES ${values}`
+        `INSERT OR IGNORE INTO dev_location_history(device_id,safe_device_id,epoch,sequence,wall_time_ms,segment_start_ms,trusted_packet_json,raw_packet_json,created_at) ` +
+        `SELECT incoming.column1,incoming.column2,incoming.column3,incoming.column4,incoming.column5,incoming.column6,incoming.column7,incoming.column8,incoming.column9 ` +
+        `FROM (VALUES ${values}) AS incoming WHERE EXISTS (SELECT 1 FROM devices WHERE id=incoming.column1 AND revoked_at IS NULL)`
       ).bind(...bindings).run();
     }
   }
@@ -539,27 +644,25 @@ export function developmentRuntimeEnv<T extends Record<string, unknown>>(env: T)
 }
 
 export async function cleanupDevelopmentObjectStore(db: D1Database, now = Date.now()) {
-  const rules = [
-    ["history/raw/%", 14],
-    ["history/trusted/%", 30],
-    ["history/hypotheses/%", 14],
-    ["history/refined/%", 30],
-    ["evidence/raw/%", 14],
-    ["backups/d1/%", 7]
-  ] as const;
-  for (const [pattern, days] of rules) {
-    const cutoff = now - days * 86_400_000;
-    const rows = await db.prepare("SELECT key FROM dev_object_store WHERE key LIKE ?1 AND uploaded_at<?2 ORDER BY uploaded_at LIMIT 200").bind(pattern, cutoff).all<{ key: string }>();
-    if (!rows.results.length) continue;
-    const bucket = new D1ObjectBucket(db);
-    await bucket.delete(rows.results.map(row => row.key));
+  if (!Number.isSafeInteger(now) || now <= 0) throw new Error("invalid cleanup timestamp");
+  for (const [prefix, days] of D1_OBJECT_RETENTION) {
+    // Eligibility and deletion share one statement. FK CASCADE deletes only this
+    // version's chunks; a newly refreshed key cannot be deleted from a stale list.
+    await db.prepare("DELETE FROM dev_object_store WHERE key IN (SELECT key FROM dev_object_store WHERE key LIKE ?1 AND uploaded_at<?2 ORDER BY uploaded_at,key LIMIT 200)").bind(prefix + "%", now - days * DAY_MS).run();
   }
 
   // History rows are already compact (one append per accepted fix). Cap cleanup work so a busy day
   // cannot itself consume the Free-plan write budget. Normal adaptive tracking remains bounded; an
   // extreme 24/7 high-frequency test degrades by retaining extra old rows rather than dropping new data.
-  const historyCutoff = now - 35 * 86_400_000;
+  const historyCutoff = now - 90 * DAY_MS;
   await db.prepare(
-    "DELETE FROM dev_location_history WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE wall_time_ms<?1 ORDER BY wall_time_ms LIMIT 5000)"
+    "DELETE FROM dev_location_history WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE created_at<?1 ORDER BY created_at LIMIT 5000)"
   ).bind(historyCutoff).run();
+  // The trusted packed packet also held raw-only fields. Remove those copies,
+  // preserving every field emitted by trustedPoint()/the trusted delta codec.
+  await db.prepare(
+    "UPDATE dev_location_history SET raw_packet_json='null',trusted_packet_json=json_set(trusted_packet_json," +
+    "'$[5]',NULL,'$[6]',NULL,'$[7]',NULL,'$[14]',NULL,'$[15]',NULL,'$[16]',NULL,'$[23]',0,'$[24]',0,'$[25]',0,'$[26]',0,'$[27]',NULL) " +
+    "WHERE rowid IN (SELECT rowid FROM dev_location_history WHERE created_at<?1 AND raw_packet_json<>'null' ORDER BY created_at LIMIT 5000)"
+  ).bind(now - 30 * DAY_MS).run();
 }

@@ -1,0 +1,277 @@
+{
+  "format": "brick-phase8d-group1-urgent-scope-outage-evidence-v1",
+  "date": "2026-11-10",
+  "sourceSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+  "sourceTreeSha": "b91a01f264d029c1bcb2d49c39d3d024b5801336",
+  "baselineSha": "1b6e14eb18d7c8dd6055b2d73baca7bb64e2b609",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "URGENT_SCOPE_OUTAGE_GUARD_FALLBACK_SOURCE_NATIVE_AND_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+  "newCases": 31,
+  "compiledControllerCases": 28,
+  "nativeScenarioCases": 3,
+  "baselineReproduction": {
+    "writerSourceSha": "1b6e14eb18d7c8dd6055b2d73baca7bb64e2b609",
+    "scopeLookup": "synthetic throw before fallback",
+    "actualDeviceRevocationApplied": false,
+    "nativeD1RowBefore": 0,
+    "nativeD1RowAfter": 0,
+    "independentGuard": "HEALTHY_CLEAR_NOT_CONSULTED",
+    "logSha256": "ba58b01ab65628e690aef6e9913d189259f6eb541a8690ce8e8a21ae44912c8b",
+    "scope": "Exact prior wrapper aliased consistently across actual beta-device/D1 adapter; real native DO guard/D1/device with synthetic trusted bootstrap/outage. No production incident, live endpoint, TLS or actual failure-domain proof."
+  },
+  "correction": "Validated urgent priority plus existing request-specific proof can reach the same independently durable quarantine before source effect when scope lookup throws/hangs/returns unknown token. Ordinary/unknown priority and unconfirmed guard still refuse. Inherited D1 uses quarantine under counted parent without repeating scope lookup.",
+  "verifiedBehavior": [
+    "Urgent throw/hang/invalid scope can proceed only after exact positive quarantine receipt, with no root admission/exit or fabricated scheduler parent hint.",
+    "Ordinary priority, thrown/hung/invalid computed priority, denied/throwing/nonboolean/hung request proof and invalid urgent parent cannot poison guard or run work.",
+    "Missing/down/hung/wrong-writer/extra-field guard receipt starts no effect and creates no release.",
+    "Late scope completion, settled deferred tasks and original work errors do not clear quarantine or retry admission.",
+    "Inherited D1 throw/hang/invalid scope uses quarantine before descendant effect, keeps parent counting through settlement, and retains parent ownership on caught child failure.",
+    "Actual beta device revocation/native D1 mutation refuse missing guard; healthy native guard is poisoned before real effects; guard invalidates held proof and exact device/D1 state plus poison survive full native restart. Native held fixture uses controlled lower authority, not a claim of live signed endpoint.",
+    "Full existing signed native41+4/deviceDO encrypted backup/lifecycle/selection/source destruction/fresh restore and exact33-row/16-table parity/restart pass."
+  ],
+  "runtimeGraph": {
+    "files": 90,
+    "changedFiles": [
+      "src/capture-writer-boundary.ts"
+    ],
+    "historicalCarryBasisSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+    "projectionIdenticalToHistoricalBasis": false,
+    "freshFullRequalification": true
+  },
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "deda03f4d6ed0995c1f9470bcf55c8a05bbd90f13df306bfb3b1a5f358375872"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "9b56485b4457b5a3f85742c812d3dd86ee4e00594aa0f25d47c82db3def221e8"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_NAMED_WRITER_SURFACE_PROFILE.json",
+      "sha256": "43ef9bf646bc44f145ba5261b35719f7654a6c9b1d8b57ef91f8ead6266b53c1"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "8a71f0ad06f2f2edbadb4a746c0b251639a2884a8b1be07c2828c2e9a9caaac7"
+    },
+    {
+      "path": "scripts/test-phase8d-scope-outage.mjs",
+      "sha256": "0270e4e562d5bf8ca79c55fbf700df121a62ab83aafce1ffef6c5af270e1b2e7"
+    },
+    {
+      "path": "src/capture-writer-boundary.ts",
+      "sha256": "978bfc4e1ad7ad4bb75f96b94ae1ffe345c5d4c4ee60751ab4b457329287e565"
+    }
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "resultsSha256": "7dae1d3d5f46cb8c426b25c224ebc4289e890bd5f6428ca3e9427f1ae9d10adf",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "ae791f9f57ffbb3c0a592b6a34e25250c1f7f6f13fde4d05f77a0d4e7681f89a"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "ddd890de2976ca4e0deec6f0fc3d0857c5f81540e03968051133915444a2b9f6"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "f6d10195f07d978ff41f7bd1e73bbf77f355a5cea28ec73e338602b19e86558a"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "b20f062b8ca6e1ff152bfea2cdbd6b6c043be4bbbc118955d26e63878a98a97a"
+      },
+      {
+        "group": 12,
+        "sha256": "8b867d356163461147f267e3ad6da18b4e31a350825d621255b76b05c82f8dda"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "ece863f9a5c40c8788f38ee0397fe7cf5862ca10a4dda8874882c39eec174741"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "focusedLogSha256": "e378e28a0759e262269e9f7d23e5b5714e788d7a6ab380011aab628c75595cc6",
+  "hostedRuns": [
+    {
+      "runId": 42796756443,
+      "jobId": 129763796357,
+      "name": "Brick Phase 2 — Isolated Parent Portal Verification",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 14,
+      "totalSteps": 14,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
+      "normalizedDecodedLogSha256": "286077df7ce314cd5de44197f0af3a8e7f907fc3e42903bd4a09ea8606139ffa",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 0,
+        "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+      }
+    },
+    {
+      "runId": 42796756263,
+      "jobId": 129763795839,
+      "name": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 10,
+      "totalSteps": 10,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
+      "normalizedDecodedLogSha256": "878355b33f1215020e7c590935c47c3dbf694bd368e71b3e3f0b449429615d7b",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 0,
+        "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+      }
+    },
+    {
+      "runId": 42796756061,
+      "jobId": 129763795035,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "pull_request",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
+      "normalizedDecodedLogSha256": "ac622cc499f065afa1996d95c6caf16d98179a991e9d483e762ba6132ea05ecf",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 2,
+        "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+      }
+    },
+    {
+      "runId": 42796746363,
+      "jobId": 129763760568,
+      "name": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "event": "push",
+      "conclusion": "success",
+      "passedSteps": 33,
+      "totalSteps": 33,
+      "errorMarkers": 0,
+      "verifiedCheckoutSha": "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3",
+      "normalizedDecodedLogSha256": "9176959feb74b565bf11f204325d2592a667b6f5822e75af15cfbb06ecc9fd10",
+      "logNormalization": "Decoded UTF8 with LF endings and one final newline",
+      "warningSummary": {
+        "nodeDeprecationMarkers": 3,
+        "rpcStubDisposalWarnings": 2,
+        "assessment": "Known native fixture RPC disposal and Node deprecation warnings retained; zero error markers and successful steps."
+      }
+    }
+  ],
+  "verifiedMergeCheckoutSha": "a37e03244ce2a921fe48778ea3e0d5f5be8fa7e7",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "3a81ed3b9434531caea1bcc7c1da4f4635c2a8b3"
+  ],
+  "productionControllerInstalls": 0,
+  "providerMetadataRefreshed": false,
+  "providerUploadTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "realAlertsSent": false,
+  "familyDataExported": false,
+  "credentialOrPermissionChanges": false,
+  "merged": false,
+  "deployed": false,
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "remaining": [
+    "Complete actual bootstrap/writer/operator/raw/binding/credential installation and independently pinned same-resource guard with actual TLS/domain/key custody; no partial fence.",
+    "External enrollment/epoch/anti-rollback and safe STARTED/legacy/format3 rollback;4 external tool installations.",
+    "Restricted runtime B2 key/secure host, separate record/key/digest/job-config/current delivery-journal custody, installed schedule and real recipient/signer.",
+    "Current scoped PITR and isolated cloud D1/diagnostic/deviceDO recovery/interruption/rollback with agreed measured RTO/RPO and genuine independent review."
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "format": "brick-phase8d-route-lookup-scope-v1",
+  "sourceSha": "d19776522103a9a7a499c7e89649522a2d0922c2",
+  "rows": [
+    {
+      "id": "GOV-010",
+      "classification": "MANDATORY",
+      "requirement": "Any recoverable failure that still requires reopening Brick, pressing Start, manual sync/resend, rebooting to recover, clearing data, or manually retraining ordinary fingerprints fails the relevant acceptance item.",
+      "canonicalDigest": "8f64d2691a3d87631f9d0cc687e06d4deff881a98258ecd6e8327a09c3ffd4c0",
+      "claim": "Failed PMTiles headers and D1-first metadata do not permanently poison later normal requests; next healthy request recovers without app restart, clear-data or manual retraining.",
+      "remaining": "Only map lookup/metadata recovery is covered; no acceptance of all recoverable Android/backend failures, long-term provider availability or72h behavior.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "FUS-001",
+      "classification": "MANDATORY",
+      "requirement": "Policy ranks fresh trustworthy measured/fused positioning ahead of assisted/network, anchor/place, inertial, route-constrained, network context, IP, last verified and unknown; an older fallback/estimate never outranks a newer accepted measured fix.",
+      "canonicalDigest": "cbfc5e5494f67767ce5bc08ecdbe0be38f581d2e2841e3564f245eb6e8bf58f5",
+      "claim": "Abandoned map work cannot overwrite a later fused DO state; ineligible trusted fused packets bypass map lookup and preserve their source/packet.",
+      "remaining": "No claim to complete measured/network/anchor/inertial ranking, confidence calibration or full stale/clock/order fusion acceptance.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "FUS-014",
+      "classification": "MANDATORY",
+      "requirement": "Route-constrained degraded state renders corridor/possible area, not a silently snapped street marker.",
+      "canonicalDigest": "31dfa612f4fd862bd523da9848e3872db6ac88800880f3b17f626aa99e87112b",
+      "claim": "Successful enrichment preserves the inertial center and uncertainty floor while supplying bounded corridor candidates; absent/slow/incompatible map returns the exact original packet without source5.",
+      "remaining": "Server packet/DO provenance only; actual parent corridor drawing, possible-area styling and physical-device route truth remain unverified cross-phase evidence.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "BE-006",
+      "classification": "MANDATORY",
+      "requirement": "Current live state follows a dedicated fast path and updates immediately, while history/evidence/Atlas/background processing batches asynchronously and may not head-of-line block current live position delivery.",
+      "canonicalDigest": "9a339783dcc48ee75dad17588ab1b8c0a579afb5700ac3bf9c6a10eb098bd678",
+      "claim": "Optional map lookup has a bounded waiting path outside authoritative DO commit; a stalled provider does not prevent signed fallback current-state progress in actual synthetic native runtime.",
+      "remaining": "Does not qualify every history/evidence/Atlas/background path, end-to-end live latency, CPU/fleet budgets or actual deployed fast-path behavior.",
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Partial scoped source/CI evidence only. Classifications, phase mappings, actual owners, C1-C4 and final dispositions are not accepted or changed."
+}

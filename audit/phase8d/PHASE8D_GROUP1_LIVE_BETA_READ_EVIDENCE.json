@@ -1,0 +1,146 @@
+{
+  "format": "brick-phase8d-group1-live-beta-read-evidence-v1",
+  "date": "2026-11-10",
+  "executionSourceSha": "917f63b09c8ea09459b9926cf2d4466ec0013771",
+  "qualifiedExecutableSha": "311d78d4ee9fe43ff23d4f875e21ff8e0bb8fa5d",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "executableDiffFromQualifiedSourceEmpty": true,
+  "status": "LIVE_WORKER_METADATA_PARTIAL_PRIMARY_D1_READ_ACCESS_DENIED",
+  "registration": {
+    "pr": 61,
+    "headSha": "12d91329cca55ec361f802dd6b01e1582dd82f71",
+    "mergeSha": "cb380fe821b16cf5304843af2ce713d21f575788",
+    "changedFiles": 1,
+    "applicationImplementationMerged": false
+  },
+  "workflow": {
+    "runId": 42816014091,
+    "event": "workflow_dispatch",
+    "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42816014091",
+    "metadataJobId": 129829190871,
+    "metadataJobConclusion": "failure",
+    "cliExitCode": 2,
+    "metadataJobErrorMarkers": 1,
+    "metadataJobDecodedLogSha256": "080c6f3ff9c0645080103450ae92bd969eae88f7a7253c38894de4f3eecd9082",
+    "metadataJobCheckoutVerified": true,
+    "artifactId": 13765700122,
+    "artifactZipSha256": "12c330b5cd0fec9fc3c34a3c3fe122d46a26875ffc0f34962ecc35f5fc0c52df",
+    "sanitizedResultSha256": "89f2de45bb6f0c782c0334187c2291a57bc9d3d65d0ba2e3f1b3fb5e44ac64d1",
+    "artifactExpiresAt": "2026-11-24T12:28:26Z",
+    "nativeRegressionJobId": 129829191412,
+    "nativeRegressionStatus": "SUCCESS",
+    "nativeRegressionPassedSteps": 33,
+    "nativeRegressionTotalSteps": 33,
+    "nativeRegressionDecodedLogSha256": "bbc97b340ba1e14ca12c5b0e3bfe7cffd96d64dfb36560b30542f134ee436417",
+    "nativeRegressionCheckoutVerified": true,
+    "nativeRegressionErrorMarkers": 0,
+    "overallWorkflowConclusion": "failure",
+    "overallFailureReason": "The live metadata job failed on primary D1 identity access; native companion passed."
+  },
+  "observedResult": {
+    "format": "brick-cardfree-beta-readiness-v1",
+    "checkedAt": "2026-11-10T12:28:24.499Z",
+    "checksPassed": false,
+    "operationalRecoveryProven": false,
+    "installedWriterCoverageProven": false,
+    "independentCustodyProven": false,
+    "credentialLeastPrivilegeProven": false,
+    "executedCodeMatchesSourceProven": false,
+    "atomicCrossServiceSnapshotProven": false,
+    "activeVersionBindingMetadataVerified": false,
+    "metadataReadCompleted": false,
+    "requestsMade": 5,
+    "checks": [
+      {
+        "status": "ATTESTED",
+        "code": "ACTIVE_D1_BETA_VERSION_AND_BINDINGS"
+      },
+      {
+        "status": "ATTESTED",
+        "code": "PINNED_WORKERS_DEV_HOST"
+      },
+      {
+        "status": "BLOCKED",
+        "code": "D1_IDENTITY_OR_BOOKMARK_UNQUALIFIED"
+      }
+    ],
+    "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83",
+    "planSha256": "91ac038d669fb94f7f3061965a116f645fdba9b0664c5f5e4f11fc17dc54f8ca",
+    "active": {
+      "deploymentSha256": "a18f9fdb1ac3f8aeaf0ae4d754dc36ff7feff66479b32125d42b1f413ef2a844",
+      "versionSha256": "b5d87f0c2bee431930f1524d327788541d488b1fe956ba606e038bca456dab56",
+      "sourceSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "primarySha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+      "diagnosticSha256": "69b89c4f1d0e1f5aeae9bc48b592f5a4e2d1f364284755c869957edb70838b90",
+      "deviceNamespaceSha256": "fb8fccb5ec3e2c3d737ab7773c3f2158727d92c8fef21f75b699eb3cbc4986b2",
+      "schedulerNamespaceSha256": "9662662badbf80ea628c1b0460ecf7ad6876ba0958cc55893feec42f4ac4134a"
+    },
+    "workerHostSha256": "cbfb4ec4c2013b82ac719fd4803bdc87e164f9dac4607355a7945081b5e89b60",
+    "pitr": {
+      "format": "brick-cardfree-pitr-metadata-v1",
+      "checkedAt": "2026-11-10T12:28:24.499Z",
+      "checksPassed": false,
+      "recoveryProven": false,
+      "retentionWindowVerified": false,
+      "activeWorkerBindingsVerified": false,
+      "requestsMade": 1,
+      "resources": [
+        {
+          "role": "primary",
+          "resourceSha256": "d5b40e81f63a6527ce40351c156e9c65c32e04f9ce49940a01eb90b16f61ab08",
+          "status": "BLOCKED",
+          "code": "READ_ACCESS_DENIED"
+        },
+        {
+          "role": "diagnostics",
+          "status": "BLOCKED",
+          "code": "NO_REQUEST_AFTER_FAILED_CHECK"
+        }
+      ],
+      "accountSha256": "f3596e86fd73a8d069151b0e9fd0e08f6bf5a1518fb3066d1db6daf4f4962a83"
+    }
+  },
+  "observedScope": {
+    "workerMetadataGetRequests": 4,
+    "primaryD1IdentityGetRequests": 1,
+    "diagnosticD1Requests": 0,
+    "bookmarkRequests": 0,
+    "finalDeploymentRereadRequested": false,
+    "fullDoNamespacePinsIndependentlyReviewed": false,
+    "auditSecretPresentInHostedJob": true,
+    "tokenPolicyOrDenialReasonInspected": false,
+    "exactHttp401Versus403Retained": false,
+    "unchangedDeniedRequestRepeated": false,
+    "executedCodeBytesProven": false,
+    "currentD1IdentityRetentionOrRecoveryProven": false
+  },
+  "nextRequiredCapability": {
+    "role": "Cloudflare account/token administrator",
+    "review": "Check dedicated audit token D1 Read permission and intended account coverage; current reason is not exposed by sanitized result.",
+    "minimumD1PermissionForNamedGetEndpoints": "D1 Read",
+    "keepWorkersReadCapability": true,
+    "deploymentTokenFallback": false,
+    "d1WriteOrExportRequiredForThisCheck": false,
+    "credentialOrPermissionMutationAuthorizedByThisRun": false,
+    "databaseSpecificTokenScopingClaimed": false,
+    "secureGitHubSecretName": "CLOUDFLARE_AUDIT_READ_TOKEN",
+    "rawSecretInChatOrPlan": false,
+    "resumeOnlyAfterMaterialAccessChange": true
+  },
+  "primaryReferences": [
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/get/",
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/subresources/time_travel/methods/get_bookmark/"
+  ],
+  "familyDataExported": false,
+  "cloudflareWrites": false,
+  "credentialOrPermissionChanges": false,
+  "realAlertsSent": false,
+  "productionControllerInstalls": 0,
+  "providerUploadRepeated": false,
+  "pr32Merged": false,
+  "deployed": false,
+  "group1": "NOT_READY",
+  "phase8d": "NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "forecast": "AT_RISK"
+}

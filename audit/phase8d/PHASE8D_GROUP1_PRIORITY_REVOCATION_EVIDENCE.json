@@ -1,0 +1,305 @@
+{
+  "format": "brick-phase8d-group1-priority-revocation-evidence-v1",
+  "date": "2026-11-09",
+  "sourceSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+  "sourceTreeSha": "57b4ac258b3934e76c30ebee2f22f9ebe0756884",
+  "baselineSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "STAGED_NATIVE_CURRENT_SOURCE_PUSH_AND_CURRENT_BASE_PR_CI_VERIFIED_NOT_INSTALLED",
+  "baselineReproduction": {
+    "sourceSha": "b423a22372dd9ac32cfbf9bc689d8ecc9632cef7",
+    "fixture": "Existing native Worker entry anonymous-preemption case; exact old Worker/boundary/eligibility modules compiled via git show overrides.",
+    "processExitCode": 0,
+    "scope": "Old test passes while reproducing the undesirable preemption; not a claim that its behavior meets the new contract or is deployed.",
+    "anonymousHttpStatus": 200,
+    "heldCapturePreempted": true,
+    "logSha256": "0d2224b3d8ec9ca9fa1b2c249255cd419afbb75767200739a65c2d89e11bd735"
+  },
+  "newCases": 36,
+  "eligibilityAndNativeCases": 69,
+  "newEligibilityAndNativeCases": 30,
+  "writerBoundaryCases": 41,
+  "newWriterPriorityCases": 6,
+  "workerEntryCases": 12,
+  "changedPriorWorkerCase": "Anonymous GET must not preempt a held capture; authorized SOS preemption separately exercised through actual native handler.",
+  "files": [
+    {
+      "path": "src/capture-urgent-request.ts",
+      "sha256": "1fe5960f2c4e366c60a7a4b72dab9d7e774761077947b331578fee488f348178"
+    },
+    {
+      "path": "src/capture-writer-boundary.ts",
+      "sha256": "1812b6d585ab5d28ad7440ed966dbbb73ea7cabbf063a94c9b3f2ffa5eb703a4"
+    },
+    {
+      "path": "src/worker-beta-cardfree.ts",
+      "sha256": "be6ddf2da65d92ad9f8aa30d72dad950c171b27a9dff51deedc32485fae98f14"
+    },
+    {
+      "path": "scripts/test-phase8d-urgent-request.mjs",
+      "sha256": "596a39cd6c6746efa654f4fdfd304e075ce0f275590405306621946984c2f051"
+    },
+    {
+      "path": "scripts/test-phase8d-capture-writer-boundary.mjs",
+      "sha256": "2623d294971fd4ad60fa04848fb01c118db22bd069186b9873df4bcea82a191e"
+    },
+    {
+      "path": "scripts/test-phase8d-worker-entry.mjs",
+      "sha256": "1a809a70f2c88ee94914f492a8dbd9d8c46a53dc9f6354a3d9545d56bd75f352"
+    },
+    {
+      "path": "scripts/phase8d-capture-hook-profile.mjs",
+      "sha256": "07dd97a5be331ccf758b741baa9050c5d9328a339ed014b785584a70c3ca0926"
+    },
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "2fa83f3fb386ede660dbdca24048382547b9b8ef8cac8f2fffa97b3e0b19a961"
+    }
+  ],
+  "focusedLogs": [
+    {
+      "suite": "authorized-urgent-request",
+      "passed": 69,
+      "sha256": "e525e6f4e0a43a1b31bc7bcf215540780af9570949dab61a8700b60b7d016024"
+    },
+    {
+      "suite": "capture-writer-boundary",
+      "passed": 41,
+      "sha256": "1d2f400f8efe3b2da5ad561d87786a915dc5d313f5430442a61f6f4cbae1a4bf"
+    },
+    {
+      "suite": "worker-entry-native",
+      "passed": 12,
+      "sha256": "b6cd9efcce1b5ba106a790b842bb55177deb3fdc2ac836fcb337696732a64d30"
+    }
+  ],
+  "verifiedBehavior": [
+    "Bounded lazy priority resolves before actual admission; failure/timeout/invalid classification never starts admission/work; unconfigured owners never execute classification.",
+    "Actual healthy-authority anonymous/forged/wrong-Origin parent requests cannot preempt held capture; real signed SOS preempts and persists.",
+    "Parent urgency requires exact route/POST/Origin, valid hashed D1 session, correct development session mode, bounded request, existing target and accepting rate capability; forged internal header is insufficient.",
+    "Proof mutates no source rows and preserves original body; edge rate counters are still checked.",
+    "Actual parent revocation in signed broker outage executes real D1 transaction/device RPC only after permanent guard; unauthorized parent requests start no maintenance or source mutation.",
+    "Injected D1 transaction failure rolls back both device revocation and active-trip cancellation; no success ACK.",
+    "Injected device-fence outage after committed D1 revocation returns503/revoked=true; authenticated retry persists DO fence and keeps original timestamp.",
+    "Complete native restart retains revoked D1 identity/device fence, prior accepted SOS/device marker and independent quarantine."
+  ],
+  "scope": "Controlled synthetic source/native/hosted scope only; explicit trusted fixture installation, not production activation, complete urgent/writer coverage, real scheduling/custody/cloud recovery or physical delivery proof.",
+  "productionControllerInstalls": 0,
+  "group1": "NOT_READY",
+  "phase8d": "NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "forecast": "AT_RISK",
+  "remaining": [
+    "Other urgent location/health/watchdog/maintenance paths remain unclassified at fetch root and receive ordinary admission under an installed partial controller; refusal during capture is an explicit activation blocker.",
+    "Root classification is not all descendant priority: independently urgent D1/actor/maintenance children from an already-admitted ordinary invocation may still preempt a newly draining capture. No global availability/fairness/latency claim.",
+    "Complete raw/operator/credential/lifecycle/deferred/process-tree coverage and STARTED/legacy reconciliation; no partial activation or automatic writer expiry.",
+    "Every capture/export/resume/seal/release route must observe same authenticated protected independent guard; trusted bootstrap/transport/custody/live failure-domain qualification.",
+    "Restricted runtime B2 credential and independent durable selection manifest/key/context, installed schedule/readback/age/failure/real-recipient monitoring, scoped current PITR and isolated cloud recovery/interruption/rollback/RTO/RPO plus independent review."
+  ],
+  "priorAuthorityAndProviderEvidence": [
+    "audit/phase8d/PHASE8D_GROUP1_AUTHORIZED_URGENT_EVIDENCE.json",
+    "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json"
+  ],
+  "providerTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "familyDataExported": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false,
+  "hostedRuns": [
+    {
+      "runId": 42622335960,
+      "jobId": 129177403554,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42622335960",
+      "sourceSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "9baf16b05218c63fb2deeedff13294e9653b2f80",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Exact source/current-base PR checkout with inspected parents and matching tree; native synthetic/preservation proof only, not deployed or live recovery acceptance.",
+      "capturedLogSha256": "2d399f74979a94f5e31d004dd7f4825e04441212de5db388ae92c37b3d9dcd38",
+      "logNormalization": "Decoded full log; trailing whitespace trimmed and one final newline."
+    },
+    {
+      "runId": 42622336031,
+      "jobId": 129177382521,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42622336031",
+      "sourceSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "9baf16b05218c63fb2deeedff13294e9653b2f80",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "scope": "Exact source/current-base PR checkout with inspected parents and matching tree; native synthetic/preservation proof only, not deployed or live recovery acceptance.",
+      "capturedLogSha256": "2ce5e1d68ac775a4d0fb1a0aa4772c0997bf21ce6ed587238bc76407a3edb07f",
+      "logNormalization": "Decoded full log; trailing whitespace trimmed and one final newline."
+    },
+    {
+      "runId": 42622336018,
+      "jobId": 129177383141,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42622336018",
+      "sourceSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "9baf16b05218c63fb2deeedff13294e9653b2f80",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Exact source/current-base PR checkout with inspected parents and matching tree; native synthetic/preservation proof only, not deployed or live recovery acceptance.",
+      "capturedLogSha256": "b02ba849662b271d85e9ebb25ef91a9f9c2d6b6edb7a76938dcf844df61f7d8b",
+      "logNormalization": "Decoded full log; trailing whitespace trimmed and one final newline."
+    },
+    {
+      "runId": 42622328015,
+      "jobId": 129177357311,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42622328015",
+      "sourceSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "0760e47e0ac59996c7458821297af21afe4c9ba7",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "scope": "Exact source/current-base PR checkout with inspected parents and matching tree; native synthetic/preservation proof only, not deployed or live recovery acceptance.",
+      "capturedLogSha256": "9d4c8372ddccb95a0624f1308c493ec4b68c40ff7b66b91e45ab565de4ca44dc",
+      "logNormalization": "Decoded full log; trailing whitespace trimmed and one final newline."
+    }
+  ],
+  "verifiedMergeCheckoutSha": "9baf16b05218c63fb2deeedff13294e9653b2f80",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "0760e47e0ac59996c7458821297af21afe4c9ba7"
+  ],
+  "localWorkflow": {
+    "groups": 26,
+    "failed": 0,
+    "fullEncryptedDestructionRestorePassed": true,
+    "logSha256": "287a0758945d40565df2c836d69b62702c78fc3f559e7a7dfbe6d84be7e26623",
+    "stepLogs": [
+      {
+        "group": 1,
+        "sha256": "874719e7aaef033a1028a880346f843987a8a1f030c5bb30ed5153d498fd5684"
+      },
+      {
+        "group": 2,
+        "sha256": "34fe36617e0e572196f6719f689cc393353b47b32d3c1a5f30e55233084737e0"
+      },
+      {
+        "group": 3,
+        "sha256": "d7dbeaecbb3d312bb9140a3703e8ff4ff4841fce0648ee1ea5264105e3fefec2"
+      },
+      {
+        "group": 4,
+        "sha256": "acefd3a1ad0c722e4da73bee9dfe32b23ab64cce610dc2d1980a67cd682dfa66"
+      },
+      {
+        "group": 5,
+        "sha256": "e1390d7de8d433974b12f558b13a2d498d3ea5daa368339bfa29739ead0d652c"
+      },
+      {
+        "group": 6,
+        "sha256": "d4e75b0b14a441c0336c77bf210478264573db615c3539c649e29623d32e56ae"
+      },
+      {
+        "group": 7,
+        "sha256": "e0f28c054b780cea9fc2ace47a490fd71748f6fc9e7bd4e26df8deee48f54fe8"
+      },
+      {
+        "group": 8,
+        "sha256": "8c8031287c824f79aa22e083b71d380e12781e1f41a97b0c5ccf8d54beba68d6"
+      },
+      {
+        "group": 9,
+        "sha256": "d05ed7f295981d9518129172e4f09f9d0869c0ca61c900307fd16779889050d8"
+      },
+      {
+        "group": 10,
+        "sha256": "be257ceb4dbe97133ad40476c8458bfb5891cf19399bea9e94ffd7032f1083a2"
+      },
+      {
+        "group": 11,
+        "sha256": "3861ef12ad91021e6c12b4c844bfd2d51712299e58e32ee12b4f3ac651345eae"
+      },
+      {
+        "group": 12,
+        "sha256": "6c6fc84a854782566abd8dd8584d62a22af1b1db3e52a2197d8182392474ac2c"
+      },
+      {
+        "group": 13,
+        "sha256": "4fac4e58ac2be5523e5bfeb63479284067205f72a17dd3e0834d9eadaf6b832c"
+      },
+      {
+        "group": 14,
+        "sha256": "9a2d476e94daacd0163e9978c835756d23f22883aaf5800a7959445a6ee2e686"
+      },
+      {
+        "group": 15,
+        "sha256": "5c34accf45a75a7ad873aea4d327f32450391b14666efc972f44440bdf027e23"
+      },
+      {
+        "group": 16,
+        "sha256": "03423ee6dfc40bf0af17b9b6c76156e8a09315a6549a3e65d92841b604d1b2b8"
+      },
+      {
+        "group": 17,
+        "sha256": "45dbe3d177f9c97737e30d5dac2e57b552dfbd6f5afae03793f8bc23a6a326cb"
+      },
+      {
+        "group": 18,
+        "sha256": "ec057ff8e0405596d650d85bdf469a925d0b8e518f4be43ec214b6a4022e2678"
+      },
+      {
+        "group": 19,
+        "sha256": "0283fbda74f69d36468582ac80a93ebaac34d17458745fbeabb40f9bc766d0d4"
+      },
+      {
+        "group": 20,
+        "sha256": "37f7fdfbfd3931a9dac29f341d64022b769f365ef3030cf71eba3e2d5f315b1c"
+      },
+      {
+        "group": 21,
+        "sha256": "ea27b35b49450d918a7a86fe0a178874855eb15d44c4277a5acbe512d2bea415"
+      },
+      {
+        "group": 22,
+        "sha256": "1a47e7e63b947db6ab13348c42f238fd4d5a0f6a06db2b00a0565053b1eb5b84"
+      },
+      {
+        "group": 23,
+        "sha256": "39fd6f3cee7bdd7de98841590e67808e99be1d157728740a503dc78ec6a9a46d"
+      },
+      {
+        "group": 24,
+        "sha256": "2fb7a95e38fae4ce19b190a20f733e7c15cf8d4f168d29a197c83723714ecf2d"
+      },
+      {
+        "group": 25,
+        "sha256": "d5e22be54b3500c231bad57689f55fb6137c77e24fa923fe2646efc689df9a9e"
+      },
+      {
+        "group": 26,
+        "sha256": "f9818ab67553da201a6f4ec56675b60f8f14e02a55bebd4acb79e67f9cba4b5c"
+      }
+    ]
+  },
+  "hostedLimits": "All4 runs/every step completed-success; exact checkout and PR parents/tree inspected; zero error markers; existing Miniflare RPC-disposal warnings remain. No operational/production/independent acceptance."
+}

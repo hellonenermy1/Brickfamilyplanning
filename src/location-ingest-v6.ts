@@ -95,12 +95,14 @@ export async function persistAccepted(env: LocationIngestEnv, deviceId: string, 
   const values = packets.map((packet, index) => {
     const base = index * 4;
     bindings.push(deviceId, packet.epoch, packet.sequence, now);
-    // SELECT/WHERE EXISTS runs inside one atomic D1 transaction with the active-device
-    // liveness test. A stale prior auth SELECT must never insert revoked-device history.
-    return `SELECT ?${base + 1},?${base + 2},?${base + 3},'location',?${base + 4} WHERE EXISTS (SELECT 1 FROM devices WHERE id=?${base + 1} AND revoked_at IS NULL)`;
-  }).join(" UNION ALL ");
+    return `(?${base + 1},?${base + 2},?${base + 3},?${base + 4})`;
+  }).join(",");
   const insert = env.DB.prepare(
-    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) ${values}`
+    // VALUES avoids the native D1 compound-SELECT term limit. Keep the active-device
+    // fence inside the same SQL transaction, including every row of a20-point batch.
+    `INSERT OR IGNORE INTO device_events(device_id,epoch,sequence,kind,created_at) ` +
+    `SELECT incoming.column1,incoming.column2,incoming.column3,'location',incoming.column4 FROM (VALUES ${values}) AS incoming ` +
+    `WHERE EXISTS (SELECT 1 FROM devices WHERE id=incoming.column1 AND revoked_at IS NULL)`
   ).bind(...bindings);
   // Any authenticated location upload proves recent device contact, even when it is delayed backlog
   // whose logical epoch/sequence is older than the current watermark. Keep last_seen_at independent
@@ -180,19 +182,14 @@ export async function ingestLocationV6(req: Request, env: LocationIngestEnv, dev
   return json({ ack: packet.sequence, duplicate: persisted.insertedCount === 0, liveAdvanced: published.liveAdvanced, routeConstrained: packet.source === ROUTE_CONSTRAINED_SOURCE });
 }
 
-export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
-  const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:location-batch` });
-  if (!rate.success) return json({ error: "rate limited" }, 429);
-  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
-  const maxBytes = 3 + MAX_BATCH * V2_BYTES;
-  const body = await signedBody(req, d.public_key_spki_b64, maxBytes); if (body instanceof Response) return body;
+export function decodeLocationBatchRequest(body:ArrayBuffer,now=Date.now()):LivePacket[]|Response {
   if (body.byteLength < 3) return json({ error: "invalid batch" }, 400);
   const view = new DataView(body);
   if (view.getUint8(0) !== BATCH_VERSION) return json({ error: "unsupported batch version" }, 400);
   const count = view.getUint16(1, false);
   if (count < 1 || count > MAX_BATCH || body.byteLength !== 3 + count * V2_BYTES) return json({ error: "invalid batch size" }, 400);
 
-  const rawPackets: LivePacket[] = [], now = Date.now();
+  const rawPackets: LivePacket[] = [];
   try {
     for (let i = 0; i < count; i++) {
       const start = 3 + i * V2_BYTES;
@@ -202,6 +199,18 @@ export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv
     }
   } catch { return json({ error: "invalid batch packet" }, 400); }
   for (let i = 1; i < rawPackets.length; i++) if (order(rawPackets[i - 1], rawPackets[i]) >= 0) return json({ error: "batch must be strictly ordered" }, 400);
+
+  return rawPackets;
+}
+
+export async function ingestLocationBatchV6(req: Request, env: LocationIngestEnv, deviceId: string) {
+  const rate = await env.DEVICE_RATE.limit({ key: `${deviceId}:location-batch` });
+  if (!rate.success) return json({ error: "rate limited" }, 429);
+  const d = await device(env, deviceId); if (!d) return json({ error: "device unauthorized" }, 401);
+  const maxBytes = 3 + MAX_BATCH * V2_BYTES;
+  const body = await signedBody(req, d.public_key_spki_b64, maxBytes); if (body instanceof Response) return body;
+  const rawPackets=decodeLocationBatchRequest(body);
+  if(rawPackets instanceof Response)return rawPackets;
 
   const packets = await Promise.all(rawPackets.map(packet => trustedPacket(packet, env)));
   const persisted = await persistAccepted(env, deviceId, packets, false);

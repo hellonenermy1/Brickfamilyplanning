@@ -1,0 +1,14 @@
+PASS semantic failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS refinement failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS cleanup failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS commute failure reaches durable FAILED receipt and automatic retry without starving peers
+PASS signed durable hypothesis ACK survives optional refinement outage
+PASS cached parent commute response survives refresh failure with durable retry receipt
+PASS background task status is authenticated per-device and redacts lease/provider details
+{"suite":"enrichment-failure","passed":7,"failed":0,"scope":"actual local scheduler/D1 chain with synthetic enrichment faults; no cloud writes"}
+PASS deferred scheduled backup failure rejects maintenance instead of succeeding early
+PASS failed daily claim is released for automatic next-tick retry
+PASS successful daily work is not repeated by another immediate tick
+PASS an outstanding lease is PENDING rather than a fresh success
+PASS request kick records background failure inside scheduler ownership
+{"suite":"maintenance-failure","passed":5,"failed":0,"scope":"actual scheduler/D1 chain with one synthetic delayed backup fault; not a live cloud backup"}

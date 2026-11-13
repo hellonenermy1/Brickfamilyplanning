@@ -1,0 +1,20 @@
+{
+  "format": "brick-phase8d-pitr-lifecycle-scope-v1",
+  "sourceSha": "2d9a3073288a304b4820fe0b30f27a5f8a3fd843",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "GET-only PITR metadata checker bounds complete reads/aggregate duration and cancellation, pins input plan and refuses blocking/changing private CLI files; partial qualification of operational inspection tooling only.",
+      "remaining": "No live PITR/window, current bindings, scheduled independent protection, writer fence/transport, separate destination/key custody or cloud recovery acceptance.",
+      "findings": [
+        "P8D-090"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Partial source/CI tool proof only. Canonical classifications, phase scope, statuses, criteria, owners and final reviews unchanged."
+}

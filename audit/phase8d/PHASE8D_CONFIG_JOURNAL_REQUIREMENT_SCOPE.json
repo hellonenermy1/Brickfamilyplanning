@@ -1,0 +1,46 @@
+{
+  "format": "brick-phase8d-config-journal-scope-v1",
+  "sourceSha": "ecad1e2ac41f372f16270a62fde9621e79ab1bf7",
+  "rows": [
+    {
+      "id": "SEC-014",
+      "classification": "MANDATORY",
+      "requirement": "Public/device endpoints are protected by WAF/rate limits and schema validation appropriate to the endpoint.",
+      "canonicalDigest": "1d8e03729eb04b613f3ede2f072a78fdb26c6e82f9ef5fca0a92b602fe6b63bf",
+      "claim": "Beta preflight pins all nine rate binding/name/namespace/quota/period mappings and refuses weakening, misbinding, duplicate names and unsupported extra options.",
+      "remaining": "No real WAF, endpoint schema validation, live rate enforcement, fleet/capacity or active resource configuration acceptance.",
+      "findings": [
+        "P8D-091"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Private encrypted-capture journal adapter refuses blocking FIFO and unstable/unbounded input; actual coordinator reaches exactly one supplied release after FIFO refusal, retaining release-failure precedence.",
+      "remaining": "No actual writer fence/transport, independently controlled private destination/separate key, schedule/PITR/window or cloud restore/RTO/RPO acceptance.",
+      "findings": [
+        "P8D-092"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-011",
+      "classification": "MANDATORY",
+      "requirement": "Backend/schema/protocol deployments preserve compatibility or perform safe migration; active devices do not become stranded by a Worker/schema rollout.",
+      "canonicalDigest": "296c11b660e6f92b4131fac5978744263f7ce8afe4ffe54e42af1e61f8cba5a7",
+      "claim": "Closed beta template/rendered contract rejects destructive DO migration actions, changed migration tags/classes/order and alternate routes/environments/resources before setup credentials/network/deploy.",
+      "remaining": "No actual cloud migration, active-device continuity, deployed source/config/schema provenance, resource identity or rollback acceptance.",
+      "findings": [
+        "P8D-091"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Partial source/CI control proof only. All canonical classifications/scopes/statuses/criteria/owners/reviews/final dispositions unchanged."
+}

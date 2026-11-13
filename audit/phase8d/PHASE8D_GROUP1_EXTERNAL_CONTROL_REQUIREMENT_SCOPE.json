@@ -1,0 +1,23 @@
+{
+  "format": "brick-phase8d-group1-external-control-scope-v1",
+  "sourceSha": "5e48f065e16bdd79085519d13f864cbb40a70dc9",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "requirement": "Critical structured data uses point-in-time recovery plus scheduled logical export/snapshot protection.",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Four actual CLI tools now contain inactive external operation boundaries; native authority retains tool ownership and schema/deployment quarantine. Rejected primary/deferred/cleanup results no longer erase uncertain ownership (P8D-093). Native34, runtime22, D1-adapter22 and external-helper/actual-CLI21 cases pass; complete enforcement/authentication/reconciliation/urgent-outage fallback remain unqualified.",
+      "remaining": "Install only after complete target/credential/operator/raw/deferred/process-tree coverage, authenticated broker, unknown-outcome reconciliation and urgent-outage fallback; then independent custody/schedule/current PITR/cloud recovery acceptance.",
+      "findings": [
+        "P8D-002",
+        "P8D-093"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Only OPS-002 receives partial source/native/CI proof; no canonical criteria/statuses/owners/reviews/dispositions or other group changed."
+}

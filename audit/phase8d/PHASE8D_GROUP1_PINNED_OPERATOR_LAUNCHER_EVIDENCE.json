@@ -1,0 +1,90 @@
+{
+  "format": "brick-group1-pinned-operator-launcher-evidence-v1",
+  "baselineSha": "d369c6aaf925a0c3f216a6ae75d0bdcf21a1e0a7",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "sourceFiles": [
+    {
+      "path": "scripts/phase8d-operator-entry.mjs",
+      "sha256": "e2f9a81b26c9084ffb02470f20a7c56055d1d72733a16e9a830d7edf658c1711",
+      "gitBlobSha": "56770ce54beb857b7affe156c4636e2144f62aca"
+    },
+    {
+      "path": "scripts/build-phase8d-operator-launcher.mjs",
+      "sha256": "ec24c95204c2bdec0f8091cdab6c9c984a94cc11b23e9934ab6b19b4a942b91a",
+      "gitBlobSha": "8278557f3f6269dc695b45e69d2a6423de7466fe"
+    },
+    {
+      "path": "scripts/test-phase8d-operator-launcher.mjs",
+      "sha256": "b1be1628c11c74b8b5a094f8a328dba0bded5ee08eff6af6ab85ea29d7660d01",
+      "gitBlobSha": "a5222095e7560881004a62703682e466657bd7b5"
+    },
+    {
+      "path": "scripts/staged-external-writer.mjs",
+      "sha256": "499bc78e91de7d9e7fb0a969c61aff45427d746b1634d11d025bd75ed6cce871",
+      "gitBlobSha": "123c47def2bd475745edc7a3d012b1cde1cc7864"
+    },
+    {
+      "path": "scripts/phase8d-external-writer-inventory.mjs",
+      "sha256": "60166988b299c9028bd46f551aed56d19df1192f360e6bc68f2cb5e078ffb5d3",
+      "gitBlobSha": "4ce4c0844b9bb8bcf67aa59eddd64788da91ab10"
+    },
+    {
+      "path": "scripts/test-phase8d-external-writer-inventory.mjs",
+      "sha256": "01a843c71be1016ea19906ad064eb967278828778a8c1d4d8c0a008317a03be2",
+      "gitBlobSha": "c7f1e1a7de1f1fa898e4b1273c43f8eecaae1958"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_POLICY.json",
+      "sha256": "6d8430a04c8a16719dc1c97a6e96810db80a6ea771ce7fc9d30df5ceffd48f33",
+      "gitBlobSha": "cb3af1fcefffbb46ef4619f0e1994609fb63f236"
+    },
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "e234baeece8abfd54fec930a44f368bde958424e4995c85b2ab35def1b9d30e4",
+      "gitBlobSha": "278981770e1e82d9df7e4734b4d2fb6f8124f206"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "0aaa722ea8609a06537b778bf5d53c5284af1a5eb6bf5a1e62720314d5316285",
+      "gitBlobSha": "24c7ae64a47302edea0be2449d86b18b55e5f36f"
+    }
+  ],
+  "focusedNative": {
+    "command": "node scripts/test-phase8d-operator-launcher.mjs",
+    "passed": 28,
+    "failed": 0,
+    "freshNodeCliProcesses": true,
+    "nativeSignedAuthorityAndReplay": true,
+    "actualVerificationAndPublicationSuccessQualified": true,
+    "allFourToolsHeldCaptureRefusalQualified": true,
+    "actualCleanBuilderAndOverwriteRefusalQualified": true,
+    "providerAndHttpsTransport": "SYNTHETIC_BRIDGE_ONLY",
+    "logSha256": "e8c8ac48807b69891b5c813dc7479ea5ae21c4466ed4951d43c2235f1325858b",
+    "exitCode": 0,
+    "allFourBusyCasesReachedSignedAdmission": true,
+    "credentialConfigOutsideSourceCheckoutRequired": true
+  },
+  "externalInventoryRegressionCases": 23,
+  "defaultWorkflowActivationChanged": false,
+  "productionInstalled": false,
+  "directBetaMutatorsUnfenced": 4,
+  "completeCredentialBypassRestrictionProven": false,
+  "realTlsFailureDomainOrCustodyProven": false,
+  "applicationDeployed": false,
+  "cloudWritesPerformed": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "fullLocalRegression": {
+    "runStepGroups": 26,
+    "exitCode": 0,
+    "logSha256": "344bdb996453d3c34128d7224029b940d85606bc84ff0d68b590b8fd16e80485",
+    "logBytes": 169436,
+    "currentEncryptedNativeRecoveryPassed": true,
+    "originalProductionRecoveryAndTrustRegressionPassed": true,
+    "knownNativeDisposalWarningsRetained": true,
+    "finalStrongerDirtyHelperControlRerunSeparately": true,
+    "finalLauncher28CasesRerunAfterFullCampaign": true
+  },
+  "runtime90FileProjectionUnchanged": true
+}

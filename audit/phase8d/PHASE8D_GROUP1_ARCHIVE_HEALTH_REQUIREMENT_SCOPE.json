@@ -1,0 +1,33 @@
+{
+  "format": "brick-phase8d-group1-archive-health-scope-v1",
+  "sourceSha": "953ca9dc243f43ef781788c23d5f0f8ea8bf035e",
+  "selectedGroup": 1,
+  "groupStatus": "IN_PROGRESS_NOT_READY",
+  "rows": [
+    {
+      "id": "OPS-002",
+      "classification": "MANDATORY",
+      "canonicalDigest": "d1ab02b3c63d29db739c4dea108e8bc9a19ce8e71bb794715ec6913799a6e710",
+      "claim": "Staged read-only archive health verifier/CLI authenticates trusted publication digest/context and two-read readback, checks authenticated capture age instead of file mtime, and refuses stale/future/unverified outcomes.40 health cases plus native full-archive integration pass exact-source push CI. No installed schedule, actual independent destination/key custody, monitoring alerts or PITR acceptance.",
+      "remaining": "Reviewed integration with current approved portal base and successful merge-checkout tests; complete writer/operator/raw/credential/lifecycle/deferred/process coverage and started/legacy reconciliation; urgent-outage fallback; independent private destination/separate key/context; actual schedule/readback/age/failure/alert monitoring; current PITR and isolated cloud recovery/RTO/RPO.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    },
+    {
+      "id": "OPS-003",
+      "classification": "MANDATORY",
+      "canonicalDigest": "a0c7cb8f14d0408f28aaf032e7939e1d1681be09d2c468c06b8bf475cb08a170",
+      "claim": "Current push CI requalifies the actual signed encrypted41+4/deviceDO destruction/fresh restore including33 populated place/config/relationship rows, four one-shot controls, exact values/joins/restart/drift rejection, credential exclusions and max5 source SQL/call. Archive health after source destruction is additional authenticated-readback evidence, explicitly not proof of restorability or isolated live-cloud RTO/RPO. Current PR merge checkout is blocked by concurrent-base conflicts.",
+      "remaining": "Reviewed integration with current approved portal base and successful merge-checkout tests; complete writer/operator/raw/credential/lifecycle/deferred/process coverage and started/legacy reconciliation; urgent-outage fallback; independent private destination/separate key/context; actual schedule/readback/age/failure/alert monitoring; current PITR and isolated cloud recovery/RTO/RPO.",
+      "findings": [
+        "P8D-002"
+      ],
+      "finalDisposition": "UNCHANGED_UNRECONCILED",
+      "independentReview": null
+    }
+  ],
+  "notice": "Partial exact-source push CI only; no current merge-checkout, independent acceptance, document-tab reconciliation or canonical field changes."
+}

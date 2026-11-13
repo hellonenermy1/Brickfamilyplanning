@@ -1,0 +1,286 @@
+{
+  "format": "brick-phase8d-group1-worker-entry-hosted-v1",
+  "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+  "parentSha": "df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f",
+  "treeSha": "53d3d79795bdcfdceb7414d18472e7fcb94a9069",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "mergeCheckoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "ae4e0277dd24c7742859577cd341eb6405ad1cf2"
+  ],
+  "baseline": {
+    "sourceSha": "df6a61a9cfdf85a86f7562a8ac44c5ef0c0b907f",
+    "unconfiguredPositiveControlPassed": true,
+    "configuredFetchDeferredWorkPending": true,
+    "observedActiveWriters": 0,
+    "expectedActiveWriters": 1,
+    "scope": "Missing staged Worker entry integration; no production incident or active controller inferred."
+  },
+  "newNativeCases": 12,
+  "hookedBoundaries": 18,
+  "actorHooks": 16,
+  "workerEntryHooks": 2,
+  "databasePlacementSites": 4,
+  "productionControllersInstalled": 0,
+  "groupStatus": "NOT_READY",
+  "phase8d": "NOT_PASS",
+  "p8d002": "P1_OPEN",
+  "preflight": {
+    "b2Connected": true,
+    "visibleBuckets": 0,
+    "connectedCredentialBroaderThanStagedAllowlist": true,
+    "realProviderMutation": false,
+    "realDestinationOrKeyContextCustodyQualified": false,
+    "cloudflarePluginSearchMatches": 0,
+    "searchExhaustive": false,
+    "newCloudflareAuthenticatedPathEstablished": false,
+    "unchangedDeniedLoginOrTokenRetried": false,
+    "fourDayTarget": "AT_RISK",
+    "pendingProviderAction": {
+      "operation": "b2_create_bucket",
+      "parameters": {
+        "bucketName": "brick-recovery-jayvian-20261107",
+        "bucketType": "allPrivate"
+      },
+      "authorization": "NOT_YET_GIVEN",
+      "followOn": "Bounded encrypted synthetic archive upload/exact-version download/authentication only; no family data, sharing, deletion or retention policy change."
+    }
+  },
+  "runs": [
+    {
+      "runId": 42381182667,
+      "jobId": 128428933171,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182667",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
+      "checkoutEvidence": [
+        "2026-11-07T14:21:07.4439518Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a94936e222658967d539ca778397230b8a5bae2e:refs/remotes/pull/32/merge",
+        "2026-11-07T14:21:08.0896840Z  * [new ref]         a94936e222658967d539ca778397230b8a5bae2e -> pull/32/merge",
+        "2026-11-07T14:21:08.1732729Z HEAD is now at a94936e Merge ae4e0277dd24c7742859577cd341eb6405ad1cf2 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-07T14:21:08.1819789Z a94936e222658967d539ca778397230b8a5bae2e"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "suiteSummaries": [],
+      "capturedLogSha256": "64ac15bd5adceeb20828035493c3f21802dd0f459eae60dea8facb8eb1887f04"
+    },
+    {
+      "runId": 42381182627,
+      "jobId": 128428932986,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182627",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
+      "checkoutEvidence": [
+        "2026-11-07T14:21:07.9783956Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a94936e222658967d539ca778397230b8a5bae2e:refs/remotes/pull/32/merge",
+        "2026-11-07T14:21:08.9693008Z  * [new ref]         a94936e222658967d539ca778397230b8a5bae2e -> pull/32/merge",
+        "2026-11-07T14:21:09.0506572Z HEAD is now at a94936e Merge ae4e0277dd24c7742859577cd341eb6405ad1cf2 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-07T14:21:09.0567442Z a94936e222658967d539ca778397230b8a5bae2e"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "suiteSummaries": [],
+      "capturedLogSha256": "18a9dcf3ad3c0c759676deba0b730868ff12cfcd865a725dafff806594824512"
+    },
+    {
+      "runId": 42381182628,
+      "jobId": 128428932672,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381182628",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "a94936e222658967d539ca778397230b8a5bae2e",
+      "checkoutEvidence": [
+        "2026-11-07T14:21:07.9162238Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a94936e222658967d539ca778397230b8a5bae2e:refs/remotes/pull/32/merge",
+        "2026-11-07T14:21:08.5965415Z  * [new ref]         a94936e222658967d539ca778397230b8a5bae2e -> pull/32/merge",
+        "2026-11-07T14:21:08.6789756Z HEAD is now at a94936e Merge ae4e0277dd24c7742859577cd341eb6405ad1cf2 into 141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "2026-11-07T14:21:08.6887802Z a94936e222658967d539ca778397230b8a5bae2e"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "suiteSummaries": [
+        {
+          "suite": "acceptance-worksheet",
+          "passed": 42,
+          "failed": 0,
+          "realLedgerUnchanged": true,
+          "scope": "synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics"
+        },
+        {
+          "suite": "closure-inventory",
+          "passed": 14,
+          "failed": 0,
+          "scope": "deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim"
+        },
+        {
+          "suite": "worker-entry-native",
+          "passed": 12,
+          "failed": 0,
+          "scope": "actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification"
+        },
+        {
+          "suite": "signed-writer-native-integration",
+          "passed": 5,
+          "failed": 0,
+          "scope": "actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback"
+        },
+        {
+          "suite": "populated-recovery-relations",
+          "passed": 7,
+          "failed": 0,
+          "tables": 16,
+          "rows": 33,
+          "joinedPlaces": 2,
+          "joinedSchedules": 2,
+          "joinedEvidence": 2,
+          "joinedWitnesses": 2,
+          "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+        },
+        {
+          "suite": "b2-full-recovery",
+          "passed": 3,
+          "failed": 0,
+          "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+        }
+      ],
+      "capturedLogSha256": "b8c28937f9308505175e49f807aabdc5ee0047fe6e1789b3e26093bc3c0c5421"
+    },
+    {
+      "runId": 42381173949,
+      "jobId": 128428907860,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42381173949",
+      "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+      "checkoutEvidence": [
+        "2026-11-07T14:21:00.4389852Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +ae4e0277dd24c7742859577cd341eb6405ad1cf2:refs/remotes/origin/audit/phase8d-d1-qualification",
+        "2026-11-07T14:21:01.3738938Z  * [new ref]         ae4e0277dd24c7742859577cd341eb6405ad1cf2 -> origin/audit/phase8d-d1-qualification",
+        "2026-11-07T14:21:01.4677940Z ae4e0277dd24c7742859577cd341eb6405ad1cf2"
+      ],
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "suiteSummaries": [
+        {
+          "suite": "acceptance-worksheet",
+          "passed": 42,
+          "failed": 0,
+          "realLedgerUnchanged": true,
+          "scope": "synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics"
+        },
+        {
+          "suite": "closure-inventory",
+          "passed": 14,
+          "failed": 0,
+          "scope": "deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim"
+        },
+        {
+          "suite": "worker-entry-native",
+          "passed": 12,
+          "failed": 0,
+          "scope": "actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification"
+        },
+        {
+          "suite": "signed-writer-native-integration",
+          "passed": 5,
+          "failed": 0,
+          "scope": "actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback"
+        },
+        {
+          "suite": "populated-recovery-relations",
+          "passed": 7,
+          "failed": 0,
+          "tables": 16,
+          "rows": 33,
+          "joinedPlaces": 2,
+          "joinedSchedules": 2,
+          "joinedEvidence": 2,
+          "joinedWitnesses": 2,
+          "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+        },
+        {
+          "suite": "b2-full-recovery",
+          "passed": 3,
+          "failed": 0,
+          "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+        }
+      ],
+      "capturedLogSha256": "d4677c9ffb8a24380b742d7273bd36db2feb7edbbc822e46cbe3ae16cf886cf8"
+    }
+  ],
+  "scope": "Actual composed Worker fetch/scheduled ownership, signed native authority and real D1 deferred witness writes with controlled scheduler capabilities, plus updated existing full encrypted native recovery. Complete raw/operator/lifecycle/process coverage, urgent-outage fallback, production bootstrap/transport/custody/schedule/PITR/cloud recovery remain unqualified.",
+  "localEvidence": {
+    "sourceSha": "ae4e0277dd24c7742859577cd341eb6405ad1cf2",
+    "treeSha": "53d3d79795bdcfdceb7414d18472e7fcb94a9069",
+    "commandGroups": 26,
+    "exitCode": 0,
+    "logSha256": "bb7e0b227e48259294f306250ab4e3cbcb8290ce09fd1cffdf4270541c9e81ec",
+    "commandsSha256": "fcdd99fb5acc2c78298552d732374961dd6a92a6310062fbefd245fe29f5aad6",
+    "suiteSummaries": [
+      {
+        "suite": "acceptance-worksheet",
+        "passed": 42,
+        "failed": 0,
+        "realLedgerUnchanged": true,
+        "scope": "synthetic release records only; normalized reviewer labels are not authenticated identities and evidence hashes do not establish truth or define C1-C4 semantics"
+      },
+      {
+        "suite": "closure-inventory",
+        "passed": 14,
+        "failed": 0,
+        "scope": "deterministic canonical worksheet inventory; no feature/test-total/acceptance or owner claim"
+      },
+      {
+        "suite": "worker-entry-native",
+        "passed": 12,
+        "failed": 0,
+        "scope": "actual composed Worker fetch/scheduled and signed SQLite authority with real D1 deferred witness writes and controlled scheduler capabilities; no full writer coverage, real scheduler/bootstrap, urgent-outage fallback, provider or production qualification"
+      },
+      {
+        "suite": "signed-writer-native-integration",
+        "passed": 5,
+        "failed": 0,
+        "scope": "actual beta device/D1/scheduler controllers and HMAC V2 client/handler/native authority with synthetic lost-reply controls; no production bootstrap/key or urgent-outage fallback"
+      },
+      {
+        "suite": "populated-recovery-relations",
+        "passed": 7,
+        "failed": 0,
+        "tables": 16,
+        "rows": 33,
+        "joinedPlaces": 2,
+        "joinedSchedules": 2,
+        "joinedEvidence": 2,
+        "joinedWitnesses": 2,
+        "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+      },
+      {
+        "suite": "b2-full-recovery",
+        "passed": 3,
+        "failed": 0,
+        "scope": "actual signed native41+4/deviceDO capture, adapter, crypto, health and fresh restore with synthetic disk-backed B2 responses; no real provider, independent custody, installed schedule, cloud RTO/RPO or billing/card qualification"
+      }
+    ],
+    "scope": "26 actual executable workflow groups; checkout/setup/install excluded, existing dependencies reused; no live cloud proof."
+  }
+}

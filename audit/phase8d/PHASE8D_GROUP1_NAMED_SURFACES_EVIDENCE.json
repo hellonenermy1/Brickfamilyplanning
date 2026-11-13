@@ -1,0 +1,176 @@
+{
+  "format": "brick-phase8d-group1-named-surface-evidence-v1",
+  "date": "2026-11-09",
+  "sourceSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+  "sourceTreeSha": "37ff2aa51a2b0e8a5318a9e69b643303ba7b6a2a",
+  "baselineSha": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "status": "NAMED_SOURCE_AND_NATIVE_CURRENT_PUSH_PR_CI_VERIFIED_NOT_INSTALLED",
+  "runtimeImplementationChanged": false,
+  "newNativeCases": 20,
+  "namedSourceSurfaces": 5,
+  "runtimeFiles": 90,
+  "runtimeProjectionIdenticalToBasis": true,
+  "runtimeSourceSetSha256": "a7aba185dae625b3e1694b7f116d1ca41a51716078a477eb99717f2f134c4297",
+  "surfaceProfilePath": "audit/phase8d/PHASE8D_GROUP1_NAMED_WRITER_SURFACE_PROFILE.json",
+  "files": [
+    {
+      "path": ".github/workflows/phase8d-cardfree-ci.yml",
+      "sha256": "7fa36a849e226cc2b858c91656e96f1883ee9c7469b942385df84f05e46fd551"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "sha256": "38fe3c88bcf121c8ef468121789c416df8da802fc2edeebe235c24334994d846"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_NAMED_WRITER_SURFACE_PROFILE.json",
+      "sha256": "1898406cc8acceff5fa0e547ff8e0cc1bec27a015d6f07f01d6fec52c72cd836"
+    },
+    {
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "sha256": "a0c722cddbe8ee12e1e64991e0d50c69b06a52ce9fc4c764702c05d6baf0ec03"
+    },
+    {
+      "path": "scripts/phase8d-writer-surface-profile.mjs",
+      "sha256": "3e4913ec4f4eaabea6140efcac91346ccbf2b935f51ae7a05c4fca16c32824fc"
+    },
+    {
+      "path": "scripts/test-phase8d-writer-surface.mjs",
+      "sha256": "5ebcc4877ccc49f3b682b14f1867e81b080ca6bb736bc26c29f12032872c9d02"
+    }
+  ],
+  "focusedLogs": [
+    {
+      "label": "remainingWriterSurfaceNative",
+      "sha256": "7330a31d0fc0767b66acaff6e01b6f113c7e840315ea92c034da68e0ea4e8bc0"
+    },
+    {
+      "label": "externalInventoryGuard",
+      "sha256": "133176fc352a4d2ffca487c1145c7353ef14f78e58589cf26468cb9ccaa01740"
+    }
+  ],
+  "verifiedBehavior": [
+    "Actual signed receiver and diagnostic writes plus DirectEventQueue remain owned through capture drain; held capture/invalid auth/rate refuse effects.",
+    "Caught D1 failures retain uncertain parent even when handler returns a response. Receiver committed-reply loss can exact-readback duplicate ACK while retaining ownership.",
+    "Diagnostics batch is atomic; consumed nonce is not erased after failure; committed reply loss returns no success ACK; fresh-nonce exact retry deduplicates.",
+    "Twenty-point direct batch uses two ten-row chunks; partial lost-reply preserves ten rows, exact retry fills twenty and retains earlier created_at values.",
+    "Actual WebSocket/alarm/probe/logout effects preserve exported captured state; excluded probe token never enters recovery. Persistent revocation remains urgent and invalidates capture.",
+    "Full runtime restart retains receiver/diagnostic/history rows and revocation while excluding betaDiagnostic from export."
+  ],
+  "commandTableScope": "Only backup-v6 mentions device_commands in current90-file runtime graph; no live writer/API implementation asserted.",
+  "externalToolsInstalled": 0,
+  "externalToolHooks": 4,
+  "localQualification": {
+    "newNativeCases": 20,
+    "full26GroupCampaignRerunThisBatch": false,
+    "runtimeCarryForwardFromSourceSha": "013ef2e6f76c20d59048c01a8ae225137fe6142d",
+    "runtimeCarryForwardEvidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json",
+    "runtimeCarryForwardEvidenceSha256": "8ef6413ca1f89d2d7889abc2c9bd3972e10e0f884987174e069ab74778a8aef1",
+    "carriedGroups": 26,
+    "priorFullEncryptedDestructionRestorePassed": true,
+    "basisProjectionCheckedFromCommit": "9b06256864f6ba2dda62e0f4d77f1c3c45c774a1",
+    "reason": "No src files changed; all90 runtime paths/content hashes exactly equal preceding qualified runtime. New fixture/profile files receive focused local and full hosted qualification."
+  },
+  "hostedRuns": [
+    {
+      "runId": 42644459681,
+      "jobId": 129253842823,
+      "event": "pull_request",
+      "workflow": "Brick Phase 2 \u2014 Isolated Parent Portal Verification",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42644459681",
+      "sourceSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 14,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "e1cd6e15a9047a089fccbdc915a71996ec8facee",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+      "scope": "Current source/current-base native synthetic qualification, not production or live recovery acceptance.",
+      "capturedLogSha256": "bdee7ab48fa15a7e859e476cf39a200e913ab16bdbc42dfd06b1e96030726f20"
+    },
+    {
+      "runId": 42644459634,
+      "jobId": 129253842374,
+      "event": "pull_request",
+      "workflow": "Brick Beta Map and Portal Regression (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42644459634",
+      "sourceSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 10,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "e1cd6e15a9047a089fccbdc915a71996ec8facee",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": false,
+      "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+      "scope": "Current source/current-base native synthetic qualification, not production or live recovery acceptance.",
+      "capturedLogSha256": "d0a85e0d84387c8863bc77050ce3776187b9cb8d4b30ba99e450f8eb25c72d43"
+    },
+    {
+      "runId": 42644459929,
+      "jobId": 129253844238,
+      "event": "pull_request",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42644459929",
+      "sourceSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "e1cd6e15a9047a089fccbdc915a71996ec8facee",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+      "scope": "Current source/current-base native synthetic qualification, not production or live recovery acceptance.",
+      "capturedLogSha256": "6c83d88ed71f90cc557097292363eee2f6713bf33b0cf8630921835bb3eb8549"
+    },
+    {
+      "runId": 42644448403,
+      "jobId": 129253805432,
+      "event": "push",
+      "workflow": "Phase 8D D1 storage and recovery audit (no cloud writes)",
+      "url": "https://github.com/hellonenermy1/Brickfamilyplanning/actions/runs/42644448403",
+      "sourceSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 33,
+      "allStepsCompletedSuccess": true,
+      "checkoutSha": "3e31e484aab92f97054ddaac73d188ba8816a5de",
+      "exactCheckoutFromGitLogVerified": true,
+      "errorMarkers": 0,
+      "existingMiniflareRpcDisposalWarning": true,
+      "logNormalization": "Decoded full log; trailing whitespace trimmed, one final newline.",
+      "scope": "Current source/current-base native synthetic qualification, not production or live recovery acceptance.",
+      "capturedLogSha256": "b14ea134c308ec01035169d0c39de602e7819c3bc0e6262f60990531b1c4a435"
+    }
+  ],
+  "verifiedMergeCheckoutSha": "e1cd6e15a9047a089fccbdc915a71996ec8facee",
+  "mergeParents": [
+    "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "3e31e484aab92f97054ddaac73d188ba8816a5de"
+  ],
+  "hostedFullEncryptedDestructionRestorePassed": true,
+  "completeRawOperatorCredentialOrDynamicCoverage": false,
+  "productionControllerInstalls": 0,
+  "group1": "NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8d": "NOT_PASS",
+  "forecast": "AT_RISK",
+  "remaining": [
+    "Unified trusted bootstrap/native rehearsal with same authenticated protected independent guard on all acquire/poll/export/page/device/resume/seal/release paths; no partial activation.",
+    "STARTED/legacy unknown ownership, raw/operator credentials/bindings, detached/deferred/process effects and authority install/rollback compatibility.",
+    "Restricted B2 runtime capability and separate durable selection manifest/key/context custody; installed schedule/readback/age/failure/real-recipient monitoring; scoped current PITR and isolated cloud recovery/interruption/rollback/RTO/RPO."
+  ],
+  "providerTestRepeated": false,
+  "liveCloudflareWrites": false,
+  "familyDataExported": false,
+  "merged": false,
+  "deployed": false,
+  "r2OrCardDependencyAdded": false,
+  "hostedLimits": "Current source/current-base native synthetic verification only. No installed writer/transport/guard, cloud Queue, real recipient or operational custody/recovery acceptance. Existing Miniflare RPC-disposal warnings retained."
+}

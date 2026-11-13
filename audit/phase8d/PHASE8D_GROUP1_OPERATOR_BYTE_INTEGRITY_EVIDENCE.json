@@ -1,0 +1,255 @@
+{
+  "format": "brick-group1-operator-byte-integrity-evidence-v1",
+  "sourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+  "sourceTreeSha": "c91497d8fac676d4f4a0f589b071b02d80482507",
+  "baselineSha": "638874a89cf89e3c9648fde97985baaf55c079ca",
+  "baselineHiddenModificationReproduced": {
+    "indexFlag": "assume-unchanged",
+    "trackedHelperModified": true,
+    "oldGitDiffExitCode": 0,
+    "scope": "controlled local source only"
+  },
+  "nativeLauncherCasesPassed": 35,
+  "physicalCheckoutCasesPassed": 12,
+  "externalInventoryCasesPassed": 23,
+  "build": {
+    "sameHostSeparateCleanWorktreesByteIdentical": true,
+    "bundleSha256": "7ab2f32f89492060f9397d1f831fa4b8acd0ef2a48ca7ef9e1e9c9869773c0b3",
+    "nodeVersion": "v24.22.1",
+    "esbuildVersion": "0.28.2",
+    "packageLockSha256": "0d50dabc87a67c02e40c9cab3293ed9c1d594cf35b40d504e5aff3eed5fb436b",
+    "differentWorkingDirectoryByteIdentityTestPassed": true,
+    "syntaxPassed": true,
+    "missingPrivateConfigExitCode": 2,
+    "realOperatorExecuted": false,
+    "productionInstalled": false
+  },
+  "unchangedSha256": {
+    "audit/phase8c/PHASE8C_RECOVERED_525_REQUIREMENTS.csv": "1c435a1b481a27457a5848637160d40cab0620ef123f1a5c40d601e1ef913228",
+    "audit/phase8d/release-evidence/PHASE8D_REQUIREMENTS_LEDGER.json": "27a159ca14fc25baaf81b304ab76d6750ba64611d805963124f2434459ba63fa",
+    "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json": "75def2c359f1db2359341ffcacd871958cd4f58ea87e5569469f9def019e0d86"
+  },
+  "externalInventorySummary": {
+    "selectedFiles": 324,
+    "filesWithManagementSignals": 78,
+    "explicitClassifications": 90,
+    "stagedOperatorLaunchers": 1,
+    "betaMutatorsUnfenced": 4,
+    "stagedOffPlatformMonitors": 1,
+    "stagedOffPlatformDestinations": 1,
+    "legacyMutatorsNotBetaApproved": 13,
+    "unresolvedRelativeImportCandidates": 5,
+    "unresolvedDynamicImports": 144
+  },
+  "limits": [
+    "Point-in-time local byte checks, not immutable host or concurrent mutation protection",
+    "Git executable/local configuration, Node and build dependencies remain trusted",
+    "Synthetic HTTPS/provider bridge to native authority, no actual TLS or provider write",
+    "No production writer/bootstrap/raw credential restriction, independent guard/key/journal custody, installed schedule/alerts or isolated cloud restoration proven"
+  ],
+  "productionInstalled": false,
+  "cloudWritesPerformed": false,
+  "applicationDeployed": false,
+  "merged": false,
+  "group1Status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "phase8dStatus": "NOT_PASS",
+  "localCampaign": {
+    "sourceSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+    "groups": [
+      {
+        "name": "npm run typecheck",
+        "exitCode": 0,
+        "seconds": 2.58
+      },
+      {
+        "name": "Beta provisioner and shared compatibility schema syntax",
+        "exitCode": 0,
+        "seconds": 0.84
+      },
+      {
+        "name": "npm run build:parent-assets",
+        "exitCode": 0,
+        "seconds": 0.35
+      },
+      {
+        "name": "Optional route-map isolation deadlines and signed live recovery",
+        "exitCode": 0,
+        "seconds": 3.66
+      },
+      {
+        "name": "Canonical acceptance worksheet and closure inventory guards",
+        "exitCode": 0,
+        "seconds": 4.67
+      },
+      {
+        "name": "Bounded coherent capture source and encrypted coordinator",
+        "exitCode": 0,
+        "seconds": 111.44
+      },
+      {
+        "name": "Watchdog bounded fleet RPC delivery retry and state races",
+        "exitCode": 0,
+        "seconds": 20.47
+      },
+      {
+        "name": "Bounded cleanup backlog progress and policy regressions",
+        "exitCode": 0,
+        "seconds": 4.6
+      },
+      {
+        "name": "Resumable D1 commute history paging regression",
+        "exitCode": 0,
+        "seconds": 6.93
+      },
+      {
+        "name": "D1 object read integrity and atomic conditional-write regressions",
+        "exitCode": 0,
+        "seconds": 5.06
+      },
+      {
+        "name": "Protected off-platform archive authentication identity and CLI",
+        "exitCode": 0,
+        "seconds": 5.72
+      },
+      {
+        "name": "Destroy source and recover both D1 stores and beta DO from encrypted package",
+        "exitCode": 0,
+        "seconds": 108.21
+      },
+      {
+        "name": "Signed D1 history ACK partial-batch retry and exact revoke race",
+        "exitCode": 0,
+        "seconds": 1.75
+      },
+      {
+        "name": "Receipt-age retention cleanup race and bounded statement envelope",
+        "exitCode": 0,
+        "seconds": 2.29
+      },
+      {
+        "name": "Scheduler delayed failure and automatic retry",
+        "exitCode": 0,
+        "seconds": 1.73
+      },
+      {
+        "name": "Versioned leases nested work and release-outage recovery",
+        "exitCode": 0,
+        "seconds": 0.81
+      },
+      {
+        "name": "Durable derived-work leases backoff privacy and fair device rotation",
+        "exitCode": 0,
+        "seconds": 2.41
+      },
+      {
+        "name": "Real scheduler enrichment failure isolation and durable evidence ACK",
+        "exitCode": 0,
+        "seconds": 2.25
+      },
+      {
+        "name": "Corrupt refinement input and healthy peer isolation",
+        "exitCode": 0,
+        "seconds": 2.08
+      },
+      {
+        "name": "Rotating poison input quarantine repair and operational reconstruction",
+        "exitCode": 0,
+        "seconds": 5.84
+      },
+      {
+        "name": "Conservative D1 computation guard and durable failure reserve",
+        "exitCode": 0,
+        "seconds": 1.82
+      },
+      {
+        "name": "Populated maintenance RPC statement envelope and alarm isolation",
+        "exitCode": 0,
+        "seconds": 2.86
+      },
+      {
+        "name": "Original refined history against actual production-migration SQLite",
+        "exitCode": 0,
+        "seconds": 0.15
+      },
+      {
+        "name": "Existing beta auth history map and WebSocket regressions",
+        "exitCode": 0,
+        "seconds": 6.84
+      },
+      {
+        "name": "Original production DO and multi-store recovery regressions",
+        "exitCode": 0,
+        "seconds": 6.52
+      },
+      {
+        "name": "Existing native production trust-boundary regressions",
+        "exitCode": 0,
+        "seconds": 16.13
+      }
+    ],
+    "passed": true,
+    "npmCi": "Unchanged installed dependencies reused; hosted clean npm ci passed separately"
+  },
+  "hosted": {
+    "records": [
+      {
+        "runId": 42939916495,
+        "jobId": 130259000363,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 267353,
+        "errorMarkers": 0,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "launcher35": true,
+        "byteIntegrity12": true,
+        "populatedRecovery": true
+      },
+      {
+        "runId": 42939907480,
+        "jobId": 130258972237,
+        "event": "push",
+        "conclusion": "success",
+        "passedSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 265400,
+        "errorMarkers": 0,
+        "checkoutSha": "93383cfbb57f5852afb9eec6ab4721e378390af5",
+        "launcher35": true,
+        "byteIntegrity12": true,
+        "populatedRecovery": true
+      },
+      {
+        "runId": 42939916498,
+        "jobId": 130259000547,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 10,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "completeDecodedLogInspected": true,
+        "errorMarkers": 0,
+        "logCharacters": 16248
+      },
+      {
+        "runId": 42939916515,
+        "jobId": 130259000188,
+        "event": "pull_request",
+        "conclusion": "success",
+        "passedSteps": 14,
+        "checkoutSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+        "completeDecodedLogInspected": true,
+        "errorMarkers": 0,
+        "logCharacters": 25079
+      }
+    ],
+    "prMergeSha": "e96e3bab3a873548d5d40f8bd708e6eaec5916df",
+    "prMergeTreeSha": "c91497d8fac676d4f4a0f589b071b02d80482507",
+    "prMergeParents": [
+      "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "93383cfbb57f5852afb9eec6ab4721e378390af5"
+    ]
+  },
+  "manualMetadataJobs": "SKIPPED; no new provider access needed"
+}

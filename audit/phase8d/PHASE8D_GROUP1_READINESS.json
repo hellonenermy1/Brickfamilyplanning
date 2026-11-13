@@ -1,0 +1,933 @@
+{
+  "format": "brick-phase8d-group1-readiness-v1",
+  "selectedGroup": 1,
+  "sourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+  "status": "IN_PROGRESS_NOT_READY",
+  "p8d002": "P1_OPEN",
+  "proceedToAnotherGroup": false,
+  "stagedComponents": [
+    {
+      "id": "SOURCE_WRITE_INVENTORY",
+      "state": "RECORDED_NOT_ENFORCED",
+      "path": "audit/phase8d/PHASE8D_GROUP1_WRITE_INVENTORY.json",
+      "matchedRuntimeGitBlobs": 90
+    },
+    {
+      "id": "DURABLE_ADMISSION",
+      "state": "STAGED_NATIVE_AND_PUSH_CI_VERIFIED_NOT_ACTIVATED",
+      "nativeCases": 34,
+      "path": "src/cardfree-capture-admission.ts"
+    },
+    {
+      "id": "CONTROLLED_NATIVE_RECOVERY",
+      "state": "LOCAL_NATIVE_ONLY",
+      "scope": "Actual device/D1/scheduler writer operations and capture operations use signed V2 HMAC/native durable replay/authority; committed STARTED before actual source mutation; actual41+4/deviceDO encrypted destruction/fresh restore retains exact bytes/state/credential exclusions/interruption/restart and max5 source SQL/call Legacy outer synthetic envelope and trusted controls remain."
+    },
+    {
+      "id": "ACTOR_WRITER_HOOKS",
+      "state": "INERT_SOURCE_AND_NATIVE_FIXTURE_VERIFIED",
+      "hookBoundaries": 16,
+      "helperCases": 41,
+      "profiledActorMethods": 41,
+      "productionControllerInstallCalls": 0,
+      "completeWriterCoverage": false
+    },
+    {
+      "id": "D1_EXECUTION_BOUNDARIES",
+      "state": "INERT_SOURCE_AND_NATIVE_FIXTURE_VERIFIED",
+      "adapterCases": 22,
+      "environmentPlacementSites": 10,
+      "executionMethods": [
+        "run",
+        "first",
+        "all",
+        "raw",
+        "batch",
+        "exec"
+      ],
+      "sessionsWrapped": true,
+      "productionControllerInstallCalls": 0,
+      "completeWriterCoverage": false,
+      "scopedDescendantCases": 27,
+      "sameIsolateOnly": true,
+      "crossRpcInheritanceQualified": false
+    },
+    {
+      "id": "EXTERNAL_WRITER_SOURCE_PROFILE",
+      "state": "SOURCE_PROFILED_CI_DRIFT_GUARD_NOT_ENFORCED",
+      "selectedTrackedFiles": 334,
+      "explicitManagementClassifications": 96,
+      "knownBetaMutatorsUnfenced": 4,
+      "syntheticProfileCases": 23,
+      "unresolvedRelativeImportCandidates": 5,
+      "filesWithDynamicImportExpressions": 149,
+      "path": "audit/phase8d/PHASE8D_GROUP1_EXTERNAL_WRITER_INVENTORY.json",
+      "stagedOffPlatformDestinations": 1,
+      "stagedOffPlatformMonitors": 1
+    },
+    {
+      "id": "EXTERNAL_OPERATION_BOUNDARIES",
+      "state": "INERT_SOURCE_NATIVE_CLI_FIXTURE_AND_CI_VERIFIED",
+      "actualToolsHooked": 4,
+      "externalHelperAndCliCases": 27,
+      "newNativeAuthorityCases": 8,
+      "productionControllerInstalls": 0,
+      "sourceChangingAdmission": "PERMANENT_CAPTURE_QUARANTINE",
+      "uncertainWorkOutcome": "OWNERSHIP_RETAINED_NO_AUTOMATIC_REPLAY_OR_EXPIRY",
+      "completeExternalCredentialCoverage": false,
+      "signedV2TransportInActualCliFixtures": true
+    },
+    {
+      "id": "SIGNED_CAPTURE_BROKER",
+      "state": "STAGED_NATIVE_CLIENT_HANDLER_AND_FULL_RESTORE_CI_VERIFIED_NOT_INSTALLED",
+      "nativeClientCases": 45,
+      "keyRoles": [
+        "capture",
+        "runtime-writer",
+        "external-writer"
+      ],
+      "durableReplay": true,
+      "runtimeGraphImports": 0,
+      "productionEndpointOrKeyInstalled": false,
+      "protocolVersion": 2,
+      "actualEdgeCases": 3
+    },
+    {
+      "id": "UNSTARTED_RESERVATION_RECONCILIATION",
+      "state": "STAGED_NATIVE_BROKER_AND_CI_VERIFIED_NOT_INSTALLED",
+      "nativeReservationCases": 23,
+      "newCasesThisBatch": 37,
+      "cancellationTombstoneLimit": 128,
+      "startedOrLegacyOwnershipCanBeCancelled": false,
+      "urgentOutageFallback": "STAGED_NATIVE_DEVICE_D1_AND_SOURCE_PR_CI_VERIFIED_NOT_INSTALLED_ROOT_SCOPE_UNQUALIFIED"
+    },
+    {
+      "id": "ACTUAL_SIGNED_WRITER_INTEGRATION",
+      "state": "SOURCE_NATIVE_FULL_RESTORE_CLI_AND_CI_VERIFIED_NOT_INSTALLED",
+      "edgeCompatibilityFinding": "P8D-094_SOURCE_CI_CORRECTED_NOT_LIVE",
+      "actualNativeControllerFaultCases": 5,
+      "actualEdgeCases": 3,
+      "completeWriterCoverage": false
+    },
+    {
+      "id": "POPULATED_CONFIG_RELATIONSHIP_RECOVERY",
+      "state": "NATIVE_AND_EXACT_SOURCE_PUSH_CI_VERIFIED_NOT_LIVE",
+      "stableTables": 16,
+      "stableRows": 33,
+      "oneShotControlRows": 4,
+      "verificationGroups": 7
+    },
+    {
+      "id": "PROTECTED_ARCHIVE_HEALTH",
+      "state": "READ_ONLY_TOOL_NATIVE_CLI_AND_PUSH_CI_VERIFIED_NOT_SCHEDULED_OR_INSTALLED",
+      "healthCases": 40,
+      "nativeFullArchiveIntegration": true,
+      "restorabilityClaim": false,
+      "scheduleInstalled": false
+    },
+    {
+      "id": "CURRENT_PORTAL_BASE_AND_PARENT_CREDENTIAL_RECOVERY",
+      "state": "SOURCE_MERGE_CURRENT_BASE_PR_PHASE2_AND_NATIVE_CI_VERIFIED_NOT_PR_MERGED_OR_DEPLOYED",
+      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "portalOnlyBlobsPreserved": 24,
+      "overlapFilesReviewed": 6,
+      "nativeCredentialCases": 6,
+      "parentVerifierCapturedOrRestored": false
+    },
+    {
+      "id": "B2_ENCRYPTED_ARCHIVE_DESTINATION",
+      "state": "STAGED_ADAPTER_AND_NATIVE_SYNTHETIC_PROVIDER_PUSH_PR_CI_VERIFIED_NOT_INSTALLED",
+      "adapterCases": 91,
+      "fullNativeRecoveryVerificationGroups": 3,
+      "realProviderCalls": 0,
+      "independentDestinationQualified": false,
+      "cardOrFreeTierVerified": false,
+      "uploadUncertainty": "NO_AUTOMATIC_RETRY_OR_DELETE"
+    },
+    {
+      "id": "DURABLE_BACKUP_MONITOR_AND_ALERT_OUTBOX",
+      "state": "PRIVATE_SQLITE_CAS_CRYPTO_SYNTHETIC_PROVIDER_SINK_NATIVE_AND_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "monitorCases": 50,
+      "fullNativeVerificationGroups": 3,
+      "actualChildProcessExitCases": 2,
+      "oneShotOnly": true,
+      "realNotifications": 0,
+      "scheduleInstalled": false,
+      "deliveryOrCustodyQualified": false,
+      "alertUnknownOutcome": "STARTED_UNCERTAIN_NO_RETRY_OR_EXPIRY",
+      "outboxMax": 64,
+      "stickyOverflow": true,
+      "positiveReceiptReconciliation": "OPTIONAL_V2_PINNED_ED25519_STAGED_NOT_INSTALLED",
+      "negativeOrManualRequeueReconciliation": false
+    },
+    {
+      "id": "PINNED_POSITIVE_ALERT_RECEIPT_RECONCILIATION",
+      "state": "ED25519_PINNED_PROOF_PRIVATE_SQLITE_NATIVE_AND_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "receiptCases": 54,
+      "fullNativeVerificationGroups": 3,
+      "actualChildProcessExitCase": 1,
+      "legacyV1CompatibleReconciliationDisabled": true,
+      "fullProofReverifiedOnRestart": true,
+      "negativeRequeueOrNewSend": false,
+      "realSignerOrPinInstalled": false,
+      "realNotifications": 0,
+      "deliveryOrCustodyQualified": false
+    },
+    {
+      "id": "EXTERNAL_SUBPROCESS_PIPE_COMPLETION",
+      "state": "REAL_LOCAL_PROCESS_AND_SIGNED_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "focusedCases": 10,
+      "newNativeCases": 2,
+      "externalSuiteCases": 29,
+      "detachedDescendantsOrRemoteSuccessQualified": false,
+      "productionInstalled": false
+    },
+    {
+      "id": "WORKER_FETCH_AND_SCHEDULED_ENTRY_OWNERSHIP",
+      "state": "ACTUAL_WORKER_SIGNED_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "nativeCases": 12,
+      "workerBoundaries": 2,
+      "actorBoundariesPreserved": 16,
+      "productionInstalled": false,
+      "completeWriterCoverageOrOutageFallbackQualified": false
+    },
+    {
+      "id": "REAL_PRIVATE_B2_SYNTHETIC_TRANSFER_AND_LOCAL_RECOVERY",
+      "state": "ACTUAL_PROVIDER_READBACK_AND_FRESH_LOCAL_RESTORE_VERIFIED_RUNTIME_CUSTODY_UNQUALIFIED",
+      "archiveBytes": 3260838,
+      "parts": 7,
+      "independentDownloads": 14,
+      "localPrimaryTables": 41,
+      "localDiagnosticsTables": 4,
+      "localDeviceObjects": 2,
+      "publicSharing": false,
+      "keyExported": false,
+      "productionInstalled": false,
+      "isolatedCloudflareRestoreRun": false
+    },
+    {
+      "id": "URGENT_OUTAGE_QUARANTINE",
+      "state": "STAGED_NATIVE_DEVICE_D1_FULL_COORDINATOR_CURRENT_SOURCE_PUSH_AND_PR_CI_VERIFIED_NOT_INSTALLED",
+      "nativeCases": 25,
+      "newCoordinatorCases": 4,
+      "permanent": true,
+      "automaticResetOrExpiry": false,
+      "ordinaryBypass": false,
+      "productionControllerInstalls": 0,
+      "completeUrgentRootCoverage": false,
+      "path": "src/capture-outage-quarantine.ts",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OUTAGE_QUARANTINE_EVIDENCE.json"
+    },
+    {
+      "id": "AUTHORIZED_MANUAL_SOS_ROOT_OUTAGE",
+      "state": "STAGED_ACTUAL_COMPOSED_WORKER_SIGNED_BROKER_OUTAGE_D1_DEVICE_GUARD_RESTART_AND_SOURCE_PR_CI_VERIFIED_NOT_INSTALLED",
+      "eligibilityNativeCases": 39,
+      "newWriterPolicyCases": 6,
+      "anonymousOutageQuarantineDenied": true,
+      "scheduledBlanketFallbackDenied": false,
+      "normalRootPriorityClassificationComplete": false,
+      "allUrgentOperationCoverage": false,
+      "path": "src/capture-urgent-request.ts",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHORIZED_URGENT_EVIDENCE.json",
+      "scheduledFallbackPolicy": "TRUSTED_PLATFORM_EVENT_REQUIRES_DURABLE_QUARANTINE_ROUTINE_ACTORS_STILL_ORDINARY"
+    },
+    {
+      "id": "CLASSIFIED_ROOT_AND_PARENT_REVOCATION",
+      "state": "STAGED_NATIVE_REAL_D1_DEVICE_TRIP_ROLLBACK_RETRY_RESTART_AND_SOURCE_PR_CI_VERIFIED_NOT_INSTALLED",
+      "eligibilityNativeCases": 69,
+      "newEligibilityNativeCases": 30,
+      "newPriorityCases": 6,
+      "writerBoundaryCases": 41,
+      "workerRootCases": 12,
+      "ordinaryRequestCannotPreemptAlreadyHeldCapture": true,
+      "authenticatedRevocationOutageRetryVerified": true,
+      "allUrgentOperationCoverage": false,
+      "completeNestedPriorityClassification": false,
+      "productionActivation": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PRIORITY_REVOCATION_EVIDENCE.json"
+    },
+    {
+      "id": "FRESH_HEALTH_LOCATION_INGEST_ADMISSION",
+      "state": "STAGED_NATIVE_SHARED_VALIDATORS_ACTUAL_WORKER_D1_DEVICE_HISTORY_HOLE_PARTIAL_BATCH_ACK_RETRY_RESTART_AND_SOURCE_PR_CI_VERIFIED_NOT_INSTALLED",
+      "nativeEligibilityCases": 116,
+      "newCases": 47,
+      "newRoutes": 4,
+      "maxBatchPoints": 20,
+      "proofReservesHealthCounter": false,
+      "eventOnlyReceiptDoesNotSuppressHistoryRetry": true,
+      "previewRequiresAdvancingActualCurrentState": true,
+      "normalHandlerWindowsChanged": false,
+      "allWriterCoverage": false,
+      "productionActivation": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_INGEST_ADMISSION_EVIDENCE.json"
+    },
+    {
+      "id": "SCOPED_D1_AND_SCHEDULED_WATCHDOG",
+      "state": "SOURCE_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "scopeCases": 27,
+      "actualSchedulerNativeCases": 8,
+      "opaqueSameClientSameIsolateOnly": true,
+      "crossRpcInheritanceQualified": false,
+      "routineOutageBypass": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPED_SCHEDULER_EVIDENCE.json"
+    },
+    {
+      "id": "ROUTINE_SCHEDULER_RPC_DESCENDANTS",
+      "state": "SOURCE_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "nativeAuthorityCases": 27,
+      "callerReceiverCases": 14,
+      "actualSchedulerRpcCases": 14,
+      "targets": [
+        "runDerivedWork",
+        "runRetentionWork",
+        "runDailyBackup"
+      ],
+      "childIndependentlyCounted": true,
+      "privateSameIsolateTokenSerialized": false,
+      "globalCrossRpcOwnershipQualified": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RPC_DESCENDANTS_EVIDENCE.json"
+    },
+    {
+      "id": "ACTUAL_WORKER_COMMUTE_AND_DEVICE_RESTORE_OWNERSHIP",
+      "state": "SOURCE_NATIVE_CURRENT_CI_VERIFIED_NOT_INSTALLED",
+      "nativeCases": 22,
+      "workerRuntimeContextCalls": 2,
+      "deviceD1IdentityCurrentSource": "PLAIN_SELECT_ONLY",
+      "deviceRestoreMutation": "DO_LOCAL_TRANSACTION_ORDINARY_BOUNDARY",
+      "deviceProductionCodeChanged": false,
+      "cached200MeansBackgroundCompleted": false,
+      "completeWriterCoverage": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_WORKER_DEVICE_OWNERSHIP_EVIDENCE.json"
+    },
+    {
+      "id": "REMAINING_NAMED_WRITER_LIFECYCLE_SURFACES",
+      "state": "CURRENT_NAMED_SOURCE_NATIVE_AND_FULL_HOSTED_CI_RECONCILED_NOT_INSTALLED",
+      "nativeCases": 20,
+      "runtimeFilesIdenticalToPrior": 90,
+      "runtimeImplementationChanged": false,
+      "commandTableCurrentRuntimeWriter": false,
+      "cloudQueueBoundOrQualified": false,
+      "externalToolsInstalled": 0,
+      "completeRawOperatorCredentialCoverage": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_NAMED_SURFACES_EVIDENCE.json"
+    },
+    {
+      "id": "GUARDED_SIGNED_CAPTURE_BROKER",
+      "state": "SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newNativeCases": 28,
+      "captureOperations": [
+        "capture.acquire",
+        "capture.poll",
+        "capture.held",
+        "capture.page",
+        "capture.device",
+        "capture.release"
+      ],
+      "guardBeforeAndAfter": true,
+      "releaseCleanupOnGuardFailure": true,
+      "uncertainReleaseMayAcknowledgeSeal": false,
+      "fullEncryptedJournalResumeWithoutSourceRereads": true,
+      "actualProtectedIndependentTransportOrFailureDomainQualified": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARDED_BROKER_EVIDENCE.json"
+    },
+    {
+      "id": "AUTHENTICATED_INDEPENDENT_GUARD_TRANSPORT",
+      "state": "SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 70,
+      "nativeTransportCases": 44,
+      "configurationContractCases": 26,
+      "replayCapacity": 4096,
+      "actualFailureDomainQualified": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_AUTHENTICATED_GUARD_EVIDENCE.json"
+    },
+    {
+      "id": "PROVISIONER_FINAL_TARGETS_AND_ACTUAL_SCHEMA_OWNERSHIP",
+      "state": "SOURCE_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 16,
+      "selectedDatabasePinsEnforcedWhenControllerInstalled": true,
+      "deployedHostnameCheckedBeforeSecretMutation": true,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_PROVISIONER_TARGETS_EVIDENCE.json"
+    },
+    {
+      "id": "DURABLE_LOCAL_AUTHENTICATED_RECOVERY_SELECTION",
+      "state": "SOURCE_FILES_CRYPTO_FRESH_PROCESS_NATIVE_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 40,
+      "trustedContextPersistedLocally": true,
+      "keyPersisted": false,
+      "callerDigestMandatory": true,
+      "independentCustodyQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SELECTION_EVIDENCE.json"
+    },
+    {
+      "id": "DURABLE_ONE_SHOT_BACKUP_LIFECYCLE",
+      "state": "SOURCE_NATIVE_SQLITE_FRESH_PROCESS_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 47,
+      "scheduleInstalled": false,
+      "startedPhaseExpiry": false,
+      "automaticRestartReplay": false,
+      "positiveReconciliationProvesPriorAttemptStopped": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BACKUP_RUN_EVIDENCE.json"
+    },
+    {
+      "id": "MONITOR_REOPEN_NEVER_REINITIALIZES_LOST_DELIVERY_STATE",
+      "state": "SOURCE_NATIVE_FRESH_PROCESS_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 32,
+      "explicitCreateOnlyOnNewDirectory": true,
+      "normalRestartCreatesMissingState": false,
+      "realProviderMetadataChecked": true,
+      "connectedB2CredentialRuntimeQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_MONITOR_OPEN_EVIDENCE.json"
+    },
+    {
+      "id": "ROLE_BOUND_ATOMIC_WRITER_EXIT",
+      "state": "SOURCE_NATIVE_SCOPED_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 21,
+      "requiredAuthorityCapability": "exitWriterForRole",
+      "legacyUnknownReleased": false,
+      "sameRoleKeyOwnerIsolationAdded": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_EXIT_ROLES_EVIDENCE.json",
+      "supersededBy": "CREDENTIAL_BOUND_ATOMIC_WRITER_LIFECYCLE"
+    },
+    {
+      "id": "CREDENTIAL_BOUND_ATOMIC_WRITER_LIFECYCLE",
+      "state": "SOURCE_NATIVE_SCOPED_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 26,
+      "requiredAuthorityCapability": "writerCommandForPrincipal",
+      "stateFormat": 3,
+      "legacyUnknownReleasedOrAdopted": false,
+      "credentialOwnerIsolationAdded": true,
+      "sharedCredentialCallerIsolation": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_WRITER_PRINCIPALS_EVIDENCE.json"
+    },
+    {
+      "id": "CONTROL_PLANE_REOPEN_WITHOUT_SAFETY_STATE_RECREATION",
+      "state": "SOURCE_NATIVE_PENDING_D1_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "newCases": 27,
+      "stores": 4,
+      "normalStartupCreatesMissingState": false,
+      "explicitEnrollmentRemainsPrivileged": true,
+      "globalFirstUseOrAntiRollbackQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_CONTROL_REOPEN_EVIDENCE.json"
+    },
+    {
+      "id": "URGENT_SCOPE_OUTAGE_QUARANTINE_BEFORE_EFFECT",
+      "state": "SOURCE_COMPILED_NATIVE_DEVICE_D1_RESTART_FULL_HOSTED_QUALIFIED_NOT_INSTALLED",
+      "focusedCases": 31,
+      "compiledControllerCases": 28,
+      "nativeScenarioCases": 3,
+      "ordinaryOrUnverifiedBypass": false,
+      "runtimeGraphChanged": true,
+      "freshFullRequalification": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SCOPE_OUTAGE_EVIDENCE.json"
+    },
+    {
+      "id": "RECOVERY_SCHEMA_BEHAVIOR_AND_EXCLUDED_STATE",
+      "state": "SOURCE_NATIVE_D1_FULL_HOSTED_QUALIFIED_NOT_LIVE",
+      "nativeCases": 18,
+      "approvedPrimaryTriggers": 2,
+      "unreviewedTriggersViewsOrGeneratedColumnsAccepted": false,
+      "excludedPostflightRequired": true,
+      "sourcePageSqlCallEnvelope": 5,
+      "arbitraryDdlOrDistributedQuiescenceQualified": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_SCHEMA_EVIDENCE.json"
+    },
+    {
+      "id": "CURRENT_D1_BETA_METADATA_READ_PREREQUISITE",
+      "state": "LIVE_PINNED_WORKER_D1_DO_METADATA_VERIFIED_RECOVERY_OPEN",
+      "focusedCases": 44,
+      "workflowLoaderCases": 2,
+      "liveDispatch": "EXECUTED_RUN_42844169184",
+      "currentAuditSecretAvailability": "PRESENT_WORKERS_AND_BOTH_D1_READS_SUCCEEDED",
+      "historicalResourcePinsRecovered": true,
+      "doNamespacePinsIndependentlyReviewed": true,
+      "nullNamespaceModeQualifies": false,
+      "operationalRecoveryProven": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_BETA_READONLY_EVIDENCE.json",
+      "liveGetRequests": 11,
+      "bookmarkRequests": 4,
+      "metadataReadCompleted": true,
+      "pinnedMetadataChecksPassed": true,
+      "liveEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json"
+    },
+    {
+      "id": "PINNED_EXTERNAL_OPERATOR_CLI_ENTRY",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_QUALIFIED_NOT_PRODUCTION_INSTALLED",
+      "focusedNativeCases": 35,
+      "inventoryCases": 23,
+      "actualFreshNodeCliProcesses": true,
+      "knownToolSelectors": 4,
+      "actualPublicationAndVerificationSuccess": true,
+      "allFourHeldCaptureRefusals": true,
+      "defaultWorkflowActivated": false,
+      "completeRawCredentialCoverage": false,
+      "productionInstalled": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "buildEvidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "nativeLauncherCases": 35,
+      "physicalCheckoutCases": 12,
+      "physicalByteVerification": true,
+      "buildWorkingDirectoryIndependent": true,
+      "previousEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_OPERATOR_LAUNCHER_EVIDENCE.json"
+    },
+    {
+      "id": "PINNED_OPERATOR_PHYSICAL_BYTE_INTEGRITY",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_INSTALLED",
+      "physicalCheckoutCases": 12,
+      "nativeLauncherCases": 35,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_OPERATOR_BYTE_INTEGRITY_EVIDENCE.json",
+      "pointInTimeOnly": true,
+      "immutableHostProven": false,
+      "completeCredentialCoverage": false
+    },
+    {
+      "id": "RECOVERY_DECLARED_RELATIONSHIP_SCHEMA_AND_DATA",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 24,
+      "primaryTablesWithConstraints": 35,
+      "primaryConstraintGroups": 42,
+      "primaryColumnLinks": 46,
+      "diagnosticDeclaredForeignKeys": 0,
+      "orphanGraphPreWriteCases": 6,
+      "sourceSqlCallsPerPageMaximum": 5,
+      "postWriteSchemaRecheck": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RECOVERY_RELATIONSHIP_EVIDENCE.json",
+      "fullDdlEquivalenceProven": false,
+      "liveProviderSchemaOrRestoreProven": false,
+      "completeWriterQuiescenceProven": false
+    },
+    {
+      "id": "RECOVERY_REVIEWED_TABLE_AND_INDEX_DEFINITIONS",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 30,
+      "primaryTables": 49,
+      "primaryIndexes": 59,
+      "diagnosticTables": 6,
+      "diagnosticIndexes": 3,
+      "reviewedDefinitions": 117,
+      "sourceSqlCallsPerPageMaximum": 5,
+      "literalSqliteReservedPrefix": true,
+      "schemaPolicyPath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_POLICY.json",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_REVIEWED_DDL_EVIDENCE.json",
+      "generalSqlSemanticEquivalenceProven": false,
+      "liveProviderSchemaOrRestoreProven": false,
+      "independentReviewer": null,
+      "completeWriterQuiescenceProven": false
+    },
+    {
+      "id": "DEVICE_RESTORE_IDENTITY_AND_STATE_POSTFLIGHT",
+      "state": "SOURCE_NATIVE_EXACT_PUSH_AND_PR_CI_VERIFIED_NOT_CLOUD_QUALIFIED",
+      "nativeCases": 25,
+      "healthyD1IdentityReads": 2,
+      "supportedStateKeysCompared": 8,
+      "postAttemptUncertaintyReturnsSuccess": false,
+      "persistentFenceGuaranteed": false,
+      "uncertainRemoteOperationsProvenStopped": false,
+      "nativeCompletedFenceSurvivedRestart": true,
+      "existingTargetsPreservedOnPreflightFailure": true,
+      "changedRuntimePaths": [
+        "src/do-recovery.ts"
+      ],
+      "runtimeSourceSetSha256": "4e34a0dea694e9b51a52d24969c68c2ded5bf1ac49413c9a8c0e93b57b274398",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DO_RESTORE_POSTFLIGHT_EVIDENCE.json",
+      "liveProviderRestoreOrQuiescenceProven": false
+    },
+    {
+      "id": "ATOMIC_LOCAL_RUNTIME_OWNER_ENROLLMENT",
+      "state": "SOURCE_FOCUSED_AND_EXACT_PUSH_PR_CI_VERIFIED_NOT_PRODUCTION_WIRED",
+      "focusedCases": 26,
+      "boundaryCases": 41,
+      "selectedSignedNativeCases": {
+        "remainingWriter": 20,
+        "schedulerRpc": 14,
+        "schedulerCapture": 8,
+        "workerDeviceCapture": 22
+      },
+      "factoryPath": "src/capture-runtime-installation.ts",
+      "factoryInDefaultRuntimeGraph": false,
+      "productionEntryWired": false,
+      "physicalBindingIdentityProven": false,
+      "crossIsolateAtomicityProven": false,
+      "runtimeSourceSetSha256": "8082dc0c556bce0056484bdf9007a143a3d7e72d311de650be12a649af154980",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RUNTIME_OWNER_INSTALLATION_EVIDENCE.json"
+    },
+    {
+      "id": "SYNTHETIC_D1_PITR_OPERATOR_DRILL",
+      "state": "APPROVED_INITIAL_CREATE_ATTEMPT_UNKNOWN_NO_RETRY_RESTORE_NOT_REACHED",
+      "nativeCases": 40,
+      "maximumNewUnboundDatabases": 2,
+      "maximumRequests": 44,
+      "maximumRestores": 6,
+      "liveExecuted": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_EVIDENCE.json",
+      "livePassed": false,
+      "initialWriteRequests": 1,
+      "registrationMerged": true,
+      "operationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+      "registrationPr": 62
+    },
+    {
+      "id": "UNCERTAIN_SYNTHETIC_CREATE_RECONCILIATION",
+      "state": "GET_ONLY_SOURCE_NATIVE_HOSTED_AND_TWO_PROVIDER_SEARCHES_OBSERVED_NO_RESTORE_PASS",
+      "nativeCases": 17,
+      "providerGetRequests": 2,
+      "providerWriteRequests": 0,
+      "exactProposedNamesObserved": 0,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json"
+    },
+    {
+      "id": "BOUNDED_SYNTHETIC_RESPONSE_DIAGNOSTICS",
+      "state": "SOURCE_NATIVE_HOSTED_QUALIFIED_NOT_NEW_PROVIDER_OBSERVATION",
+      "drillCases": 62,
+      "reconciliationCases": 18,
+      "additionalCasesComparedToPrior": 23,
+      "freshProcessCliJournalReadback": true,
+      "maximumProviderErrorCodes": 8,
+      "rawProviderContentRetained": false,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_RESPONSE_DIAGNOSTICS_EVIDENCE.json"
+    },
+    {
+      "id": "PROTECTED_DEVICE_CAPTURE_BOUNDARY",
+      "state": "SOURCE_NATIVE_HOSTED_QUALIFIED_NOT_GLOBAL_COHERENT_CAPTURE_OR_LIVE_RESTORE",
+      "nativeCases": 20,
+      "sameOrLaterDeviceTimestampsPreserved": true,
+      "sealAndOpenShareValidator": true,
+      "providerRequestsForInvalidArchive": 0,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json"
+    },
+    {
+      "id": "LIFECYCLE_JOURNAL_ADMISSION",
+      "state": "SOURCE_NATIVE_HOSTED_QUALIFIED_NOT_INDEPENDENT_CUSTODY",
+      "nativeCases": 39,
+      "literalReservedSchemaPrefix": true,
+      "exactTransactionAndPostCommitReadback": true,
+      "unknownCommitPreservesOwnership": true,
+      "sameImmutableBadJournalsRefusedUnchanged": true,
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json"
+    }
+  ],
+  "remaining": [
+    {
+      "id": "POPULATED_CONFIG_RELATIONSHIP_PARITY",
+      "state": "CURRENT_SCHEMA_NATIVE_SOURCE_AND_PR_CI_VERIFIED_NOT_LIVE",
+      "needed": "Actual restore now verifies all recovered values, BLOBs/timestamps and permitted command retirement in bounded pages.12 new native cases and full push/PR audit pass on2e5178ea. Actual cloud schema/service budgets, independent writer isolation, interruption/rollback and agreed RTO/RPO remain unqualified. Protected archive seal/open now also enforce the existing coordinator device-timestamp lower bound;20 new consumer/CLI checks and unchanged-format positive cases are source-only evidence. No real archive reclassification or full distributed capture/restore acceptance."
+    },
+    {
+      "id": "COMPLETE_WRITER_HOOKS",
+      "state": "NAMED_CURRENT_RUNTIME_SURFACES_RECONCILED_BOOTSTRAP_EXTERNAL_RAW_AND_LIVE_GATES_OPEN",
+      "needed": "Atomic local owner/DB enrollment now has26 focused checks and signed native Worker/device/scheduler/RPC coverage (20/22/8/14 cases). The factory remains outside production entrypoints. The pinned CLI has35 native cases; four direct tools remain unfenced. Actual complete startup/rollback, verified physical bindings, Worker/DO/D1/deferred/process/raw/operator/credential restrictions, secure host/artifact/config/key and unknown STARTED/legacy reconciliation remain open. No partial activation."
+    },
+    {
+      "id": "URGENT_OUTAGE_FALLBACK",
+      "state": "AUTHENTICATED_GUARD_SOURCE_NATIVE_HOSTED_QUALIFIED_ACTUAL_INSTALLATION_AND_FAILURE_DOMAIN_OPEN",
+      "needed": "Urgent scope lookup failure now reaches positive independent quarantine at root and inherited D1, with authorization/unknown-outcome/no-parent-hint/restart proof. Actual complete bootstrap/same-resource guard/TLS/domain/key custody/live installation still open; ordinary/unverified/dual-outage work cannot claim this bypass."
+    },
+    {
+      "id": "AUTHENTICATED_SOURCE_TRANSPORT",
+      "state": "STAGED_NATIVE_VERIFIED_NOT_INSTALLED",
+      "needed": "Trusted source/resource/epoch/endpoint/bootstrap, production key custody/rotation, replay persistence/rate/traffic qualification and independent review before actual installation. Native fixture protocol success is not live transport acceptance."
+    },
+    {
+      "id": "PRIVATE_INDEPENDENT_DESTINATION",
+      "state": "REAL_PRIVATE_B2_SYNTHETIC_TRANSFER_LOCAL_RESTORE_VERIFIED_RUNTIME_CUSTODY_UNQUALIFIED",
+      "needed": "Approved actual bucket rechecked allPrivate/revision2 on10Nov. Connected key is account-wide/unprefixed with administrative/delete/share/key rights, not runtime-qualified. A separate one-bucket/prefix/capability-restricted credential, selected runtime and secure-console transfer/custody need separate authorization. Prior real encrypted multipart/local recovery and current staged adapter/selection proof preserved; no upload repeated."
+    },
+    {
+      "id": "SEPARATE_KEY_CONTEXT_CUSTODY",
+      "state": "DURABLE_LOCAL_CONTEXT_SELECTION_VERIFIED_INDEPENDENT_KEY_RECORD_DIGEST_CUSTODY_OPEN",
+      "needed": "Trusted context and exact provider selection now retained in private fsynced authenticated local record and recovered in fresh process/full native drill. Recovery key and caller-pinned selection digest are supplied separately; independently durable/off-host record/key/digest custody and restricted runtime credential remain unqualified."
+    },
+    {
+      "id": "SCHEDULE_AND_MONITORING",
+      "state": "DURABLE_ONE_SHOT_LIFECYCLE_AND_MONITOR_NATIVE_HOSTED_QUALIFIED_ACTUAL_SCHEDULE_ALERTS_OPEN",
+      "needed": "One-shot lifecycle, archive monitor and positive receipt reconciliation qualified. Monitor first initialization now requires explicit create on new directory; recurring reopen never creates lost state. Actual complete bootstrap, capture/monitor schedule, real recipient/signer provenance and independent current delivery-state custody/rollback protection remain unqualified. Follow activation/restart packet; no partial fence."
+    },
+    {
+      "id": "CURRENT_PITR",
+      "state": "PINNED_METADATA_CURRENT_AND_HISTORICAL_VERIFIED_FULL_WINDOW_AND_RESTORE_OPEN",
+      "needed": "Pinned11-GET runs42844169184 and42826439260 independently verified with both DO pins, current/historical bookmarks and matching sampled deployment reads. Full retention window, complete writer/custody/schedule and isolated cloud restoration with measured agreed RTO/RPO remain open. Do not ask for namespace IDs or repeat unchanged reads.",
+      "metadataCheckpoint": "Pinned live metadata verified in run42844169184; old input/dispatch denials are historical. This does not close full retention, writer/custody/schedule or actual cloud recovery."
+    },
+    {
+      "id": "ISOLATED_CLOUD_RESTORE",
+      "state": "ORIGINAL_CREATE_UNKNOWN_FRESH_DIAGNOSTIC_SOURCE_PREPARED_NOT_EXECUTED",
+      "needed": "Original one-create UNKNOWN and completed old-name GET observations remain unchanged. Bounded response diagnostics corrected; fresh Nov12 two-new-D1 identities/scope prepared but unapproved/unexecuted. Approve and observe that fresh bounded operation before any real subgate claim. Full encrypted41+4/deviceDO cloud recovery/interruption/rollback, production criteria and independent review remain open."
+    }
+  ],
+  "remainingProductTestCount": null,
+  "notice": "Group1 only. Staged/native proof is not production writer coverage, independent custody or cloud recovery. Other groups and canonical owners/criteria/reviews/final dispositions unchanged.",
+  "hostedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
+  "hostedStatus": {
+    "currentSourcePushCiQualified": true,
+    "currentPrMergeCheckoutVerified": true,
+    "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+    "runs": [
+      {
+        "runId": 43187832945,
+        "jobId": 131079368104,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 293404,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 79,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "durable-backup-run",
+            "passed": 47,
+            "failed": 0,
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+          },
+          {
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
+            "failed": 0,
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+          },
+          {
+            "suite": "backup-monitor",
+            "passed": 50,
+            "failed": 0,
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+          },
+          {
+            "suite": "backup-alert-receipt",
+            "passed": 54,
+            "failed": 0,
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          }
+        ],
+        "nativeFullRecoveryFixturePassed": true
+      },
+      {
+        "runId": 43187832890,
+        "jobId": 131079367609,
+        "conclusion": "success",
+        "passedSteps": 10,
+        "totalSteps": 10,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 16167,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
+      },
+      {
+        "runId": 43187832929,
+        "jobId": 131079366851,
+        "conclusion": "success",
+        "passedSteps": 14,
+        "totalSteps": 14,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 25078,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "e742df3a569ef01961146033fd07942a84ad35e4",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 0,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [],
+        "nativeFullRecoveryFixturePassed": false
+      },
+      {
+        "runId": 43187825695,
+        "jobId": 131079342711,
+        "conclusion": "success",
+        "passedSteps": 33,
+        "totalSteps": 33,
+        "completeDecodedLogInspected": true,
+        "logCharacters": 291448,
+        "errorMarkers": 0,
+        "sourceShaPresent": true,
+        "checkoutSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+        "checkoutShaPresent": true,
+        "nativeSuiteCount": 79,
+        "allParsedNativeSuitesZeroFailures": true,
+        "nativeSuites": [
+          {
+            "suite": "durable-backup-run",
+            "passed": 47,
+            "failed": 0,
+            "scope": "actual private native SQLite lifecycle, crypto, synthetic B2 readback, explicit positive selection reconciliation, competing handles/late continuation and fresh-process restart; no installed schedule/provider/key custody/full writer/cloud recovery acceptance"
+          },
+          {
+            "suite": "lifecycle-journal-admission",
+            "passed": 39,
+            "failed": 0,
+            "scope": "native private SQLite schema, transition/readback, reopen/commit and local callback counters only; no real provider/notifications, hostile-host or independent rollback/custody qualification"
+          },
+          {
+            "suite": "backup-monitor",
+            "passed": 50,
+            "failed": 0,
+            "scope": "actual private SQLite transactions/restart/CAS, AES-GCM, staged B2 fixture, controlled clocks and synthetic alert sinks; no timer/cron/production installation, real notification, source writer coverage, key custody or cloud qualification"
+          },
+          {
+            "suite": "backup-alert-receipt",
+            "passed": 54,
+            "failed": 0,
+            "scope": "actual Ed25519/domain/pin verification, private SQLite transaction/restart/races and synthetic B2/sinks/child exit; no real signer, recipient, notifications, production bootstrap, independent delivery truth or custody qualification"
+          },
+          {
+            "suite": "populated-recovery-relations",
+            "passed": 7,
+            "failed": 0,
+            "tables": 16,
+            "rows": 33,
+            "joinedPlaces": 2,
+            "joinedSchedules": 2,
+            "joinedEvidence": 2,
+            "joinedWitnesses": 2,
+            "scope": "synthetic nonempty16-table all-column and joined-link parity in actual signed native encrypted41+4/deviceDO destruction/fresh restore and persistence restart; no live-cloud or production acceptance"
+          }
+        ],
+        "nativeFullRecoveryFixturePassed": true
+      }
+    ],
+    "merge": {
+      "sha": "e742df3a569ef01961146033fd07942a84ad35e4",
+      "treeSha": "0859106302ded67fa94936b76581cba2e1bde41f",
+      "parents": [
+        "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+        "cb372f92cd2a890d52ed713660c1b34aa583ed7c"
+      ],
+      "draft": true,
+      "merged": false
+    }
+  },
+  "lastHostedQualifiedSourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+  "lastHostedQualifiedEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
+  "localEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json",
+  "integrationBaseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+  "lastMergeQualifiedSourceSha": "cb372f92cd2a890d52ed713660c1b34aa583ed7c",
+  "completedIntegrationGates": [
+    {
+      "id": "CONCURRENT_PORTAL_BASE_INTEGRATION",
+      "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
+      "sourceSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
+      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "previousRecordedSourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json",
+      "testedPrMergeSha": "a9800d94089cb4adea6c3131e610e2e71e9629ff"
+    },
+    {
+      "id": "CURRENT_SOURCE_HOSTED_VERIFICATION",
+      "state": "SOURCE_AND_CURRENT_BASE_PR_CHECKOUT_CI_VERIFIED",
+      "sourceSha": "667e9e6b042dcec05e91e7a1b93013c3201a803d",
+      "baseSha": "141cbf42efaa61873c4fa87138ca5a0a19d404a2",
+      "previousRecordedSourceSha": "a20acc569adcf2124b9a623051e3d50bbad6f193",
+      "evidencePath": "audit/phase8d/PHASE8D_GROUP1_DEVICE_CAPTURE_BOUNDARY_EVIDENCE.json",
+      "testedPrMergeSha": "a9800d94089cb4adea6c3131e610e2e71e9629ff"
+    }
+  ],
+  "executionForecast": {
+    "target": "FOUR_ACTIVE_WORKDAYS",
+    "state": "FOUR_DAY_TARGET_MISSED_EXIT_GATES_OPEN",
+    "reasons": [
+      "Durable restricted-runtime credential and separate encryption-key/context custody remain unqualified.",
+      "Complete writer/outage/bootstrap/schedule/real recipient and independent acceptance review remain incomplete.",
+      "Pinned live metadata is verified; complete writer/custody/schedule and isolated cloud restore/rollback with agreed RTO/RPO remain open."
+    ],
+    "nextPreparedProviderAction": {
+      "scope": "Fresh reviewed two-new-D1 synthetic restore/undo proposal; initial one-create UNKNOWN never retried.",
+      "runId": "20261112-f28a8d6cb028d0bb",
+      "approval": "NOT_GRANTED",
+      "reviewPath": "audit/phase8d/PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md"
+    },
+    "completedOperationalSubgate": "Actual private B2 ciphertext publication/exact-version readback and provider-backed fresh local recovery.",
+    "nextUnqualifiedActions": [
+      {
+        "gate": "COMPLETE_RUNTIME_STARTUP",
+        "required": "One reviewed production Worker/actor/D1/operator/raw-credential bootstrap and rollback scope; entrypoints are still unwired",
+        "responsibleRole": "Runtime/deployment owner"
+      },
+      {
+        "gate": "GUARD_AND_RUNNER",
+        "required": "Selected independently protected runtime/guard endpoints, failure domain and source/resource/epoch/key custody",
+        "responsibleRole": "Runtime/security owner"
+      },
+      {
+        "gate": "RESTRICTED_B2_AND_CUSTODY",
+        "required": "Approved least-privilege bucket/prefix key, secure runtime transfer and independently recoverable encryption/context/selection/current journal custody",
+        "responsibleRole": "Backup/account owner"
+      },
+      {
+        "gate": "SCHEDULE_AND_RECIPIENT",
+        "required": "Approved schedule, failure/age policy, actual recipient and signing/delivery verification",
+        "responsibleRole": "Operations owner"
+      },
+      {
+        "gate": "ISOLATED_CLOUD_DRILL",
+        "required": "Explicit new synthetic target identities, mutation/interruption/rollback scope and agreed measured RTO/RPO",
+        "responsibleRole": "Cloud/account owner"
+      },
+      {
+        "gate": "ACCEPTANCE",
+        "required": "Genuine accountable owner/tester/independent reviewer; no invented signoff or deadline waiver",
+        "responsible": "Unassigned"
+      }
+    ],
+    "guardHostCandidateDecisions": [
+      {
+        "provider": "Deno Deploy",
+        "state": "REJECT_NEW_GUARD_RUNNER_CANDIDATE",
+        "checkedDate": "2026-11-11",
+        "reason": "Official retirement announcement; independent administration/failure domain and no-card capacity remain unqualified",
+        "evidencePath": "audit/phase8d/PHASE8D_GROUP1_GUARD_HOST_PREFLIGHT_2026-11-11.md",
+        "replacementSelected": false
+      }
+    ],
+    "checkedDate": "2026-11-12",
+    "previousPreparedProviderAction": {
+      "previousAction": "APPROVED_AND_EXECUTED",
+      "bucketName": "brick-recovery-jayvian-20261107",
+      "scope": "Private bucket + bounded encrypted synthetic roundtrip/local restore only; no repeat authorization needed for the granted scope."
+    }
+  },
+  "latestOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_LIVE_ATTEMPT.json",
+  "activationRestartPacketPath": "audit/phase8d/PHASE8D_GROUP1_ACTIVATION_RESTART_PACKET.md",
+  "latestProviderMetadataEvidencePath": "audit/phase8d/PHASE8D_GROUP1_PINNED_LIVE_METADATA_EVIDENCE.json",
+  "liveMetadataExecutionSourceSha": "176e65f5676db0dbd539fdda771d4e156f82fbcc",
+  "localVerificationStatus": "FOCUSED_JOURNAL39_RUN47_MONITOR50_RECEIPT54_INVENTORY23_CLOSURE14_LEDGER61_PASSED_NO_FULL_LOCAL_CAMPAIGN_CLAIM",
+  "preparedCloudDrillReviewPath": "audit/phase8d/PHASE8D_GROUP1_SYNTHETIC_PITR_REVIEW.md",
+  "previousOperationalEvidencePath": "audit/phase8d/PHASE8D_GROUP1_REAL_B2_EVIDENCE.json",
+  "latestSyntheticReconciliationSourceSha": "c2e0dddfc38c38de5b7910a46e1dbb62f84d866d",
+  "freshCloudDrillProposal": {
+    "state": "PREPARED_NOT_APPROVED_NOT_EXECUTED",
+    "runId": "20261112-f28a8d6cb028d0bb",
+    "reviewPath": "audit/phase8d/PHASE8D_GROUP1_FRESH_SYNTHETIC_DRILL_2026-11-12.md",
+    "maximumCreates": 2,
+    "maximumRequests": 44,
+    "maximumRestores": 6,
+    "syntheticGoalSeconds": 900,
+    "requiresLauncherMerge": false
+  },
+  "latestPreparedSourceEvidencePath": "audit/phase8d/PHASE8D_GROUP1_JOURNAL_ADMISSION_EVIDENCE.json"
+}
