@@ -91,7 +91,7 @@
   "runtimeContextCalls": 2,
   "deviceRecoveryReadProfile": {
     "file": "src/do-recovery.ts",
-    "sourceSha256": "b3495778be213f180392b5e08da18055b25c279cda5e24329e2ce1f11514f905",
+    "sourceSha256": "fadf1b0236b59aaebc0f4fd561b2c00c6c1dcd58e5f483c64fb76888752dddb0",
     "identityFunctionSha256": "dd4fbbf705c38f576a74fc87385e6b6192eb4728392e2e37b068432055f6af98",
     "identitySql": "SELECT public_key_spki_b64, revoked_at FROM devices WHERE id=?1",
     "classification": "CURRENT_SOURCE_IDENTITY_SELECT_ONLY_DEVICE_RESTORE_WRITES_DO_TRANSACTION",

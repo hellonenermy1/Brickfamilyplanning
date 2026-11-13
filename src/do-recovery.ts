@@ -48,6 +48,11 @@ async function identity(ctx: DurableObjectState, env: RecoveryEnv, deviceId: str
 export async function exportDeviceRecovery(ctx: DurableObjectState, env: RecoveryEnv, deviceId: string, betaDiagnostic = false) {
   const device = await identity(ctx, env, deviceId);
   const state = await ctx.storage.transaction(async txn => Object.fromEntries(await txn.list({ limit: RECOVERY_KEYS.length + (betaDiagnostic ? 2 : 1) })));
+  // Refuse a stale identity/revocation observation; do not rewrite source state
+  // or label this two-read check a distributed snapshot/quiescence guarantee.
+  const current = await identity(ctx, env, deviceId);
+  if (current.keySha256 !== device.keySha256 || current.revoked !== device.revoked)
+    throw new Error("DO recovery identity changed during export");
   if (betaDiagnostic && 'betaDiagnostic' in state) {
     const probe = state.betaDiagnostic;
     if (!record(probe) || Object.keys(probe).sort().join(',') !== 'expiresAt,token' || typeof probe.token !== 'string' || !/^[0-9a-f-]{36}$/.test(probe.token) || !Number.isSafeInteger(probe.expiresAt) || (probe.expiresAt as number) <= 0) throw new Error('invalid beta diagnostic recovery state');

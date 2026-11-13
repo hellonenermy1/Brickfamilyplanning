@@ -3,11 +3,11 @@
   "basisCommitSha": "0f9e20995edf5cab36af560055b0e39c9a4fcfe8",
   "activation": "NOT_READY",
   "notice": "Source/change-detection profile only. All selected tracked files are hashed. Signals/text references/import reachability are conservative candidates, not executable call graphs, full writer enforcement, authenticated independent review or cloud state. POST alone does not establish mutation. Unresolved/out-of-index imports, npm/shell indirection, subprocess descendants, generated files, CLI/console/API credentials and untracked/out-of-repository operators require separate accounting. No source file is executed.",
-  "policySha256": "a7be739decee56dab8df87e7e6d216635418e41fcc5cab2dc9e8850a9187ef2b",
+  "policySha256": "b9840dcb672805a5b93c9c48bc299a5f6802642e4a9294ad3167180465b6a265",
   "summary": {
-    "selectedFiles": 335,
+    "selectedFiles": 336,
     "filesWithManagementSignals": 84,
-    "explicitClassifications": 97,
+    "explicitClassifications": 98,
     "stagedOperatorLaunchers": 1,
     "betaMutatorsUnfenced": 4,
     "stagedOffPlatformMonitors": 1,
@@ -16,7 +16,7 @@
     "unresolvedRelativeImportCandidates": 5,
     "unresolvedDynamicImports": 149
   },
-  "sourceSetSha256": "4ae1572cf2b300cf8096f7ed3b118f1cdf2613088854576fd93941d37d7f921e",
+  "sourceSetSha256": "f3ef2b7c9f080b0e64fa12789b122670704e98ff782016b654b7fec90127c344",
   "knownBetaToolHooks": [
     {
       "path": "scripts/ensure-beta-d1-columns.mjs",
@@ -763,6 +763,11 @@
     {
       "from": ".github/workflows/phase8d-cardfree-ci.yml",
       "to": "scripts/test-phase8d-descendant-reservations.mjs",
+      "kind": "TEXT_REFERENCE_CANDIDATE"
+    },
+    {
+      "from": ".github/workflows/phase8d-cardfree-ci.yml",
+      "to": "scripts/test-phase8d-do-export-identity.mjs",
       "kind": "TEXT_REFERENCE_CANDIDATE"
     },
     {
@@ -2691,6 +2696,11 @@
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
     },
     {
+      "from": "scripts/test-phase8d-do-export-identity.mjs",
+      "to": "scripts/phase8d-native-fixture.mjs",
+      "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
+    },
+    {
       "from": "scripts/test-phase8d-do-restore-postflight.mjs",
       "to": "scripts/phase8d-native-fixture.mjs",
       "kind": "RELATIVE_IMPORT_OR_FILE_URL_CANDIDATE"
@@ -3584,8 +3594,8 @@
     },
     {
       "path": ".github/workflows/phase8d-cardfree-ci.yml",
-      "sha256": "32e82e85a254e5ffb4e6a72e9841ec55669d1e77bb1beb2b8a82055690aa90dd",
-      "gitBlobSha": "4cfc24b6e7fce2c36edfddf29e509d9243d403dc",
+      "sha256": "b52963be8b1738a0fc9afe849c22333ee4474d3839e3e6ba13826b621221e625",
+      "gitBlobSha": "a5dea466a2f5ccaf4fc91079cd3fd79f5c39486b",
       "classification": "MIXED_WORKFLOW_SOURCE",
       "reason": "Normal push/PR audit remains synthetic/no cloud calls. A separately gated workflow_dispatch boolean false by default may run dedicated-token pinned-plan metadata GETs; preserves sanitized output only, no cloud writes or credential fallback.",
       "signals": [],
@@ -3635,6 +3645,7 @@
         "scripts/test-phase8d-d1-retention.mjs",
         "scripts/test-phase8d-d1-work-budget.mjs",
         "scripts/test-phase8d-descendant-reservations.mjs",
+        "scripts/test-phase8d-do-export-identity.mjs",
         "scripts/test-phase8d-do-restore-postflight.mjs",
         "scripts/test-phase8d-edge-client.mjs",
         "scripts/test-phase8d-enrichment-failure.mjs",
@@ -8812,6 +8823,29 @@
         "<DYNAMIC_IMPORT_UNRESOLVED>",
         "node:assert/strict",
         "node:url"
+      ],
+      "referencedScriptCandidates": [],
+      "npmScriptReferences": []
+    },
+    {
+      "path": "scripts/test-phase8d-do-export-identity.mjs",
+      "sha256": "5c4f141b7b3082aab5dd3dcd8111834f01a8ed9310ba7d49f10348accfe1e90f",
+      "gitBlobSha": "e124fd9e67d75645f515ccbf6e6904c4f9e45926",
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual local SQLite DO/D1 export identity race and immutability fixture; controlled D1 changes and temporary predecessor-source build are test effects, not real cloud quiescence, custody or recovery acceptance.",
+      "signals": [],
+      "stagedExternalWriterCalls": [],
+      "stagedExternalControllerInstallCalls": [],
+      "imports": [
+        "./phase8d-native-fixture.mjs",
+        "esbuild",
+        "miniflare",
+        "node:assert/strict",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path"
       ],
       "referencedScriptCandidates": [],
       "npmScriptReferences": []

@@ -133,6 +133,7 @@ jobs:
         run: |
           node scripts/test-phase8d-recovery-schema.mjs
           node scripts/test-phase8d-recovery-ddl.mjs
+          node scripts/test-phase8d-do-export-identity.mjs
           node scripts/test-phase8d-do-restore-postflight.mjs
           node scripts/test-phase8d-recovery-foreign-keys.mjs
           node scripts/test-phase8d-restore-value-parity.mjs

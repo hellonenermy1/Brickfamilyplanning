@@ -389,6 +389,10 @@
     "scripts/test-phase8d-lifecycle-journal-admission.mjs": {
       "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
       "reason": "Native private SQLite schema/TEMP trigger, simulated driver and commit faults with local callback counters only. No actual provider/notification, hostile-host isolation or independent rollback/custody qualification."
+    },
+    "scripts/test-phase8d-do-export-identity.mjs": {
+      "classification": "TEST_HARNESS_EFFECTS_NOT_EXCLUDED",
+      "reason": "Actual local SQLite DO/D1 export identity race and immutability fixture; controlled D1 changes and temporary predecessor-source build are test effects, not real cloud quiescence, custody or recovery acceptance."
     }
   }
 }
